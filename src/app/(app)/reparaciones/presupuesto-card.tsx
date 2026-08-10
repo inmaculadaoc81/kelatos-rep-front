@@ -134,7 +134,7 @@ export function PresupuestoCard({
   return (
     <m.div
       variants={elementoLista}
-      className={`overflow-hidden rounded-xl border text-sm transition-colors ${ESTILO_ESTADO[p.estado]?.caja ?? "bg-card"}`}
+      className={`@container overflow-hidden rounded-xl border text-sm transition-colors ${ESTILO_ESTADO[p.estado]?.caja ?? "bg-card"}`}
     >
       <header className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
         <span className="rounded-md bg-background px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums ring-1 ring-border">
@@ -150,7 +150,10 @@ export function PresupuestoCard({
 
       {/* Los importes como columnas etiquetadas y alineadas a la derecha:
           antes iban en una fila de texto corrido donde no se podían comparar. */}
-      <dl className="grid grid-cols-2 divide-x divide-y border-b sm:grid-cols-4 sm:divide-y-0">
+      {/* Container query, no breakpoint de ventana: esta tarjeta vive tanto
+          a ancho completo como en una columna estrecha, y lo que decide
+          si caben cuatro importes en fila es su propio ancho. */}
+      <dl className="grid grid-cols-2 divide-x divide-y border-b @md:grid-cols-4 @md:divide-y-0">
         <Importe etiqueta="Mano de obra" valor={euros(p.manoObra)} />
         <Importe etiqueta="Piezas" valor={euros(p.precioPiezas)} />
         <Importe etiqueta="Total" valor={euros(p.total)} destacado />

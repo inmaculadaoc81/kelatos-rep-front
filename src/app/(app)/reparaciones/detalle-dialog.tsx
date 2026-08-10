@@ -16,6 +16,10 @@ import {
   Clock,
   ShieldTick,
   TickCircle,
+  Warning2,
+  Profile2User,
+  Hashtag,
+  Calendar,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -28,7 +32,7 @@ import { toast } from "sonner";
 import { COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { separarSintoma } from "@/lib/progreso-reparacion";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, type Pedido } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
 import { FinalizarReparacionDialog, MarcarEntregadoDialog } from "./finalizar-dialog";
@@ -71,11 +75,114 @@ function Dato({ label, valor }: { label: string; valor: string }) {
   );
 }
 
+// Mismos colores que el mapa colorPedido de renderizarInfoDetallada().
 const ESTILO_PEDIDO: Record<string, string> = {
-  Recibido: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
-  "En Tránsito": "border-amber-500/40 text-amber-700 dark:text-amber-400",
-  Pedido: "border-sky-500/40 text-sky-700 dark:text-sky-400",
+  Recibido: "border-emerald-500/40 bg-emerald-500/5",
+  Pedido: "border-sky-500/40 bg-sky-500/5",
+  "En Tránsito": "border-amber-500/40 bg-amber-500/5",
+  Problema: "border-destructive/40 bg-destructive/5",
+  "Pieza Rota": "border-destructive/40 bg-destructive/5",
+  "Pieza Defectuosa": "border-amber-500/40 bg-amber-500/5",
 };
+
+const ESTILO_BADGE_PEDIDO: Record<string, string> = {
+  Recibido: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+  Pedido: "border-sky-500/40 text-sky-700 dark:text-sky-400",
+  "En Tránsito": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  Problema: "border-destructive/40 text-destructive",
+  "Pieza Rota": "border-destructive/40 text-destructive",
+  "Pieza Defectuosa": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+};
+
+/** Fila etiqueta/valor de las tablas del original (`table table-sm`). */
+function FilaDato({ etiqueta, valor }: { etiqueta: string; valor: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[9rem_1fr] gap-3 px-3 py-2">
+      <dt className="text-sm font-medium text-muted-foreground">{etiqueta}</dt>
+      <dd className="min-w-0 text-sm wrap-break-word">
+        {typeof valor === "string" ? valor || "-" : valor}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Estado de la factura, con las tres ramas del original: número (enlazado
+ * al PDF si lo hay), "Pendiente" cuando se espera una y raya cuando no
+ * corresponde. Las reparaciones en garantía nunca la requieren.
+ */
+function EstadoFactura({ detalle }: { detalle: ReparacionDetalle }) {
+  if (detalle.numeroFactura) {
+    const contenido = (
+      <>
+        <Receipt className="size-3.5" /> {detalle.numeroFactura}
+      </>
+    );
+    const clase =
+      "inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white";
+    return detalle.urlFactura ? (
+      <a href={detalle.urlFactura} target="_blank" rel="noopener noreferrer" className={`${clase} hover:bg-emerald-700`}>
+        {contenido}
+      </a>
+    ) : (
+      <span className={clase}>{contenido}</span>
+    );
+  }
+
+  const requiereFactura =
+    detalle.tipoIngreso !== "GARANTIA" &&
+    (detalle.estado === "Reparado" || detalle.estado === "Presupuesto Aceptado");
+
+  if (!requiereFactura) return <span className="text-muted-foreground">—</span>;
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-amber-400 px-2 py-0.5 text-xs font-medium text-amber-950">
+      <Warning2 className="size-3.5" /> Pendiente
+    </span>
+  );
+}
+
+/** Tarjeta de pedido con los mismos campos e iconos que el original. */
+function PedidoCard({ pedido: pd }: { pedido: Pedido }) {
+  return (
+    <m.div
+      variants={elementoLista}
+      className={`space-y-1 rounded-xl border p-2.5 text-sm ${ESTILO_PEDIDO[pd.estado] ?? ""}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="font-semibold">{pd.pedidoId || "-"}</span>
+        {pd.compradoPor && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Profile2User className="size-3.5" /> {pd.compradoPor}
+          </span>
+        )}
+        <Badge variant="outline" className={`ml-auto ${ESTILO_BADGE_PEDIDO[pd.estado] ?? ""}`}>
+          {pd.estado || "Sin estado"}
+        </Badge>
+      </div>
+      {pd.notas && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Box className="size-3.5 shrink-0" /> {pd.notas}
+        </p>
+      )}
+      {pd.numeroPedido && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Hashtag className="size-3.5 shrink-0" /> <span className="tabular-nums">{pd.numeroPedido}</span>
+        </p>
+      )}
+      {pd.fechaEstimada && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="size-3.5 shrink-0" /> Est: {formatearFecha(pd.fechaEstimada)}
+        </p>
+      )}
+      {pd.fechaRecepcion && (
+        <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+          <TickCircle className="size-3.5 shrink-0" /> Recibido: {formatearFecha(pd.fechaRecepcion)}
+        </p>
+      )}
+    </m.div>
+  );
+}
 
 /** Cabecera de sección con contador y, opcionalmente, su acción a la derecha. */
 function Seccion({
@@ -173,6 +280,8 @@ export function DetalleReparacionDialog({
   }
 
   const sintoma = detalle ? separarSintoma(detalle.equipo.sintoma) : null;
+  // Los cancelados no se listan, igual que en renderizarInfoDetallada().
+  const pedidosVisibles = (detalle?.pedidos ?? []).filter((p) => p.estado !== "Cancelado");
 
   return (
     <Dialog open={resguardo !== null} onOpenChange={onOpenChange}>
@@ -317,85 +426,85 @@ export function DetalleReparacionDialog({
                   <TabsTrigger value="historial">Historial</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="informacion" className="space-y-5 pt-4">
-                  <Seccion
-                    icono={Receipt}
-                    titulo="Presupuestos"
-                    cuenta={detalle.presupuestos.length}
-                    accion={
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 gap-1.5"
-                        onClick={() => setNuevoPresupuestoAbierto(true)}
-                      >
-                        <DocumentText className="size-3.5" /> Nuevo
-                      </Button>
-                    }
-                  >
-                    {detalle.presupuestos.length === 0 ? (
-                      <Vacio icono={Receipt} texto="Todavía no hay ningún presupuesto." />
-                    ) : (
-                      <m.div
-                        className="space-y-2"
-                        variants={listaAnim}
-                        initial="inicial"
-                        animate="visible"
-                      >
-                        {detalle.presupuestos.map((p) => (
-                          <PresupuestoCard
-                            key={p.presupuestoId}
-                            resguardo={detalle.resguardo}
-                            presupuesto={p}
-                            onActualizado={cargarDetalle}
-                          />
-                        ))}
-                      </m.div>
-                    )}
-                  </Seccion>
+                {/* Dos columnas como renderizarInfoDetallada(): a la izquierda
+                    los datos de recepción, a la derecha presupuestos, pedidos
+                    y reparación. El contenedor lleva @container para que las
+                    columnas colapsen por su propio ancho y no por el de la
+                    ventana — dentro de un diálogo no son lo mismo. */}
+                <TabsContent value="informacion" className="@container pt-4">
+                  <div className="grid gap-6 @2xl:grid-cols-2">
+                    <section>
+                      <h4 className="mb-2 text-sm font-semibold text-primary">Datos de Recepción</h4>
+                      <dl className="divide-y rounded-xl border">
+                        <FilaDato etiqueta="Resguardo" valor={detalle.resguardo} />
+                        <FilaDato etiqueta="Fecha Recepción" valor={formatearFecha(detalle.fechaRecepcion)} />
+                        <FilaDato etiqueta="Cliente" valor={detalle.cliente.nombre} />
+                        <FilaDato etiqueta="Teléfono" valor={detalle.cliente.telefono} />
+                        <FilaDato etiqueta="Email" valor={detalle.cliente.email} />
+                        <FilaDato etiqueta="Equipo" valor={detalle.equipo.modelo} />
+                        <FilaDato etiqueta="Síntoma" valor={detalle.equipo.sintoma} />
+                        <FilaDato etiqueta="Factura" valor={<EstadoFactura detalle={detalle} />} />
+                      </dl>
+                    </section>
 
-                  <Seccion icono={Box} titulo="Pedidos de piezas" cuenta={detalle.pedidos.length}>
-                    {detalle.pedidos.length === 0 ? (
-                      <Vacio icono={Box} texto="No se ha pedido ninguna pieza." />
-                    ) : (
-                      <m.div
-                        className="divide-y overflow-hidden rounded-xl border"
-                        variants={listaAnim}
-                        initial="inicial"
-                        animate="visible"
-                      >
-                        {detalle.pedidos.map((pd) => (
-                          // Antes los tres datos iban sueltos con justify-between
-                          // y sin etiqueta: no se sabía qué era cada uno.
-                          <m.div
-                            key={pd.pedidoId}
-                            variants={elementoLista}
-                            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2.5 text-sm"
+                    <div className="space-y-5">
+                      <Seccion
+                        icono={Receipt}
+                        titulo="Presupuestos"
+                        cuenta={detalle.presupuestos.length}
+                        accion={
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1.5"
+                            onClick={() => setNuevoPresupuestoAbierto(true)}
                           >
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                                Nº de pedido
-                              </p>
-                              <p className="truncate font-medium tabular-nums" title={pd.numeroPedido || pd.pedidoId}>
-                                {pd.numeroPedido || pd.pedidoId}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Pedido</p>
-                              <p className="tabular-nums">{formatearFecha(pd.fechaPedido)}</p>
-                            </div>
-                            <div>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Estimada</p>
-                              <p className="tabular-nums">{formatearFecha(pd.fechaEstimada)}</p>
-                            </div>
-                            <Badge variant="outline" className={ESTILO_PEDIDO[pd.estado] ?? ""}>
-                              {pd.estado}
-                            </Badge>
+                            <DocumentText className="size-3.5" /> Nuevo
+                          </Button>
+                        }
+                      >
+                        {detalle.presupuestos.length === 0 ? (
+                          <Vacio icono={Receipt} texto="Todavía no hay ningún presupuesto." />
+                        ) : (
+                          <m.div className="space-y-2" variants={listaAnim} initial="inicial" animate="visible">
+                            {detalle.presupuestos.map((p) => (
+                              <PresupuestoCard
+                                key={p.presupuestoId}
+                                resguardo={detalle.resguardo}
+                                presupuesto={p}
+                                onActualizado={cargarDetalle}
+                              />
+                            ))}
                           </m.div>
-                        ))}
-                      </m.div>
-                    )}
-                  </Seccion>
+                        )}
+                      </Seccion>
+
+                      <Seccion icono={Box} titulo="Pedidos" cuenta={pedidosVisibles.length}>
+                        {pedidosVisibles.length === 0 ? (
+                          <Vacio icono={Box} texto="No se ha pedido ninguna pieza." />
+                        ) : (
+                          <m.div className="space-y-2" variants={listaAnim} initial="inicial" animate="visible">
+                            {pedidosVisibles.map((pd) => (
+                              <PedidoCard key={pd.pedidoId} pedido={pd} />
+                            ))}
+                          </m.div>
+                        )}
+                      </Seccion>
+
+                      {(detalle.tecnicoAsignado || detalle.fechaReparacion) && (
+                        <section>
+                          <h4 className="mb-2 text-sm font-semibold text-primary">Reparación</h4>
+                          <dl className="divide-y rounded-xl border">
+                            <FilaDato etiqueta="Técnico" valor={detalle.tecnicoAsignado} />
+                            <FilaDato
+                              etiqueta="Fecha Reparación"
+                              valor={formatearFecha(detalle.fechaReparacion)}
+                            />
+                          </dl>
+                        </section>
+                      )}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="observaciones" className="space-y-3 pt-3">
