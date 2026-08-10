@@ -154,7 +154,7 @@ export default function HistorialPage() {
               <TableHead>Fecha Entrega</TableHead>
               <TableHead>Técnico</TableHead>
               <TableHead>Reseña</TableHead>
-              <TableHead>Acciones</TableHead>
+              <TableHead className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -179,7 +179,12 @@ export default function HistorialPage() {
 
             {!cargando &&
               reparaciones.map((r) => (
-                <TableRow key={r.resguardo}>
+                <TableRow
+                  key={r.resguardo}
+                  className="group cursor-pointer"
+                  onClick={() => setResguardoDetalle(r.resguardo)}
+                  title={`Abrir reparación ${r.resguardo}`}
+                >
                   <TableCell className="font-semibold">{r.resguardo}</TableCell>
                   <TableCell className="text-sm">{r.cliente.nombre || "-"}</TableCell>
                   <TableCell className="text-sm">{r.equipo.modelo || "-"}</TableCell>
@@ -193,8 +198,13 @@ export default function HistorialPage() {
                   <TableCell className="text-sm">
                     {r.resena === "SI" ? <Star className="size-4 fill-amber-400 text-amber-400" /> : "-"}
                   </TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setResguardoDetalle(r.resguardo)}>
+                  <TableCell className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] group-hover:bg-muted/50">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1"
+                      onClick={(e) => { e.stopPropagation(); setResguardoDetalle(r.resguardo); }}
+                    >
                       <Eye className="size-3.5" /> Ver
                     </Button>
                   </TableCell>

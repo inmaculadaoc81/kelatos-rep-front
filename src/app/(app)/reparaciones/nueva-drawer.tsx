@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { AddCircle } from "@/lib/icons";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +35,7 @@ const VACIO: DatosNuevaReparacion = {
   revisionPagada: false,
 };
 
-export function NuevaReparacionDialog({ onCreada }: { onCreada: () => void }) {
+export function NuevaReparacionDrawer({ onCreada }: { onCreada: () => void }) {
   const [open, setOpen] = useState(false);
   const [datos, setDatos] = useState<DatosNuevaReparacion>(VACIO);
   const [guardando, setGuardando] = useState(false);
@@ -71,17 +71,22 @@ export function NuevaReparacionDialog({ onCreada }: { onCreada: () => void }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+    <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
+      <DrawerTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
         <AddCircle className="size-4" /> Nueva Reparación
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl sm:max-w-2xl" showCloseButton={!guardando}>
-        <DialogHeader>
-          <DialogTitle>Nueva Reparación — Recepción</DialogTitle>
-        </DialogHeader>
+      </DrawerTrigger>
+      {/* Panel lateral: más ancho que el 24rem por defecto, porque el
+          formulario es de dos columnas. */}
+      <DrawerContent className="sm:[--drawer-content-width:38rem]">
+        <DrawerHeader>
+          <DrawerTitle>Nueva Reparación — Recepción</DrawerTitle>
+          <DrawerDescription>Datos del parte de recepción</DrawerDescription>
+        </DrawerHeader>
 
-        <ScrollArea className="max-h-[65vh]">
-          <div className="space-y-5 pr-3">
+        {/* DrawerContent ya es flex-col con overflow oculto: el cuerpo es
+            quien scrollea, y la cabecera y el pie quedan fijos. */}
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          <div className="space-y-5">
             <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
               El nº de resguardo se asigna automáticamente al guardar (no se puede reservar ni previsualizar).
             </p>
@@ -181,17 +186,17 @@ export function NuevaReparacionDialog({ onCreada }: { onCreada: () => void }) {
               </label>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter>
+        <DrawerFooter className="flex-row justify-end border-t pt-4">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={guardando}>
             Cancelar
           </Button>
           <Button onClick={guardar} disabled={guardando}>
             {guardando ? "Registrando..." : "Registrar Recepción"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

@@ -22,7 +22,7 @@ import {
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { calcularDiasEntrega, formatearFecha } from "@/lib/dias-entrega";
 import { DetalleReparacionDialog } from "./detalle-dialog";
-import { NuevaReparacionDialog } from "./nueva-dialog";
+import { NuevaReparacionDrawer } from "./nueva-drawer";
 import { FormularioPendienteDialog } from "./formulario-pendiente-dialog";
 
 type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | null };
@@ -176,7 +176,7 @@ export default function ReparacionesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <NuevaReparacionDialog onCreada={cargar} />
+          <NuevaReparacionDrawer onCreada={cargar} />
           <MultiselectFiltro label="Estado" opciones={ESTADOS_REPARACION} seleccionados={filtroEstado} onCambiar={setFiltroEstado} />
           <MultiselectFiltro label="Técnico" opciones={tecnicosDisponibles} seleccionados={filtroTecnico} onCambiar={setFiltroTecnico} />
           <MultiselectFiltro label="Equipo" opciones={["SI", "NO"]} seleccionados={filtroEquipo} onCambiar={setFiltroEquipo} />
@@ -222,7 +222,11 @@ export default function ReparacionesPage() {
               <TableHead>Días</TableHead>
               <TableHead>F. Entrega</TableHead>
               <TableHead>Obs.</TableHead>
-              <TableHead>Acciones</TableHead>
+              {/* Fija a la derecha: con 10 columnas la tabla se desborda y,
+                  sin esto, el botón de acción queda fuera de la pantalla. */}
+              <TableHead className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
+                Acciones
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -252,7 +256,12 @@ export default function ReparacionesPage() {
                 const obsTruncado = obs.length > 50 ? obs.slice(0, 50) + "…" : obs;
 
                 return (
-                  <TableRow key={rep.resguardo}>
+                  <TableRow
+                    key={rep.resguardo}
+                    className="group cursor-pointer"
+                    onClick={() => setResguardoDetalle(rep.resguardo)}
+                    title={`Abrir reparación ${rep.resguardo}`}
+                  >
                     <TableCell className="font-semibold">{rep.resguardo}</TableCell>
                     <TableCell className="text-sm">{formatearFecha(rep.fechaRecepcion)}</TableCell>
                     <TableCell>
@@ -284,14 +293,16 @@ export default function ReparacionesPage() {
                     <TableCell className="max-w-40 truncate text-sm text-muted-foreground" title={obs}>
                       {obsTruncado || "-"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] group-hover:bg-muted/50">
                       {rep.estado === "Formulario Pendiente" ? (
                         <div className="flex gap-1">
+                          {/* stopPropagation: sin esto el clic tambien
+                              dispararia el onClick de la fila. */}
                           <Button
                             size="sm"
                             variant="default"
                             className="h-7 gap-1 bg-amber-500 text-white hover:bg-amber-600"
-                            onClick={() => setFormularioPendiente({ rep, modo: "confirmar" })}
+                            onClick={(e) => { e.stopPropagation(); setFormularioPendiente({ rep, modo: "confirmar" }); }}
                           >
                             <ClipboardTick className="size-3.5" /> Confirmar
                           </Button>
@@ -299,7 +310,7 @@ export default function ReparacionesPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 gap-1 border-destructive text-destructive hover:bg-destructive/10"
-                            onClick={() => setFormularioPendiente({ rep, modo: "rechazar" })}
+                            onClick={(e) => { e.stopPropagation(); setFormularioPendiente({ rep, modo: "rechazar" }); }}
                           >
                             <CloseCircle className="size-3.5" /> Rechazar
                           </Button>
@@ -309,7 +320,7 @@ export default function ReparacionesPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 gap-1"
-                          onClick={() => setResguardoDetalle(rep.resguardo)}
+                          onClick={(e) => { e.stopPropagation(); setResguardoDetalle(rep.resguardo); }}
                         >
                           <Eye className="size-3.5" /> Ver
                         </Button>
