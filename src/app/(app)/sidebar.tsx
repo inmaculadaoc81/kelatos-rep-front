@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -72,11 +73,35 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <Category className="size-5 shrink-0 text-sidebar-primary" />
-          <span className="font-semibold group-data-[collapsible=icon]:hidden">Kelatos</span>
-        </div>
+      <SidebarHeader className="border-b border-sidebar-border">
+        {/* Dos ficheros distintos y no uno recortado: el logotipo completo
+            lleva el nombre al lado del icono, y en modo colapsado (3rem de
+            ancho) solo cabe el icono. */}
+        {/* Sin padding propio: SidebarHeader ya aporta el suyo, y sumar otro
+            px-2 dejaba 15 px útiles en el panel colapsado (3rem), que es lo
+            que aplastaba el icono. */}
+        <Link
+          href="/"
+          className="flex h-10 items-center group-data-[collapsible=icon]:justify-center"
+          aria-label="Kelatos — inicio"
+        >
+          <Image
+            src="/logos/kelatos.png"
+            alt="Kelatos"
+            width={290}
+            height={82}
+            priority
+            className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:hidden"
+          />
+          <Image
+            src="/logos/kelatos-icono.png"
+            alt="Kelatos"
+            width={81}
+            height={82}
+            priority
+            className="hidden h-7 w-auto shrink-0 group-data-[collapsible=icon]:block"
+          />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         {GRUPOS.map((grupo) => (

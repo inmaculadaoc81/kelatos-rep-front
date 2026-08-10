@@ -81,13 +81,17 @@
   --chart-count: #1768ea;
   --chart-money: #1baf7a;
   --radius: 0.75rem;
-  --sidebar: oklch(0.97 0.012 258);
+  --sidebar: #ffffff;
   --sidebar-foreground: oklch(0.35 0.025 258);
   --sidebar-primary: #1768ea;
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.92 0.02 258);
-  --sidebar-accent-foreground: #1768ea;
-  --sidebar-border: oklch(0.89 0.015 258);
+  /* El componente usa el mismo par accent/accent-foreground para el hover y
+     para el elemento activo, así que ambos quedan en azul de marca con el
+     texto y el icono en blanco. El activo se distingue por el peso de la
+     tipografía, que SidebarMenuButton ya sube con data-active. */
+  --sidebar-accent: #1768ea;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: oklch(0.92 0.008 258);
   --sidebar-ring: #1768ea;
 }
 
@@ -123,8 +127,10 @@
   --sidebar-foreground: oklch(0.88 0.01 258);
   --sidebar-primary: #3b82f6;
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.28 0.025 258);
-  --sidebar-accent-foreground: oklch(0.95 0.01 258);
+  /* En oscuro el panel no se vuelve blanco, pero el hover y el activo
+     mantienen el mismo azul de marca con texto blanco. */
+  --sidebar-accent: #3b82f6;
+  --sidebar-accent-foreground: #ffffff;
   --sidebar-border: oklch(0.32 0.02 258);
   --sidebar-ring: #3b82f6;
 }
