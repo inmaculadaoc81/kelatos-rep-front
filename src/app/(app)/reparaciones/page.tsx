@@ -24,6 +24,7 @@ import { calcularDiasEntrega, formatearFecha } from "@/lib/dias-entrega";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "./detalle-dialog-lazy";
 import { NuevaReparacionDrawer } from "./nueva-drawer";
 import { FormularioPendienteDialog } from "./formulario-pendiente-dialog";
+import { DashboardMetricas } from "./dashboard-metricas";
 
 type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | null };
 
@@ -166,6 +167,10 @@ export default function ReparacionesPage() {
 
   return (
     <div className="mx-auto max-w-7xl p-6">
+      {/* En el sistema original (vistaActivas) el dashboard y la tabla de
+          reparaciones activas son la misma vista, no dos rutas separadas. */}
+      <DashboardMetricas />
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">Todas las Reparaciones</h1>

@@ -1,5 +1,4 @@
 import {
-  Category,
   Setting2,
   ClipboardTick,
   DocumentText,
@@ -32,12 +31,9 @@ export interface GrupoNavegacion {
 // Fuente única del menú lateral y de las migas: refleja el checklist de
 // migración módulo por módulo. Un grupo con un solo item se pinta como
 // enlace directo (sin desplegable); con varios, como grupo colapsable.
+// No hay un grupo "General/Resumen" — igual que en el sistema original, el
+// dashboard vive dentro de la vista de reparaciones activas, no aparte.
 export const GRUPOS: GrupoNavegacion[] = [
-  {
-    titulo: "General",
-    icon: Category,
-    items: [{ label: "Resumen", href: "/", icon: Category }],
-  },
   {
     titulo: "Reparaciones",
     icon: Setting2,
