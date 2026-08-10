@@ -137,7 +137,7 @@ export function PresupuestoCard({
       className={`@container overflow-hidden rounded-xl border text-sm transition-colors ${ESTILO_ESTADO[p.estado]?.caja ?? "bg-card"}`}
     >
       <header className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
-        <span className="rounded-md bg-background px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums ring-1 ring-border">
+        <span className="rounded-md bg-card px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums ring-1 ring-border">
           v{p.version}
         </span>
         <span className="min-w-0 flex-1 truncate font-medium" title={p.descripcion}>

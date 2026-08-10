@@ -1,8 +1,9 @@
 import { auth, signOut } from "@/auth";
 import { AppSidebar } from "./sidebar";
+import { Migas } from "./migas";
 import { Button } from "@/components/ui/button";
 import { Logout } from "@/lib/icons";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 // Redirect a /login DESACTIVADO TEMPORALMENTE (sin credenciales de Google
 // OAuth todavía) — para reactivar, restaurar "if (!session?.user)
@@ -14,11 +15,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
+        {/* El botón de colapso vive ahora dentro del propio panel lateral. */}
         <header className="flex h-14 items-center justify-between border-b bg-card px-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
-            <span className="text-sm font-semibold text-primary">Kelatos — Dashboard</span>
-          </div>
+          <Migas />
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{session?.user?.email || "sin sesión (auth desactivada)"}</span>
             <form
@@ -33,7 +32,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </form>
           </div>
         </header>
-        <main className="flex-1 bg-muted/20">{children}</main>
+        {/* El gris del fondo ya lo pone `body` (ver globals.css); este
+            contenedor no necesita el suyo propio. */}
+        <main className="flex-1">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

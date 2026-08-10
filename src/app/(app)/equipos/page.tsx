@@ -123,7 +123,7 @@ export default function EquiposPage() {
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border bg-background p-4 shadow-sm">
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Total</p>
@@ -132,7 +132,7 @@ export default function EquiposPage() {
             <Category2 className="size-8 text-muted-foreground/40" />
           </div>
         </div>
-        <button className="rounded-xl border bg-background p-4 text-left shadow-sm" onClick={() => setFiltroEstado("DISPONIBLE")}>
+        <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("DISPONIBLE")}>
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Disponibles</p>
@@ -141,7 +141,7 @@ export default function EquiposPage() {
             <TickCircle className="size-8 text-green-600/40" />
           </div>
         </button>
-        <button className="rounded-xl border bg-background p-4 text-left shadow-sm" onClick={() => setFiltroEstado("ALQUILADO")}>
+        <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("ALQUILADO")}>
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Alquilados</p>
@@ -150,7 +150,7 @@ export default function EquiposPage() {
             <TimerStart className="size-8 text-amber-600/40" />
           </div>
         </button>
-        <button className="rounded-xl border bg-background p-4 text-left shadow-sm" onClick={() => setFiltroEstado("MANTENIMIENTO")}>
+        <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("MANTENIMIENTO")}>
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Mantenimiento</p>
@@ -192,7 +192,7 @@ export default function EquiposPage() {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

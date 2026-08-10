@@ -205,7 +205,7 @@ export default function ReparacionesPage() {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -224,7 +224,7 @@ export default function ReparacionesPage() {
               <TableHead>Obs.</TableHead>
               {/* Fija a la derecha: con 10 columnas la tabla se desborda y,
                   sin esto, el botón de acción queda fuera de la pantalla. */}
-              <TableHead className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
+              <TableHead className="sticky right-0 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
                 Acciones
               </TableHead>
             </TableRow>
@@ -293,7 +293,7 @@ export default function ReparacionesPage() {
                     <TableCell className="max-w-40 truncate text-sm text-muted-foreground" title={obs}>
                       {obsTruncado || "-"}
                     </TableCell>
-                    <TableCell className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] group-hover:bg-muted/50">
+                    <TableCell className="sticky right-0 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] group-hover:bg-muted/50">
                       {rep.estado === "Formulario Pendiente" ? (
                         <div className="flex gap-1">
                           {/* stopPropagation: sin esto el clic tambien

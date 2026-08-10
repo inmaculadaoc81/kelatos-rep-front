@@ -17,7 +17,7 @@ export default async function LoginPage({
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
-      <div className="w-full max-w-sm rounded-2xl border bg-background p-10 text-center shadow-sm">
+      <div className="w-full max-w-sm rounded-2xl border bg-card p-10 text-center shadow-sm">
         {error ? (
           <>
             <div className="mb-4 text-4xl">⛔</div>

@@ -68,7 +68,7 @@ export default function RecogidasPage() {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

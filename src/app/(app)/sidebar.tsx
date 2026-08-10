@@ -14,59 +14,9 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {
-  Category,
-  Setting2,
-  DocumentText,
-  Profile2User,
-  Box1,
-  ShoppingCart,
-  Truck,
-  Clock,
-  Chart,
-  Receipt,
-  Wallet,
-} from "@/lib/icons";
-
-// Refleja el checklist de migración módulo por módulo. `href: null` =
-// todavía no construido en Next.js (sigue solo en el Dashboard Apps
-// Script original).
-const GRUPOS: { titulo: string; items: { label: string; href: string | null; icon: React.ElementType }[] }[] = [
-  {
-    titulo: "General",
-    items: [{ label: "Resumen", href: "/", icon: Category }],
-  },
-  {
-    titulo: "Reparaciones",
-    items: [
-      { label: "Todas las Reparaciones", href: "/reparaciones", icon: Setting2 },
-      { label: "Presupuestos", href: null, icon: DocumentText },
-      { label: "Recogidas", href: "/recogidas", icon: Truck },
-    ],
-  },
-  {
-    titulo: "Catálogos",
-    items: [
-      { label: "Clientes", href: "/clientes", icon: Profile2User },
-      { label: "Equipos y Alquileres", href: "/equipos", icon: Box1 },
-      { label: "Productos e Inventario", href: "/productos", icon: Box1 },
-      { label: "Ventas", href: "/ventas", icon: ShoppingCart },
-    ],
-  },
-  {
-    titulo: "Registros",
-    items: [
-      { label: "Historial", href: "/historial", icon: Clock },
-      { label: "Reportes", href: "/reportes", icon: Chart },
-      { label: "Seguimiento de Facturas", href: "/seguimiento-facturas", icon: Receipt },
-    ],
-  },
-  {
-    titulo: "Facturación",
-    items: [{ label: "Facturación", href: null, icon: Wallet }],
-  },
-];
+import { GRUPOS } from "./navegacion";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -74,34 +24,40 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        {/* Dos ficheros distintos y no uno recortado: el logotipo completo
-            lleva el nombre al lado del icono, y en modo colapsado (3rem de
-            ancho) solo cabe el icono. */}
-        {/* Sin padding propio: SidebarHeader ya aporta el suyo, y sumar otro
-            px-2 dejaba 15 px útiles en el panel colapsado (3rem), que es lo
-            que aplastaba el icono. */}
-        <Link
-          href="/"
-          className="flex h-10 items-center group-data-[collapsible=icon]:justify-center"
-          aria-label="Kelatos — inicio"
-        >
-          <Image
-            src="/logos/kelatos.png"
-            alt="Kelatos"
-            width={290}
-            height={82}
-            priority
-            className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:hidden"
-          />
-          <Image
-            src="/logos/kelatos-icono.png"
-            alt="Kelatos"
-            width={81}
-            height={82}
-            priority
-            className="hidden h-7 w-auto shrink-0 group-data-[collapsible=icon]:block"
-          />
-        </Link>
+        {/* Desplegado: logo a la izquierda y botón al final. Colapsado (3rem)
+            no caben en fila, así que se apilan. */}
+        <div className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-1">
+          {/* Dos ficheros distintos y no un recorte del mismo: el logotipo
+              completo lleva el nombre junto al icono y, colapsado, solo cabe
+              el icono. Sin padding propio en el enlace — SidebarHeader ya
+              pone el suyo y, sumados, dejaban 15 px útiles y lo aplastaban. */}
+          {/* Fondo claro fijo alrededor del logo: el PNG lleva el texto en
+              azul oscuro sobre transparente, ilegible sobre el panel oscuro
+              del tema dark. En claro el chip se funde con el panel blanco. */}
+          <Link
+            href="/"
+            className="flex h-10 items-center rounded-md bg-white px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-1.5"
+            aria-label="Kelatos — inicio"
+          >
+            <Image
+              src="/logos/kelatos.png"
+              alt="Kelatos"
+              width={290}
+              height={82}
+              priority
+              className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:hidden"
+            />
+            <Image
+              src="/logos/kelatos-icono.png"
+              alt="Kelatos"
+              width={81}
+              height={82}
+              priority
+              className="hidden h-7 w-auto shrink-0 group-data-[collapsible=icon]:block"
+            />
+          </Link>
+          <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         {GRUPOS.map((grupo) => (

@@ -141,7 +141,7 @@ export default function HistorialPage() {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -154,7 +154,7 @@ export default function HistorialPage() {
               <TableHead>Fecha Entrega</TableHead>
               <TableHead>Técnico</TableHead>
               <TableHead>Reseña</TableHead>
-              <TableHead className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">Acciones</TableHead>
+              <TableHead className="sticky right-0 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -198,7 +198,7 @@ export default function HistorialPage() {
                   <TableCell className="text-sm">
                     {r.resena === "SI" ? <Star className="size-4 fill-amber-400 text-amber-400" /> : "-"}
                   </TableCell>
-                  <TableCell className="sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] group-hover:bg-muted/50">
+                  <TableCell className="sticky right-0 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] group-hover:bg-muted/50">
                     <Button
                       size="sm"
                       variant="outline"

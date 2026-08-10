@@ -15,7 +15,7 @@ export function MetricCard({
   color: string;
 }) {
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <p className="mb-1 text-sm text-muted-foreground">{titulo}</p>

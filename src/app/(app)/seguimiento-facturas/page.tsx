@@ -115,7 +115,7 @@ export default function SeguimientoFacturasPage() {
       </div>
 
       <div className="mb-4 grid grid-cols-3 gap-3">
-        <button className="rounded-xl border bg-background p-4 text-left shadow-sm" onClick={() => setFiltroEstado("PENDIENTE")}>
+        <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("PENDIENTE")}>
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Pendientes</p>
@@ -124,7 +124,7 @@ export default function SeguimientoFacturasPage() {
             <Clock className="size-8 text-amber-600/40" />
           </div>
         </button>
-        <button className="rounded-xl border bg-background p-4 text-left shadow-sm" onClick={() => setFiltroEstado("OK")}>
+        <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("OK")}>
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Recibidas</p>
@@ -133,7 +133,7 @@ export default function SeguimientoFacturasPage() {
             <TickCircle className="size-8 text-green-600/40" />
           </div>
         </button>
-        <button className="rounded-xl border bg-background p-4 text-left shadow-sm" onClick={() => setFiltroEstado("NO DISPONIBLE")}>
+        <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("NO DISPONIBLE")}>
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">No Disponibles</p>
@@ -173,7 +173,7 @@ export default function SeguimientoFacturasPage() {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

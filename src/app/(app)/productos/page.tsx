@@ -110,7 +110,7 @@ export default function ProductosPage() {
               <Input placeholder="Buscar producto..." className="pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             </div>
           </div>
-          <div className="rounded-lg border">
+          <div className="overflow-hidden rounded-lg border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -182,7 +182,7 @@ export default function ProductosPage() {
         </TabsContent>
 
         <TabsContent value="movimientos" className="pt-3">
-          <div className="rounded-lg border">
+          <div className="overflow-hidden rounded-lg border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
