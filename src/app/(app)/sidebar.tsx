@@ -21,6 +21,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowDown2 } from "@/lib/icons";
 import { GRUPOS, type GrupoNavegacion, type ItemNavegacion } from "./navegacion";
+import { NavUser } from "./nav-user";
 
 function ItemDirecto({ item, pathname }: { item: ItemNavegacion; pathname: string }) {
   const Icon = item.icon;
@@ -160,6 +161,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <NavUser />
     </Sidebar>
   );
 }
