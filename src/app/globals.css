@@ -86,16 +86,19 @@
   --radius: 0.75rem;
   --sidebar: #ffffff;
   --sidebar-foreground: oklch(0.35 0.025 258);
-  --sidebar-primary: #1768ea;
+  /* Azul de marca aclarado respecto a --primary (#1768ea): a ese tono, la
+     caja sólida del item activo se notaba muy oscura/saturada dentro del
+     panel. #2270ee mantiene 4.55:1 de contraste con blanco (AA para texto
+     normal, que exige 4.5:1) — sirve tanto para el texto blanco del activo
+     como para el texto azul del hover sobre el panel blanco. --sidebar-accent
+     solo lo usa el estado activo (bg sólido + texto blanco); el hover usa
+     este primary en un tinte suave (ver sidebarMenuButtonVariants). */
+  --sidebar-primary: #2270ee;
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  /* El componente usa el mismo par accent/accent-foreground para el hover y
-     para el elemento activo, así que ambos quedan en azul de marca con el
-     texto y el icono en blanco. El activo se distingue por el peso de la
-     tipografía, que SidebarMenuButton ya sube con data-active. */
-  --sidebar-accent: #1768ea;
+  --sidebar-accent: #2270ee;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: oklch(0.92 0.008 258);
-  --sidebar-ring: #1768ea;
+  --sidebar-ring: #2270ee;
 }
 
 .dark {
