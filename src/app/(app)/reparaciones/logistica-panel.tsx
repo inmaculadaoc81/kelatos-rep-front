@@ -44,29 +44,43 @@ export function LogisticaPanel({
   }
 
   return (
-    <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
-      <div className={`space-y-2 rounded-md p-2.5 text-sm ${mensajeriaActiva ? "bg-amber-500/10" : "bg-muted/30"}`}>
-        <p className="flex items-center gap-1.5 font-medium">
-          <Truck className="size-4" /> Entrega por mensajería
-        </p>
+    <div className="space-y-3">
+      {/* Tira a lo ancho con el texto a la izquierda y el botón al final,
+          como la sección de mensajería del sistema original. */}
+      <div
+        className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
+          mensajeriaActiva ? "border-amber-500/40 bg-amber-500/10" : "bg-muted/40"
+        }`}
+      >
+        <Truck className="size-5 shrink-0 text-muted-foreground" variant="Bold" />
+        <div className="min-w-40 flex-1">
+          <p className="text-sm font-medium">Entrega por mensajería</p>
+          <p className="text-xs text-muted-foreground">
+            {mensajeriaActiva
+              ? detalle.cliente.direccion || "Sin dirección especificada"
+              : "Actívala si el cliente solicita envío a domicilio"}
+          </p>
+        </div>
         {mensajeriaActiva ? (
-          <>
-            <p className="text-xs text-muted-foreground">{detalle.cliente.direccion || "Sin dirección especificada"}</p>
-            <Button size="sm" variant="outline" disabled={enviando} onClick={() => ejecutar("entrega_mensajeria", { activar: "NO", direccion: "" })}>
-              Desactivar
-            </Button>
-          </>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={enviando}
+            onClick={() => ejecutar("entrega_mensajeria", { activar: "NO", direccion: "" })}
+          >
+            Desactivar
+          </Button>
         ) : (
           <>
             <Input
               placeholder="Dirección de envío"
               value={direccion}
               onChange={(e) => setDireccion(e.target.value)}
-              className="h-8 text-xs"
+              className="h-8 w-full text-xs sm:w-64"
             />
             <Button
               size="sm"
-              className="bg-amber-500 hover:bg-amber-600"
+              className="bg-amber-500 text-white hover:bg-amber-600"
               disabled={enviando}
               onClick={() => ejecutar("entrega_mensajeria", { activar: "SI", direccion })}
             >
@@ -77,14 +91,24 @@ export function LogisticaPanel({
       </div>
 
       {mostrarToggleEquipo && (
-        <div className={`space-y-2 rounded-md p-2.5 text-sm ${equipoEnLocal ? "bg-green-500/10" : "bg-amber-500/10"}`}>
-          <p className="flex items-center gap-1.5 font-medium">
-            {equipoEnLocal ? <Shop className="size-4" /> : <Home className="size-4" />}
-            {equipoEnLocal ? "Equipo en local" : "Cliente se llevó el equipo"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {equipoEnLocal ? "Disponible en el local para reparación" : "Debe traerlo de nuevo para continuar"}
-          </p>
+        <div
+          className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
+            equipoEnLocal ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10"
+          }`}
+        >
+          {equipoEnLocal ? (
+            <Shop className="size-5 shrink-0 text-muted-foreground" variant="Bold" />
+          ) : (
+            <Home className="size-5 shrink-0 text-muted-foreground" variant="Bold" />
+          )}
+          <div className="min-w-40 flex-1">
+            <p className="text-sm font-medium">
+              {equipoEnLocal ? "Equipo en local" : "Cliente se llevó el equipo"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {equipoEnLocal ? "Disponible en el local para reparación" : "Debe traerlo de nuevo para continuar"}
+            </p>
+          </div>
           <Button
             size="sm"
             variant={equipoEnLocal ? "outline" : "default"}

@@ -140,3 +140,25 @@
     @apply font-sans;
   }
 }
+/*
+ * Impresión: "Imprimir resguardo" abre el diálogo del navegador sobre la
+ * página entera, así que sin esto saldría también la tabla de fondo. El
+ * diálogo vive en un portal colgado directamente de <body>, de modo que
+ * basta con ocultar sus hermanos — con `display`, no con `visibility`,
+ * que dejaría el hueco de la página detrás.
+ */
+@media print {
+  body > *:not([data-slot="dialog-portal"]) {
+    display: none !important;
+  }
+
+  /* El resto (sacar el diálogo de su centrado fijo y desplegar su scroll)
+     se hace con variantes `print:` sobre el propio elemento: Lightning CSS
+     descarta un `translate: none` suelto aquí, y sin él el contenido sale
+     desplazado media página. */
+
+  [data-slot="dialog-overlay"],
+  .no-imprimir {
+    display: none !important;
+  }
+}
