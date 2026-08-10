@@ -53,7 +53,15 @@ function GrupoColapsable({ grupo, pathname }: { grupo: GrupoNavegacion; pathname
     // que antes estaba siempre a la vista.
     <Collapsible defaultOpen className="group/collapsible">
       <SidebarMenuItem>
-        <SidebarMenuButton tooltip={grupo.titulo} render={<CollapsibleTrigger className="group/trigger" />}>
+        {/* El encabezado de grupo solo alterna abierto/cerrado, no navega:
+            un hover en azul sólido ahí sugiere una acción que no es tal.
+            Se anula el hover heredado de sidebarMenuButtonVariants; el
+            chevron ya avisa de que es interactivo. */}
+        <SidebarMenuButton
+          tooltip={grupo.titulo}
+          className="hover:bg-transparent hover:text-sidebar-foreground"
+          render={<CollapsibleTrigger className="group/trigger" />}
+        >
           <GrupoIcon className="text-sidebar-primary" />
           <span>{grupo.titulo}</span>
           <ArrowDown2 className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open/trigger:rotate-180" />
@@ -61,8 +69,9 @@ function GrupoColapsable({ grupo, pathname }: { grupo: GrupoNavegacion; pathname
         <CollapsibleContent>
           {/* Indent algo más ajustado que el de shadcn (mx-3.5/px-2.5): a
               17rem de ancho, "Seguimiento de Facturas" se recortaba con el
-              valor por defecto. */}
-          <SidebarMenuSub className="mx-2 px-2">
+              valor por defecto. La línea conectora va en azul de marca, no
+              en el gris neutro por defecto. */}
+          <SidebarMenuSub className="mx-2 gap-1.5 border-sidebar-primary/55 px-2">
             {grupo.items.map((item) => {
               const Icon = item.icon;
               if (!item.href) {
@@ -136,7 +145,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1.5">
               {GRUPOS.map((grupo) =>
                 grupo.items.length === 1 ? (
                   // Grupo de un solo item: enlace directo, sin desplegable.
