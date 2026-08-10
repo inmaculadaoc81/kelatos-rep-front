@@ -13,6 +13,7 @@ import {
   ClipboardText,
   Video,
   Verify,
+  Chart,
 } from "@/lib/icons";
 import { MetricCard, AlertCard } from "../metric-card";
 import { MetricasDashboard } from "@/lib/metricas";
@@ -39,10 +40,15 @@ export function DashboardMetricas() {
   }, []);
 
   return (
-    <div className="mb-6">
-      <div className="mb-4">
-        <h1 className="text-xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Resumen general del sistema</p>
+    <div className="mb-8">
+      <div className="mb-5 flex items-center gap-2.5">
+        <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Chart className="size-5" />
+        </span>
+        <div>
+          <h1 className="text-xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Resumen general del sistema</p>
+        </div>
       </div>
 
       {error && (
@@ -52,7 +58,7 @@ export function DashboardMetricas() {
       )}
 
       {!metricas && !error && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
@@ -61,33 +67,33 @@ export function DashboardMetricas() {
 
       {metricas && (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MetricCard titulo="Ppto. Pendiente" valor={metricas.presupuestoPendiente} unidad="equipos" icon={DocumentText} color="bg-blue-500/10 text-blue-600" />
-            <MetricCard titulo="Pieza Pendiente" valor={metricas.esperandoPieza} unidad="equipos" icon={Box} color="bg-amber-500/10 text-amber-600" />
-            <MetricCard titulo="En Reparación" valor={metricas.enReparacion} unidad="equipos" icon={Setting2} color="bg-slate-500/10 text-slate-600" />
-            <MetricCard titulo="Listos p/ Recoger" valor={metricas.listos} unidad="equipos" icon={TickCircle} color="bg-green-500/10 text-green-600" />
-            <MetricCard titulo="Ppto. Enviado" valor={metricas.pptoEnviado} unidad="equipos" icon={Send2} color="bg-secondary text-secondary-foreground" />
-            <MetricCard titulo="Ppto. Aceptado" valor={metricas.pptosAceptados} unidad="equipos" icon={Verify} color="bg-emerald-500/10 text-emerald-600" />
-            <MetricCard titulo="Pieza Entregada" valor={metricas.piezaEntregada} unidad="equipos" icon={Box1} color="bg-teal-500/10 text-teal-600" />
-            <MetricCard titulo="Garantía" valor={metricas.garantia} unidad="equipos" icon={ShieldTick} color="bg-violet-500/10 text-violet-600" />
-            <MetricCard titulo="Envío Mensajería" valor={metricas.mensajeriaActiva} unidad="equipos" icon={Truck} color="bg-sky-500/10 text-sky-600" />
-            <MetricCard titulo="Form. Pendiente" valor={metricas.formularioPendiente} unidad="formularios" icon={ClipboardText} color="bg-orange-500/10 text-orange-600" />
-            <MetricCard titulo="Cintas en Conversión" valor={metricas.cintasEnReparacion} unidad="pedidos" icon={Video} color="bg-amber-600/10 text-amber-700" />
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard titulo="Ppto. Pendiente" valor={metricas.presupuestoPendiente} unidad="equipos" icon={DocumentText} tono="sky" />
+            <MetricCard titulo="Pieza Pendiente" valor={metricas.esperandoPieza} unidad="equipos" icon={Box} tono="amber" />
+            <MetricCard titulo="En Reparación" valor={metricas.enReparacion} unidad="equipos" icon={Setting2} tono="slate" />
+            <MetricCard titulo="Listos p/ Recoger" valor={metricas.listos} unidad="equipos" icon={TickCircle} tono="green" />
+            <MetricCard titulo="Ppto. Enviado" valor={metricas.pptoEnviado} unidad="equipos" icon={Send2} tono="indigo" />
+            <MetricCard titulo="Ppto. Aceptado" valor={metricas.pptosAceptados} unidad="equipos" icon={Verify} tono="emerald" />
+            <MetricCard titulo="Pieza Entregada" valor={metricas.piezaEntregada} unidad="equipos" icon={Box1} tono="teal" />
+            <MetricCard titulo="Garantía" valor={metricas.garantia} unidad="equipos" icon={ShieldTick} tono="violet" />
+            <MetricCard titulo="Envío Mensajería" valor={metricas.mensajeriaActiva} unidad="equipos" icon={Truck} tono="blue" />
+            <MetricCard titulo="Form. Pendiente" valor={metricas.formularioPendiente} unidad="formularios" icon={ClipboardText} tono="orange" />
+            <MetricCard titulo="Cintas en Conversión" valor={metricas.cintasEnReparacion} unidad="pedidos" icon={Video} tono="rose" />
           </div>
 
           {(metricas.presupuestosRetrasados.length > 0 || metricas.equiposRetrasados.length > 0) && (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
               <AlertCard
                 titulo="Presupuesto Retrasado (+24h)"
                 contador={metricas.presupuestosRetrasados.length}
                 items={metricas.presupuestosRetrasados
                   .sort((a, b) => b.horasRetraso - a.horasRetraso)
-                  .map((p) => ({ label: `${p.resguardo} ${p.cliente}`, sub: `${p.diasRetraso}d` }))}
+                  .map((p) => ({ resguardo: p.resguardo, cliente: p.cliente, sub: `${p.diasRetraso}d` }))}
               />
               <AlertCard
                 titulo="Entrega Retrasada"
                 contador={metricas.equiposRetrasados.length}
-                items={metricas.equiposRetrasados.map((e) => ({ label: `${e.resguardo} ${e.cliente}`, sub: `+${e.diasExcedidos}d` }))}
+                items={metricas.equiposRetrasados.map((e) => ({ resguardo: e.resguardo, cliente: e.cliente, sub: `+${e.diasExcedidos}d` }))}
               />
             </div>
           )}
