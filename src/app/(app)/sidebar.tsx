@@ -71,7 +71,7 @@ function GrupoColapsable({ grupo, pathname }: { grupo: GrupoNavegacion; pathname
               17rem de ancho, "Seguimiento de Facturas" se recortaba con el
               valor por defecto. La línea conectora va en azul de marca, no
               en el gris neutro por defecto. */}
-          <SidebarMenuSub className="mx-2 gap-2 border-sidebar-primary/55 px-2">
+          <SidebarMenuSub className="mx-2 gap-2.5 border-sidebar-primary/55 px-2">
             {grupo.items.map((item) => {
               const Icon = item.icon;
               if (!item.href) {
