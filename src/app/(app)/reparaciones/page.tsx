@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { calcularDiasEntrega, formatearFecha } from "@/lib/dias-entrega";
-import { DetalleReparacionDialog } from "./detalle-dialog";
+import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "./detalle-dialog-lazy";
 import { NuevaReparacionDrawer } from "./nueva-drawer";
 import { FormularioPendienteDialog } from "./formulario-pendiente-dialog";
 

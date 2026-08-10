@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Setting2,
   Send2,
@@ -29,6 +29,7 @@ import { COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { separarSintoma } from "@/lib/progreso-reparacion";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
 import { FinalizarReparacionDialog, MarcarEntregadoDialog } from "./finalizar-dialog";
 import { EstadosEspecialesPanel } from "./estados-especiales-panel";
@@ -67,6 +68,50 @@ function Dato({ label, valor }: { label: string; valor: string }) {
     <p className="text-sm">
       <span className="text-muted-foreground">{label}:</span> {valor || "-"}
     </p>
+  );
+}
+
+const ESTILO_PEDIDO: Record<string, string> = {
+  Recibido: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+  "En Tránsito": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  Pedido: "border-sky-500/40 text-sky-700 dark:text-sky-400",
+};
+
+/** Cabecera de sección con contador y, opcionalmente, su acción a la derecha. */
+function Seccion({
+  icono: Icono,
+  titulo,
+  cuenta,
+  accion,
+  children,
+}: {
+  icono: Icon;
+  titulo: string;
+  cuenta: number;
+  accion?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-2 flex items-center gap-2">
+        <Icono className="size-4 text-muted-foreground" />
+        <h4 className="text-sm font-semibold">{titulo}</h4>
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+          {cuenta}
+        </span>
+        {accion && <div className="ml-auto">{accion}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Vacio({ icono: Icono, texto }: { icono: Icon; texto: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed py-6 text-center">
+      <Icono className="size-5 text-muted-foreground/60" />
+      <p className="text-sm text-muted-foreground">{texto}</p>
+    </div>
   );
 }
 
@@ -137,6 +182,9 @@ export function DetalleReparacionDialog({
         className="flex max-h-[92vh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl print:static print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:shadow-none print:ring-0"
         showCloseButton={false}
       >
+        {/* El proveedor va aquí y no en el layout: así el motor de animación
+            solo se descarga cuando se abre una reparación. */}
+        <ProveedorAnimacion>
         <header className="flex items-center gap-3 bg-primary px-5 py-3.5 text-primary-foreground">
           <Setting2 className="size-5 shrink-0" variant="Bold" />
           <DialogTitle className="text-lg font-semibold tabular-nums">{resguardo}</DialogTitle>
@@ -177,10 +225,19 @@ export function DetalleReparacionDialog({
           )}
 
           {detalle && sintoma && (
-            <>
-              <LogisticaPanel detalle={detalle} onActualizado={cargarDetalle} />
+            // El detalle llega por fetch, así que aparece de golpe sobre el
+            // esqueleto; una entrada corta suaviza ese salto.
+            <m.div
+              className="space-y-4"
+              variants={listaAnim}
+              initial="inicial"
+              animate="visible"
+            >
+              <m.div variants={entrada}>
+                <LogisticaPanel detalle={detalle} onActualizado={cargarDetalle} />
+              </m.div>
 
-              <section className="rounded-xl border bg-card p-4">
+              <m.section variants={entrada} className="rounded-xl border bg-card p-4">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -234,79 +291,111 @@ export function DetalleReparacionDialog({
                   <Dato label="Nº factura" valor={detalle.numeroFactura} />
                   <Dato label="Recepción en local" valor={detalle.equipoEnLocal} />
                 </div>
-              </section>
+              </m.section>
 
-              <ProgresoTimeline detalle={detalle} />
+              <m.div variants={entrada}>
+                <ProgresoTimeline detalle={detalle} />
+              </m.div>
 
-              <AccionRequerida
+              <m.div variants={entrada}>
+                <AccionRequerida
                 detalle={detalle}
                 callbacks={{
                   onNuevoPresupuesto: () => setNuevoPresupuestoAbierto(true),
                   onFinalizar: () => setFinalizarAbierto(true),
                   onMarcarEntregado: () => setEntregaAbierta(true),
                   onVerQr: () => setQrAbierto(true),
-                }}
-              />
+                  }}
+                />
+              </m.div>
 
-              <Tabs defaultValue="informacion">
+              <m.div variants={entrada}>
+                <Tabs defaultValue="informacion">
                 <TabsList>
                   <TabsTrigger value="informacion">Información</TabsTrigger>
                   <TabsTrigger value="observaciones">Observaciones</TabsTrigger>
                   <TabsTrigger value="historial">Historial</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="informacion" className="space-y-4 pt-3">
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-                      <Receipt className="size-4 text-muted-foreground" />
-                      Presupuestos ({detalle.presupuestos.length})
-                    </h4>
-                    {detalle.presupuestos.length === 0 && (
-                      <p className="text-sm text-muted-foreground">Sin presupuestos.</p>
+                <TabsContent value="informacion" className="space-y-5 pt-4">
+                  <Seccion
+                    icono={Receipt}
+                    titulo="Presupuestos"
+                    cuenta={detalle.presupuestos.length}
+                    accion={
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5"
+                        onClick={() => setNuevoPresupuestoAbierto(true)}
+                      >
+                        <DocumentText className="size-3.5" /> Nuevo
+                      </Button>
+                    }
+                  >
+                    {detalle.presupuestos.length === 0 ? (
+                      <Vacio icono={Receipt} texto="Todavía no hay ningún presupuesto." />
+                    ) : (
+                      <m.div
+                        className="space-y-2"
+                        variants={listaAnim}
+                        initial="inicial"
+                        animate="visible"
+                      >
+                        {detalle.presupuestos.map((p) => (
+                          <PresupuestoCard
+                            key={p.presupuestoId}
+                            resguardo={detalle.resguardo}
+                            presupuesto={p}
+                            onActualizado={cargarDetalle}
+                          />
+                        ))}
+                      </m.div>
                     )}
-                    <div className="space-y-2">
-                      {detalle.presupuestos.map((p) => (
-                        <PresupuestoCard
-                          key={p.presupuestoId}
-                          resguardo={detalle.resguardo}
-                          presupuesto={p}
-                          onActualizado={cargarDetalle}
-                        />
-                      ))}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="mt-2 gap-1.5"
-                      onClick={() => setNuevoPresupuestoAbierto(true)}
-                    >
-                      <DocumentText className="size-3.5" /> Nuevo presupuesto
-                    </Button>
-                  </div>
+                  </Seccion>
 
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-                      <Box className="size-4 text-muted-foreground" />
-                      Pedidos de piezas ({detalle.pedidos.length})
-                    </h4>
-                    {detalle.pedidos.length === 0 && (
-                      <p className="text-sm text-muted-foreground">Sin pedidos.</p>
+                  <Seccion icono={Box} titulo="Pedidos de piezas" cuenta={detalle.pedidos.length}>
+                    {detalle.pedidos.length === 0 ? (
+                      <Vacio icono={Box} texto="No se ha pedido ninguna pieza." />
+                    ) : (
+                      <m.div
+                        className="divide-y overflow-hidden rounded-xl border"
+                        variants={listaAnim}
+                        initial="inicial"
+                        animate="visible"
+                      >
+                        {detalle.pedidos.map((pd) => (
+                          // Antes los tres datos iban sueltos con justify-between
+                          // y sin etiqueta: no se sabía qué era cada uno.
+                          <m.div
+                            key={pd.pedidoId}
+                            variants={elementoLista}
+                            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2.5 text-sm"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                Nº de pedido
+                              </p>
+                              <p className="truncate font-medium tabular-nums" title={pd.numeroPedido || pd.pedidoId}>
+                                {pd.numeroPedido || pd.pedidoId}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Pedido</p>
+                              <p className="tabular-nums">{formatearFecha(pd.fechaPedido)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Estimada</p>
+                              <p className="tabular-nums">{formatearFecha(pd.fechaEstimada)}</p>
+                            </div>
+                            <Badge variant="outline" className={ESTILO_PEDIDO[pd.estado] ?? ""}>
+                              {pd.estado}
+                            </Badge>
+                          </m.div>
+                        ))}
+                      </m.div>
                     )}
-                    <div className="space-y-1.5">
-                      {detalle.pedidos.map((pd) => (
-                        <div
-                          key={pd.pedidoId}
-                          className="flex items-center justify-between rounded-md border p-2 text-sm"
-                        >
-                          <span>{pd.numeroPedido || pd.pedidoId}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatearFecha(pd.fechaPedido)}
-                          </span>
-                          <Badge variant="outline">{pd.estado}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  </Seccion>
                 </TabsContent>
 
                 <TabsContent value="observaciones" className="space-y-3 pt-3">
@@ -349,8 +438,9 @@ export function DetalleReparacionDialog({
                     ))}
                   </ol>
                 </TabsContent>
-              </Tabs>
-            </>
+                </Tabs>
+              </m.div>
+            </m.div>
           )}
         </div>
 
@@ -362,6 +452,7 @@ export function DetalleReparacionDialog({
             Cerrar
           </Button>
         </footer>
+        </ProveedorAnimacion>
       </DialogContent>
 
       {detalle && (

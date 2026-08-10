@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash } from "@/lib/icons";
+import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Box } from "@/lib/icons";
+import { m, elementoLista } from "@/lib/animacion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,26 @@ import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+
+// El estado tiñe la tarjeta entera, no solo el badge: en una lista de
+// varias versiones es lo que permite ver de un vistazo cuál está viva.
+const ESTILO_ESTADO: Record<string, { caja: string; badge: string }> = {
+  aceptado: { caja: "border-emerald-500/40 bg-emerald-500/5", badge: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400" },
+  enviado: { caja: "border-sky-500/40 bg-sky-500/5", badge: "border-sky-500/40 text-sky-700 dark:text-sky-400" },
+  rechazado: { caja: "border-destructive/30 bg-destructive/5", badge: "border-destructive/40 text-destructive" },
+  anulado: { caja: "bg-muted/40 opacity-75", badge: "text-muted-foreground" },
+  obsoleto: { caja: "bg-muted/40 opacity-75", badge: "text-muted-foreground" },
+  borrador: { caja: "bg-card", badge: "text-muted-foreground" },
+};
+
+function Importe({ etiqueta, valor, destacado }: { etiqueta: string; valor: string; destacado?: boolean }) {
+  return (
+    <div className="px-3 py-2">
+      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{etiqueta}</dt>
+      <dd className={`tabular-nums ${destacado ? "text-sm font-semibold" : "text-sm"}`}>{valor}</dd>
+    </div>
+  );
 }
 
 export function PresupuestoCard({
@@ -81,58 +102,78 @@ export function PresupuestoCard({
     }
   }
 
+  const acciones =
+    p.estado === "enviado" ? (
+      <>
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-emerald-600" disabled={enviando} onClick={() => ejecutar("aceptar")}>
+          <TickCircle className="size-3.5" /> Aceptar
+        </Button>
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-destructive" disabled={enviando} onClick={() => setMotivoAbierto("rechazar")}>
+          <CloseCircle className="size-3.5" /> Rechazar
+        </Button>
+      </>
+    ) : p.estado === "aceptado" ? (
+      <Button size="sm" variant="outline" className="h-7 gap-1 text-amber-600" disabled={enviando} onClick={() => setMotivoAbierto("anular")}>
+        <CloseSquare className="size-3.5" /> Anular
+      </Button>
+    ) : null;
+
+  const accionesEdicion = editable ? (
+    <>
+      <Button size="sm" variant="ghost" className="h-7 gap-1" disabled={enviando} onClick={() => setEditarAbierto(true)}>
+        <Edit2 className="size-3.5" /> Editar
+      </Button>
+      {p.estado === "borrador" && (
+        <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" disabled={enviando} onClick={eliminar}>
+          <Trash className="size-3.5" /> Eliminar
+        </Button>
+      )}
+    </>
+  ) : null;
+
   return (
-    <div className="rounded-md border p-2.5 text-sm">
-      <div className="flex items-center justify-between">
-        <span className="font-medium">
-          v{p.version} — {p.descripcion || "sin descripción"}
+    <m.div
+      variants={elementoLista}
+      className={`overflow-hidden rounded-xl border text-sm transition-colors ${ESTILO_ESTADO[p.estado]?.caja ?? "bg-card"}`}
+    >
+      <header className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
+        <span className="rounded-md bg-background px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums ring-1 ring-border">
+          v{p.version}
         </span>
-        <Badge variant="outline">{p.estado}</Badge>
-      </div>
-      <div className="mt-1 grid grid-cols-2 gap-1 text-xs text-muted-foreground sm:grid-cols-4">
-        <span>Mano obra: {euros(p.manoObra)}</span>
-        <span>Piezas: {euros(p.precioPiezas)}</span>
-        <span>Total: {euros(p.total)}</span>
-        <span>Entrega: {p.diasEntrega}d</span>
-      </div>
+        <span className="min-w-0 flex-1 truncate font-medium" title={p.descripcion}>
+          {p.descripcion || "Sin descripción"}
+        </span>
+        <Badge variant="outline" className={ESTILO_ESTADO[p.estado]?.badge}>
+          {p.estado}
+        </Badge>
+      </header>
+
+      {/* Los importes como columnas etiquetadas y alineadas a la derecha:
+          antes iban en una fila de texto corrido donde no se podían comparar. */}
+      <dl className="grid grid-cols-2 divide-x divide-y border-b sm:grid-cols-4 sm:divide-y-0">
+        <Importe etiqueta="Mano de obra" valor={euros(p.manoObra)} />
+        <Importe etiqueta="Piezas" valor={euros(p.precioPiezas)} />
+        <Importe etiqueta="Total" valor={euros(p.total)} destacado />
+        <Importe etiqueta="Entrega" valor={`${p.diasEntrega} d`} />
+      </dl>
+
       {p.piezas.length > 0 && (
-        <ul className="mt-2 space-y-0.5 border-t pt-2 text-xs">
+        <ul className="divide-y border-b text-xs">
           {p.piezas.map((pz) => (
-            <li key={pz.piezaId} className="flex justify-between">
-              <span className="text-muted-foreground">{pz.descripcion || pz.tipo}</span>
-              <span>{euros(pz.precio)}</span>
+            <li key={pz.piezaId} className="flex items-center gap-2 px-3 py-1.5">
+              <Box className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate">{pz.descripcion || pz.tipo}</span>
+              <span className="tabular-nums text-muted-foreground">{euros(pz.precio)}</span>
             </li>
           ))}
         </ul>
       )}
 
-      {p.estado === "enviado" && (
-        <div className="mt-2 flex gap-1.5 border-t pt-2">
-          <Button size="sm" variant="outline" className="h-7 gap-1 text-green-600" disabled={enviando} onClick={() => ejecutar("aceptar")}>
-            <TickCircle className="size-3.5" /> Aceptar
-          </Button>
-          <Button size="sm" variant="outline" className="h-7 gap-1 text-destructive" disabled={enviando} onClick={() => setMotivoAbierto("rechazar")}>
-            <CloseCircle className="size-3.5" /> Rechazar
-          </Button>
-        </div>
-      )}
-      {p.estado === "aceptado" && (
-        <div className="mt-2 flex gap-1.5 border-t pt-2">
-          <Button size="sm" variant="outline" className="h-7 gap-1 text-amber-600" disabled={enviando} onClick={() => setMotivoAbierto("anular")}>
-            <CloseSquare className="size-3.5" /> Anular
-          </Button>
-        </div>
-      )}
-      {editable && (
-        <div className="mt-2 flex gap-1.5 border-t pt-2">
-          <Button size="sm" variant="ghost" className="h-7 gap-1" disabled={enviando} onClick={() => setEditarAbierto(true)}>
-            <Edit2 className="size-3.5" /> Editar
-          </Button>
-          {p.estado === "borrador" && (
-            <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" disabled={enviando} onClick={eliminar}>
-              <Trash className="size-3.5" /> Eliminar
-            </Button>
-          )}
+      {(acciones || accionesEdicion) && (
+        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2">
+          {acciones}
+          {acciones && accionesEdicion && <span className="mx-0.5 h-4 w-px bg-border" />}
+          {accionesEdicion}
         </div>
       )}
 
@@ -165,6 +206,6 @@ export function PresupuestoCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </m.div>
   );
 }

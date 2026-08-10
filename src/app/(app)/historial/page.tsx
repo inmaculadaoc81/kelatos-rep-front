@@ -17,7 +17,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
-import { DetalleReparacionDialog } from "../reparaciones/detalle-dialog";
+import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
