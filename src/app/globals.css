@@ -52,7 +52,7 @@
   /* Lienzo gris claro y tarjetas en blanco, para que las superficies de
      contenido se despeguen del fondo. Todo lo que deba verse blanco usa
      `bg-card`, nunca `bg-background`. */
-  --background: oklch(0.968 0.004 258);
+  --background: oklch(0.982 0.003 258);
   --foreground: oklch(0.18 0.02 258);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.02 258);
