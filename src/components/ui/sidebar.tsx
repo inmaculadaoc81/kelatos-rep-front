@@ -481,16 +481,14 @@ const sidebarMenuButtonVariants = cva(
   // transition-[width,height,padding] ya cubría el modo icono/expandido; se
   // añaden background-color/color con su propia duración para que el hover
   // y el estado activo se desvanezcan en vez de cambiar de golpe.
-  // Hover en azul tenue (bg-sidebar-primary/12 + texto azul) y activo en
-  // azul sólido con texto blanco (bg-sidebar-accent): son estados
-  // distintos — "esto es donde estás" no debería verse igual que "el
-  // ratón está encima" — y comparten el mismo azul de marca como único
-  // punto en común.
-  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,color] duration-150 group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-primary/12 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-primary/12 data-open:hover:text-sidebar-primary data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
+  // Hover, pulsado y seleccionado son tres intensidades del mismo azul
+  // tenue, no un salto a relleno sólido: el seleccionado se distingue por
+  // ring + peso de texto, no por gritar más fuerte que el hover.
+  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,color] duration-150 group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-primary/10 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-primary/20 active:text-sidebar-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-primary/10 data-open:hover:text-sidebar-primary data-active:bg-sidebar-primary/15 data-active:font-semibold data-active:text-sidebar-primary data-active:ring-1 data-active:ring-inset data-active:ring-sidebar-primary/25 [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
-        default: "hover:bg-sidebar-primary/12 hover:text-sidebar-primary",
+        default: "hover:bg-sidebar-primary/10 hover:text-sidebar-primary",
         outline:
           "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
       },
@@ -695,7 +693,7 @@ function SidebarMenuSubButton({
           // panel claro un icono blanco es invisible salvo el antialiasing.
           // Sin ese override el icono hereda currentColor del propio <a>, que
           // ya cambia de foreground a accent-foreground en cada estado.
-          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden transition-colors duration-150 group-data-[collapsible=icon]:hidden hover:bg-sidebar-primary/12 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden transition-colors duration-150 group-data-[collapsible=icon]:hidden hover:bg-sidebar-primary/10 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-primary/20 active:text-sidebar-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-primary/15 data-active:font-semibold data-active:text-sidebar-primary data-active:ring-1 data-active:ring-inset data-active:ring-sidebar-primary/25 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
           className
         ),
       },
