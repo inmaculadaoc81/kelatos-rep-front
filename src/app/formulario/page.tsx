@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DatosFormularioCliente,
   datosVacios,
+  FotoFormulario,
   OPCIONES_TIPO_PRODUCTO,
   SiNo,
   SiNoAVeces,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
 
-const PASOS = ["Datos", "Contacto", "Equipo", "Síntoma", "Condiciones"];
+const PASOS = ["Datos", "Contacto", "Equipo", "Síntoma", "Condiciones", "Foto y firma"];
 
 function Pill({ activo, color, onClick, children }: { activo: boolean; color: string; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -129,6 +130,10 @@ export default function FormularioClientePage() {
     }
     if (paso === 5) {
       if (!datos.aceptaCondiciones) err.aceptaCondiciones = "Debes aceptar las condiciones del servicio.";
+    }
+    if (paso === 6) {
+      if (datos.fotos.length === 0) err.fotos = "Debes adjuntar al menos una foto del equipo.";
+      if (!datos.firmaBase64) err.firma = "Debes firmar el resguardo.";
     }
     setErrores(err);
     return Object.keys(err).length === 0;
@@ -382,10 +387,6 @@ export default function FormularioClientePage() {
 
         {paso === 5 && (
           <>
-            <div style={estilos.notice}>
-              📷 La foto del equipo y la firma se solicitarán en el mostrador al entregar el equipo — esta versión web no las
-              adjunta todavía.
-            </div>
             {categoria && (
               <div style={{ maxHeight: 260, overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12, fontSize: ".8rem", color: "#374151" }}>
                 <ol style={{ paddingLeft: 18, margin: 0 }}>
@@ -407,6 +408,17 @@ export default function FormularioClientePage() {
           </>
         )}
 
+        {paso === 6 && (
+          <PasoFotoFirma
+            fotos={datos.fotos}
+            firmaBase64={datos.firmaBase64}
+            errorFotos={errores.fotos}
+            errorFirma={errores.firma}
+            onFotosChange={(fotos) => actualizar("fotos", fotos)}
+            onFirmaChange={(firmaBase64) => actualizar("firmaBase64", firmaBase64)}
+          />
+        )}
+
         {errorEnvio && <p style={{ color: "#dc2626", fontSize: ".85rem", marginTop: 12 }}>{errorEnvio}</p>}
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24 }}>
@@ -424,6 +436,211 @@ export default function FormularioClientePage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function PasoFotoFirma({
+  fotos,
+  firmaBase64,
+  errorFotos,
+  errorFirma,
+  onFotosChange,
+  onFirmaChange,
+}: {
+  fotos: FotoFormulario[];
+  firmaBase64: string;
+  errorFotos?: string;
+  errorFirma?: string;
+  onFotosChange: (fotos: FotoFormulario[]) => void;
+  onFirmaChange: (firmaBase64: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function onSeleccionarFotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivos = Array.from(e.target.files || []);
+    e.target.value = "";
+    archivos.forEach((file) => {
+      if (fotos.some((f) => f.name === file.name && f.size === file.size)) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || "");
+        const base64 = dataUrl.split(",")[1] || "";
+        if (!base64) return;
+        onFotosChange([...fotos, { base64, mime: file.type || "image/jpeg", name: file.name, size: file.size }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function eliminarFoto(i: number) {
+    onFotosChange(fotos.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <>
+      <Campo label="Foto del equipo / problema" required error={errorFotos}>
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            border: "1.5px dashed #d1d5db",
+            borderRadius: 10,
+            padding: "22px 14px",
+            textAlign: "center",
+            cursor: "pointer",
+            background: "#fafbfc",
+          }}
+        >
+          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} style={{ display: "none" }} />
+          <div style={{ fontSize: "1.8rem", color: "#9ca3af", marginBottom: 6 }}>📷</div>
+          <div style={{ fontSize: ".82rem", color: "#6b7280" }}>
+            {fotos.length === 0 ? "Toca para hacer o seleccionar una foto" : fotos.length === 1 ? fotos[0].name : `${fotos.length} fotos seleccionadas`}
+          </div>
+        </div>
+        {fotos.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 8, marginTop: 10 }}>
+            {fotos.map((f, i) => (
+              <div key={f.name + f.size} style={{ position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", border: "1px solid #e5e7eb" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`data:${f.mime};base64,${f.base64}`} alt={`foto ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <button
+                  type="button"
+                  onClick={() => eliminarFoto(i)}
+                  title="Eliminar"
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    border: "none",
+                    background: "rgba(0,0,0,.6)",
+                    color: "#fff",
+                    fontSize: ".7rem",
+                    lineHeight: "20px",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Campo>
+
+      <Campo label="Firma del cliente" required error={errorFirma}>
+        <CanvasFirma value={firmaBase64} onChange={onFirmaChange} />
+      </Campo>
+    </>
+  );
+}
+
+function CanvasFirma({ value, onChange }: { value: string; onChange: (base64: string) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dibujandoRef = useRef(false);
+  const tieneTrazoRef = useRef(!!value);
+  const [tieneTrazo, setTieneTrazo] = useState(!!value);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.offsetWidth) return;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }, []);
+
+  function posición(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
+    const r = canvas.getBoundingClientRect();
+    const punto = "touches" in e ? e.touches[0] : e;
+    return { x: punto.clientX - r.left, y: punto.clientY - r.top };
+  }
+
+  function iniciar(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    dibujandoRef.current = true;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = posición(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  function mover(e: React.MouseEvent | React.TouchEvent) {
+    if (!dibujandoRef.current) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = posición(e, canvas);
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#1a1a2e";
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    if (!tieneTrazoRef.current) {
+      tieneTrazoRef.current = true;
+      setTieneTrazo(true);
+    }
+  }
+
+  function detener() {
+    if (!dibujandoRef.current) return;
+    dibujandoRef.current = false;
+    const canvas = canvasRef.current;
+    if (canvas && tieneTrazoRef.current) {
+      onChange(canvas.toDataURL("image/png").split(",")[1] || "");
+    }
+  }
+
+  function limpiar() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    tieneTrazoRef.current = false;
+    setTieneTrazo(false);
+    onChange("");
+  }
+
+  return (
+    <div style={{ position: "relative", border: "1.5px solid #d1d5db", borderRadius: 10, overflow: "hidden" }}>
+      <canvas
+        ref={canvasRef}
+        style={{ display: "block", width: "100%", height: 140, cursor: "crosshair", touchAction: "none" }}
+        onMouseDown={iniciar}
+        onMouseMove={mover}
+        onMouseUp={detener}
+        onMouseLeave={detener}
+        onTouchStart={iniciar}
+        onTouchMove={mover}
+        onTouchEnd={detener}
+      />
+      {!tieneTrazo && (
+        <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", color: "#9ca3af", fontSize: ".85rem", pointerEvents: "none" }}>
+          Firme aquí con el dedo o el ratón
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={limpiar}
+        style={{
+          position: "absolute",
+          top: 6,
+          right: 6,
+          fontSize: ".72rem",
+          padding: "3px 8px",
+          borderRadius: 6,
+          border: "1px solid #d1d5db",
+          background: "#fff",
+          color: "#374151",
+          cursor: "pointer",
+        }}
+      >
+        Borrar
+      </button>
     </div>
   );
 }

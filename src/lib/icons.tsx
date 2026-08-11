@@ -52,6 +52,7 @@ export const Edit2 = withDefaults(Iconsax.Edit2);
 export const Element3 = withDefaults(Iconsax.Element3);
 export const Eye = withDefaults(Iconsax.Eye);
 export const Filter = withDefaults(Iconsax.Filter);
+export const Gallery = withDefaults(Iconsax.Gallery);
 export const Hashtag = withDefaults(Iconsax.Hashtag);
 export const Hierarchy = withDefaults(Iconsax.Hierarchy);
 export const Home = withDefaults(Iconsax.Home);

@@ -1,10 +1,6 @@
 /**
  * Tipos para el formulario público de solicitud de reparación
- * (FormularioCliente.html). v1 sin código de acceso (decisión del
- * usuario) y sin foto/firma real (sin integración con Drive) — ambos
- * campos ya eran opcionales en el backend real de Apps Script para
- * fotoBase64/firmaBase64, así que se envían vacíos sin violar ninguna
- * validación del lado servidor.
+ * (FormularioCliente.html).
  */
 
 export const OPCIONES_TIPO_PRODUCTO = [
@@ -24,6 +20,13 @@ export interface DatosCintasForm {
   "8mm": number;
   cassette: number;
   bobina: number;
+}
+
+export interface FotoFormulario {
+  base64: string;
+  mime: string;
+  name: string;
+  size: number;
 }
 
 export interface DatosFormularioCliente {
@@ -53,6 +56,8 @@ export interface DatosFormularioCliente {
   reparacionAnterior: SiNo | "";
   aceptaCondiciones: boolean;
   aceptaMarketing: boolean;
+  fotos: FotoFormulario[];
+  firmaBase64: string;
 }
 
 export function datosVacios(): DatosFormularioCliente {
@@ -83,5 +88,7 @@ export function datosVacios(): DatosFormularioCliente {
     reparacionAnterior: "",
     aceptaCondiciones: false,
     aceptaMarketing: false,
+    fotos: [],
+    firmaBase64: "",
   };
 }

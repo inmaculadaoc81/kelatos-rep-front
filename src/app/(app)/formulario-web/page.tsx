@@ -17,12 +17,15 @@ import {
   ShieldTick,
   Send2,
   Clock,
+  SearchNormal1,
+  Gallery,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { CodigoAcceso } from "@/lib/formulario-acceso";
+import { ArchivoFormulario } from "@/app/api/formulario-cliente/archivos/route";
 
 function formatearExpiracion(iso: string): string {
   return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -36,6 +39,10 @@ export default function FormularioWebPage() {
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [busquedaArchivos, setBusquedaArchivos] = useState("");
+  const [archivos, setArchivos] = useState<ArchivoFormulario[] | null>(null);
+  const [cargandoArchivos, setCargandoArchivos] = useState(false);
+  const [errorArchivos, setErrorArchivos] = useState<string | null>(null);
   // Date.now() no puede llamarse en el cuerpo del render (regla de pureza
   // de React) — el backend ya filtra los caducados al leer el código
   // activo, así que esto solo importa si la pestaña se queda abierta más
@@ -73,6 +80,7 @@ export default function FormularioWebPage() {
   useEffect(() => {
     cargarQr();
     cargarCodigo();
+    buscarArchivos("");
   }, []);
 
   useEffect(() => {
@@ -91,6 +99,21 @@ export default function FormularioWebPage() {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setGenerando(false);
+    }
+  }
+
+  async function buscarArchivos(q: string) {
+    setCargandoArchivos(true);
+    setErrorArchivos(null);
+    try {
+      const res = await fetch(`/api/formulario-cliente/archivos?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setArchivos(data.items as ArchivoFormulario[]);
+    } catch (e) {
+      setErrorArchivos(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setCargandoArchivos(false);
     }
   }
 
@@ -220,6 +243,100 @@ export default function FormularioWebPage() {
         <p className="mt-2 text-xs text-muted-foreground">
           Esta URL sirve el formulario sin necesidad de iniciar sesión. Ponla como página de inicio en el navegador de la tablet.
         </p>
+      </div>
+
+      {/* Galería de fotos y firmas recibidas */}
+      <div className="mb-4 rounded-xl border bg-card p-4 shadow-sm">
+        <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+          <Gallery className="size-4 text-primary" /> Fotos y firmas recibidas
+        </h2>
+        <form
+          className="mb-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            buscarArchivos(busquedaArchivos);
+          }}
+        >
+          <div className="relative flex-1">
+            <SearchNormal1 className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={busquedaArchivos}
+              onChange={(e) => setBusquedaArchivos(e.target.value)}
+              placeholder="Buscar por nombre o DNI/CIF del cliente..."
+              className="pl-8 text-sm"
+            />
+          </div>
+          <Button type="submit" variant="outline" disabled={cargandoArchivos}>
+            Buscar
+          </Button>
+        </form>
+
+        {errorArchivos && (
+          <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            Error al cargar: {errorArchivos}
+          </div>
+        )}
+
+        {cargandoArchivos && (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        )}
+
+        {!cargandoArchivos && archivos && archivos.length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <Gallery className="size-7 text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">
+              {busquedaArchivos ? "Ningún cliente coincide con esa búsqueda." : "Todavía no se ha recibido ninguna foto o firma."}
+            </p>
+          </div>
+        )}
+
+        {!cargandoArchivos && archivos && archivos.length > 0 && (
+          <div className="space-y-3">
+            {archivos.map((a) => (
+              <div key={a.resguardo} className="rounded-lg border p-3">
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-semibold text-primary">#{a.resguardo}</span>
+                    <span className="text-sm font-medium">{a.clienteNombre || "—"}</span>
+                    {a.dniCif && <span className="text-xs text-muted-foreground">{a.dniCif}</span>}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {a.equipoModelo} · {new Date(a.fechaRecepcion).toLocaleDateString("es-ES")}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {a.fotos.map((nombre, i) => {
+                    const src = `/api/formulario-cliente/archivo/${encodeURIComponent(nombre)}`;
+                    return (
+                      <a key={nombre} href={src} target="_blank" rel="noopener noreferrer" title={`Foto ${i + 1}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt={`Foto ${i + 1} de #${a.resguardo}`} className="size-16 rounded-md border object-cover" />
+                      </a>
+                    );
+                  })}
+                  {a.firmaNombre && (
+                    <a
+                      href={`/api/formulario-cliente/archivo/${encodeURIComponent(a.firmaNombre)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Firma"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/formulario-cliente/archivo/${encodeURIComponent(a.firmaNombre)}`}
+                        alt={`Firma de #${a.resguardo}`}
+                        className="size-16 rounded-md border bg-white object-contain p-1"
+                      />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Info: campos y flujo */}

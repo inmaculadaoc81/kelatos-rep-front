@@ -74,6 +74,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, resguardo: preparado.resguardo });
     }
 
+    let fotoUrl = "";
+    let firmaUrl = "";
+    if (datos.fotos.length > 0 || datos.firmaBase64) {
+      try {
+        const archivos = await kelatosApiPost<{ ok: boolean; fotoUrl: string; firmaUrl: string }>(
+          `/v1/formulario/${preparado.resguardo}/archivos`,
+          { fotos: datos.fotos.map((f) => ({ base64: f.base64, mime: f.mime })), firmaBase64: datos.firmaBase64 }
+        );
+        fotoUrl = archivos.fotoUrl;
+        firmaUrl = archivos.firmaUrl;
+      } catch (archivosError) {
+        // La subida a Drive puede fallar (cuota, red) sin que deba perderse
+        // la solicitud ya reservada — se confirma sin foto/firma antes que
+        // dejar al cliente sin resguardo.
+        console.error("Error subiendo foto/firma del formulario:", archivosError);
+      }
+    }
+
     try {
       const confirmado = await kelatosApiPost<{ ok: boolean; resguardo: string }>("/v1/reparaciones/altas/confirmar", {
         requestId,
@@ -81,7 +99,7 @@ export async function POST(req: Request) {
         payloadHash,
         usuario: "Formulario Web",
         tipoAlta: "simple",
-        rep: {
+        reparacion: {
           fechaRecepcion: new Date().toISOString(),
           clienteNombre: datos.nombre.trim(),
           clienteTelefono: "",
@@ -98,8 +116,8 @@ export async function POST(req: Request) {
           tipoIngreso: "formulario_web",
           revisionPagada: false,
           observaciones,
-          fotoUrl: "",
-          firmaUrl: "",
+          fotoUrl,
+          firmaUrl,
         },
         cliente: {
           nombre: datos.nombre.trim(),

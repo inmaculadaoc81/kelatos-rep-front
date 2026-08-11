@@ -51,7 +51,7 @@ export async function POST(req: Request) {
         payloadHash,
         usuario,
         tipoAlta: "simple",
-        rep: {
+        reparacion: {
           fechaRecepcion: datos.fechaRecepcion,
           clienteNombre: datos.clienteNombre.trim(),
           clienteTelefono: datos.clienteTelefono.trim(),
