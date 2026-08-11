@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle } from "@/lib/icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +94,26 @@ function MultiselectFiltro({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+/**
+ * useSearchParams() exige un límite <Suspense> alrededor (si no, Next
+ * falla el build de esta página) — se aísla aquí en vez de en el
+ * componente principal, que ya tiene bastante estado propio.
+ */
+function AbrirNuevaPorQuery({ onAbrir }: { onAbrir: () => void }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("nueva") === "1") {
+      onAbrir();
+      router.replace("/reparaciones");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  return null;
 }
 
 export default function ReparacionesPage() {
@@ -340,6 +361,10 @@ export default function ReparacionesPage() {
           </TableBody>
         </Table>
       </div>
+
+      <Suspense fallback={null}>
+        <AbrirNuevaPorQuery onAbrir={() => setNuevaAbierta(true)} />
+      </Suspense>
 
       <DetalleReparacionDialog
         resguardo={resguardoDetalle}
