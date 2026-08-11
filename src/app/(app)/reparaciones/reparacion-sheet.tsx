@@ -13,8 +13,10 @@ import {
   Personalcard,
   Monitor,
   Video,
+  CloseCircle,
+  TickCircle,
 } from "@/lib/icons";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -213,20 +215,32 @@ export function ReparacionSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !guardando && onOpenChange(o)}>
-      <SheetContent className="w-full data-[side=right]:sm:max-w-4xl" showCloseButton={!guardando}>
-        <SheetHeader className="border-b">
-          <SheetTitle className="flex items-center gap-2">
-            {esConfirmar ? <ClipboardTick className="size-5" /> : <AddCircle className="size-5" />}
-            {esConfirmar ? "Confirmar Recepción — Formulario Tablet" : "Nueva Reparación — Recepción"}
+      <SheetContent className="w-full gap-0 p-0 data-[side=right]:sm:max-w-4xl" showCloseButton={false}>
+        {/* Mismo patrón que detalle-dialog.tsx: cabecera a sangre en bg-primary
+            con su propio botón de cerrar, cuerpo con fondo neutro y cada
+            sección en una tarjeta con borde — no el Sheet en blanco liso. */}
+        <header className="flex items-center gap-3 bg-primary px-5 py-3.5 text-primary-foreground">
+          {esConfirmar ? <ClipboardTick className="size-5 shrink-0" /> : <AddCircle className="size-5 shrink-0" />}
+          <SheetTitle className="text-base font-semibold text-primary-foreground">
+            {esConfirmar ? `Confirmar Recepción — Formulario Tablet (#${reparacionPendiente?.resguardo})` : "Nueva Reparación — Recepción"}
           </SheetTitle>
-          <SheetDescription>{esConfirmar ? `Datos enviados por el cliente para #${reparacionPendiente?.resguardo}` : "Datos del parte de recepción"}</SheetDescription>
-        </SheetHeader>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
+            onClick={() => onOpenChange(false)}
+            disabled={guardando}
+            aria-label="Cerrar"
+          >
+            <CloseCircle className="size-5" />
+          </Button>
+        </header>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-4 py-2">
+        <div className="flex-1 space-y-4 overflow-y-auto bg-muted/20 p-5">
           {/* Datos del parte */}
-          <div className="space-y-3">
+          <div className="rounded-xl border bg-card p-4">
             <SeccionTitulo icono={ClipboardTick}>Datos del parte</SeccionTitulo>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Nº Resguardo</Label>
                 {esConfirmar ? (
@@ -249,9 +263,9 @@ export function ReparacionSheet({
           </div>
 
           {/* Datos del cliente */}
-          <div className="space-y-3">
+          <div className="rounded-xl border bg-card p-4">
             <SeccionTitulo icono={Personalcard}>Datos del cliente</SeccionTitulo>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="clienteNombre">Nombre completo *</Label>
                 <Input id="clienteNombre" value={datos.clienteNombre} onChange={(e) => actualizar("clienteNombre", e.target.value)} />
@@ -294,15 +308,15 @@ export function ReparacionSheet({
           </div>
 
           {/* Datos del equipo */}
-          <div className="space-y-3">
+          <div className="rounded-xl border bg-card p-4">
             <SeccionTitulo icono={Monitor}>Datos del equipo</SeccionTitulo>
-            <label className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-400">
+            <label className="mt-3 flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-400">
               <Switch checked={datos.esCintas} onCheckedChange={(v) => actualizar("esCintas", v)} />
               <Video className="size-4" /> Equipo usa cintas (VHS, MiniDV, 8mm, etc.)
             </label>
 
             {!datos.esCintas ? (
-              <>
+              <div className="mt-3 space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="equipoModelo">Modelo / Marca del equipo *</Label>
                   <Input id="equipoModelo" value={datos.equipoModelo} onChange={(e) => actualizar("equipoModelo", e.target.value)} />
@@ -311,9 +325,9 @@ export function ReparacionSheet({
                   <Label htmlFor="sintoma">Síntoma / Avería *</Label>
                   <Textarea id="sintoma" rows={3} value={datos.sintoma} onChange={(e) => actualizar("sintoma", e.target.value)} />
                 </div>
-              </>
+              </div>
             ) : (
-              <div className="space-y-3 rounded-md border p-3">
+              <div className="mt-3 space-y-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
                 <p className="rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400">
                   El presupuesto se generará y aceptará automáticamente al guardar.
                 </p>
@@ -342,7 +356,7 @@ export function ReparacionSheet({
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-3 gap-2 rounded-md border bg-muted/30 p-2.5 text-center text-sm">
+                <div className="grid grid-cols-3 gap-2 rounded-md border bg-card p-2.5 text-center text-sm">
                   <div>
                     <p className="text-xs text-muted-foreground">Total cintas</p>
                     <p className="font-semibold">{calculoCintas.total}</p>
@@ -363,10 +377,10 @@ export function ReparacionSheet({
             )}
           </div>
 
-          {/* Tipo de recepción */}
-          <div className="space-y-3">
+          {/* Recepción y estado inicial */}
+          <div className="rounded-xl border bg-card p-4">
             <SeccionTitulo icono={Truck}>Tipo de recepción</SeccionTitulo>
-            <RadioGroup value={datos.tipoRecepcion} onValueChange={(v) => actualizar("tipoRecepcion", v as TipoRecepcion)} className="flex gap-4">
+            <RadioGroup value={datos.tipoRecepcion} onValueChange={(v) => actualizar("tipoRecepcion", v as TipoRecepcion)} className="mt-3 flex gap-4">
               <label className="flex items-center gap-2 text-sm">
                 <RadioGroupItem value="LOCAL" /> <Shop className="size-4" /> Cliente trajo al local
               </label>
@@ -375,17 +389,16 @@ export function ReparacionSheet({
               </label>
             </RadioGroup>
             {datos.tipoRecepcion === "ENVIO" && (
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                 <Switch checked={datos.entregaMensajeria} onCheckedChange={(v) => actualizar("entregaMensajeria", v)} />
                 Devolución también por mensajería
               </label>
             )}
-          </div>
 
-          {/* Estado inicial */}
-          <div className="space-y-3">
+            <hr className="my-4" />
+
             <SeccionTitulo icono={ShieldTick}>Estado inicial</SeccionTitulo>
-            <RadioGroup value={datos.estado} onValueChange={(v) => actualizar("estado", v as EstadoInicial)} className="flex flex-wrap gap-4">
+            <RadioGroup value={datos.estado} onValueChange={(v) => actualizar("estado", v as EstadoInicial)} className="mt-3 flex flex-wrap gap-4">
               <label className="flex items-center gap-2 text-sm">
                 <RadioGroupItem value="Presupuesto Pendiente" /> <Receipt className="size-4" /> Presupuesto Pendiente
               </label>
@@ -399,118 +412,123 @@ export function ReparacionSheet({
           </div>
 
           {esAceptarAhora && (
-            <div className="space-y-3 rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-400">
                 <Verify className="size-4" /> Presupuesto aceptado en el acto
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 El equipo pasará directamente a <strong>En Reparación</strong> (o <strong>Presupuesto Aceptado</strong> si requiere pieza).
               </p>
-              <div className="space-y-1.5">
-                <Label>Responsable *</Label>
-                <Select value={datos.presupuestoInmediato.elaboradoPor} onValueChange={(v) => actualizarInmediato("elaboradoPor", v || "")}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
-                  <SelectContent>
-                    {empleados.map((e) => <SelectItem key={e.empleadoId} value={e.nombre}>{e.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Diagnóstico / trabajo a realizar *</Label>
-                <Textarea rows={2} value={datos.presupuestoInmediato.descripcion} onChange={(e) => actualizarInmediato("descripcion", e.target.value)} />
-              </div>
+              <div className="mt-3 space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Responsable *</Label>
+                  <Select value={datos.presupuestoInmediato.elaboradoPor} onValueChange={(v) => actualizarInmediato("elaboradoPor", v || "")}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
+                    <SelectContent>
+                      {empleados.map((e) => <SelectItem key={e.empleadoId} value={e.nombre}>{e.nombre}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Diagnóstico / trabajo a realizar *</Label>
+                  <Textarea rows={2} value={datos.presupuestoInmediato.descripcion} onChange={(e) => actualizarInmediato("descripcion", e.target.value)} />
+                </div>
 
-              {!datos.esCintas && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label>Mano de obra (€) *</Label>
-                    <Input type="number" min={0} step="0.01" value={datos.presupuestoInmediato.manoObra} onChange={(e) => actualizarInmediato("manoObra", parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>¿Requiere pieza(s)? *</Label>
-                    <RadioGroup value={datos.necesitaPieza ? "si" : "no"} onValueChange={(v) => actualizar("necesitaPieza", v === "si")} className="flex gap-4">
-                      <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No requiere pieza</label>
-                      <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="si" /> Requiere pieza(s)</label>
-                    </RadioGroup>
-                  </div>
-                  {datos.necesitaPieza && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Piezas</Label>
-                        <Button type="button" size="sm" variant="outline" className="h-7 gap-1" onClick={agregarPieza}>
-                          <AddCircle className="size-3.5" /> Añadir pieza
-                        </Button>
-                      </div>
-                      {datos.presupuestoInmediato.piezas.map((p, i) => (
-                        <div key={i} className="grid grid-cols-2 gap-2 rounded-md border bg-card p-2 sm:grid-cols-6">
-                          <Input className="col-span-2" placeholder="Descripción" value={p.descripcion} onChange={(e) => actualizarPieza(i, "descripcion", e.target.value)} />
-                          <Select value={p.tipo} onValueChange={(v) => actualizarPieza(i, "tipo", v as TipoLineaPieza)}>
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="stock">En stock</SelectItem>
-                              <SelectItem value="pedido">Por pedido</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Input type="number" placeholder="Costo" step="0.01" value={p.costo} onChange={(e) => actualizarPieza(i, "costo", parseFloat(e.target.value) || 0)} />
-                          <Input type="number" placeholder="Precio" step="0.01" value={p.precio} onChange={(e) => actualizarPieza(i, "precio", parseFloat(e.target.value) || 0)} />
-                          <Button type="button" size="icon" variant="ghost" className="text-destructive" onClick={() => quitarPieza(i)}>
-                            <Trash className="size-4" />
-                          </Button>
-                          {p.tipo === "pedido" && (
-                            <Input className="col-span-2 sm:col-span-6" placeholder="Enlace de compra *" value={p.enlace} onChange={(e) => actualizarPieza(i, "enlace", e.target.value)} />
-                          )}
-                        </div>
-                      ))}
+                {!datos.esCintas && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Mano de obra (€) *</Label>
+                      <Input type="number" min={0} step="0.01" value={datos.presupuestoInmediato.manoObra} onChange={(e) => actualizarInmediato("manoObra", parseFloat(e.target.value) || 0)} />
                     </div>
-                  )}
-                  <div className="space-y-1.5">
-                    <Label>Días estimados de entrega *</Label>
-                    <Input type="number" min={1} value={datos.presupuestoInmediato.diasEntrega} onChange={(e) => actualizarInmediato("diasEntrega", parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Notas adicionales</Label>
-                    <Textarea rows={2} value={datos.presupuestoInmediato.notas} onChange={(e) => actualizarInmediato("notas", e.target.value)} />
-                  </div>
-                </>
-              )}
+                    <div className="space-y-1.5">
+                      <Label>¿Requiere pieza(s)? *</Label>
+                      <RadioGroup value={datos.necesitaPieza ? "si" : "no"} onValueChange={(v) => actualizar("necesitaPieza", v === "si")} className="flex gap-4">
+                        <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No requiere pieza</label>
+                        <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="si" /> Requiere pieza(s)</label>
+                      </RadioGroup>
+                    </div>
+                    {datos.necesitaPieza && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>Piezas</Label>
+                          <Button type="button" size="sm" variant="outline" className="h-7 gap-1" onClick={agregarPieza}>
+                            <AddCircle className="size-3.5" /> Añadir pieza
+                          </Button>
+                        </div>
+                        {datos.presupuestoInmediato.piezas.map((p, i) => (
+                          <div key={i} className="grid grid-cols-2 gap-2 rounded-md border bg-card p-2 sm:grid-cols-6">
+                            <Input className="col-span-2" placeholder="Descripción" value={p.descripcion} onChange={(e) => actualizarPieza(i, "descripcion", e.target.value)} />
+                            <Select value={p.tipo} onValueChange={(v) => actualizarPieza(i, "tipo", v as TipoLineaPieza)}>
+                              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="stock">En stock</SelectItem>
+                                <SelectItem value="pedido">Por pedido</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input type="number" placeholder="Costo" step="0.01" value={p.costo} onChange={(e) => actualizarPieza(i, "costo", parseFloat(e.target.value) || 0)} />
+                            <Input type="number" placeholder="Precio" step="0.01" value={p.precio} onChange={(e) => actualizarPieza(i, "precio", parseFloat(e.target.value) || 0)} />
+                            <Button type="button" size="icon" variant="ghost" className="text-destructive" onClick={() => quitarPieza(i)}>
+                              <Trash className="size-4" />
+                            </Button>
+                            {p.tipo === "pedido" && (
+                              <Input className="col-span-2 sm:col-span-6" placeholder="Enlace de compra *" value={p.enlace} onChange={(e) => actualizarPieza(i, "enlace", e.target.value)} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <Label>Días estimados de entrega *</Label>
+                      <Input type="number" min={1} value={datos.presupuestoInmediato.diasEntrega} onChange={(e) => actualizarInmediato("diasEntrega", parseInt(e.target.value) || 0)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Notas adicionales</Label>
+                      <Textarea rows={2} value={datos.presupuestoInmediato.notas} onChange={(e) => actualizarInmediato("notas", e.target.value)} />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
           {/* Revisión pagada + Deja cargador */}
           {!datos.esCintas && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Revisión pagada (20€) *</Label>
-                <Select value={datos.revisionPagada} onValueChange={(v) => actualizar("revisionPagada", v as DatosReparacionSheet["revisionPagada"])}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Seleccionar —" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="corresponde">Corresponde</SelectItem>
-                    <SelectItem value="no_corresponde">No corresponde</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Deja el cargador *</Label>
-                <Select value={datos.dejaCargador} onValueChange={(v) => actualizar("dejaCargador", v as DatosReparacionSheet["dejaCargador"])}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Seleccionar —" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="si">Corresponde</SelectItem>
-                    <SelectItem value="no">No corresponde</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="rounded-xl border bg-card p-4">
+              <SeccionTitulo icono={TickCircle}>Revisión y cargador</SeccionTitulo>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Revisión pagada (20€) *</Label>
+                  <Select value={datos.revisionPagada} onValueChange={(v) => actualizar("revisionPagada", v as DatosReparacionSheet["revisionPagada"])}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="— Seleccionar —" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="corresponde">Corresponde</SelectItem>
+                      <SelectItem value="no_corresponde">No corresponde</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Deja el cargador *</Label>
+                  <Select value={datos.dejaCargador} onValueChange={(v) => actualizar("dejaCargador", v as DatosReparacionSheet["dejaCargador"])}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="— Seleccionar —" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="si">Corresponde</SelectItem>
+                      <SelectItem value="no">No corresponde</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <SheetFooter className="flex-row justify-end border-t">
+        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-5 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={guardando}>
             Cancelar
           </Button>
           <Button onClick={guardar} disabled={guardando}>
             {guardando ? "Guardando..." : esConfirmar ? "Confirmar recepción" : "Registrar Recepción"}
           </Button>
-        </SheetFooter>
+        </footer>
       </SheetContent>
     </Sheet>
   );
