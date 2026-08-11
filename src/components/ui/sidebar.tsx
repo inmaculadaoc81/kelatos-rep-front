@@ -482,9 +482,10 @@ const sidebarMenuButtonVariants = cva(
   // añaden background-color/color con su propia duración para que el hover
   // y el estado activo se desvanezcan en vez de cambiar de golpe.
   // Hover, pulsado y seleccionado son tres intensidades del mismo azul
-  // tenue, no un salto a relleno sólido: el seleccionado se distingue por
-  // ring + peso de texto, no por gritar más fuerte que el hover.
-  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,color] duration-150 group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-primary/10 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-primary/20 active:text-sidebar-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-primary/10 data-open:hover:text-sidebar-primary data-active:bg-sidebar-primary/15 data-active:font-semibold data-active:text-sidebar-primary data-active:ring-1 data-active:ring-inset data-active:ring-sidebar-primary/25 [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
+  // tenue, no un salto a relleno sólido: el seleccionado se distingue solo
+  // por el fondo, sin ring ni negrita — ambos se probaron y se pidió
+  // quitarlos por quedar demasiado marcados.
+  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,color] duration-150 group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-primary/10 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-primary/20 active:text-sidebar-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-primary/10 data-open:hover:text-sidebar-primary data-active:bg-sidebar-primary/15 data-active:text-sidebar-primary [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
@@ -693,7 +694,7 @@ function SidebarMenuSubButton({
           // panel claro un icono blanco es invisible salvo el antialiasing.
           // Sin ese override el icono hereda currentColor del propio <a>, que
           // ya cambia de foreground a accent-foreground en cada estado.
-          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden transition-colors duration-150 group-data-[collapsible=icon]:hidden hover:bg-sidebar-primary/10 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-primary/20 active:text-sidebar-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-primary/15 data-active:font-semibold data-active:text-sidebar-primary data-active:ring-1 data-active:ring-inset data-active:ring-sidebar-primary/25 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden transition-colors duration-150 group-data-[collapsible=icon]:hidden hover:bg-sidebar-primary/10 hover:text-sidebar-primary focus-visible:ring-2 active:bg-sidebar-primary/20 active:text-sidebar-primary disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-primary/15 data-active:text-sidebar-primary [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
           className
         ),
       },
