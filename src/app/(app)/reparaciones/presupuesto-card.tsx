@@ -54,10 +54,12 @@ function fechaHora(iso: string | null): string {
 export function PresupuestoCard({
   resguardo,
   presupuesto: p,
+  revisionPagada = false,
   onActualizado,
 }: {
   resguardo: string;
   presupuesto: Presupuesto;
+  revisionPagada?: boolean;
   onActualizado: () => void;
 }) {
   const [motivoAbierto, setMotivoAbierto] = useState<"rechazar" | "anular" | null>(null);
@@ -254,6 +256,7 @@ export function PresupuestoCard({
       <PresupuestoFormDialog
         resguardo={resguardo}
         presupuestoExistente={p}
+        revisionPagada={revisionPagada}
         open={editarAbierto}
         onOpenChange={setEditarAbierto}
         onGuardado={onActualizado}

@@ -67,7 +67,7 @@ export function GestionPresupuestosDialog({
               ) : (
                 <m.div className="space-y-2" variants={listaAnim} initial="inicial" animate="visible">
                   {detalle.presupuestos.map((p) => (
-                    <PresupuestoCard key={p.presupuestoId} resguardo={detalle.resguardo} presupuesto={p} onActualizado={onActualizado} />
+                    <PresupuestoCard key={p.presupuestoId} resguardo={detalle.resguardo} presupuesto={p} revisionPagada={detalle.revisionPagada === "SI"} onActualizado={onActualizado} />
                   ))}
                 </m.div>
               )}
@@ -79,6 +79,7 @@ export function GestionPresupuestosDialog({
       <PresupuestoFormDialog
         resguardo={detalle.resguardo}
         presupuestoExistente={null}
+        revisionPagada={detalle.revisionPagada === "SI"}
         open={nuevoAbierto}
         onOpenChange={setNuevoAbierto}
         onGuardado={onActualizado}

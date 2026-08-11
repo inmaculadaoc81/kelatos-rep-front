@@ -508,6 +508,7 @@ export function DetalleReparacionDialog({
                                 key={p.presupuestoId}
                                 resguardo={detalle.resguardo}
                                 presupuesto={p}
+                                revisionPagada={detalle.revisionPagada === "SI"}
                                 onActualizado={cargarDetalle}
                               />
                             ))}
@@ -624,6 +625,7 @@ export function DetalleReparacionDialog({
           <PresupuestoFormDialog
             resguardo={detalle.resguardo}
             presupuestoExistente={null}
+            revisionPagada={detalle.revisionPagada === "SI"}
             open={nuevoPresupuestoAbierto}
             onOpenChange={setNuevoPresupuestoAbierto}
             onGuardado={cargarDetalle}

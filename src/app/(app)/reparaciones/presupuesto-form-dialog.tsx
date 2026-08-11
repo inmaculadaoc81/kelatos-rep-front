@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Add, Trash, DocumentText } from "@/lib/icons";
+import { useEffect, useState } from "react";
+import { Add, Trash, DocumentText, SearchNormal1, Box, ShoppingCart } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -14,17 +14,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Presupuesto } from "@/lib/reparacion-detalle";
-import { DatosPresupuestoForm, PiezaForm, TipoLineaPieza } from "@/lib/presupuesto-form";
+import { DatosPresupuestoForm, PiezaForm, TipoPieza } from "@/lib/presupuesto-form";
+import { Empleado } from "@/app/api/empleados/route";
+import { Proveedor } from "@/app/api/proveedores/route";
+import { StockPieza } from "@/lib/stock-piezas";
+import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 
 function vacio(): DatosPresupuestoForm {
   return { elaboradoPor: "", descripcion: "", notas: "", manoObra: 0, diasEntrega: 0, tipoPieza: "no", piezas: [] };
 }
 
-function piezaVacia(): PiezaForm {
+function piezaStockVacia(): PiezaForm {
   return { descripcion: "", tipo: "stock", costo: 0, precio: 0, enlace: "", proveedorId: "", referenciaStock: "", notas: "" };
+}
+
+function piezaPedidoVacia(): PiezaForm {
+  return { descripcion: "", tipo: "pedido", costo: 0, precio: 0, enlace: "", proveedorId: "", referenciaStock: "", notas: "" };
 }
 
 function desdeExistente(p: Presupuesto): DatosPresupuestoForm {
@@ -48,22 +57,51 @@ function desdeExistente(p: Presupuesto): DatosPresupuestoForm {
   };
 }
 
+function euros(n: number): string {
+  return n.toFixed(2) + " €";
+}
+
+/**
+ * Reproduce el formulario de Nuevo/Editar Presupuesto del original
+ * (mostrarFormularioNuevoPresupuesto/editarPresupuesto/
+ * guardarBorradorPresupuesto) — responsable como select, fecha de
+ * elaboración de solo lectura, piezas separadas en dos tarjetas (stock
+ * vs. a pedir, cada una con su propio color y acciones), y los totales
+ * (Costo Piezas / Total al Cliente / Ganancia Neta) recalculados en vivo
+ * exactamente igual que calcularGananciaPpto(), incluido el descuento de
+ * 20€ cuando la revisión ya está pagada.
+ */
 export function PresupuestoFormDialog({
   resguardo,
   presupuestoExistente,
+  revisionPagada = false,
   open,
   onOpenChange,
   onGuardado,
 }: {
   resguardo: string;
   presupuestoExistente: Presupuesto | null;
+  revisionPagada?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGuardado: () => void;
 }) {
   const [datos, setDatos] = useState<DatosPresupuestoForm>(() => (presupuestoExistente ? desdeExistente(presupuestoExistente) : vacio()));
   const [enviando, setEnviando] = useState(false);
+  const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [catalogoAbierto, setCatalogoAbierto] = useState(false);
   const esEdicion = presupuestoExistente !== null;
+
+  const fechaElaboracion = presupuestoExistente?.fechaElaboracion
+    ? presupuestoExistente.fechaElaboracion.slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/empleados").then((r) => r.json()).then((d) => { if (d.ok) setEmpleados(d.empleados); });
+    fetch("/api/proveedores").then((r) => r.json()).then((d) => { if (d.ok) setProveedores(d.proveedores); });
+  }, [open]);
 
   function reiniciar() {
     setDatos(presupuestoExistente ? desdeExistente(presupuestoExistente) : vacio());
@@ -73,28 +111,115 @@ export function PresupuestoFormDialog({
     setDatos((prev) => ({ ...prev, [campo]: valor }));
   }
 
-  function actualizarPieza(i: number, campo: keyof PiezaForm, valor: string | number) {
+  const noRequiere = datos.tipoPieza === "no";
+  const tieneStock = datos.tipoPieza === "stock" || datos.tipoPieza === "mixto";
+  const tienePedido = datos.tipoPieza === "pedido" || datos.tipoPieza === "mixto";
+  const piezasStock = datos.piezas.filter((p) => p.tipo === "stock");
+  const piezasPedido = datos.piezas.filter((p) => p.tipo === "pedido");
+
+  // Reproduce toggleSeccionPiezasPpto(): marcar un checkbox desmarca el
+  // radio "No requiere pieza"; los datos de la sección que se oculta se
+  // conservan (no se borran al desmarcar) para no perder trabajo si el
+  // usuario vuelve a marcarla — única diferencia deliberada con el
+  // original, que sí vacía el contenedor de "a pedir" al desmarcar.
+  function marcarNoRequiere() {
+    setDatos((prev) => ({ ...prev, tipoPieza: "no" }));
+  }
+
+  function cambiarSeccionPieza(campo: "stock" | "pedido", valor: boolean) {
+    setDatos((prev) => {
+      const stockActivo = campo === "stock" ? valor : tieneStock;
+      const pedidoActivo = campo === "pedido" ? valor : tienePedido;
+      const nuevoTipo: TipoPieza = stockActivo && pedidoActivo ? "mixto" : stockActivo ? "stock" : pedidoActivo ? "pedido" : "no";
+      let piezas = prev.piezas;
+      // Al activar una sección vacía por primera vez, arranca con una fila.
+      if (campo === "stock" && valor && piezasStock.length === 0) piezas = [...piezas, piezaStockVacia()];
+      if (campo === "pedido" && valor && piezasPedido.length === 0) piezas = [...piezas, piezaPedidoVacia()];
+      return { ...prev, tipoPieza: nuevoTipo, piezas };
+    });
+  }
+
+  function actualizarPieza(tipo: TipoPieza, indiceEnTipo: number, campo: keyof PiezaForm, valor: string | number) {
+    setDatos((prev) => {
+      let contador = -1;
+      return {
+        ...prev,
+        piezas: prev.piezas.map((p) => {
+          if (p.tipo !== tipo) return p;
+          contador++;
+          return contador === indiceEnTipo ? { ...p, [campo]: valor } : p;
+        }),
+      };
+    });
+  }
+
+  function agregarPiezaStock() {
+    setDatos((prev) => ({ ...prev, piezas: [...prev.piezas, piezaStockVacia()] }));
+  }
+
+  function agregarPiezaDesdeCatalogo(pieza: StockPieza) {
     setDatos((prev) => ({
       ...prev,
-      piezas: prev.piezas.map((p, idx) => (idx === i ? { ...p, [campo]: valor } : p)),
+      tipoPieza: prev.tipoPieza === "pedido" ? "mixto" : "stock",
+      piezas: [
+        ...prev.piezas,
+        { descripcion: pieza.nombre, tipo: "stock", costo: pieza.costeInterno, precio: pieza.precioCliente, enlace: "", proveedorId: "", referenciaStock: pieza.referencia, notas: "" },
+      ],
     }));
+    setCatalogoAbierto(false);
   }
 
-  function agregarPieza() {
-    setDatos((prev) => ({ ...prev, piezas: [...prev.piezas, piezaVacia()] }));
+  function agregarPiezaPedido() {
+    setDatos((prev) => ({ ...prev, piezas: [...prev.piezas, piezaPedidoVacia()] }));
   }
 
-  function quitarPieza(i: number) {
-    setDatos((prev) => ({ ...prev, piezas: prev.piezas.filter((_, idx) => idx !== i) }));
+  function quitarPieza(tipo: TipoPieza, indiceEnTipo: number) {
+    setDatos((prev) => {
+      let contador = -1;
+      return { ...prev, piezas: prev.piezas.filter((p) => (p.tipo !== tipo ? true : ++contador !== indiceEnTipo)) };
+    });
   }
 
-  const costoPiezas = datos.piezas.reduce((s, p) => s + (Number(p.costo) || 0), 0);
-  const precioPiezas = datos.piezas.reduce((s, p) => s + (Number(p.precio) || 0), 0);
-  const total = Math.max(0, Number(datos.manoObra) + precioPiezas);
+  // Reproduce calcularGananciaPpto(): solo cuentan las piezas de las
+  // secciones actualmente activas (desmarcar = 0, igual que el original).
+  const piezasActivas = datos.piezas.filter((p) => (p.tipo === "stock" && tieneStock) || (p.tipo === "pedido" && tienePedido));
+  const costoPiezas = piezasActivas.reduce((s, p) => s + (Number(p.costo) || 0), 0);
+  const precioPiezas = piezasActivas.reduce((s, p) => s + (Number(p.precio) || 0), 0);
+  const descuentoRevision = revisionPagada ? 20 : 0;
+  const total = Math.max(0, Number(datos.manoObra) + precioPiezas - descuentoRevision);
+  const gananciaNeta = total - costoPiezas;
 
   async function guardar() {
-    if (datos.piezas.some((p) => !p.descripcion.trim())) return toast.error("Todas las piezas deben tener descripción");
-    if (datos.piezas.some((p) => p.tipo === "pedido" && !p.enlace.trim())) return toast.error("Las piezas 'Por pedido' deben tener enlace de compra");
+    if (!datos.elaboradoPor.trim()) return toast.error("El responsable es obligatorio");
+    if (datos.diasEntrega < 1) return toast.error("Los días de reparación deben ser al menos 1");
+    if (datos.descripcion.trim().length < 20) return toast.error("El diagnóstico del equipo es obligatorio y debe tener al menos 20 caracteres");
+    if (!noRequiere && !tieneStock && !tienePedido) return toast.error('Selecciona al menos un tipo de pieza, o marca "No requiere pieza".');
+
+    if (tieneStock) {
+      if (piezasStock.length === 0) return toast.error("Debe agregar al menos una pieza en stock");
+      for (let i = 0; i < piezasStock.length; i++) {
+        const p = piezasStock[i];
+        if (!p.descripcion.trim()) return toast.error(`Pieza stock #${i + 1}: El nombre es obligatorio`);
+        if (!(p.costo > 0)) return toast.error(`Pieza stock #${i + 1}: El costo debe ser mayor a 0`);
+        if (!(p.precio > 0)) return toast.error(`Pieza stock #${i + 1}: El precio de venta es obligatorio`);
+      }
+    }
+    if (tienePedido) {
+      if (piezasPedido.length === 0) return toast.error("Debe agregar al menos una pieza a pedir");
+      for (let i = 0; i < piezasPedido.length; i++) {
+        const p = piezasPedido[i];
+        if (!p.descripcion.trim()) return toast.error(`Pieza pedido #${i + 1}: La descripción es obligatoria`);
+        if (!p.proveedorId) return toast.error(`Pieza pedido #${i + 1}: El proveedor es obligatorio`);
+        if (!(p.costo > 0)) return toast.error(`Pieza pedido #${i + 1}: El costo debe ser mayor a 0`);
+        if (!(p.precio > 0)) return toast.error(`Pieza pedido #${i + 1}: El precio de venta es obligatorio`);
+        if (!p.enlace.trim()) return toast.error(`Pieza pedido #${i + 1}: El enlace de compra es obligatorio`);
+      }
+    }
+
+    // Solo se envían las piezas de las secciones activas — igual que el
+    // cálculo de arriba, una sección desmarcada no cuenta aunque conserve
+    // datos localmente.
+    const datosEnvio: DatosPresupuestoForm = { ...datos, piezas: piezasActivas };
 
     setEnviando(true);
     try {
@@ -102,11 +227,11 @@ export function PresupuestoFormDialog({
       const res = await fetch(url, {
         method: esEdicion ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos),
+        body: JSON.stringify(datosEnvio),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(esEdicion ? "Presupuesto actualizado" : "Presupuesto creado");
+      toast.success(esEdicion ? "Presupuesto actualizado" : `Presupuesto v${data.presupuesto?.version || ""} guardado`);
       onOpenChange(false);
       onGuardado();
     } catch (e) {
@@ -134,80 +259,160 @@ export function PresupuestoFormDialog({
 
         <ScrollArea className="max-h-[65vh]">
           <div className="space-y-4 pr-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="elaboradoPor">Elaborado por</Label>
-                <Input id="elaboradoPor" value={datos.elaboradoPor} onChange={(e) => actualizar("elaboradoPor", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="diasEntrega">Días estimados de entrega</Label>
-                <Input id="diasEntrega" type="number" min={0} value={datos.diasEntrega} onChange={(e) => actualizar("diasEntrega", parseInt(e.target.value) || 0)} />
+            <div>
+              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">Responsable del Presupuesto</h3>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label>Responsable *</Label>
+                  <Select value={datos.elaboradoPor} onValueChange={(v) => actualizar("elaboradoPor", v || "")}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
+                    <SelectContent>
+                      {empleados.map((e) => <SelectItem key={e.empleadoId} value={e.nombre}>{e.nombre}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fechaElaboracionPpto">Fecha de Elaboración *</Label>
+                  <Input id="fechaElaboracionPpto" type="date" value={fechaElaboracion} disabled className="bg-muted/50" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="diasEntrega">Días de Reparación *</Label>
+                  <Input id="diasEntrega" type="number" min={1} placeholder="Ej: 3" value={datos.diasEntrega} onChange={(e) => actualizar("diasEntrega", parseInt(e.target.value) || 0)} />
+                </div>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="descripcion">Diagnóstico / descripción</Label>
-              <Textarea id="descripcion" rows={2} value={datos.descripcion} onChange={(e) => actualizar("descripcion", e.target.value)} />
+              <Label htmlFor="descripcion">
+                Diagnóstico del equipo (irá al cliente) <span className="text-destructive">*</span>
+              </Label>
+              <Textarea id="descripcion" rows={2} value={datos.descripcion} onChange={(e) => actualizar("descripcion", e.target.value)} placeholder="Ej: Incluye limpieza profunda y calibración" />
+              <p className="text-xs text-muted-foreground">Obligatorio · mínimo 20 caracteres. Detalle que se mostrará al cliente.</p>
+            </div>
+
+            <div>
+              <h3 className="mb-2 text-sm font-semibold text-primary">Costos del Presupuesto</h3>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="manoObra">Mano de Obra *</Label>
+                  <Input id="manoObra" type="number" min={0} step="0.01" value={datos.manoObra} onChange={(e) => actualizar("manoObra", parseFloat(e.target.value) || 0)} />
+                  <p className="text-[11px] text-muted-foreground">Poner 0 si no aplica</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Costo Piezas (nuestro)</Label>
+                  <Input value={euros(costoPiezas)} disabled className="bg-muted/50" />
+                  <p className="text-[11px] text-muted-foreground">Pago al proveedor</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Total al Cliente</Label>
+                  <Input value={euros(total)} disabled className="bg-muted/50" />
+                  {revisionPagada ? (
+                    <p className="text-[11px] font-semibold text-emerald-600">-20€ revisión aplicada</p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">Mano obra + precio piezas</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Ganancia Neta</Label>
+                  <Input value={euros(gananciaNeta)} disabled className="bg-muted/50" />
+                  <p className="text-[11px] text-muted-foreground">Total - Costo Piezas</p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="manoObra">Mano de obra (€)</Label>
-              <Input id="manoObra" type="number" min={0} step="0.01" value={datos.manoObra} onChange={(e) => actualizar("manoObra", parseFloat(e.target.value) || 0)} />
+              <Label className="font-semibold">
+                ¿Requiere piezas? <span className="text-destructive">*</span>
+              </Label>
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={noRequiere} onCheckedChange={(v) => v === true && marcarNoRequiere()} />
+                  No requiere pieza
+                </label>
+                <span className="h-4 w-px bg-border" />
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={tieneStock} onCheckedChange={(v) => cambiarSeccionPieza("stock", v === true)} />
+                  Pieza en stock
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={tienePedido} onCheckedChange={(v) => cambiarSeccionPieza("pedido", v === true)} />
+                  Pieza por pedido
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">Puedes añadir piezas de stock, piezas a pedir o ambas a la vez.</p>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Piezas</Label>
-                <Button size="sm" variant="outline" className="h-7 gap-1" onClick={agregarPieza}>
-                  <Add className="size-3.5" /> Añadir pieza
-                </Button>
-              </div>
-              {datos.piezas.length === 0 && <p className="text-xs text-muted-foreground">Sin piezas.</p>}
-              <div className="space-y-2">
-                {datos.piezas.map((p, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-2 rounded-md border p-2 sm:grid-cols-6">
-                    <Input
-                      className="col-span-2"
-                      placeholder="Descripción"
-                      value={p.descripcion}
-                      onChange={(e) => actualizarPieza(i, "descripcion", e.target.value)}
-                    />
-                    <Select value={p.tipo} onValueChange={(v) => actualizarPieza(i, "tipo", v as TipoLineaPieza)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="stock">En stock</SelectItem>
-                        <SelectItem value="pedido">Por pedido</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input type="number" placeholder="Costo" step="0.01" value={p.costo} onChange={(e) => actualizarPieza(i, "costo", parseFloat(e.target.value) || 0)} />
-                    <Input type="number" placeholder="Precio" step="0.01" value={p.precio} onChange={(e) => actualizarPieza(i, "precio", parseFloat(e.target.value) || 0)} />
-                    <Button size="icon" variant="ghost" className="text-destructive" onClick={() => quitarPieza(i)}>
-                      <Trash className="size-4" />
+            {tieneStock && (
+              <div className="overflow-hidden rounded-lg border border-sky-500/40">
+                <div className="flex items-center justify-between bg-sky-500/10 px-3 py-2">
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <Box className="size-4 text-sky-600" /> Piezas en Stock
+                  </span>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setCatalogoAbierto(true)}>
+                      <SearchNormal1 className="size-3.5" /> Buscar en catálogo
                     </Button>
-                    {p.tipo === "pedido" && (
-                      <Input
-                        className="col-span-2 sm:col-span-6"
-                        placeholder="Enlace de compra *"
-                        value={p.enlace}
-                        onChange={(e) => actualizarPieza(i, "enlace", e.target.value)}
-                      />
-                    )}
+                    <Button size="sm" className="h-7 gap-1 bg-emerald-600 text-white hover:bg-emerald-700" onClick={agregarPiezaStock}>
+                      <Add className="size-3.5" /> Manual
+                    </Button>
                   </div>
-                ))}
+                </div>
+                <div className="space-y-2 p-3">
+                  {piezasStock.map((p, i) => (
+                    <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-6">
+                      <Input placeholder="REF" value={p.referenciaStock} onChange={(e) => actualizarPieza("stock", i, "referenciaStock", e.target.value.toUpperCase())} />
+                      <Input className="col-span-2" placeholder="Nombre de la pieza" value={p.descripcion} onChange={(e) => actualizarPieza("stock", i, "descripcion", e.target.value)} />
+                      <Input type="number" step="0.01" placeholder="Coste" value={p.costo} onChange={(e) => actualizarPieza("stock", i, "costo", parseFloat(e.target.value) || 0)} />
+                      <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("stock", i, "precio", parseFloat(e.target.value) || 0)} />
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => quitarPieza("stock", i)}>
+                        <Trash className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {tienePedido && (
+              <div className="overflow-hidden rounded-lg border border-amber-500/40">
+                <div className="flex items-center justify-between bg-amber-500/10 px-3 py-2">
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <ShoppingCart className="size-4 text-amber-600" /> Piezas a Pedir
+                  </span>
+                  <Button size="sm" className="h-7 gap-1 bg-emerald-600 text-white hover:bg-emerald-700" onClick={agregarPiezaPedido}>
+                    <Add className="size-3.5" /> Agregar Pieza
+                  </Button>
+                </div>
+                <div className="space-y-2 p-3">
+                  {piezasPedido.map((p, i) => (
+                    <div key={i} className="rounded-md border p-2">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-muted-foreground">Pieza #{i + 1}</span>
+                        <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => quitarPieza("pedido", i)}>
+                          <Trash className="size-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        <Input className="sm:col-span-1" placeholder="Descripción" value={p.descripcion} onChange={(e) => actualizarPieza("pedido", i, "descripcion", e.target.value)} />
+                        <Select value={p.proveedorId} onValueChange={(v) => actualizarPieza("pedido", i, "proveedorId", v || "")}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Proveedor..." /></SelectTrigger>
+                          <SelectContent>
+                            {proveedores.map((pv) => <SelectItem key={pv.proveedorId} value={pv.proveedorId}>{pv.nombre}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Input type="number" step="0.01" placeholder="Costo" value={p.costo} onChange={(e) => actualizarPieza("pedido", i, "costo", parseFloat(e.target.value) || 0)} />
+                        <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("pedido", i, "precio", parseFloat(e.target.value) || 0)} />
+                        <Input className="col-span-2 sm:col-span-1" placeholder="Enlace *" value={p.enlace} onChange={(e) => actualizarPieza("pedido", i, "enlace", e.target.value)} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="notasPpto">Notas</Label>
               <Textarea id="notasPpto" rows={2} value={datos.notas} onChange={(e) => actualizar("notas", e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 rounded-md border bg-muted/30 p-2.5 text-sm">
-              <span>Costo piezas: {costoPiezas.toFixed(2)} €</span>
-              <span>Precio piezas: {precioPiezas.toFixed(2)} €</span>
-              <span className="font-semibold">Total: {total.toFixed(2)} €</span>
             </div>
           </div>
         </ScrollArea>
@@ -217,10 +422,12 @@ export function PresupuestoFormDialog({
             Cancelar
           </Button>
           <Button onClick={guardar} disabled={enviando}>
-            {enviando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Crear presupuesto"}
+            {enviando ? "Guardando..." : "Guardar Borrador"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <BuscarPiezaStockDialog open={catalogoAbierto} onOpenChange={setCatalogoAbierto} onSeleccionar={agregarPiezaDesdeCatalogo} />
     </Dialog>
   );
 }
