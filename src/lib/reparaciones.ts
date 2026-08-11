@@ -17,6 +17,22 @@ export interface ReparacionEquipo {
   sintoma: string;
 }
 
+export interface DatosCintasTipos {
+  vhs: number;
+  vhsc: number;
+  beta: number;
+  minidv: number;
+  "8mm": number;
+  cassette: number;
+  bobina: number;
+}
+
+export interface DatosCintas {
+  tipos: DatosCintasTipos;
+  total: number;
+  precioUnitario: number;
+}
+
 export interface PresupuestoResumen {
   presupuestoId: string;
   version: number;
@@ -36,7 +52,9 @@ export interface Reparacion {
   resguardo: string;
   fechaRecepcion: string | null;
   cliente: ReparacionCliente;
+  dniCif: string;
   equipo: ReparacionEquipo;
+  datosCintas: DatosCintas | null;
   estado: string;
   presupuestoAceptadoId: string;
   presupuestosAceptadosIds: string[];
@@ -68,9 +86,11 @@ interface FilaReparacionSql {
   cliente_nombre: string | null;
   cliente_telefono: string | null;
   cliente_email: string | null;
+  dni_cif: string | null;
   direccion_envio: string | null;
   equipo_modelo: string | null;
   sintoma: string | null;
+  datos_cintas: DatosCintas | null;
   estado: string | null;
   presupuesto_aceptado_id: string | null;
   tecnico_asignado: string | null;
@@ -125,10 +145,12 @@ export function mapearFilaReparacion(
       email: row.cliente_email || "",
       direccion: row.direccion_envio || "",
     },
+    dniCif: row.dni_cif || "",
     equipo: {
       modelo: row.equipo_modelo || "",
       sintoma: row.sintoma || "",
     },
+    datosCintas: row.datos_cintas && row.datos_cintas.tipos ? row.datos_cintas : null,
     estado: row.estado || "",
     presupuestoAceptadoId: row.presupuesto_aceptado_id || "",
     presupuestosAceptadosIds: String(row.presupuesto_aceptado_id || "")

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle } from "@/lib/icons";
+import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle } from "@/lib/icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,8 +22,8 @@ import {
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { calcularDiasEntrega, formatearFecha } from "@/lib/dias-entrega";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "./detalle-dialog-lazy";
-import { NuevaReparacionDrawer } from "./nueva-drawer";
-import { FormularioPendienteDialog } from "./formulario-pendiente-dialog";
+import { ReparacionSheet } from "./reparacion-sheet";
+import { RechazarFormularioDialog } from "./formulario-pendiente-dialog";
 import { DashboardMetricas } from "./dashboard-metricas";
 
 type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | null };
@@ -107,6 +107,7 @@ export default function ReparacionesPage() {
   const [orden, setOrden] = useState<Orden>({ campo: null, direccion: null });
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [formularioPendiente, setFormularioPendiente] = useState<{ rep: Reparacion; modo: "confirmar" | "rechazar" } | null>(null);
+  const [nuevaAbierta, setNuevaAbierta] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -181,7 +182,9 @@ export default function ReparacionesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <NuevaReparacionDrawer onCreada={cargar} />
+          <Button className="h-8 gap-1.5" onClick={() => setNuevaAbierta(true)}>
+            <AddCircle className="size-4" /> Nueva Reparación
+          </Button>
           <MultiselectFiltro label="Estado" opciones={ESTADOS_REPARACION} seleccionados={filtroEstado} onCambiar={setFiltroEstado} />
           <MultiselectFiltro label="Técnico" opciones={tecnicosDisponibles} seleccionados={filtroTecnico} onCambiar={setFiltroTecnico} />
           <MultiselectFiltro label="Equipo" opciones={["SI", "NO"]} seleccionados={filtroEquipo} onCambiar={setFiltroEquipo} />
@@ -343,9 +346,23 @@ export default function ReparacionesPage() {
         onOpenChange={(open) => !open && setResguardoDetalle(null)}
       />
 
-      <FormularioPendienteDialog
-        reparacion={formularioPendiente?.rep ?? null}
-        modo={formularioPendiente?.modo ?? "confirmar"}
+      <ReparacionSheet
+        modo="nueva"
+        open={nuevaAbierta}
+        onOpenChange={setNuevaAbierta}
+        onGuardado={cargar}
+      />
+
+      <ReparacionSheet
+        modo="confirmar"
+        reparacionPendiente={formularioPendiente?.modo === "confirmar" ? formularioPendiente.rep : null}
+        open={formularioPendiente?.modo === "confirmar"}
+        onOpenChange={(open) => !open && setFormularioPendiente(null)}
+        onGuardado={cargar}
+      />
+
+      <RechazarFormularioDialog
+        reparacion={formularioPendiente?.modo === "rechazar" ? formularioPendiente.rep : null}
         onOpenChange={(open) => !open && setFormularioPendiente(null)}
         onResuelto={cargar}
       />
