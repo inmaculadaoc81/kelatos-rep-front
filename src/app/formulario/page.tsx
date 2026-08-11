@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   DatosFormularioCliente,
   datosVacios,
@@ -16,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Personalcard,
@@ -38,11 +40,30 @@ const PASOS = [
   { titulo: "Foto y firma", icono: Camera },
 ];
 
+/**
+ * Chip blanco fijo alrededor del logo (igual que sidebar.tsx): el PNG
+ * lleva el texto en azul oscuro sobre transparente, ilegible sobre el
+ * degradado de marca en móvil/tablet; en escritorio el chip se funde con
+ * el fondo claro, así que el mismo componente sirve en los dos casos.
+ */
+function EncabezadoLogo() {
+  return (
+    <header className="mb-4 flex justify-center lg:mb-10 lg:justify-start">
+      <span className="flex h-10 items-center rounded-md bg-white px-3 shadow-sm">
+        <Image src="/logos/kelatos.png" alt="Kelatos" width={290} height={82} priority className="h-6 w-auto" />
+      </span>
+    </header>
+  );
+}
+
 /** Fondo de marca en móvil/tablet (la tarjeta "flota" encima); en escritorio, fondo plano y sin tarjeta — la propia página hace de lienzo, como el resto de la app. */
 function FondoPagina({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary/60 p-4 sm:p-6 lg:bg-none lg:bg-background lg:p-10">
-      <div className="mx-auto w-full max-w-5xl">{children}</div>
+      <div className="mx-auto w-full max-w-5xl">
+        <EncabezadoLogo />
+        {children}
+      </div>
     </div>
   );
 }
@@ -65,24 +86,22 @@ function PuntoEscalon({ completado, actual }: { completado: boolean; actual: boo
   );
 }
 
-/** Stepper horizontal — visible por debajo de lg (tablet/móvil), tarjeta flotando sobre el fondo de marca. */
+/** Progreso horizontal — visible por debajo de lg (tablet/móvil): un segmento (Progress de shadcn) por paso, en vez de puntos con líneas conectoras. */
 function EscalonHorizontal({ paso }: { paso: number }) {
   return (
     <div className="mb-5 lg:hidden">
-      <div className="flex items-center">
+      <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
+        <span className="text-foreground">
+          Paso {paso} de {PASOS.length}
+        </span>
+        <span>{PASOS[paso - 1].titulo}</span>
+      </div>
+      <div className="flex gap-1.5">
         {PASOS.map((p, i) => {
           const num = i + 1;
-          return (
-            <div key={p.titulo} className="flex flex-1 items-center last:flex-none">
-              <PuntoEscalon completado={num < paso} actual={num === paso} />
-              {i < PASOS.length - 1 && (
-                <div className={cn("mx-1 h-0.5 flex-1 rounded-full transition-colors", num < paso ? "bg-primary" : "bg-border")} />
-              )}
-            </div>
-          );
+          return <Progress key={p.titulo} value={num <= paso ? 100 : 0} />;
         })}
       </div>
-      <p className="mt-2 text-center text-xs font-semibold text-primary">{PASOS[paso - 1].titulo}</p>
     </div>
   );
 }
@@ -287,10 +306,7 @@ export default function FormularioClientePage() {
         <div className="mx-auto w-full max-w-xl rounded-2xl bg-card p-6 shadow-lg lg:mx-0 lg:max-w-none lg:flex-1 lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none">
           <EscalonHorizontal paso={paso} />
 
-          <h1 className="mb-1 text-xl font-semibold lg:text-2xl">{pasoActual.titulo}</h1>
-          <p className="mb-5 text-sm text-muted-foreground lg:hidden">
-            Paso {paso} de {PASOS.length}
-          </p>
+          <h1 className="mb-5 hidden text-2xl font-semibold lg:block">{pasoActual.titulo}</h1>
 
           {paso === 1 && (
           <>
