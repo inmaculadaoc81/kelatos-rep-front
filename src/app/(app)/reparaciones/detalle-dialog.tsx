@@ -13,7 +13,6 @@ import {
   Printer,
   CloseCircle,
   Receipt,
-  Clock,
   ShieldTick,
   TickCircle,
   Warning2,
@@ -42,6 +41,7 @@ import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 import { QrRecogidaDialog } from "./qr-recogida-dialog";
 import { ProgresoTimeline } from "./progreso-timeline";
 import { AccionRequerida } from "./accion-requerida";
+import { derivarEventoHistorial } from "./historial-evento";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -534,17 +534,24 @@ export function DetalleReparacionDialog({
                   {detalle.historialEventos.length === 0 && (
                     <p className="text-sm text-muted-foreground">Sin eventos registrados.</p>
                   )}
-                  <ol className="space-y-2 border-l pl-3">
-                    {detalle.historialEventos.map((ev) => (
-                      <li key={ev.eventoId} className="relative">
-                        <span className="absolute -left-4.75 top-1 size-2 rounded-full bg-primary" />
-                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="size-3" />
-                          {formatearFecha(ev.fechaHora)} · {ev.tipo}
-                        </p>
-                        <p className="text-sm">{ev.descripcion}</p>
-                      </li>
-                    ))}
+                  <ol>
+                    {detalle.historialEventos.map((ev, i) => {
+                      const meta = derivarEventoHistorial(ev.tipo);
+                      const Icono = meta.icon;
+                      const esUltimo = i === detalle.historialEventos.length - 1;
+                      return (
+                        <li key={ev.eventoId} className="relative flex gap-3">
+                          {!esUltimo && <span className="absolute top-8 bottom-0 left-3.75 w-px bg-border" />}
+                          <span className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full ${meta.clase}`}>
+                            <Icono className="size-4" />
+                          </span>
+                          <div className={`min-w-0 flex-1 pt-1 ${esUltimo ? "pb-0" : "pb-5"}`}>
+                            <p className="text-sm text-foreground">{ev.descripcion}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{formatearFecha(ev.fechaHora)}</p>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ol>
                 </TabsContent>
                 </Tabs>
