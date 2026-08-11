@@ -10,12 +10,12 @@ import {
   SiNoAVeces,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Personalcard,
@@ -38,37 +38,83 @@ const PASOS = [
   { titulo: "Foto y firma", icono: Camera },
 ];
 
-function Stepper({ paso }: { paso: number }) {
+/** Fondo de marca en móvil/tablet (la tarjeta "flota" encima); en escritorio, fondo plano y sin tarjeta — la propia página hace de lienzo, como el resto de la app. */
+function FondoPagina({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-5">
-      <div className="mb-3 flex items-center">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-primary/60 p-4 sm:p-6 lg:bg-none lg:bg-background lg:p-10">
+      <div className="mx-auto w-full max-w-5xl">{children}</div>
+    </div>
+  );
+}
+
+function PuntoEscalon({ completado, actual }: { completado: boolean; actual: boolean }) {
+  return (
+    <span
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+        completado
+          ? "border-primary bg-primary text-primary-foreground"
+          : actual
+            ? "border-primary bg-primary text-primary-foreground ring-4 ring-primary/20"
+            : "border-border bg-background"
+      )}
+    >
+      {completado && <TickCircle className="size-3.5" />}
+      {actual && !completado && <span className="size-2 rounded-full bg-primary-foreground" />}
+    </span>
+  );
+}
+
+/** Stepper horizontal — visible por debajo de lg (tablet/móvil), tarjeta flotando sobre el fondo de marca. */
+function EscalonHorizontal({ paso }: { paso: number }) {
+  return (
+    <div className="mb-5 lg:hidden">
+      <div className="flex items-center">
         {PASOS.map((p, i) => {
           const num = i + 1;
-          const completado = num < paso;
-          const actual = num === paso;
           return (
             <div key={p.titulo} className="flex flex-1 items-center last:flex-none">
-              <div
-                className={
-                  "flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors " +
-                  (completado
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : actual
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground")
-                }
-              >
-                {completado ? <TickCircle className="size-4" /> : num}
-              </div>
+              <PuntoEscalon completado={num < paso} actual={num === paso} />
               {i < PASOS.length - 1 && (
-                <div className={"mx-1 h-0.5 flex-1 rounded-full transition-colors " + (completado ? "bg-primary" : "bg-border")} />
+                <div className={cn("mx-1 h-0.5 flex-1 rounded-full transition-colors", num < paso ? "bg-primary" : "bg-border")} />
               )}
             </div>
           );
         })}
       </div>
-      <Progress value={(paso / PASOS.length) * 100} />
+      <p className="mt-2 text-center text-xs font-semibold text-primary">{PASOS[paso - 1].titulo}</p>
     </div>
+  );
+}
+
+/** Stepper vertical — barra lateral fija en escritorio (lg+), como el patrón de referencia de onboarding. */
+function EscalonVertical({ paso }: { paso: number }) {
+  return (
+    <nav className="hidden lg:block lg:w-56 lg:shrink-0">
+      <ol>
+        {PASOS.map((p, i) => {
+          const num = i + 1;
+          const completado = num < paso;
+          const actual = num === paso;
+          return (
+            <li key={p.titulo} className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <PuntoEscalon completado={completado} actual={actual} />
+                {i < PASOS.length - 1 && <div className={cn("my-1 w-0.5 flex-1 rounded-full", completado ? "bg-primary" : "bg-border")} />}
+              </div>
+              <span
+                className={cn(
+                  "pb-8 text-sm",
+                  actual ? "font-semibold text-foreground" : completado ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {p.titulo}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
@@ -96,7 +142,12 @@ function Campo({
 
 function OpcionBoton({ activo, onClick, children }: { activo: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <Button type="button" variant={activo ? "default" : "outline"} onClick={onClick} className="h-11 flex-1 text-sm">
+    <Button
+      type="button"
+      variant="outline"
+      onClick={onClick}
+      className={cn("h-12 flex-1 text-sm", activo && "border-primary bg-primary/10 font-semibold text-primary hover:bg-primary/15")}
+    >
       {children}
     </Button>
   );
@@ -205,8 +256,8 @@ export default function FormularioClientePage() {
 
   if (resultado) {
     return (
-      <div className="flex min-h-screen justify-center bg-muted/30 p-4 sm:p-6">
-        <div className="h-fit w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm">
+      <FondoPagina>
+        <div className="mx-auto h-fit w-full max-w-xl rounded-2xl bg-card p-8 shadow-lg lg:mt-16 lg:shadow-sm lg:ring-1 lg:ring-border">
           <div className="flex flex-col items-center py-8 text-center">
             <span className="mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <TickCircle className="size-9" />
@@ -220,31 +271,28 @@ export default function FormularioClientePage() {
             </p>
           </div>
         </div>
-      </div>
+      </FondoPagina>
     );
   }
 
   const pasoActual = PASOS[paso - 1];
-  const IconoPaso = pasoActual.icono;
 
   return (
-    <div className="flex min-h-screen justify-center bg-muted/30 p-4 sm:p-6">
-      <div className="h-fit w-full max-w-xl rounded-xl border bg-card p-6 shadow-sm">
-        <div className="mb-4 flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <IconoPaso className="size-5" />
-          </span>
-          <div>
-            <h1 className="text-base font-semibold">Solicitud de Reparación</h1>
-            <p className="text-xs text-muted-foreground">
-              Paso {paso} de {PASOS.length}: {pasoActual.titulo}
-            </p>
-          </div>
+    <FondoPagina>
+      <div className="lg:flex lg:items-start lg:gap-12">
+        <div className="lg:pt-1">
+          <EscalonVertical paso={paso} />
         </div>
 
-        <Stepper paso={paso} />
+        <div className="mx-auto w-full max-w-xl rounded-2xl bg-card p-6 shadow-lg lg:mx-0 lg:max-w-none lg:flex-1 lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none">
+          <EscalonHorizontal paso={paso} />
 
-        {paso === 1 && (
+          <h1 className="mb-1 text-xl font-semibold lg:text-2xl">{pasoActual.titulo}</h1>
+          <p className="mb-5 text-sm text-muted-foreground lg:hidden">
+            Paso {paso} de {PASOS.length}
+          </p>
+
+          {paso === 1 && (
           <>
             <div className="mb-4 flex items-start gap-2 rounded-md bg-sky-500/5 p-3 text-xs text-sky-700 dark:text-sky-400">
               <DocumentText className="mt-0.5 size-3.5 shrink-0" />
@@ -527,22 +575,23 @@ export default function FormularioClientePage() {
           </div>
         )}
 
-        <div className="mt-6 flex justify-between">
-          <Button type="button" variant="outline" onClick={anterior} className={"h-11 px-5 " + (paso === 1 ? "invisible" : "")}>
-            ← Anterior
-          </Button>
-          {paso < PASOS.length ? (
-            <Button type="button" onClick={siguiente} className="h-11 px-5">
-              Siguiente →
+          <div className="mt-6 flex justify-between border-t pt-5 lg:border-t-0 lg:pt-8">
+            <Button type="button" variant="outline" onClick={anterior} className={cn("h-11 px-5", paso === 1 && "invisible")}>
+              ← Anterior
             </Button>
-          ) : (
-            <Button type="button" onClick={enviar} disabled={enviando} className="h-11 px-5">
-              {enviando ? "Enviando…" : "Enviar solicitud"}
-            </Button>
-          )}
+            {paso < PASOS.length ? (
+              <Button type="button" onClick={siguiente} className="h-11 px-5">
+                Siguiente →
+              </Button>
+            ) : (
+              <Button type="button" onClick={enviar} disabled={enviando} className="h-11 px-5">
+                {enviando ? "Enviando…" : "Enviar solicitud"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </FondoPagina>
   );
 }
 
@@ -744,8 +793,8 @@ function PantallaCodigoAcceso({ onAcceso }: { onAcceso: () => void }) {
   }
 
   return (
-    <div className="flex min-h-screen justify-center bg-muted/30 p-4 sm:p-6">
-      <form onSubmit={validar} className="h-fit w-full max-w-sm rounded-xl border bg-card p-8 text-center shadow-sm">
+    <FondoPagina>
+      <form onSubmit={validar} className="mx-auto h-fit w-full max-w-sm rounded-2xl bg-card p-8 text-center shadow-lg lg:mt-16 lg:shadow-sm lg:ring-1 lg:ring-border">
         <span className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
           <Lock className="size-7" />
         </span>
@@ -769,6 +818,6 @@ function PantallaCodigoAcceso({ onAcceso }: { onAcceso: () => void }) {
           {validando ? "Comprobando…" : "Continuar"}
         </Button>
       </form>
-    </div>
+    </FondoPagina>
   );
 }
