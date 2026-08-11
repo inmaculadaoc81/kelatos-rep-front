@@ -17,6 +17,7 @@ import {
   Wallet,
   Hierarchy,
   Monitor,
+  ScanBarcode,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -53,6 +54,7 @@ export const GRUPOS: GrupoNavegacion[] = [
     icon: Box1,
     items: [
       { label: "Clientes", href: "/clientes", icon: Profile2User },
+      { label: "Formulario Web", href: "/formulario-web", icon: ScanBarcode },
       { label: "Equipos y Alquileres", href: "/equipos", icon: Box1 },
       { label: "Ventas", href: "/ventas", icon: ShoppingCart },
     ],

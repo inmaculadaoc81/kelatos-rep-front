@@ -67,12 +67,23 @@ const inputStyle: React.CSSProperties = {
 };
 
 export default function FormularioClientePage() {
+  // El código de acceso es solo una puerta de entrada (evita que alguien
+  // ajeno a la tienda rellene el formulario sin más que la URL) — el
+  // envío en sí ya es idempotente por requestId/UUID, así que el
+  // visitaId no viaja en el payload, es puramente informativo para el
+  // personal (ver formulario-web/page.tsx).
+  const [accesoConcedido, setAccesoConcedido] = useState(false);
+
   const [paso, setPaso] = useState(1);
   const [datos, setDatos] = useState<DatosFormularioCliente>(datosVacios());
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ resguardo: string } | null>(null);
   const [errorEnvio, setErrorEnvio] = useState("");
+
+  if (!accesoConcedido) {
+    return <PantallaCodigoAcceso onAcceso={() => setAccesoConcedido(true)} />;
+  }
 
   function actualizar<K extends keyof DatosFormularioCliente>(campo: K, valor: DatosFormularioCliente[K]) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
@@ -413,6 +424,61 @@ export default function FormularioClientePage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function PantallaCodigoAcceso({ onAcceso }: { onAcceso: () => void }) {
+  const [codigo, setCodigo] = useState("");
+  const [validando, setValidando] = useState(false);
+  const [error, setError] = useState("");
+
+  async function validar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!codigo.trim()) return;
+    setValidando(true);
+    setError("");
+    try {
+      const res = await fetch("/api/formulario-cliente/validar-codigo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo }),
+      });
+      const data = await res.json();
+      if (!data.ok || !data.valido) throw new Error(data.error || "Código incorrecto.");
+      onAcceso();
+    } catch (e2) {
+      setError(e2 instanceof Error ? e2.message : "Error desconocido");
+    } finally {
+      setValidando(false);
+    }
+  }
+
+  return (
+    <div style={estilos.page}>
+      <form onSubmit={validar} style={{ ...estilos.card, maxWidth: 380, textAlign: "center" }}>
+        <div style={{ fontSize: "2.2rem", marginBottom: 8 }}>🔒</div>
+        <h1 style={{ fontSize: "1.15rem", color: "#1a1a2e", marginBottom: 4 }}>Código de acceso</h1>
+        <p style={{ fontSize: ".85rem", color: "#6b7280", marginBottom: 20 }}>
+          Pide el código de 6 dígitos al personal de la tienda.
+        </p>
+        <input
+          value={codigo}
+          onChange={(e) => setCodigo(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+          inputMode="numeric"
+          autoFocus
+          style={{ ...inputStyle, textAlign: "center", fontSize: "1.6rem", fontWeight: 700, letterSpacing: "0.3em" }}
+          placeholder="000000"
+        />
+        {error && <div style={{ color: "#dc2626", fontSize: ".82rem", marginTop: 10 }}>{error}</div>}
+        <button
+          type="submit"
+          disabled={validando || codigo.length < 6}
+          style={{ ...estilos.btnPrimario, width: "100%", marginTop: 18, opacity: validando || codigo.length < 6 ? 0.6 : 1 }}
+        >
+          {validando ? "Comprobando…" : "Continuar"}
+        </button>
+      </form>
     </div>
   );
 }
