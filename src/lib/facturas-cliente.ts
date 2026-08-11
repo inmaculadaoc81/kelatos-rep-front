@@ -19,7 +19,8 @@ export type TipoFactura =
   | "corregida"
   | "alquiler"
   | "recogida"
-  | "manual";
+  | "manual"
+  | "venta";
 
 export const ETIQUETA_TIPO_FACTURA: Record<TipoFactura, string> = {
   reparacion: "Reparación",
@@ -31,6 +32,7 @@ export const ETIQUETA_TIPO_FACTURA: Record<TipoFactura, string> = {
   alquiler: "Alquiler",
   recogida: "Recogida",
   manual: "Manual",
+  venta: "Venta",
 };
 
 export interface FacturaCliente {
@@ -82,10 +84,12 @@ function urlValida(url: string): string {
 // El original acepta cualquier valor que empiece por un dígito o "FAC-", lo
 // que en producción ha dejado pasar basura real (el string "ENVIADO"/"BAJA"
 // usado como marcador de estado intermedio en vez de un número, incluso una
-// marca de tiempo ISO completa) — un número de factura real es siempre
-// "serie-000000" (1-2 dígitos de serie + 6 dígitos), así que se exige ese
-// patrón en todas las pasadas, más estricto que el original a propósito.
-const NUMERO_FACTURA_VALIDO = /^\d{1,2}-\d{6}$/;
+// marca de tiempo ISO completa). Un número de factura real siempre tiene la
+// forma "serie-secuencial" (1-2 dígitos de serie + guion + el correlativo),
+// pero el correlativo NO siempre son 6 dígitos — hay facturas reales de 5 y
+// hasta 7 (p. ej. "1-00686", "1-0004701") — así que solo se exige un mínimo
+// de 4 dígitos, no exactamente 6.
+const NUMERO_FACTURA_VALIDO = /^\d{1,2}-\d{4,}$/;
 
 function numeroValido(numero: string): boolean {
   return NUMERO_FACTURA_VALIDO.test(numero);
@@ -112,11 +116,11 @@ export function serieFactura(numeroFactura: string): string {
 }
 
 /** true si el total ya incluye IVA (alquiler/recogida ya lo aplican al
-    guardar, junto con fianza/envío en su caso) — el resto de tipos guarda
-    la base sin IVA y hay que aplicar el 21% para mostrar el importe real,
-    tal como hace _fcRenderPagina() en el original. */
+    guardar, junto con fianza/envío en su caso; venta también) — el resto
+    de tipos guarda la base sin IVA y hay que aplicar el 21% para mostrar
+    el importe real, tal como hace _fcRenderPagina() en el original. */
 export function esFacturaConIvaIncluido(f: Pick<FacturaCliente, "tipo" | "esAlquiler">): boolean {
-  return f.tipo === "alquiler" || f.tipo === "recogida" || !!f.esAlquiler;
+  return f.tipo === "alquiler" || f.tipo === "recogida" || f.tipo === "venta" || !!f.esAlquiler;
 }
 
 export function montoConIva(f: FacturaCliente): number {
@@ -637,4 +641,42 @@ export function expandirManuales(filas: FilaFacturaManualSql[]): FacturaCliente[
   }
 
   return facturas;
+}
+
+// ── Ventas (solo usadas por Reporte de Facturas, no por la lista de
+// Facturas de Clientes — el original tampoco las incluye ahí) ──────────
+
+interface FilaVentaSql {
+  venta_id: string;
+  numero_factura: string | null;
+  fecha: string | null;
+  fecha_entrega: string | null;
+  cliente_nombre: string | null;
+  cliente_telefono: string | null;
+  cliente_email: string | null;
+  monto_pagado: string | number | null;
+}
+
+export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
+  const numV = texto(row.numero_factura);
+  if (!numV) return [];
+  return [
+    {
+      resguardo: texto(row.venta_id),
+      numero: numV,
+      url: "",
+      cliente: texto(row.cliente_nombre),
+      telefono: texto(row.cliente_telefono),
+      email: texto(row.cliente_email),
+      dniCif: "",
+      equipo: "",
+      estadoEntrega: "",
+      fecha: row.fecha_entrega || row.fecha,
+      total: num(row.monto_pagado),
+      formaPago: "",
+      banco: "",
+      estadoFactura: "",
+      tipo: "venta",
+    },
+  ];
 }

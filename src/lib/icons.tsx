@@ -52,6 +52,7 @@ export const CloseCircle = withDefaults(Iconsax.CloseCircle);
 export const CloseSquare = withDefaults(Iconsax.CloseSquare);
 export const Copy = withDefaults(Iconsax.Copy);
 export const Danger = withDefaults(Iconsax.Danger);
+export const DocumentDownload = withDefaults(Iconsax.DocumentDownload);
 export const DocumentText = withDefaults(Iconsax.DocumentText);
 export const Edit = withDefaults(Iconsax.Edit);
 export const Edit2 = withDefaults(Iconsax.Edit2);
