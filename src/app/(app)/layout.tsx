@@ -11,8 +11,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        {/* El botón de colapso vive dentro del propio panel lateral. */}
-        <header className="flex h-14 items-center border-b bg-card px-4 shadow-sm">
+        {/* sticky: se queda fijo arriba al hacer scroll en vez de
+            desaparecer con el contenido. El botón de colapso vive dentro
+            del propio panel lateral. */}
+        <header className="sticky top-0 z-20 flex h-14 items-center bg-primary px-4 shadow-sm">
           <Migas />
         </header>
         {/* El gris del fondo ya lo pone `body` (ver globals.css); este

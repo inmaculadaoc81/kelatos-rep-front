@@ -33,13 +33,22 @@ export function Migas() {
   const actual = localizar(pathname);
 
   return (
+    // Migas solo vive en este header azul sólido — los colores de texto
+    // por defecto del componente (pensados para fondo claro) se
+    // sobreescriben aquí en vez de en breadcrumb.tsx, que sigue siendo
+    // el genérico de shadcn.
     <Breadcrumb>
-      <BreadcrumbList>
+      <BreadcrumbList className="text-primary-foreground/70">
         <BreadcrumbItem>
           {pathname === "/" ? (
-            <BreadcrumbPage>Kelatos</BreadcrumbPage>
+            <BreadcrumbPage className="text-primary-foreground">Kelatos</BreadcrumbPage>
           ) : (
-            <BreadcrumbLink render={<Link href="/" />}>Kelatos</BreadcrumbLink>
+            <BreadcrumbLink
+              className="text-primary-foreground/70 hover:text-primary-foreground"
+              render={<Link href="/" />}
+            >
+              Kelatos
+            </BreadcrumbLink>
           )}
         </BreadcrumbItem>
 
@@ -49,11 +58,11 @@ export function Migas() {
                 página, así que va como texto y no como enlace. */}
             <BreadcrumbSeparator />
             <BreadcrumbItem className="hidden sm:block">
-              <span className="text-muted-foreground">{actual.grupo}</span>
+              <span className="text-primary-foreground/60">{actual.grupo}</span>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden sm:block" />
             <BreadcrumbItem>
-              <BreadcrumbPage>{actual.label}</BreadcrumbPage>
+              <BreadcrumbPage className="text-primary-foreground">{actual.label}</BreadcrumbPage>
             </BreadcrumbItem>
           </>
         )}
