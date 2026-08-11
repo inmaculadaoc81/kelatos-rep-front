@@ -10,28 +10,65 @@ import {
   SiNoAVeces,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Personalcard,
+  Call,
+  Monitor,
+  DocumentText,
+  ShieldTick,
+  Camera,
+  Lock,
+  TickCircle,
+  CloseCircle,
+} from "@/lib/icons";
 
-const PASOS = ["Datos", "Contacto", "Equipo", "Síntoma", "Condiciones", "Foto y firma"];
+const PASOS = [
+  { titulo: "Datos", icono: Personalcard },
+  { titulo: "Contacto", icono: Call },
+  { titulo: "Equipo", icono: Monitor },
+  { titulo: "Síntoma", icono: DocumentText },
+  { titulo: "Condiciones", icono: ShieldTick },
+  { titulo: "Foto y firma", icono: Camera },
+];
 
-function Pill({ activo, color, onClick, children }: { activo: boolean; color: string; onClick: () => void; children: React.ReactNode }) {
+function Stepper({ paso }: { paso: number }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: "10px 12px",
-        borderRadius: 8,
-        border: activo ? `2px solid ${color}` : "1.5px solid #d1d5db",
-        background: activo ? color + "1a" : "#fff",
-        color: activo ? color : "#374151",
-        fontWeight: activo ? 700 : 500,
-        cursor: "pointer",
-        fontSize: ".9rem",
-      }}
-    >
-      {children}
-    </button>
+    <div className="mb-5">
+      <div className="mb-3 flex items-center">
+        {PASOS.map((p, i) => {
+          const num = i + 1;
+          const completado = num < paso;
+          const actual = num === paso;
+          return (
+            <div key={p.titulo} className="flex flex-1 items-center last:flex-none">
+              <div
+                className={
+                  "flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors " +
+                  (completado
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : actual
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground")
+                }
+              >
+                {completado ? <TickCircle className="size-4" /> : num}
+              </div>
+              {i < PASOS.length - 1 && (
+                <div className={"mx-1 h-0.5 flex-1 rounded-full transition-colors " + (completado ? "bg-primary" : "bg-border")} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <Progress value={(paso / PASOS.length) * 100} />
+    </div>
   );
 }
 
@@ -47,25 +84,23 @@ function Campo({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <label style={{ display: "block", fontSize: ".85rem", fontWeight: 700, color: "#374151", marginBottom: 6 }}>
-        {label} {required && <span style={{ color: "#dc2626" }}>*</span>}
-      </label>
+    <div className="mb-4">
+      <Label className="mb-1.5 text-sm font-semibold text-foreground">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
       {children}
-      {error && <div style={{ color: "#dc2626", fontSize: ".78rem", marginTop: 4 }}>{error}</div>}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1.5px solid #d1d5db",
-  borderRadius: 8,
-  padding: "10px 14px",
-  fontSize: "1rem",
-  outline: "none",
-  boxSizing: "border-box",
-};
+function OpcionBoton({ activo, onClick, children }: { activo: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button type="button" variant={activo ? "default" : "outline"} onClick={onClick} className="h-11 flex-1 text-sm">
+      {children}
+    </Button>
+  );
+}
 
 export default function FormularioClientePage() {
   // El código de acceso es solo una puerta de entrada (evita que alguien
@@ -170,16 +205,18 @@ export default function FormularioClientePage() {
 
   if (resultado) {
     return (
-      <div style={estilos.page}>
-        <div style={estilos.card}>
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <div style={{ fontSize: "3.5rem", marginBottom: 16 }}>✅</div>
-            <h1 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#15803d", marginBottom: 8 }}>Solicitud registrada</h1>
-            <p style={{ color: "#6b7280" }}>
+      <div className="flex min-h-screen justify-center bg-muted/30 p-4 sm:p-6">
+        <div className="h-fit w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm">
+          <div className="flex flex-col items-center py-8 text-center">
+            <span className="mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <TickCircle className="size-9" />
+            </span>
+            <h1 className="mb-2 text-lg font-semibold text-emerald-600 dark:text-emerald-400">Solicitud registrada</h1>
+            <p className="text-sm text-muted-foreground">
               Nuestro equipo se pondrá en contacto contigo pronto.
               <br />
               <br />
-              <strong style={{ color: "#1768ea" }}>Referencia: #{resultado.resguardo}</strong>
+              <strong className="text-primary">Referencia: #{resultado.resguardo}</strong>
             </p>
           </div>
         </div>
@@ -187,28 +224,37 @@ export default function FormularioClientePage() {
     );
   }
 
-  return (
-    <div style={estilos.page}>
-      <div style={estilos.card}>
-        <h1 style={{ fontSize: "1.25rem", color: "#1a1a2e", marginBottom: 4 }}>Solicitud de Reparación</h1>
-        <p style={{ fontSize: ".9rem", color: "#6b7280", marginBottom: 20 }}>Rellena el formulario y te atendemos enseguida</p>
+  const pasoActual = PASOS[paso - 1];
+  const IconoPaso = pasoActual.icono;
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, fontSize: ".72rem", color: "#6b7280" }}>
-          {PASOS.map((p, i) => (
-            <div key={p} style={{ textAlign: "center", flex: 1, fontWeight: i + 1 === paso ? 700 : 400, color: i + 1 === paso ? "#1768ea" : "#9ca3af" }}>
-              {i + 1}. {p}
-            </div>
-          ))}
+  return (
+    <div className="flex min-h-screen justify-center bg-muted/30 p-4 sm:p-6">
+      <div className="h-fit w-full max-w-xl rounded-xl border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <IconoPaso className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-base font-semibold">Solicitud de Reparación</h1>
+            <p className="text-xs text-muted-foreground">
+              Paso {paso} de {PASOS.length}: {pasoActual.titulo}
+            </p>
+          </div>
         </div>
+
+        <Stepper paso={paso} />
 
         {paso === 1 && (
           <>
-            <div style={estilos.notice}>📄 Estos datos son los que aparecerán en la factura</div>
+            <div className="mb-4 flex items-start gap-2 rounded-md bg-sky-500/5 p-3 text-xs text-sky-700 dark:text-sky-400">
+              <DocumentText className="mt-0.5 size-3.5 shrink-0" />
+              <span>Estos datos son los que aparecerán en la factura.</span>
+            </div>
             <Campo label="DNI / NIF / Pasaporte / CIF" required error={errores.dniCif}>
-              <input style={inputStyle} value={datos.dniCif} onChange={(e) => actualizar("dniCif", e.target.value)} />
+              <Input className="h-11 text-base" value={datos.dniCif} onChange={(e) => actualizar("dniCif", e.target.value)} />
             </Campo>
             <Campo label="Nombre, apellidos o empresa" required error={errores.nombre}>
-              <input style={inputStyle} value={datos.nombre} onChange={(e) => actualizar("nombre", e.target.value)} />
+              <Input className="h-11 text-base" value={datos.nombre} onChange={(e) => actualizar("nombre", e.target.value)} />
             </Campo>
           </>
         )}
@@ -216,61 +262,83 @@ export default function FormularioClientePage() {
         {paso === 2 && (
           <>
             <Campo label="Teléfono" required error={errores.telefono}>
-              <div style={{ display: "flex", gap: 8 }}>
-                <select style={{ ...inputStyle, width: 90 }} value={datos.telPrefijo} onChange={(e) => actualizar("telPrefijo", e.target.value)}>
-                  <option value="+34">🇪🇸 +34</option>
-                  <option value="+33">🇫🇷 +33</option>
-                  <option value="+351">🇵🇹 +351</option>
-                  <option value="+44">🇬🇧 +44</option>
-                  <option value="+1">🇺🇸 +1</option>
-                </select>
-                <input style={inputStyle} value={datos.telefono} onChange={(e) => actualizar("telefono", e.target.value.replace(/[^\d]/g, ""))} />
+              <div className="flex gap-2">
+                <Select value={datos.telPrefijo} onValueChange={(v) => actualizar("telPrefijo", v || "+34")}>
+                  <SelectTrigger className="h-11 w-28 text-base">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                    <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                    <SelectItem value="+351">🇵🇹 +351</SelectItem>
+                    <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                    <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="h-11 flex-1 text-base"
+                  value={datos.telefono}
+                  onChange={(e) => actualizar("telefono", e.target.value.replace(/[^\d]/g, ""))}
+                />
               </div>
             </Campo>
             <Campo label="Email" required={!datos.noTieneEmail} error={errores.email}>
-              <input style={{ ...inputStyle, marginBottom: 6 }} type="email" value={datos.email} disabled={datos.noTieneEmail} onChange={(e) => actualizar("email", e.target.value)} />
-              <label style={{ fontSize: ".82rem", color: "#374151", display: "flex", alignItems: "center", gap: 6 }}>
-                <input type="checkbox" checked={datos.noTieneEmail} onChange={(e) => actualizar("noTieneEmail", e.target.checked)} /> No tiene email
+              <Input
+                className="mb-2 h-11 text-base"
+                type="email"
+                value={datos.email}
+                disabled={datos.noTieneEmail}
+                onChange={(e) => actualizar("email", e.target.value)}
+              />
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <Checkbox checked={datos.noTieneEmail} onCheckedChange={(v) => actualizar("noTieneEmail", v === true)} />
+                No tiene email
               </label>
             </Campo>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
+            <div className="flex gap-3">
+              <div className="flex-1">
                 <Campo label="Tipo de vía" required error={errores.viaTipo}>
-                  <select style={inputStyle} value={datos.viaTipo} onChange={(e) => actualizar("viaTipo", e.target.value)}>
-                    <option value="">— Tipo —</option>
-                    {["Calle", "Avenida", "Plaza", "Paseo", "Carretera", "Camino", "Urbanización", "Otra"].map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
-                  </select>
+                  <Select value={datos.viaTipo} onValueChange={(v) => actualizar("viaTipo", v || "")}>
+                    <SelectTrigger className="h-11 w-full text-base">
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Calle", "Avenida", "Plaza", "Paseo", "Carretera", "Camino", "Urbanización", "Otra"].map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </Campo>
               </div>
-              <div style={{ flex: 2 }}>
+              <div className="flex-2">
                 <Campo label="Nombre de la vía" required error={errores.viaNombre}>
-                  <input style={inputStyle} value={datos.viaNombre} onChange={(e) => actualizar("viaNombre", e.target.value)} />
+                  <Input className="h-11 text-base" value={datos.viaNombre} onChange={(e) => actualizar("viaNombre", e.target.value)} />
                 </Campo>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
+            <div className="flex gap-3">
+              <div className="flex-1">
                 <Campo label="Número / Piso (opcional)">
-                  <input style={inputStyle} value={datos.viaNumero} onChange={(e) => actualizar("viaNumero", e.target.value)} />
+                  <Input className="h-11 text-base" value={datos.viaNumero} onChange={(e) => actualizar("viaNumero", e.target.value)} />
                 </Campo>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="flex-1">
                 <Campo label="Código postal" required error={errores.cp}>
-                  <input style={inputStyle} value={datos.cp} onChange={(e) => actualizar("cp", e.target.value)} />
+                  <Input className="h-11 text-base" value={datos.cp} onChange={(e) => actualizar("cp", e.target.value)} />
                 </Campo>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
+            <div className="flex gap-3">
+              <div className="flex-1">
                 <Campo label="Localidad" required error={errores.localidad}>
-                  <input style={inputStyle} value={datos.localidad} onChange={(e) => actualizar("localidad", e.target.value)} />
+                  <Input className="h-11 text-base" value={datos.localidad} onChange={(e) => actualizar("localidad", e.target.value)} />
                 </Campo>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="flex-1">
                 <Campo label="Provincia" required error={errores.provincia}>
-                  <input style={inputStyle} value={datos.provincia} onChange={(e) => actualizar("provincia", e.target.value)} />
+                  <Input className="h-11 text-base" value={datos.provincia} onChange={(e) => actualizar("provincia", e.target.value)} />
                 </Campo>
               </div>
             </div>
@@ -280,51 +348,58 @@ export default function FormularioClientePage() {
         {paso === 3 && (
           <>
             <Campo label="Tipo de producto" required error={errores.tipoProducto}>
-              <select style={inputStyle} value={datos.tipoProducto} onChange={(e) => actualizar("tipoProducto", e.target.value)}>
-                <option value="">Selecciona el tipo</option>
-                {OPCIONES_TIPO_PRODUCTO.map((g) => (
-                  <optgroup key={g.grupo} label={g.grupo}>
-                    {g.opciones.map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+              <Select value={datos.tipoProducto} onValueChange={(v) => actualizar("tipoProducto", v || "")}>
+                <SelectTrigger className="h-11 w-full text-base">
+                  <SelectValue placeholder="Selecciona el tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPCIONES_TIPO_PRODUCTO.map((g) => (
+                    <SelectGroup key={g.grupo}>
+                      <SelectLabel>{g.grupo}</SelectLabel>
+                      {g.opciones.map((o) => (
+                        <SelectItem key={o} value={o}>
+                          {o}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
             </Campo>
             {esOtro && (
               <Campo label="Describe el tipo de producto" required error={errores.tipoOtro}>
-                <input style={inputStyle} value={datos.tipoOtro} onChange={(e) => actualizar("tipoOtro", e.target.value)} />
+                <Input className="h-11 text-base" value={datos.tipoOtro} onChange={(e) => actualizar("tipoOtro", e.target.value)} />
               </Campo>
             )}
             {!esCintas && datos.tipoProducto && (
               <>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
+                <div className="flex gap-3">
+                  <div className="flex-1">
                     <Campo label="Marca" required error={errores.marca}>
-                      <input style={inputStyle} value={datos.marca} onChange={(e) => actualizar("marca", e.target.value)} />
+                      <Input className="h-11 text-base" value={datos.marca} onChange={(e) => actualizar("marca", e.target.value)} />
                     </Campo>
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <Campo label="Modelo" required error={errores.modelo}>
-                      <input style={inputStyle} value={datos.modelo} onChange={(e) => actualizar("modelo", e.target.value)} />
+                      <Input className="h-11 text-base" value={datos.modelo} onChange={(e) => actualizar("modelo", e.target.value)} />
                     </Campo>
                   </div>
                 </div>
                 <Campo label="Número de serie (opcional — únicamente para portátiles)">
-                  <input style={inputStyle} value={datos.serie} onChange={(e) => actualizar("serie", e.target.value)} />
+                  <Input className="h-11 text-base" value={datos.serie} onChange={(e) => actualizar("serie", e.target.value)} />
                 </Campo>
               </>
             )}
             {esCintas && (
               <Campo label="Indica cuántas cintas tienes de cada tipo" error={errores.cintas}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                <div className="grid grid-cols-3 gap-2.5">
                   {(Object.keys(datos.cintas) as (keyof typeof datos.cintas)[]).map((k) => (
                     <div key={k}>
-                      <label style={{ fontSize: ".75rem", color: "#6b7280", display: "block", marginBottom: 2 }}>{k.toUpperCase()}</label>
-                      <input
+                      <Label className="mb-1 text-xs text-muted-foreground uppercase">{k}</Label>
+                      <Input
                         type="number"
                         min={0}
-                        style={inputStyle}
+                        className="h-11 text-base"
                         value={datos.cintas[k]}
                         onChange={(e) => actualizar("cintas", { ...datos.cintas, [k]: parseInt(e.target.value) || 0 })}
                       />
@@ -339,45 +414,61 @@ export default function FormularioClientePage() {
         {paso === 4 && (
           <>
             {esCintas ? (
-              <p style={{ color: "#6b7280", fontSize: ".9rem" }}>
-                La digitalización y conversión de cintas no requiere descripción de avería.
-              </p>
+              <p className="text-sm text-muted-foreground">La digitalización y conversión de cintas no requiere descripción de avería.</p>
             ) : (
               <>
                 <Campo label="Describe el síntoma de la avería" required error={errores.sintoma}>
-                  <textarea
-                    style={{ ...inputStyle, minHeight: 90, resize: "vertical" }}
+                  <Textarea
+                    className="min-h-24 text-base"
                     value={datos.sintoma}
                     onChange={(e) => actualizar("sintoma", e.target.value)}
                     placeholder="Explica qué le ocurre al equipo con el mayor detalle posible…"
                   />
                 </Campo>
                 <Campo label="Contraseña/PIN del equipo (opcional)">
-                  <input style={inputStyle} value={datos.obs} onChange={(e) => actualizar("obs", e.target.value)} />
+                  <Input className="h-11 text-base" value={datos.obs} onChange={(e) => actualizar("obs", e.target.value)} />
                 </Campo>
                 <Campo label="¿El equipo enciende?" required error={errores.enciende}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <Pill activo={datos.enciende === "Sí"} color="#15803d" onClick={() => actualizar("enciende", "Sí" as SiNoAVeces)}>Sí</Pill>
-                    <Pill activo={datos.enciende === "No"} color="#dc2626" onClick={() => actualizar("enciende", "No" as SiNoAVeces)}>No</Pill>
-                    <Pill activo={datos.enciende === "A veces"} color="#d97706" onClick={() => actualizar("enciende", "A veces" as SiNoAVeces)}>A veces</Pill>
+                  <div className="flex gap-2">
+                    <OpcionBoton activo={datos.enciende === "Sí"} onClick={() => actualizar("enciende", "Sí" as SiNoAVeces)}>
+                      Sí
+                    </OpcionBoton>
+                    <OpcionBoton activo={datos.enciende === "No"} onClick={() => actualizar("enciende", "No" as SiNoAVeces)}>
+                      No
+                    </OpcionBoton>
+                    <OpcionBoton activo={datos.enciende === "A veces"} onClick={() => actualizar("enciende", "A veces" as SiNoAVeces)}>
+                      A veces
+                    </OpcionBoton>
                   </div>
                 </Campo>
                 <Campo label="¿Ha sufrido golpe?" required error={errores.golpe}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <Pill activo={datos.golpe === "Sí"} color="#dc2626" onClick={() => actualizar("golpe", "Sí" as SiNo)}>Sí</Pill>
-                    <Pill activo={datos.golpe === "No"} color="#15803d" onClick={() => actualizar("golpe", "No" as SiNo)}>No</Pill>
+                  <div className="flex gap-2">
+                    <OpcionBoton activo={datos.golpe === "Sí"} onClick={() => actualizar("golpe", "Sí" as SiNo)}>
+                      Sí
+                    </OpcionBoton>
+                    <OpcionBoton activo={datos.golpe === "No"} onClick={() => actualizar("golpe", "No" as SiNo)}>
+                      No
+                    </OpcionBoton>
                   </div>
                 </Campo>
                 <Campo label="¿Ha sufrido humedad?" required error={errores.humedad}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <Pill activo={datos.humedad === "Sí"} color="#dc2626" onClick={() => actualizar("humedad", "Sí" as SiNo)}>Sí</Pill>
-                    <Pill activo={datos.humedad === "No"} color="#15803d" onClick={() => actualizar("humedad", "No" as SiNo)}>No</Pill>
+                  <div className="flex gap-2">
+                    <OpcionBoton activo={datos.humedad === "Sí"} onClick={() => actualizar("humedad", "Sí" as SiNo)}>
+                      Sí
+                    </OpcionBoton>
+                    <OpcionBoton activo={datos.humedad === "No"} onClick={() => actualizar("humedad", "No" as SiNo)}>
+                      No
+                    </OpcionBoton>
                   </div>
                 </Campo>
                 <Campo label="¿Ha tenido reparación anterior?" required error={errores.reparacionAnterior}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <Pill activo={datos.reparacionAnterior === "Sí"} color="#dc2626" onClick={() => actualizar("reparacionAnterior", "Sí" as SiNo)}>Sí</Pill>
-                    <Pill activo={datos.reparacionAnterior === "No"} color="#15803d" onClick={() => actualizar("reparacionAnterior", "No" as SiNo)}>No</Pill>
+                  <div className="flex gap-2">
+                    <OpcionBoton activo={datos.reparacionAnterior === "Sí"} onClick={() => actualizar("reparacionAnterior", "Sí" as SiNo)}>
+                      Sí
+                    </OpcionBoton>
+                    <OpcionBoton activo={datos.reparacionAnterior === "No"} onClick={() => actualizar("reparacionAnterior", "No" as SiNo)}>
+                      No
+                    </OpcionBoton>
                   </div>
                 </Campo>
               </>
@@ -388,21 +479,31 @@ export default function FormularioClientePage() {
         {paso === 5 && (
           <>
             {categoria && (
-              <div style={{ maxHeight: 260, overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, marginBottom: 12, fontSize: ".8rem", color: "#374151" }}>
-                <ol style={{ paddingLeft: 18, margin: 0 }}>
+              <div className="mb-3 max-h-64 overflow-y-auto rounded-md border p-3 text-xs text-foreground">
+                <ol className="list-decimal space-y-2 pl-4">
                   {CONDICIONES_POR_CATEGORIA[categoria].map((c, i) => (
-                    <li key={i} style={{ marginBottom: 8 }}>{c}</li>
+                    <li key={i}>{c}</li>
                   ))}
                 </ol>
               </div>
             )}
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: ".85rem", marginBottom: 6 }}>
-              <input type="checkbox" checked={datos.aceptaCondiciones} onChange={(e) => actualizar("aceptaCondiciones", e.target.checked)} style={{ marginTop: 3 }} />
-              <span>He leído y acepto las condiciones del resguardo de recepción. <span style={{ color: "#dc2626" }}>*</span></span>
+            <label className="mb-1.5 flex items-start gap-2 text-sm">
+              <Checkbox
+                className="mt-0.5"
+                checked={datos.aceptaCondiciones}
+                onCheckedChange={(v) => actualizar("aceptaCondiciones", v === true)}
+              />
+              <span>
+                He leído y acepto las condiciones del resguardo de recepción. <span className="text-destructive">*</span>
+              </span>
             </label>
-            {errores.aceptaCondiciones && <div style={{ color: "#dc2626", fontSize: ".78rem", marginBottom: 12 }}>{errores.aceptaCondiciones}</div>}
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: ".82rem", color: "#6b7280" }}>
-              <input type="checkbox" checked={datos.aceptaMarketing} onChange={(e) => actualizar("aceptaMarketing", e.target.checked)} style={{ marginTop: 3 }} />
+            {errores.aceptaCondiciones && <p className="mb-3 text-xs text-destructive">{errores.aceptaCondiciones}</p>}
+            <label className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Checkbox
+                className="mt-0.5"
+                checked={datos.aceptaMarketing}
+                onCheckedChange={(v) => actualizar("aceptaMarketing", v === true)}
+              />
               <span>Deseo recibir promociones, descuentos y novedades por correo electrónico, WhatsApp u otros medios electrónicos.</span>
             </label>
           </>
@@ -419,20 +520,25 @@ export default function FormularioClientePage() {
           />
         )}
 
-        {errorEnvio && <p style={{ color: "#dc2626", fontSize: ".85rem", marginTop: 12 }}>{errorEnvio}</p>}
+        {errorEnvio && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <CloseCircle className="mt-0.5 size-3.5 shrink-0" />
+            <span>{errorEnvio}</span>
+          </div>
+        )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24 }}>
-          <button type="button" onClick={anterior} disabled={paso === 1} style={{ ...estilos.btnSecundario, visibility: paso === 1 ? "hidden" : "visible" }}>
+        <div className="mt-6 flex justify-between">
+          <Button type="button" variant="outline" onClick={anterior} className={"h-11 px-5 " + (paso === 1 ? "invisible" : "")}>
             ← Anterior
-          </button>
+          </Button>
           {paso < PASOS.length ? (
-            <button type="button" onClick={siguiente} style={estilos.btnPrimario}>
+            <Button type="button" onClick={siguiente} className="h-11 px-5">
               Siguiente →
-            </button>
+            </Button>
           ) : (
-            <button type="button" onClick={enviar} disabled={enviando} style={estilos.btnPrimario}>
+            <Button type="button" onClick={enviar} disabled={enviando} className="h-11 px-5">
               {enviando ? "Enviando…" : "Enviar solicitud"}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -480,49 +586,30 @@ function PasoFotoFirma({
   return (
     <>
       <Campo label="Foto del equipo / problema" required error={errorFotos}>
-        <div
+        <button
+          type="button"
           onClick={() => fileInputRef.current?.click()}
-          style={{
-            border: "1.5px dashed #d1d5db",
-            borderRadius: 10,
-            padding: "22px 14px",
-            textAlign: "center",
-            cursor: "pointer",
-            background: "#fafbfc",
-          }}
+          className="w-full rounded-lg border border-dashed border-input bg-muted/30 px-4 py-6 text-center transition-colors hover:bg-muted/50"
         >
-          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} style={{ display: "none" }} />
-          <div style={{ fontSize: "1.8rem", color: "#9ca3af", marginBottom: 6 }}>📷</div>
-          <div style={{ fontSize: ".82rem", color: "#6b7280" }}>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} className="hidden" />
+          <Camera className="mx-auto mb-1.5 size-7 text-muted-foreground" />
+          <div className="text-sm text-muted-foreground">
             {fotos.length === 0 ? "Toca para hacer o seleccionar una foto" : fotos.length === 1 ? fotos[0].name : `${fotos.length} fotos seleccionadas`}
           </div>
-        </div>
+        </button>
         {fotos.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 8, marginTop: 10 }}>
+          <div className="mt-2.5 grid grid-cols-4 gap-2">
             {fotos.map((f, i) => (
-              <div key={f.name + f.size} style={{ position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", border: "1px solid #e5e7eb" }}>
+              <div key={f.name + f.size} className="relative aspect-square overflow-hidden rounded-md border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`data:${f.mime};base64,${f.base64}`} alt={`foto ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <img src={`data:${f.mime};base64,${f.base64}`} alt={`foto ${i + 1}`} className="size-full object-cover" />
                 <button
                   type="button"
                   onClick={() => eliminarFoto(i)}
                   title="Eliminar"
-                  style={{
-                    position: "absolute",
-                    top: 2,
-                    right: 2,
-                    width: 20,
-                    height: 20,
-                    borderRadius: "50%",
-                    border: "none",
-                    background: "rgba(0,0,0,.6)",
-                    color: "#fff",
-                    fontSize: ".7rem",
-                    lineHeight: "20px",
-                    cursor: "pointer",
-                  }}
+                  className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
                 >
-                  ✕
+                  <CloseCircle className="size-3.5" />
                 </button>
               </div>
             ))}
@@ -606,10 +693,10 @@ function CanvasFirma({ value, onChange }: { value: string; onChange: (base64: st
   }
 
   return (
-    <div style={{ position: "relative", border: "1.5px solid #d1d5db", borderRadius: 10, overflow: "hidden" }}>
+    <div className="relative overflow-hidden rounded-lg border">
       <canvas
         ref={canvasRef}
-        style={{ display: "block", width: "100%", height: 140, cursor: "crosshair", touchAction: "none" }}
+        className="block h-36 w-full cursor-crosshair touch-none"
         onMouseDown={iniciar}
         onMouseMove={mover}
         onMouseUp={detener}
@@ -619,28 +706,13 @@ function CanvasFirma({ value, onChange }: { value: string; onChange: (base64: st
         onTouchEnd={detener}
       />
       {!tieneTrazo && (
-        <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", color: "#9ca3af", fontSize: ".85rem", pointerEvents: "none" }}>
+        <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm text-muted-foreground">
           Firme aquí con el dedo o el ratón
         </span>
       )}
-      <button
-        type="button"
-        onClick={limpiar}
-        style={{
-          position: "absolute",
-          top: 6,
-          right: 6,
-          fontSize: ".72rem",
-          padding: "3px 8px",
-          borderRadius: 6,
-          border: "1px solid #d1d5db",
-          background: "#fff",
-          color: "#374151",
-          cursor: "pointer",
-        }}
-      >
+      <Button type="button" variant="outline" size="sm" onClick={limpiar} className="absolute top-2 right-2 bg-card">
         Borrar
-      </button>
+      </Button>
     </div>
   );
 }
@@ -672,38 +744,31 @@ function PantallaCodigoAcceso({ onAcceso }: { onAcceso: () => void }) {
   }
 
   return (
-    <div style={estilos.page}>
-      <form onSubmit={validar} style={{ ...estilos.card, maxWidth: 380, textAlign: "center" }}>
-        <div style={{ fontSize: "2.2rem", marginBottom: 8 }}>🔒</div>
-        <h1 style={{ fontSize: "1.15rem", color: "#1a1a2e", marginBottom: 4 }}>Código de acceso</h1>
-        <p style={{ fontSize: ".85rem", color: "#6b7280", marginBottom: 20 }}>
-          Pide el código de 6 dígitos al personal de la tienda.
-        </p>
-        <input
+    <div className="flex min-h-screen justify-center bg-muted/30 p-4 sm:p-6">
+      <form onSubmit={validar} className="h-fit w-full max-w-sm rounded-xl border bg-card p-8 text-center shadow-sm">
+        <span className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+          <Lock className="size-7" />
+        </span>
+        <h1 className="mb-1 text-base font-semibold">Código de acceso</h1>
+        <p className="mb-5 text-sm text-muted-foreground">Pide el código de 6 dígitos al personal de la tienda.</p>
+        <Input
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
           inputMode="numeric"
           autoFocus
-          style={{ ...inputStyle, textAlign: "center", fontSize: "1.6rem", fontWeight: 700, letterSpacing: "0.3em" }}
+          className="h-14 text-center text-2xl font-bold tracking-[0.3em]"
           placeholder="000000"
         />
-        {error && <div style={{ color: "#dc2626", fontSize: ".82rem", marginTop: 10 }}>{error}</div>}
-        <button
-          type="submit"
-          disabled={validando || codigo.length < 6}
-          style={{ ...estilos.btnPrimario, width: "100%", marginTop: 18, opacity: validando || codigo.length < 6 ? 0.6 : 1 }}
-        >
+        {error && (
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-destructive">
+            <CloseCircle className="size-3.5" />
+            {error}
+          </div>
+        )}
+        <Button type="submit" disabled={validando || codigo.length < 6} className="mt-4 h-11 w-full">
           {validando ? "Comprobando…" : "Continuar"}
-        </button>
+        </Button>
       </form>
     </div>
   );
 }
-
-const estilos: Record<string, React.CSSProperties> = {
-  page: { fontFamily: "var(--font-sans), Arial, Helvetica, sans-serif", background: "#f4f6fb", minHeight: "100vh", display: "flex", justifyContent: "center", padding: "20px 16px" },
-  card: { background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,.10)", padding: "28px 24px", width: "100%", maxWidth: 560, height: "fit-content" },
-  notice: { background: "#eff6ff", color: "#1768ea", borderRadius: 8, padding: "10px 14px", fontSize: ".82rem", marginBottom: 18 },
-  btnPrimario: { background: "#1768ea", color: "#fff", border: "none", borderRadius: 8, padding: "12px 22px", fontSize: ".95rem", fontWeight: 700, cursor: "pointer" },
-  btnSecundario: { background: "none", border: "1.5px solid #d1d5db", borderRadius: 8, padding: "12px 22px", fontSize: ".95rem", color: "#374151", cursor: "pointer" },
-};
