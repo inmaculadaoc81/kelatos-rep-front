@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
 import { COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { separarSintoma } from "@/lib/progreso-reparacion";
@@ -237,6 +238,7 @@ export function DetalleReparacionDialog({
   const [error, setError] = useState<string | null>(null);
   const [nuevaObservacion, setNuevaObservacion] = useState("");
   const [enviandoObservacion, setEnviandoObservacion] = useState(false);
+  const confirmar = useConfirm();
   const [finalizarAbierto, setFinalizarAbierto] = useState(false);
   const [entregaAbierta, setEntregaAbierta] = useState(false);
   const [nuevoPresupuestoAbierto, setNuevoPresupuestoAbierto] = useState(false);
@@ -289,7 +291,8 @@ export function DetalleReparacionDialog({
   // marcar_entregado, así que no necesita un diálogo con formulario.
   async function enviarPuntoLimpio() {
     if (!resguardo) return;
-    if (!window.confirm("¿Enviar este equipo a punto limpio (reciclaje)? Esta acción no se puede deshacer.")) return;
+    const ok = await confirmar("¿Confirma que desea enviar este equipo a punto limpio (reciclaje)?");
+    if (!ok) return;
     try {
       const res = await fetch(`/api/reparaciones/${resguardo}/salidas`, {
         method: "POST",

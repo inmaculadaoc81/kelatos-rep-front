@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
 import { Presupuesto } from "@/lib/reparacion-detalle";
 import { AccionCambioEstadoPresupuesto } from "@/lib/presupuesto-cambiar-estado";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
@@ -55,6 +56,7 @@ export function PresupuestoCard({
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [editarAbierto, setEditarAbierto] = useState(false);
+  const confirmar = useConfirm();
   const editable = p.estado === "borrador" || p.estado === "enviado";
 
   async function ejecutar(accion: AccionCambioEstadoPresupuesto, motivoTexto?: string) {
@@ -87,7 +89,8 @@ export function PresupuestoCard({
   }
 
   async function eliminar() {
-    if (!window.confirm(`¿Eliminar el presupuesto v${p.version} (borrador)? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirmar(`¿Eliminar presupuesto v${p.version}?`);
+    if (!ok) return;
     setEnviando(true);
     try {
       const res = await fetch(`/api/presupuestos/${p.presupuestoId}`, { method: "DELETE" });

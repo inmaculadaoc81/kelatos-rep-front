@@ -63,6 +63,7 @@ export const Lock = withDefaults(Iconsax.Lock);
 export const Logout = withDefaults(Iconsax.Logout);
 export const Money = withDefaults(Iconsax.Money);
 export const Monitor = withDefaults(Iconsax.Monitor);
+export const MessageQuestion = withDefaults(Iconsax.MessageQuestion);
 export const MoreCircle = withDefaults(Iconsax.MoreCircle);
 export const Notification = withDefaults(Iconsax.Notification);
 export const Personalcard = withDefaults(Iconsax.Personalcard);

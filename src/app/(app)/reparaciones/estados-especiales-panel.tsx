@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { DatosSinReparacionPieza } from "@/lib/reparacion-estados-especiales";
 
@@ -37,6 +38,7 @@ export function EstadosEspecialesPanel({
   const [sinPiezaAbierto, setSinPiezaAbierto] = useState(false);
   const [datos, setDatos] = useState(VACIO);
   const [enviando, setEnviando] = useState(false);
+  const confirmar = useConfirm();
 
   const puedeSinPieza = ESTADOS_ORIGEN_SIN_PIEZA.includes(detalle.estado);
   const puedeDeshacer = detalle.estado === "No tiene Reparación" && detalle.motivoSinReparacion.startsWith("NO_HAY_PIEZA");
@@ -84,10 +86,13 @@ export function EstadosEspecialesPanel({
           variant="outline"
           className="gap-1.5"
           disabled={enviando}
-          onClick={() => {
-            if (window.confirm("¿Deshacer el marcado de \"Sin Reparación\" y restaurar el estado anterior?")) {
-              ejecutar("deshacer_sin_reparacion", {}, "Estado anterior restaurado");
-            }
+          onClick={async () => {
+            const ok = await confirmar(
+              '¿Deshacer "Sin Reparación"?\n\n' +
+              "Esto restaurará el estado anterior de la reparación.\n" +
+              "Los presupuestos marcados como obsoletos NO se modificarán automáticamente."
+            );
+            if (ok) ejecutar("deshacer_sin_reparacion", {}, "Estado anterior restaurado");
           }}
         >
           <ArrowRotateLeft className="size-3.5" /> Deshacer sin reparación
@@ -99,10 +104,9 @@ export function EstadosEspecialesPanel({
           variant="outline"
           className="gap-1.5"
           disabled={enviando}
-          onClick={() => {
-            if (window.confirm("¿Revertir el abandono y restaurar el estado anterior?")) {
-              ejecutar("revertir_abandonado", {}, "Abandono revertido");
-            }
+          onClick={async () => {
+            const ok = await confirmar("¿Revertir estado Abandonado?");
+            if (ok) ejecutar("revertir_abandonado", {}, "Abandono revertido");
           }}
         >
           <RotateLeft className="size-3.5" /> Revertir abandonado
