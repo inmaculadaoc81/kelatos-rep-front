@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Box } from "@/lib/icons";
+import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Eye, Calendar, Send2, InfoCircle } from "@/lib/icons";
 import { m, elementoLista } from "@/lib/animacion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,13 +34,21 @@ const ESTILO_ESTADO: Record<string, { caja: string; badge: string }> = {
   borrador: { caja: "bg-card", badge: "text-muted-foreground" },
 };
 
-function Importe({ etiqueta, valor, destacado }: { etiqueta: string; valor: string; destacado?: boolean }) {
+function Importe({ etiqueta, valor, tono }: { etiqueta: string; valor: string; tono?: "info" | "primary" }) {
   return (
-    <div className="px-3 py-2">
-      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{etiqueta}</dt>
-      <dd className={`tabular-nums ${destacado ? "text-sm font-semibold" : "text-sm"}`}>{valor}</dd>
+    <div className="px-3 py-2 text-center">
+      <dt className="text-[11px] text-muted-foreground">{etiqueta}</dt>
+      <dd className={`tabular-nums font-semibold ${tono === "info" ? "text-sky-600 dark:text-sky-400" : tono === "primary" ? "text-primary" : ""}`}>
+        {valor}
+      </dd>
     </div>
   );
+}
+
+function fechaHora(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${d.toLocaleDateString("es-ES")} ${d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 export function PresupuestoCard({
@@ -56,6 +64,7 @@ export function PresupuestoCard({
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [editarAbierto, setEditarAbierto] = useState(false);
+  const [detallesAbiertos, setDetallesAbiertos] = useState(false);
   const confirmar = useConfirm();
   const editable = p.estado === "borrador" || p.estado === "enviado";
 
@@ -151,35 +160,94 @@ export function PresupuestoCard({
         </Badge>
       </header>
 
-      {/* Los importes como columnas etiquetadas y alineadas a la derecha:
-          antes iban en una fila de texto corrido donde no se podían comparar. */}
-      {/* Container query, no breakpoint de ventana: esta tarjeta vive tanto
-          a ancho completo como en una columna estrecha, y lo que decide
-          si caben cuatro importes en fila es su propio ancho. */}
+      {/* Mismas 4 columnas que renderizarListaPresupuestos() del original
+          (Mano Obra / Piezas cliente / Total Cliente / Ganancia Neta) — no
+          Piezas/Total/Entrega, que era una simplificación de este puerto. */}
       <dl className="grid grid-cols-2 divide-x divide-y border-b @md:grid-cols-4 @md:divide-y-0">
-        <Importe etiqueta="Mano de obra" valor={euros(p.manoObra)} />
-        <Importe etiqueta="Piezas" valor={euros(p.precioPiezas)} />
-        <Importe etiqueta="Total" valor={euros(p.total)} destacado />
-        <Importe etiqueta="Entrega" valor={`${p.diasEntrega} d`} />
+        <Importe etiqueta="Mano Obra" valor={euros(p.manoObra)} />
+        <Importe etiqueta="Piezas (cliente)" valor={euros(p.precioPiezas)} />
+        <Importe etiqueta="Total Cliente" valor={euros(p.total)} tono="info" />
+        <Importe etiqueta="Ganancia Neta" valor={euros(p.gananciaNeta)} tono="primary" />
       </dl>
 
-      {p.piezas.length > 0 && (
-        <ul className="divide-y border-b text-xs">
-          {p.piezas.map((pz) => (
-            <li key={pz.piezaId} className="flex items-center gap-2 px-3 py-1.5">
-              <Box className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate">{pz.descripcion || pz.tipo}</span>
-              <span className="tabular-nums text-muted-foreground">{euros(pz.precio)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <p className="border-b px-3 py-1.5 text-xs text-muted-foreground">
+        Elaborado por: {p.elaboradoPor || "-"} | Días: {p.diasEntrega || "-"} | Costo piezas: {euros(p.costoPiezas)}
+        {p.fechaEnvio && <> | Enviado: {fechaHora(p.fechaEnvio)}</>}
+      </p>
 
-      {(acciones || accionesEdicion) && (
-        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2">
-          {acciones}
-          {acciones && accionesEdicion && <span className="mx-0.5 h-4 w-px bg-border" />}
-          {accionesEdicion}
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2">
+        {acciones}
+        {acciones && accionesEdicion && <span className="mx-0.5 h-4 w-px bg-border" />}
+        {accionesEdicion}
+        <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => setDetallesAbiertos((v) => !v)}>
+          <Eye className="size-3.5" /> Ver detalles
+        </Button>
+      </div>
+
+      {detallesAbiertos && (
+        <div className="space-y-2 border-t px-3 py-2.5 text-xs">
+          {p.descripcion && (
+            <div>
+              <p className="font-semibold text-muted-foreground">Diagnóstico:</p>
+              <p className="mt-0.5 whitespace-pre-wrap">{p.descripcion}</p>
+            </div>
+          )}
+
+          {p.piezas.length > 0 && (
+            <div>
+              <p className="font-semibold text-muted-foreground">Piezas:</p>
+              <div className="mt-1 space-y-1">
+                {p.piezas.map((pz) => (
+                  <div key={pz.piezaId} className="border-l-2 border-amber-400 pl-2">
+                    <span className="font-medium">{pz.descripcion || "—"}</span>{" "}
+                    <span className="text-muted-foreground">
+                      · Costo: {euros(pz.costo)} · Precio cliente: {euros(pz.precio)}
+                    </span>
+                    {pz.enlace && (
+                      <>
+                        {" "}
+                        <a href={pz.enlace} target="_blank" rel="noreferrer" className="text-primary underline">
+                          Enlace
+                        </a>
+                      </>
+                    )}
+                    {pz.notas && <p className="text-muted-foreground italic">{pz.notas}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {p.notas && (
+            <div>
+              <p className="font-semibold text-muted-foreground">Notas:</p>
+              <p className="mt-0.5 whitespace-pre-wrap text-muted-foreground">{p.notas}</p>
+            </div>
+          )}
+
+          <div className="space-y-0.5 text-muted-foreground">
+            {p.fechaElaboracion && (
+              <p className="flex items-center gap-1">
+                <Calendar className="size-3 shrink-0" /> Elaborado: {new Date(p.fechaElaboracion).toLocaleDateString("es-ES")} por {p.elaboradoPor || "—"}
+              </p>
+            )}
+            {p.fechaEnvio && (
+              <p className="flex items-center gap-1">
+                <Send2 className="size-3 shrink-0" /> Enviado: {fechaHora(p.fechaEnvio)}
+              </p>
+            )}
+            {p.fechaRespuesta && (
+              <p className="flex items-center gap-1">
+                <InfoCircle className="size-3 shrink-0" /> Respuesta: {new Date(p.fechaRespuesta).toLocaleDateString("es-ES")}
+              </p>
+            )}
+          </div>
+
+          {p.motivoRechazo && (
+            <div className="rounded-md bg-destructive/10 px-2 py-1.5 text-destructive">
+              <strong>Motivo:</strong> {p.motivoRechazo}
+            </div>
+          )}
         </div>
       )}
 

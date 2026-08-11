@@ -47,6 +47,7 @@ import { MarcarGarantiaBoton } from "./marcar-garantia-boton";
 import { FacturaRevisionBoton } from "./factura-revision-boton";
 import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
 import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
+import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -245,6 +246,7 @@ export function DetalleReparacionDialog({
   const [qrAbierto, setQrAbierto] = useState(false);
   const [iniciarReparacionAbierto, setIniciarReparacionAbierto] = useState(false);
   const [registrarPedidoAbierto, setRegistrarPedidoAbierto] = useState(false);
+  const [gestionPptosAbierto, setGestionPptosAbierto] = useState(false);
 
   function cargarDetalle() {
     if (!resguardo) return;
@@ -441,7 +443,7 @@ export function DetalleReparacionDialog({
                 <AccionRequerida
                 detalle={detalle}
                 callbacks={{
-                  onNuevoPresupuesto: () => setNuevoPresupuestoAbierto(true),
+                  onGestionarPresupuestos: () => setGestionPptosAbierto(true),
                   onFinalizar: () => setFinalizarAbierto(true),
                   onMarcarEntregado: () => setEntregaAbierta(true),
                   onVerQr: () => setQrAbierto(true),
@@ -638,6 +640,12 @@ export function DetalleReparacionDialog({
             open={registrarPedidoAbierto}
             onOpenChange={setRegistrarPedidoAbierto}
             onRegistrado={cargarDetalle}
+          />
+          <GestionPresupuestosDialog
+            detalle={detalle}
+            open={gestionPptosAbierto}
+            onOpenChange={setGestionPptosAbierto}
+            onActualizado={cargarDetalle}
           />
         </>
       )}

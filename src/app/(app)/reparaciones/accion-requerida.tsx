@@ -42,7 +42,7 @@ interface Accion {
 }
 
 export interface CallbacksAccion {
-  onNuevoPresupuesto: () => void;
+  onGestionarPresupuestos: () => void;
   onFinalizar: () => void;
   onMarcarEntregado: () => void;
   onVerQr: () => void;
@@ -209,10 +209,21 @@ export function AccionRequerida({
   const entregaAbierta = !ENTREGA_CERRADA.includes(detalle.estadoEntrega);
 
   const botones: ReactNode[] = [];
-  if (["Presupuesto Pendiente", "Garantía", "Presupuesto Enviado"].includes(estado)) {
+  // Mismos botones/colores que el original: "Gestionar Presupuestos" en
+  // rojo (Presupuesto Pendiente/Garantía, abrirModalGestionPresupuestos con
+  // acción requerida) y "Ver Presupuestos" en azul (Presupuesto Enviado,
+  // solo consultando lo ya enviado). Ambos abren el mismo modal de gestión.
+  if (estado === "Presupuesto Pendiente" || estado === "Garantía") {
     botones.push(
-      <Button key="ppto" size="sm" className="gap-1.5" onClick={callbacks.onNuevoPresupuesto}>
-        <DocumentText className="size-3.5" /> Elaborar presupuesto
+      <Button key="ppto" size="sm" variant="destructive" className="gap-1.5 bg-red-600 text-white hover:bg-red-700" onClick={callbacks.onGestionarPresupuestos}>
+        <DocumentText className="size-3.5" /> Gestionar Presupuestos
+      </Button>
+    );
+  }
+  if (estado === "Presupuesto Enviado") {
+    botones.push(
+      <Button key="ppto" size="sm" className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700" onClick={callbacks.onGestionarPresupuestos}>
+        <DocumentText className="size-3.5" /> Ver Presupuestos
       </Button>
     );
   }
