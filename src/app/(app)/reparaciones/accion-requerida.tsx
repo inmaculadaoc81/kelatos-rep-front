@@ -6,6 +6,7 @@ import {
   DocumentText,
   Timer1,
   Box,
+  Box1,
   Truck,
   TickCircle,
   Setting2,
@@ -13,6 +14,7 @@ import {
   ScanBarcode,
   Clock,
   InfoCircle,
+  Trash,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,9 @@ export interface CallbacksAccion {
   onFinalizar: () => void;
   onMarcarEntregado: () => void;
   onVerQr: () => void;
+  onIniciarReparacion: () => void;
+  onRegistrarPedido: () => void;
+  onEnviarPuntoLimpio: () => void;
 }
 
 const ESTADOS_LISTO_ENTREGA = ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"];
@@ -203,9 +208,6 @@ export function AccionRequerida({
   const estado = detalle.estado;
   const entregaAbierta = !ENTREGA_CERRADA.includes(detalle.estadoEntrega);
 
-  // Solo se ofrecen los botones cuyo flujo existe ya en este frontend. Los
-  // pedidos de pieza y la asignación de técnico al iniciar reparación
-  // todavía no están migrados, así que esos estados quedan informativos.
   const botones: ReactNode[] = [];
   if (["Presupuesto Pendiente", "Garantía", "Presupuesto Enviado"].includes(estado)) {
     botones.push(
@@ -214,10 +216,31 @@ export function AccionRequerida({
       </Button>
     );
   }
+  if (estado === "Garantía") {
+    botones.push(
+      <Button key="iniciar" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onIniciarReparacion}>
+        <Setting2 className="size-3.5" /> Iniciar reparación
+      </Button>,
+      <Button key="pedido-garantia" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
+        <Box1 className="size-3.5" /> Registrar pedido de pieza
+      </Button>
+    );
+  }
+  // No aplica a la rama de cintas (digitalización, sin piezas por pedido).
+  if (estado === "Presupuesto Aceptado" && !detalle.datosCintas) {
+    botones.push(
+      <Button key="pedido-aceptado" size="sm" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
+        <Box1 className="size-3.5" /> Registrar pedido de pieza
+      </Button>
+    );
+  }
   if (estado === "En Reparación") {
     botones.push(
       <Button key="fin" size="sm" className="gap-1.5" onClick={callbacks.onFinalizar}>
         <Setting2 className="size-3.5" /> Finalizar reparación
+      </Button>,
+      <Button key="pedido-adicional" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
+        <Box1 className="size-3.5" /> Pedir pieza adicional
       </Button>
     );
   }
@@ -230,6 +253,15 @@ export function AccionRequerida({
         <ScanBarcode className="size-3.5" /> Ver QR de recogida
       </Button>
     );
+    // Solo "No tiene Reparación"/"Presupuesto Rechazado" — el original no la
+    // ofrece cuando el equipo sí está "Reparado".
+    if (estado !== "Reparado") {
+      botones.push(
+        <Button key="punto-limpio" size="sm" variant="outline" className="gap-1.5 text-muted-foreground" onClick={callbacks.onEnviarPuntoLimpio}>
+          <Trash className="size-3.5" /> Enviar a punto limpio
+        </Button>
+      );
+    }
   }
 
   return (

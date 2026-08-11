@@ -42,6 +42,9 @@ import { QrRecogidaDialog } from "./qr-recogida-dialog";
 import { ProgresoTimeline } from "./progreso-timeline";
 import { AccionRequerida } from "./accion-requerida";
 import { derivarEventoHistorial } from "./historial-evento";
+import { MarcarGarantiaBoton } from "./marcar-garantia-boton";
+import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
+import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -237,6 +240,8 @@ export function DetalleReparacionDialog({
   const [entregaAbierta, setEntregaAbierta] = useState(false);
   const [nuevoPresupuestoAbierto, setNuevoPresupuestoAbierto] = useState(false);
   const [qrAbierto, setQrAbierto] = useState(false);
+  const [iniciarReparacionAbierto, setIniciarReparacionAbierto] = useState(false);
+  const [registrarPedidoAbierto, setRegistrarPedidoAbierto] = useState(false);
 
   function cargarDetalle() {
     if (!resguardo) return;
@@ -276,6 +281,26 @@ export function DetalleReparacionDialog({
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviandoObservacion(false);
+    }
+  }
+
+  // Reproduce enviarAPuntoLimpio() — sin datos propios, a diferencia de
+  // marcar_entregado, así que no necesita un diálogo con formulario.
+  async function enviarPuntoLimpio() {
+    if (!resguardo) return;
+    if (!window.confirm("¿Enviar este equipo a punto limpio (reciclaje)? Esta acción no se puede deshacer.")) return;
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/salidas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "punto_limpio" }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`Equipo enviado a punto limpio (${data.diasTotales} días)`);
+      cargarDetalle();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
     }
   }
 
@@ -391,6 +416,7 @@ export function DetalleReparacionDialog({
                       <ShieldTick className="size-3.5" /> Garantía
                     </Badge>
                   )}
+                  <MarcarGarantiaBoton detalle={detalle} onActualizado={cargarDetalle} />
                   <EstadosEspecialesPanel detalle={detalle} onActualizado={cargarDetalle} />
                 </div>
 
@@ -414,6 +440,9 @@ export function DetalleReparacionDialog({
                   onFinalizar: () => setFinalizarAbierto(true),
                   onMarcarEntregado: () => setEntregaAbierta(true),
                   onVerQr: () => setQrAbierto(true),
+                  onIniciarReparacion: () => setIniciarReparacionAbierto(true),
+                  onRegistrarPedido: () => setRegistrarPedidoAbierto(true),
+                  onEnviarPuntoLimpio: enviarPuntoLimpio,
                   }}
                 />
               </m.div>
@@ -593,6 +622,18 @@ export function DetalleReparacionDialog({
             onGuardado={cargarDetalle}
           />
           <QrRecogidaDialog resguardo={detalle.resguardo} open={qrAbierto} onOpenChange={setQrAbierto} />
+          <IniciarReparacionDialog
+            resguardo={detalle.resguardo}
+            open={iniciarReparacionAbierto}
+            onOpenChange={setIniciarReparacionAbierto}
+            onIniciado={cargarDetalle}
+          />
+          <RegistrarPedidoDialog
+            resguardo={detalle.resguardo}
+            open={registrarPedidoAbierto}
+            onOpenChange={setRegistrarPedidoAbierto}
+            onRegistrado={cargarDetalle}
+          />
         </>
       )}
     </Dialog>

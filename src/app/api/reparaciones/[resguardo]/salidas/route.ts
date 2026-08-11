@@ -19,8 +19,24 @@ export async function POST(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { resguardo } = await params;
-  const datos = (await req.json()) as DatosMarcarEntregado;
+  const body = (await req.json()) as DatosMarcarEntregado | { accion: "punto_limpio" };
 
+  // Segunda acción del mismo endpoint del backend (enviarAPuntoLimpio del
+  // original) — sin datos propios, a diferencia de marcar_entregado.
+  if ("accion" in body && body.accion === "punto_limpio") {
+    try {
+      const resultado = await kelatosApiPost<RespuestaSalidas>(
+        `/v1/reparaciones/${encodeURIComponent(resguardo)}/salidas`,
+        { requestId: crypto.randomUUID(), usuario, accion: "punto_limpio" }
+      );
+      return NextResponse.json({ ok: true, reparacion: resultado.reparacion, diasTotales: resultado.diasTotales });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error desconocido";
+      return NextResponse.json({ ok: false, error: message }, { status: 502 });
+    }
+  }
+
+  const datos = body as DatosMarcarEntregado;
   if (!datos.fechaRecogida) {
     return NextResponse.json({ ok: false, error: "La fecha de recogida es obligatoria" }, { status: 400 });
   }
