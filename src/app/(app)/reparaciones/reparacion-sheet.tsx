@@ -213,7 +213,7 @@ export function ReparacionSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !guardando && onOpenChange(o)}>
-      <SheetContent className="w-full sm:max-w-2xl" showCloseButton={!guardando}>
+      <SheetContent className="w-full data-[side=right]:sm:max-w-4xl" showCloseButton={!guardando}>
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2">
             {esConfirmar ? <ClipboardTick className="size-5" /> : <AddCircle className="size-5" />}
