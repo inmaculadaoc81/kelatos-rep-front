@@ -262,7 +262,7 @@ export default function FormularioWebPage() {
             <Input
               value={busquedaArchivos}
               onChange={(e) => setBusquedaArchivos(e.target.value)}
-              placeholder="Buscar por nombre o DNI/CIF del cliente..."
+              placeholder="Buscar por resguardo, nombre o DNI/CIF..."
               className="pl-8 text-sm"
             />
           </div>

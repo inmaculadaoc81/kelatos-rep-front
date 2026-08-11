@@ -23,7 +23,19 @@ interface FilaArchivoSql {
   firma_url: string | null;
 }
 
-/** GET — galería de fotos/firma recibidas por el formulario, filtrable por cliente (nombre o DNI/CIF). */
+/**
+ * Extrae el ID de archivo de Drive tanto del formato nuevo (ID a secas)
+ * como del legado (URL completa "https://drive.google.com/uc?export=
+ * view&id=XXXX", de cuando esto se subía con el mecanismo original de
+ * Apps Script). Si no es ninguno de los dos, se devuelve tal cual — solo
+ * puede pasar con datos de prueba antiguos ya inservibles.
+ */
+function extraerIdDrive(valor: string): string {
+  const m = valor.match(/[?&]id=([^&]+)/);
+  return m ? m[1] : valor;
+}
+
+/** GET — galería de fotos/firma recibidas por el formulario, filtrable por resguardo, nombre o DNI/CIF. */
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
@@ -38,8 +50,8 @@ export async function GET(req: Request) {
       clienteNombre: row.cliente_nombre,
       dniCif: row.dni_cif || "",
       equipoModelo: row.equipo_modelo,
-      fotos: (row.foto_url || "").split(";").filter(Boolean),
-      firmaNombre: row.firma_url || "",
+      fotos: (row.foto_url || "").split(";").filter(Boolean).map(extraerIdDrive),
+      firmaNombre: row.firma_url ? extraerIdDrive(row.firma_url) : "",
     }));
     return NextResponse.json({ ok: true, items });
   } catch (error) {
