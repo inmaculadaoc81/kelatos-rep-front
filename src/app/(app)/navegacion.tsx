@@ -5,13 +5,18 @@ import {
   Profile2User,
   Box1,
   Box,
+  BoxSearch,
+  Element3,
   ShoppingCart,
   Truck,
   Clock,
   Chart,
   Receipt,
+  Money,
   ClipboardText,
   Wallet,
+  Hierarchy,
+  Monitor,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -49,22 +54,34 @@ export const GRUPOS: GrupoNavegacion[] = [
     items: [
       { label: "Clientes", href: "/clientes", icon: Profile2User },
       { label: "Equipos y Alquileres", href: "/equipos", icon: Box1 },
-      { label: "Productos e Inventario", href: "/productos", icon: Box },
       { label: "Ventas", href: "/ventas", icon: ShoppingCart },
     ],
   },
   {
-    titulo: "Registros",
-    icon: ClipboardText,
+    titulo: "Stock",
+    icon: BoxSearch,
     items: [
-      { label: "Historial", href: "/historial", icon: Clock },
-      { label: "Reportes", href: "/reportes", icon: Chart },
-      { label: "Seguimiento de Facturas", href: "/seguimiento-facturas", icon: Receipt },
+      { label: "Productos e Inventario", href: "/productos", icon: Box },
+      { label: "Stock de Piezas", href: "/stock-piezas", icon: Element3 },
     ],
   },
   {
     titulo: "Facturación",
     icon: Wallet,
-    items: [{ label: "Facturación", href: null, icon: Wallet }],
+    items: [
+      { label: "Facturas de Clientes", href: "/facturas-clientes", icon: Receipt },
+      { label: "Seguimiento de Facturas", href: "/seguimiento-facturas", icon: Money },
+      { label: "Reporte de Facturas", href: "/reporte-facturas", icon: ClipboardText },
+    ],
+  },
+  {
+    titulo: "Informes",
+    icon: ClipboardText,
+    items: [
+      { label: "Historial", href: "/historial", icon: Clock },
+      { label: "Reportes", href: "/reportes", icon: Chart },
+      { label: "Registro de Acciones", href: "/registro-acciones", icon: Hierarchy },
+      { label: "Reporte Equipos", href: "/reporte-equipos", icon: Monitor },
+    ],
   },
 ];
