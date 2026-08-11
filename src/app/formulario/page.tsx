@@ -7,8 +7,6 @@ import {
   datosVacios,
   FotoFormulario,
   OPCIONES_TIPO_PRODUCTO,
-  SiNo,
-  SiNoAVeces,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
 import { cn } from "@/lib/utils";
@@ -18,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Personalcard,
@@ -56,10 +55,10 @@ function EncabezadoLogo() {
   );
 }
 
-/** Fondo de marca en móvil/tablet (la tarjeta "flota" encima); en escritorio, fondo plano y sin tarjeta — la propia página hace de lienzo, como el resto de la app. */
+/** Lienzo neutro y plano en las 3 resoluciones — sin degradado de marca; las tarjetas se distinguen por su propio borde/sombra, no por contraste con el fondo. */
 function FondoPagina({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-primary/60 p-4 sm:p-6 lg:bg-none lg:bg-background lg:p-10">
+    <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-10">
       <div className="mx-auto w-full max-w-5xl">
         <EncabezadoLogo />
         {children}
@@ -159,16 +158,31 @@ function Campo({
   );
 }
 
-function OpcionBoton({ activo, onClick, children }: { activo: boolean; onClick: () => void; children: React.ReactNode }) {
+/** Tarjetas de radio (punto + etiqueta, borde y fondo primary/5 al elegir) — mismo patrón que las tarjetas de plan de la referencia, sobre RadioGroup de shadcn en vez de un botón suelto. */
+function CampoOpciones<T extends string>({
+  value,
+  onChange,
+  opciones,
+}: {
+  value: T | "";
+  onChange: (valor: T) => void;
+  opciones: readonly T[];
+}) {
   return (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={onClick}
-      className={cn("h-12 flex-1 text-sm", activo && "border-primary bg-primary/10 font-semibold text-primary hover:bg-primary/15")}
-    >
-      {children}
-    </Button>
+    <RadioGroup value={value} onValueChange={(v) => onChange(v as T)} className="flex gap-2">
+      {opciones.map((op) => (
+        <label
+          key={op}
+          className={cn(
+            "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-3 text-sm font-medium transition-colors hover:bg-muted/40",
+            "has-data-checked:border-primary has-data-checked:bg-primary/5 has-data-checked:text-primary has-data-checked:hover:bg-primary/5"
+          )}
+        >
+          <RadioGroupItem value={op} />
+          {op}
+        </label>
+      ))}
+    </RadioGroup>
   );
 }
 
@@ -276,7 +290,7 @@ export default function FormularioClientePage() {
   if (resultado) {
     return (
       <FondoPagina>
-        <div className="mx-auto h-fit w-full max-w-xl rounded-2xl bg-card p-8 shadow-lg lg:mt-16 lg:shadow-sm lg:ring-1 lg:ring-border">
+        <div className="mx-auto h-fit w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm lg:mt-16">
           <div className="flex flex-col items-center py-8 text-center">
             <span className="mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <TickCircle className="size-9" />
@@ -303,7 +317,7 @@ export default function FormularioClientePage() {
           <EscalonVertical paso={paso} />
         </div>
 
-        <div className="mx-auto w-full max-w-xl rounded-2xl bg-card p-6 shadow-lg lg:mx-0 lg:max-w-none lg:flex-1 lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none">
+        <div className="mx-auto w-full max-w-xl rounded-xl border bg-card p-6 shadow-sm lg:mx-0 lg:max-w-none lg:flex-1 lg:rounded-none lg:border-none lg:bg-transparent lg:p-0 lg:shadow-none">
           <EscalonHorizontal paso={paso} />
 
           <h1 className="mb-5 hidden text-2xl font-semibold lg:block">{pasoActual.titulo}</h1>
@@ -493,47 +507,20 @@ export default function FormularioClientePage() {
                   <Input className="h-11 text-base" value={datos.obs} onChange={(e) => actualizar("obs", e.target.value)} />
                 </Campo>
                 <Campo label="¿El equipo enciende?" required error={errores.enciende}>
-                  <div className="flex gap-2">
-                    <OpcionBoton activo={datos.enciende === "Sí"} onClick={() => actualizar("enciende", "Sí" as SiNoAVeces)}>
-                      Sí
-                    </OpcionBoton>
-                    <OpcionBoton activo={datos.enciende === "No"} onClick={() => actualizar("enciende", "No" as SiNoAVeces)}>
-                      No
-                    </OpcionBoton>
-                    <OpcionBoton activo={datos.enciende === "A veces"} onClick={() => actualizar("enciende", "A veces" as SiNoAVeces)}>
-                      A veces
-                    </OpcionBoton>
-                  </div>
+                  <CampoOpciones value={datos.enciende} onChange={(v) => actualizar("enciende", v)} opciones={["Sí", "No", "A veces"] as const} />
                 </Campo>
                 <Campo label="¿Ha sufrido golpe?" required error={errores.golpe}>
-                  <div className="flex gap-2">
-                    <OpcionBoton activo={datos.golpe === "Sí"} onClick={() => actualizar("golpe", "Sí" as SiNo)}>
-                      Sí
-                    </OpcionBoton>
-                    <OpcionBoton activo={datos.golpe === "No"} onClick={() => actualizar("golpe", "No" as SiNo)}>
-                      No
-                    </OpcionBoton>
-                  </div>
+                  <CampoOpciones value={datos.golpe} onChange={(v) => actualizar("golpe", v)} opciones={["Sí", "No"] as const} />
                 </Campo>
                 <Campo label="¿Ha sufrido humedad?" required error={errores.humedad}>
-                  <div className="flex gap-2">
-                    <OpcionBoton activo={datos.humedad === "Sí"} onClick={() => actualizar("humedad", "Sí" as SiNo)}>
-                      Sí
-                    </OpcionBoton>
-                    <OpcionBoton activo={datos.humedad === "No"} onClick={() => actualizar("humedad", "No" as SiNo)}>
-                      No
-                    </OpcionBoton>
-                  </div>
+                  <CampoOpciones value={datos.humedad} onChange={(v) => actualizar("humedad", v)} opciones={["Sí", "No"] as const} />
                 </Campo>
                 <Campo label="¿Ha tenido reparación anterior?" required error={errores.reparacionAnterior}>
-                  <div className="flex gap-2">
-                    <OpcionBoton activo={datos.reparacionAnterior === "Sí"} onClick={() => actualizar("reparacionAnterior", "Sí" as SiNo)}>
-                      Sí
-                    </OpcionBoton>
-                    <OpcionBoton activo={datos.reparacionAnterior === "No"} onClick={() => actualizar("reparacionAnterior", "No" as SiNo)}>
-                      No
-                    </OpcionBoton>
-                  </div>
+                  <CampoOpciones
+                    value={datos.reparacionAnterior}
+                    onChange={(v) => actualizar("reparacionAnterior", v)}
+                    opciones={["Sí", "No"] as const}
+                  />
                 </Campo>
               </>
             )}
@@ -810,7 +797,7 @@ function PantallaCodigoAcceso({ onAcceso }: { onAcceso: () => void }) {
 
   return (
     <FondoPagina>
-      <form onSubmit={validar} className="mx-auto h-fit w-full max-w-sm rounded-2xl bg-card p-8 text-center shadow-lg lg:mt-16 lg:shadow-sm lg:ring-1 lg:ring-border">
+      <form onSubmit={validar} className="mx-auto h-fit w-full max-w-sm rounded-xl border bg-card p-8 text-center shadow-sm lg:mt-16">
         <span className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
           <Lock className="size-7" />
         </span>
