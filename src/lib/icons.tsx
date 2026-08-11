@@ -64,6 +64,7 @@ export const Logout = withDefaults(Iconsax.Logout);
 export const Money = withDefaults(Iconsax.Money);
 export const Monitor = withDefaults(Iconsax.Monitor);
 export const MoreCircle = withDefaults(Iconsax.MoreCircle);
+export const Notification = withDefaults(Iconsax.Notification);
 export const Personalcard = withDefaults(Iconsax.Personalcard);
 export const PenTool = withDefaults(Iconsax.PenTool);
 export const Printer = withDefaults(Iconsax.Printer);

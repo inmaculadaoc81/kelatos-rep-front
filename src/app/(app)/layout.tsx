@@ -2,6 +2,7 @@ import { AppSidebar } from "./sidebar";
 import { Migas } from "./migas";
 import { BuscadorGlobal } from "./buscador-global";
 import { NavbarCodigoAcceso } from "./navbar-codigo-acceso";
+import { NotificacionesBell } from "./notificaciones-bell";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 // Redirect a /login DESACTIVADO TEMPORALMENTE (sin credenciales de Google
@@ -22,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <BuscadorGlobal />
           </div>
           <div className="flex items-center gap-2">
+            <NotificacionesBell />
             <NavbarCodigoAcceso />
           </div>
         </header>
