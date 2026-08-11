@@ -41,6 +41,8 @@ export function MetricCard({
   icon: Icon,
   tono,
   proporcion,
+  onClick,
+  activo,
 }: {
   titulo: string;
   valor: number;
@@ -55,10 +57,18 @@ export function MetricCard({
    * inventar un dato que no existe.
    */
   proporcion?: number;
+  /** Reproduce filtrarPorCard() del original: cada card es clicable y filtra la tabla de abajo. */
+  onClick?: () => void;
+  activo?: boolean;
 }) {
   const t = TONOS[tono];
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
+    <button
+      type="button"
+      onClick={onClick}
+      title="Click para filtrar"
+      className={`rounded-lg border bg-card p-4 text-left shadow-sm transition-colors ${onClick ? "cursor-pointer hover:border-primary/40 hover:bg-accent/40" : ""} ${activo ? "border-primary ring-1 ring-primary" : ""}`}
+    >
       <div className="flex items-center gap-2">
         <span className={`flex size-8 shrink-0 items-center justify-center rounded-md ${t.chip}`}>
           <Icon className="size-4" />
@@ -77,7 +87,7 @@ export function MetricCard({
           />
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -85,17 +95,27 @@ export function AlertCard({
   titulo,
   contador,
   items,
+  onClick,
+  activo,
 }: {
   titulo: string;
   contador: number;
   items: { resguardo: string; cliente: string; sub: string }[];
+  /** Reproduce filtrarPorCard() del original: también son clicables. */
+  onClick?: () => void;
+  activo?: boolean;
 }) {
   if (contador === 0) return null;
   return (
     // Panel neutro (no un lavado rojo de fondo entero): el color de aviso
     // queda reservado al chip del icono y al badge de contador/retraso,
     // igual que la lista de "To-Do" de una app de gestión normal.
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
+    <button
+      type="button"
+      onClick={onClick}
+      title="Click para filtrar"
+      className={`rounded-lg border bg-card p-4 text-left shadow-sm transition-colors ${onClick ? "cursor-pointer hover:border-primary/40 hover:bg-accent/40" : ""} ${activo ? "border-primary ring-1 ring-primary" : ""}`}
+    >
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-destructive/10 text-destructive">
@@ -115,7 +135,7 @@ export function AlertCard({
       {items.length > 6 && (
         <p className="mt-1 border-t pt-2 text-center text-xs text-muted-foreground">...y {items.length - 6} más</p>
       )}
-    </div>
+    </button>
   );
 }
 

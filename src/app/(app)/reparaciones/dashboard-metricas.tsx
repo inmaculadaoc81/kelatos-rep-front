@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   DocumentText,
   Box1,
@@ -16,7 +15,7 @@ import {
   Chart,
 } from "@/lib/icons";
 import { MetricCard, AlertCard } from "../metric-card";
-import { MetricasDashboard } from "@/lib/metricas";
+import { MetricasDashboard, CardFiltroId } from "@/lib/metricas";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -24,21 +23,24 @@ import { Skeleton } from "@/components/ui/skeleton";
  * (Index.html, vistaActivas) esto vive arriba de la propia tabla de
  * reparaciones activas, no en una pestaña aparte — de ahí que aquí sea
  * un bloque más dentro de esta página y no su propia ruta.
+ *
+ * Todas las cards son clicables y filtran la tabla de abajo, igual que
+ * filtrarPorCard() en el original (title="Click para filtrar" en cada
+ * .card). Los datos ya se cargan en el padre (page.tsx), que también
+ * necesita presupuestosRetrasados/equiposRetrasados para poder filtrar
+ * la tabla por esas dos cards sin reimplementar el cálculo de días.
  */
-export function DashboardMetricas() {
-  const [metricas, setMetricas] = useState<MetricasDashboard | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/metricas")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.ok) throw new Error(data.error);
-        setMetricas(data.metricas);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Error desconocido"));
-  }, []);
-
+export function DashboardMetricas({
+  metricas,
+  error,
+  cardFiltro,
+  onFiltrar,
+}: {
+  metricas: MetricasDashboard | null;
+  error: string | null;
+  cardFiltro: CardFiltroId | null;
+  onFiltrar: (id: CardFiltroId) => void;
+}) {
   // Fracción sobre el total de reparaciones activas, para la barra de cada
   // tarjeta — solo tiene sentido para las métricas en "equipos"; las de
   // formularios/pedidos se quedan sin barra (ver MetricCard).
@@ -74,17 +76,17 @@ export function DashboardMetricas() {
       {metricas && (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <MetricCard titulo="Ppto. Pendiente" valor={metricas.presupuestoPendiente} unidad="equipos" icon={DocumentText} tono="sky" proporcion={prop(metricas.presupuestoPendiente)} />
-            <MetricCard titulo="Pieza Pendiente" valor={metricas.esperandoPieza} unidad="equipos" icon={Box} tono="amber" proporcion={prop(metricas.esperandoPieza)} />
-            <MetricCard titulo="En Reparación" valor={metricas.enReparacion} unidad="equipos" icon={Setting2} tono="slate" proporcion={prop(metricas.enReparacion)} />
-            <MetricCard titulo="Listos p/ Recoger" valor={metricas.listos} unidad="equipos" icon={TickCircle} tono="green" proporcion={prop(metricas.listos)} />
-            <MetricCard titulo="Ppto. Enviado" valor={metricas.pptoEnviado} unidad="equipos" icon={Send2} tono="indigo" proporcion={prop(metricas.pptoEnviado)} />
-            <MetricCard titulo="Ppto. Aceptado" valor={metricas.pptosAceptados} unidad="equipos" icon={Verify} tono="emerald" proporcion={prop(metricas.pptosAceptados)} />
-            <MetricCard titulo="Pieza Entregada" valor={metricas.piezaEntregada} unidad="equipos" icon={Box1} tono="teal" proporcion={prop(metricas.piezaEntregada)} />
-            <MetricCard titulo="Garantía" valor={metricas.garantia} unidad="equipos" icon={ShieldTick} tono="violet" proporcion={prop(metricas.garantia)} />
-            <MetricCard titulo="Envío Mensajería" valor={metricas.mensajeriaActiva} unidad="equipos" icon={Truck} tono="blue" proporcion={prop(metricas.mensajeriaActiva)} />
-            <MetricCard titulo="Form. Pendiente" valor={metricas.formularioPendiente} unidad="formularios" icon={ClipboardText} tono="orange" />
-            <MetricCard titulo="Cintas en Conversión" valor={metricas.cintasEnReparacion} unidad="pedidos" icon={Video} tono="rose" />
+            <MetricCard titulo="Ppto. Pendiente" valor={metricas.presupuestoPendiente} unidad="equipos" icon={DocumentText} tono="sky" proporcion={prop(metricas.presupuestoPendiente)} onClick={() => onFiltrar("pptoPendiente")} activo={cardFiltro === "pptoPendiente"} />
+            <MetricCard titulo="Pieza Pendiente" valor={metricas.esperandoPieza} unidad="equipos" icon={Box} tono="amber" proporcion={prop(metricas.esperandoPieza)} onClick={() => onFiltrar("piezaPendiente")} activo={cardFiltro === "piezaPendiente"} />
+            <MetricCard titulo="En Reparación" valor={metricas.enReparacion} unidad="equipos" icon={Setting2} tono="slate" proporcion={prop(metricas.enReparacion)} onClick={() => onFiltrar("enReparacion")} activo={cardFiltro === "enReparacion"} />
+            <MetricCard titulo="Listos p/ Recoger" valor={metricas.listos} unidad="equipos" icon={TickCircle} tono="green" proporcion={prop(metricas.listos)} onClick={() => onFiltrar("listos")} activo={cardFiltro === "listos"} />
+            <MetricCard titulo="Ppto. Enviado" valor={metricas.pptoEnviado} unidad="equipos" icon={Send2} tono="indigo" proporcion={prop(metricas.pptoEnviado)} onClick={() => onFiltrar("pptoEnviado")} activo={cardFiltro === "pptoEnviado"} />
+            <MetricCard titulo="Ppto. Aceptado" valor={metricas.pptosAceptados} unidad="equipos" icon={Verify} tono="emerald" proporcion={prop(metricas.pptosAceptados)} onClick={() => onFiltrar("pptoAceptado")} activo={cardFiltro === "pptoAceptado"} />
+            <MetricCard titulo="Pieza Entregada" valor={metricas.piezaEntregada} unidad="equipos" icon={Box1} tono="teal" proporcion={prop(metricas.piezaEntregada)} onClick={() => onFiltrar("piezaEntregada")} activo={cardFiltro === "piezaEntregada"} />
+            <MetricCard titulo="Garantía" valor={metricas.garantia} unidad="equipos" icon={ShieldTick} tono="violet" proporcion={prop(metricas.garantia)} onClick={() => onFiltrar("garantia")} activo={cardFiltro === "garantia"} />
+            <MetricCard titulo="Envío Mensajería" valor={metricas.mensajeriaActiva} unidad="equipos" icon={Truck} tono="blue" proporcion={prop(metricas.mensajeriaActiva)} onClick={() => onFiltrar("mensajeriaActiva")} activo={cardFiltro === "mensajeriaActiva"} />
+            <MetricCard titulo="Form. Pendiente" valor={metricas.formularioPendiente} unidad="formularios" icon={ClipboardText} tono="orange" onClick={() => onFiltrar("formularioPendiente")} activo={cardFiltro === "formularioPendiente"} />
+            <MetricCard titulo="Cintas en Conversión" valor={metricas.cintasEnReparacion} unidad="pedidos" icon={Video} tono="rose" onClick={() => onFiltrar("cintasEnReparacion")} activo={cardFiltro === "cintasEnReparacion"} />
           </div>
 
           {(metricas.presupuestosRetrasados.length > 0 || metricas.equiposRetrasados.length > 0) && (
@@ -95,11 +97,15 @@ export function DashboardMetricas() {
                 items={metricas.presupuestosRetrasados
                   .sort((a, b) => b.horasRetraso - a.horasRetraso)
                   .map((p) => ({ resguardo: p.resguardo, cliente: p.cliente, sub: `${p.diasRetraso}d` }))}
+                onClick={() => onFiltrar("pptoRetrasado")}
+                activo={cardFiltro === "pptoRetrasado"}
               />
               <AlertCard
                 titulo="Entrega Retrasada"
                 contador={metricas.equiposRetrasados.length}
                 items={metricas.equiposRetrasados.map((e) => ({ resguardo: e.resguardo, cliente: e.cliente, sub: `+${e.diasExcedidos}d` }))}
+                onClick={() => onFiltrar("entregaRetrasada")}
+                activo={cardFiltro === "entregaRetrasada"}
               />
             </div>
           )}

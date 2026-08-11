@@ -29,6 +29,39 @@ export interface EquipoRetrasado {
   diasPrometidos: number;
 }
 
+/** Reproduce los 13 valores de tipoCard en filtrarPorCard() del original (Index.html). */
+export type CardFiltroId =
+  | "pptoPendiente"
+  | "piezaPendiente"
+  | "enReparacion"
+  | "listos"
+  | "pptoEnviado"
+  | "pptoAceptado"
+  | "piezaEntregada"
+  | "garantia"
+  | "mensajeriaActiva"
+  | "formularioPendiente"
+  | "cintasEnReparacion"
+  | "pptoRetrasado"
+  | "entregaRetrasada";
+
+/** Mismo mapeo que cardEstados en aplicarFiltrosCombinados() del original — null = sin filtro de estado (solo el predicado extra). */
+export const CARD_FILTRO_ESTADOS: Record<CardFiltroId, string[] | null> = {
+  formularioPendiente: ["Formulario Pendiente"],
+  pptoPendiente: ["Presupuesto Pendiente"],
+  pptoAceptado: ["Presupuesto Aceptado"],
+  piezaPendiente: ["Pieza Pendiente"],
+  enReparacion: ["En Reparación"],
+  cintasEnReparacion: ["En Reparación"],
+  mensajeriaActiva: null,
+  listos: ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"],
+  pptoEnviado: ["Presupuesto Enviado"],
+  piezaEntregada: ["Pieza Entregada"],
+  garantia: ["Garantía"],
+  pptoRetrasado: ["Presupuesto Pendiente"],
+  entregaRetrasada: ["En Reparación", "Pieza Pendiente", "En Tránsito", "Pieza Entregada"],
+};
+
 export interface MetricasDashboard {
   formularioPendiente: number;
   presupuestoPendiente: number;

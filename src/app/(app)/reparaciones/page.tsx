@@ -2,10 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle } from "@/lib/icons";
+import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar } from "@/lib/icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { calcularDiasEntrega, formatearFecha } from "@/lib/dias-entrega";
+import { MetricasDashboard, CardFiltroId, CARD_FILTRO_ESTADOS } from "@/lib/metricas";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "./detalle-dialog-lazy";
 import { ReparacionSheet } from "./reparacion-sheet";
 import { RechazarFormularioDialog } from "./formulario-pendiente-dialog";
@@ -33,6 +35,22 @@ type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | 
 // duplicado aquí porque este módulo todavía no expone un endpoint de
 // catálogos; ver nota en el informe de esta fase.
 const ESTADOS_REPARACION = Object.keys(COLOR_ESTADO).concat(["Pieza Pendiente"]);
+
+const NOMBRE_CARD: Record<CardFiltroId, string> = {
+  pptoPendiente: "Ppto. Pendiente",
+  piezaPendiente: "Pieza Pendiente",
+  enReparacion: "En Reparación",
+  listos: "Listos p/ Recoger",
+  pptoEnviado: "Ppto. Enviado",
+  pptoAceptado: "Ppto. Aceptado",
+  piezaEntregada: "Pieza Entregada",
+  garantia: "Garantía",
+  mensajeriaActiva: "Envío Mensajería",
+  formularioPendiente: "Form. Pendiente",
+  cintasEnReparacion: "Cintas en Conversión",
+  pptoRetrasado: "Presupuesto Retrasado (+24h)",
+  entregaRetrasada: "Entrega Retrasada",
+};
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -47,6 +65,8 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
+type OpcionFiltro = { value: string; label: string };
+
 function MultiselectFiltro({
   label,
   opciones,
@@ -54,10 +74,13 @@ function MultiselectFiltro({
   onCambiar,
 }: {
   label: string;
-  opciones: string[];
+  /** string[] cuando el valor ya es su propia etiqueta (Estado, Técnico); {value,label}[] cuando no (Equipo, Entrega — ver mapeo original en msEquipoMenu/msEntregaMenu). */
+  opciones: string[] | OpcionFiltro[];
   seleccionados: string[];
   onCambiar: (valores: string[]) => void;
 }) {
+  const normalizadas: OpcionFiltro[] = opciones.map((op) => (typeof op === "string" ? { value: op, label: op } : op));
+
   function toggle(valor: string) {
     if (seleccionados.includes(valor)) {
       onCambiar(seleccionados.filter((v) => v !== valor));
@@ -79,16 +102,16 @@ function MultiselectFiltro({
         <ArrowDown2 className="size-3" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto p-1">
-        {opciones.length === 0 && (
+        {normalizadas.length === 0 && (
           <p className="px-2 py-1.5 text-sm text-muted-foreground">Sin opciones</p>
         )}
-        {opciones.map((op) => (
+        {normalizadas.map((op) => (
           <label
-            key={op}
+            key={op.value}
             className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
           >
-            <Checkbox checked={seleccionados.includes(op)} onCheckedChange={() => toggle(op)} />
-            {op}
+            <Checkbox checked={seleccionados.includes(op.value)} onCheckedChange={() => toggle(op.value)} />
+            {op.label}
           </label>
         ))}
       </DropdownMenuContent>
@@ -125,10 +148,17 @@ export default function ReparacionesPage() {
   const [filtroTecnico, setFiltroTecnico] = useState<string[]>([]);
   const [filtroEquipo, setFiltroEquipo] = useState<string[]>([]);
   const [filtroEntrega, setFiltroEntrega] = useState<string[]>([]);
+  const [busqueda, setBusqueda] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [cardFiltro, setCardFiltro] = useState<CardFiltroId | null>(null);
   const [orden, setOrden] = useState<Orden>({ campo: null, direccion: null });
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [formularioPendiente, setFormularioPendiente] = useState<{ rep: Reparacion; modo: "confirmar" | "rechazar" } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
+
+  const [metricas, setMetricas] = useState<MetricasDashboard | null>(null);
+  const [errorMetricas, setErrorMetricas] = useState<string | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -145,8 +175,24 @@ export default function ReparacionesPage() {
     }
   }
 
+  // Se sube aquí (antes vivía dentro de DashboardMetricas) porque las cards
+  // de "Presupuesto Retrasado"/"Entrega Retrasada" necesitan los mismos
+  // resguardos ya calculados por /api/metricas para poder filtrar la tabla,
+  // sin reimplementar el cálculo de días laborables/horas en el cliente.
+  async function cargarMetricas() {
+    try {
+      const res = await fetch("/api/metricas");
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      setMetricas(data.metricas as MetricasDashboard);
+    } catch (e) {
+      setErrorMetricas(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
   useEffect(() => {
     cargar();
+    cargarMetricas();
   }, []);
 
   const tecnicosDisponibles = useMemo(() => {
@@ -157,12 +203,61 @@ export default function ReparacionesPage() {
     return Array.from(set).sort();
   }, [reparaciones]);
 
+  // Mismos resguardos que ya se muestran en las AlertCard de abajo — evita
+  // reimplementar el cálculo de horas/días laborables de retraso aquí.
+  const resguardosPptoRetrasado = useMemo(
+    () => new Set(metricas?.presupuestosRetrasados.map((p) => p.resguardo) || []),
+    [metricas]
+  );
+  const resguardosEntregaRetrasada = useMemo(
+    () => new Set(metricas?.equiposRetrasados.map((e) => e.resguardo) || []),
+    [metricas]
+  );
+
   const filtradas = useMemo(() => {
     let lista = reparaciones;
     if (filtroEstado.length) lista = lista.filter((r) => filtroEstado.includes(r.estado));
     if (filtroTecnico.length) lista = lista.filter((r) => filtroTecnico.includes(r.tecnicoAsignado));
     if (filtroEquipo.length) lista = lista.filter((r) => filtroEquipo.includes(r.equipoEnLocal));
     if (filtroEntrega.length) lista = lista.filter((r) => filtroEntrega.includes(r.entregaMensajeria));
+
+    // Filtro por card — mismo orden/lógica que aplicarFiltrosCombinados() del
+    // original: primero los estados del mapeo, luego el predicado extra.
+    if (cardFiltro) {
+      const estados = CARD_FILTRO_ESTADOS[cardFiltro];
+      if (estados) lista = lista.filter((r) => estados.includes(r.estado));
+      if (cardFiltro === "cintasEnReparacion") lista = lista.filter((r) => !!r.datosCintas);
+      if (cardFiltro === "mensajeriaActiva") lista = lista.filter((r) => r.entregaMensajeria === "SI");
+      if (cardFiltro === "pptoRetrasado") lista = lista.filter((r) => resguardosPptoRetrasado.has(r.resguardo));
+      if (cardFiltro === "entregaRetrasada") lista = lista.filter((r) => resguardosEntregaRetrasada.has(r.resguardo));
+    }
+
+    // Búsqueda de texto libre — mismos campos que buscarReparaciones() del original.
+    if (busqueda.trim()) {
+      const texto = busqueda.trim().toLowerCase();
+      lista = lista.filter((r) => {
+        return (
+          String(r.resguardo || "").toLowerCase().includes(texto) ||
+          String(r.cliente.nombre || "").toLowerCase().includes(texto) ||
+          String(r.cliente.telefono || "").toLowerCase().includes(texto) ||
+          String(r.cliente.email || "").toLowerCase().includes(texto) ||
+          String(r.equipo.modelo || "").toLowerCase().includes(texto) ||
+          String(r.equipo.sintoma || "").toLowerCase().includes(texto)
+        );
+      });
+    }
+
+    // Rango de fechas sobre fechaRecepcion — mismo criterio que filtrarPorFecha().
+    if (fechaDesde || fechaHasta) {
+      lista = lista.filter((r) => {
+        if (!r.fechaRecepcion) return false;
+        const fecha = new Date(r.fechaRecepcion);
+        fecha.setHours(0, 0, 0, 0);
+        if (fechaDesde && fecha < new Date(fechaDesde + "T00:00:00")) return false;
+        if (fechaHasta && fecha > new Date(fechaHasta + "T23:59:59")) return false;
+        return true;
+      });
+    }
 
     if (orden.campo) {
       lista = [...lista].sort((a, b) => {
@@ -174,7 +269,7 @@ export default function ReparacionesPage() {
       });
     }
     return lista;
-  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, orden]);
+  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
 
   function alternarOrden(campo: "resguardo" | "fecha") {
     setOrden((prev) => {
@@ -184,49 +279,134 @@ export default function ReparacionesPage() {
     });
   }
 
-  const hayFiltrosActivos =
-    filtroEstado.length > 0 || filtroTecnico.length > 0 || filtroEquipo.length > 0 || filtroEntrega.length > 0;
+  // Reproduce filtrarPorCard(): al elegir una card se limpia búsqueda y
+  // fecha (pero NO los multiselects, que siempre se combinan con todo).
+  function aplicarCardFiltro(id: CardFiltroId) {
+    setCardFiltro((actual) => (actual === id ? null : id));
+    setBusqueda("");
+    setFechaDesde("");
+    setFechaHasta("");
+  }
+
+  // Reproduce filtrarPorFecha(): fijar una fecha limpia el filtro de card
+  // (pero no la búsqueda ni los multiselects).
+  function cambiarFecha(campo: "desde" | "hasta", valor: string) {
+    setCardFiltro(null);
+    if (campo === "desde") setFechaDesde(valor);
+    else setFechaHasta(valor);
+  }
+
+  function filtrarHoy() {
+    const hoy = new Date().toISOString().split("T")[0];
+    setCardFiltro(null);
+    setFechaDesde(hoy);
+    setFechaHasta(hoy);
+  }
+
+  function limpiarFiltros() {
+    setFiltroEstado([]);
+    setFiltroTecnico([]);
+    setFiltroEquipo([]);
+    setFiltroEntrega([]);
+    setBusqueda("");
+    setFechaDesde("");
+    setFechaHasta("");
+    setCardFiltro(null);
+  }
+
+  // Reproduce actualizarIndicadorFiltro() del original.
+  const descripcionFiltros = useMemo(() => {
+    const desc: string[] = [];
+    if (cardFiltro) desc.push(`Card: ${NOMBRE_CARD[cardFiltro]}`);
+    if (filtroEstado.length) desc.push(`Estado: ${filtroEstado.join(", ")}`);
+    if (filtroTecnico.length) desc.push(`Técnico: ${filtroTecnico.join(", ")}`);
+    if (filtroEquipo.length) desc.push(`Equipo: ${filtroEquipo.map((v) => (v === "SI" ? "En local" : "Cliente se llevó")).join(", ")}`);
+    if (filtroEntrega.length) desc.push(`Entrega: ${filtroEntrega.map((v) => (v === "SI" ? "Mensajería" : "Local")).join(", ")}`);
+    if (busqueda.trim()) desc.push(`Búsqueda: "${busqueda.trim()}"`);
+    if (fechaDesde || fechaHasta) desc.push(`Fecha: ${fechaDesde || "*"} - ${fechaHasta || "*"}`);
+    return desc.join(" | ");
+  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, busqueda, fechaDesde, fechaHasta]);
+
+  const hayFiltrosActivos = descripcionFiltros.length > 0;
 
   return (
     <div className="p-6">
       {/* En el sistema original (vistaActivas) el dashboard y la tabla de
           reparaciones activas son la misma vista, no dos rutas separadas. */}
-      <DashboardMetricas />
+      <DashboardMetricas metricas={metricas} error={errorMetricas} cardFiltro={cardFiltro} onFiltrar={aplicarCardFiltro} />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">Todas las Reparaciones</h1>
-          <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar datos">
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8"
+            onClick={() => {
+              cargar();
+              cargarMetricas();
+            }}
+            title="Actualizar datos"
+          >
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
           {!cargando && <span className="text-sm text-muted-foreground">{filtradas.length} resultados</span>}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button className="h-8 gap-1.5" onClick={() => setNuevaAbierta(true)}>
-            <AddCircle className="size-4" /> Nueva Reparación
-          </Button>
-          <MultiselectFiltro label="Estado" opciones={ESTADOS_REPARACION} seleccionados={filtroEstado} onCambiar={setFiltroEstado} />
-          <MultiselectFiltro label="Técnico" opciones={tecnicosDisponibles} seleccionados={filtroTecnico} onCambiar={setFiltroTecnico} />
-          <MultiselectFiltro label="Equipo" opciones={["SI", "NO"]} seleccionados={filtroEquipo} onCambiar={setFiltroEquipo} />
-          <MultiselectFiltro label="Entrega" opciones={["SI", "NO"]} seleccionados={filtroEntrega} onCambiar={setFiltroEntrega} />
-          {hayFiltrosActivos && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-muted-foreground"
-              onClick={() => {
-                setFiltroEstado([]);
-                setFiltroTecnico([]);
-                setFiltroEquipo([]);
-                setFiltroEntrega([]);
-              }}
-            >
-              <CloseCircle className="size-3.5" /> Limpiar
-            </Button>
-          )}
-        </div>
+        <Button className="h-8 gap-1.5" onClick={() => setNuevaAbierta(true)}>
+          <AddCircle className="size-4" /> Nueva Reparación
+        </Button>
       </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por cliente, teléfono, resguardo..."
+            className="h-8 w-64 pl-8"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <Calendar className="size-3.5 text-muted-foreground" />
+          <Input type="date" value={fechaDesde} onChange={(e) => cambiarFecha("desde", e.target.value)} className="h-8 w-36" title="Desde" />
+          <span className="text-sm text-muted-foreground">-</span>
+          <Input type="date" value={fechaHasta} onChange={(e) => cambiarFecha("hasta", e.target.value)} className="h-8 w-36" title="Hasta" />
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={filtrarHoy}>
+            <Calendar className="size-3.5" /> Hoy
+          </Button>
+        </div>
+
+        <MultiselectFiltro label="Estado" opciones={ESTADOS_REPARACION} seleccionados={filtroEstado} onCambiar={setFiltroEstado} />
+        <MultiselectFiltro label="Técnico" opciones={tecnicosDisponibles} seleccionados={filtroTecnico} onCambiar={setFiltroTecnico} />
+        <MultiselectFiltro
+          label="Equipo"
+          opciones={[{ value: "SI", label: "En local" }, { value: "NO", label: "Cliente se llevó" }]}
+          seleccionados={filtroEquipo}
+          onCambiar={setFiltroEquipo}
+        />
+        <MultiselectFiltro
+          label="Entrega"
+          opciones={[{ value: "SI", label: "Mensajería" }, { value: "NO", label: "Local" }]}
+          seleccionados={filtroEntrega}
+          onCambiar={setFiltroEntrega}
+        />
+        {hayFiltrosActivos && (
+          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltros}>
+            <CloseCircle className="size-3.5" /> Limpiar
+          </Button>
+        )}
+      </div>
+
+      {/* Reproduce el badge "filtroActivoIndicador" del original. */}
+      {hayFiltrosActivos && (
+        <div className="mb-4 flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 text-xs text-primary">
+          <Filter className="size-3.5 shrink-0" />
+          <span className="truncate">{descripcionFiltros}</span>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
