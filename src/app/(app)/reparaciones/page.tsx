@@ -188,7 +188,7 @@ export default function ReparacionesPage() {
     filtroEstado.length > 0 || filtroTecnico.length > 0 || filtroEquipo.length > 0 || filtroEntrega.length > 0;
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="p-6">
       {/* En el sistema original (vistaActivas) el dashboard y la tabla de
           reparaciones activas son la misma vista, no dos rutas separadas. */}
       <DashboardMetricas />
@@ -293,16 +293,16 @@ export default function ReparacionesPage() {
                   >
                     <TableCell className="font-semibold">{rep.resguardo}</TableCell>
                     <TableCell className="text-sm">{formatearFecha(rep.fechaRecepcion)}</TableCell>
-                    <TableCell>
-                      <div>{rep.cliente.nombre || "N/A"}</div>
-                      <div className="text-xs text-muted-foreground">{rep.cliente.telefono || "N/A"}</div>
-                      <div className="text-xs text-muted-foreground">{rep.cliente.email || ""}</div>
+                    <TableCell className="max-w-47.5">
+                      <div className="truncate" title={rep.cliente.nombre || "N/A"}>{rep.cliente.nombre || "N/A"}</div>
+                      <div className="truncate text-xs text-muted-foreground">{rep.cliente.telefono || "N/A"}</div>
+                      <div className="truncate text-xs text-muted-foreground" title={rep.cliente.email || ""}>{rep.cliente.email || ""}</div>
                     </TableCell>
-                    <TableCell>
-                      <div>{rep.equipo.modelo || "N/A"}</div>
+                    <TableCell className="max-w-57.5">
+                      <div className="truncate" title={rep.equipo.modelo || "N/A"}>{rep.equipo.modelo || "N/A"}</div>
                       {rep.pptoDescripcion && (
-                        <div className="text-xs text-muted-foreground">
-                          {rep.pptoDescripcion.length > 50 ? rep.pptoDescripcion.slice(0, 50) + "…" : rep.pptoDescripcion}
+                        <div className="truncate text-xs text-muted-foreground" title={rep.pptoDescripcion}>
+                          {rep.pptoDescripcion}
                         </div>
                       )}
                     </TableCell>
