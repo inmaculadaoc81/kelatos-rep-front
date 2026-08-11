@@ -1,10 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, DocumentText } from "@/lib/icons";
+import { useRouter } from "next/navigation";
+import {
+  Refresh2,
+  SearchNormal1,
+  DocumentText,
+  Receipt,
+  Eye,
+  Bank,
+  ExportSquare,
+  Box,
+  ArrowLeft2,
+  ArrowLeft3,
+  ArrowRight2,
+  ArrowRight3,
+} from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -15,30 +30,240 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useConfirm } from "@/components/confirm-provider";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { formatearFecha } from "@/lib/dias-entrega";
-import { FacturaCliente, ETIQUETA_TIPO_FACTURA, TipoFactura } from "@/lib/facturas-cliente";
+import {
+  FacturaCliente,
+  TipoFactura,
+  ETIQUETA_TIPO_FACTURA,
+  serieFactura,
+  montoConIva,
+  estadoFacturaDerivado,
+  tipoPermiteMarcarCobrada,
+  formaPagoLabel,
+} from "@/lib/facturas-cliente";
+import { ColumnaFiltro } from "./columna-filtro";
+import { DetalleFacturaDialog } from "./detalle-factura-dialog";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
-const ESTILO_TIPO: Record<TipoFactura, string> = {
-  normal: "border-sky-500/40 text-sky-700 dark:text-sky-400",
-  revision: "border-violet-500/40 text-violet-700 dark:text-violet-400",
-  mensajeria: "border-blue-500/40 text-blue-700 dark:text-blue-400",
-  anticipo: "border-amber-500/40 text-amber-700 dark:text-amber-400",
-  rectificativa: "border-destructive/40 text-destructive",
-  rectificativa_revision: "border-destructive/40 text-destructive",
-  corregida: "border-orange-500/40 text-orange-700 dark:text-orange-400",
-  corregida_revision: "border-orange-500/40 text-orange-700 dark:text-orange-400",
+const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+
+type ColumnaFiltrable = "resguardo" | "numero" | "serie" | "cliente" | "equipo" | "fecha" | "total" | "tipo" | "formaPago";
+const COLUMNAS_FILTRABLES: ColumnaFiltrable[] = ["resguardo", "numero", "serie", "cliente", "equipo", "fecha", "total", "tipo", "formaPago"];
+
+function valorColumna(f: FacturaCliente, columna: ColumnaFiltrable): string {
+  switch (columna) {
+    case "resguardo":
+      return f.resguardo || "—";
+    case "numero":
+      return f.numero || "—";
+    case "serie": {
+      const s = serieFactura(f.numero);
+      return s || "—";
+    }
+    case "cliente":
+      return f.cliente || "—";
+    case "equipo":
+      return f.equipo || "—";
+    case "fecha":
+      return formatearFecha(f.fecha) || "—";
+    case "total": {
+      const m = montoConIva(f);
+      return m ? euros(m) : "—";
+    }
+    case "tipo":
+      return ETIQUETA_TIPO_FACTURA[f.tipo] || "—";
+    case "formaPago":
+      return formaPagoLabel(f);
+  }
+}
+
+type FiltroFecha = "todas" | "hoy" | "semana" | "mes" | `mes${number}` | `trim${number}`;
+
+/** Reproduce _fcDentroRango() del original. */
+function dentroDeRango(fecha: string | null, filtro: FiltroFecha): boolean {
+  if (!fecha) return filtro === "todas";
+  const iso = fecha.length > 10 ? fecha.substring(0, 10) : fecha;
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return filtro === "todas";
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  if (filtro === "todas") return true;
+  if (filtro === "hoy") return d.getTime() === hoy.getTime();
+  if (filtro === "semana") {
+    const hace7 = new Date(hoy);
+    hace7.setDate(hoy.getDate() - 6);
+    return d >= hace7 && d <= hoy;
+  }
+  if (filtro === "mes") {
+    const hace30 = new Date(hoy);
+    hace30.setDate(hoy.getDate() - 29);
+    return d >= hace30 && d <= hoy;
+  }
+  const mMatch = /^mes(\d+)$/.exec(filtro);
+  if (mMatch) {
+    const mesN = parseInt(mMatch[1], 10);
+    return d.getFullYear() === hoy.getFullYear() && d.getMonth() + 1 === mesN;
+  }
+  const tMatch = /^trim(\d)$/.exec(filtro);
+  if (tMatch) {
+    const trimN = parseInt(tMatch[1], 10);
+    const mesInicio = (trimN - 1) * 3 + 1;
+    const mesFin = trimN * 3;
+    const mesDoc = d.getMonth() + 1;
+    return d.getFullYear() === hoy.getFullYear() && mesDoc >= mesInicio && mesDoc <= mesFin;
+  }
+  return true;
+}
+
+const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+const TIPO_BADGE_ESTILO: Partial<Record<TipoFactura, { bg: string; color: string }>> = {
+  reparacion: { bg: "#0d6efd", color: "#fff" },
+  revision: { bg: "#fd7e14", color: "#fff" },
+  mensajeria: { bg: "#0dcaf0", color: "#000" },
+  anticipo: { bg: "#6c757d", color: "#fff" },
+  rectificativa: { bg: "#dc3545", color: "#fff" },
+  recogida: { bg: "#6c757d", color: "#fff" },
+  alquiler: { bg: "#198754", color: "#fff" },
+  manual: { bg: "#6f42c1", color: "#fff" },
 };
 
+function TipoBadge({ f }: { f: FacturaCliente }) {
+  // Una factura "corregida" reproduce el badge de su tipo de origen en vez
+  // de tener uno propio — así se ve en el original (tipoBadge()).
+  const tipoEfectivo: TipoFactura = f.tipo === "corregida" ? (f.tipoOriginal === "revision" ? "revision" : "reparacion") : f.tipo;
+  const estilo = TIPO_BADGE_ESTILO[tipoEfectivo] ?? { bg: "#e9ecef", color: "#6c757d" };
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
+      {f.tipo === "recogida" && <Box className="size-3" />}
+      {ETIQUETA_TIPO_FACTURA[tipoEfectivo]}
+    </span>
+  );
+}
+
+function SerieBadge({ numero }: { numero: string }) {
+  const s = serieFactura(numero);
+  if (s === "1") return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#0d6efd" }}>Serie 1</span>;
+  if (s === "3") return <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: "#ffc107", color: "#332701" }}>Serie 3</span>;
+  return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#6c757d" }}>—</span>;
+}
+
+const ESTADO_ESTILO: Record<string, { bg: string; color: string; dot: string }> = {
+  Cobrada: { bg: "rgba(25,135,84,.13)", color: "#146c43", dot: "#198754" },
+  Pendiente: { bg: "rgba(108,117,125,.1)", color: "#5a6268", dot: "" },
+  Anulada: { bg: "rgba(220,53,69,.11)", color: "#842029", dot: "#dc3545" },
+  "Devolución": { bg: "rgba(25,135,84,.13)", color: "#146c43", dot: "#198754" },
+};
+
+function EstadoBadge({ f, onClick }: { f: FacturaCliente; onClick?: () => void }) {
+  const estado = estadoFacturaDerivado(f);
+  const estilo = ESTADO_ESTILO[estado] ?? ESTADO_ESTILO.Pendiente;
+  const clicable = !!onClick && estado === "Pendiente";
+  return (
+    <span
+      className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", clicable && "cursor-pointer")}
+      style={{ backgroundColor: estilo.bg, color: estilo.color }}
+      onClick={clicable ? onClick : undefined}
+      title={clicable ? "Pendiente — clic para marcar como Cobrada" : estado}
+    >
+      {estado}
+      <span
+        className="inline-block size-2 rounded-[2px]"
+        style={estado === "Pendiente" ? { border: "1.5px solid #6c757d" } : { backgroundColor: estilo.dot }}
+      />
+    </span>
+  );
+}
+
+function FacturaBadge({ f }: { f: FacturaCliente }) {
+  const contenido = (
+    <>
+      <Receipt className="size-3.5" /> {f.numero} {f.url && <ExportSquare className="size-2.5" />}
+    </>
+  );
+  const clase = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white";
+  if (f.url) {
+    return (
+      <a href={f.url} target="_blank" rel="noopener noreferrer" className={cn(clase, "hover:opacity-90")} style={{ backgroundColor: "#198754" }}>
+        {contenido}
+      </a>
+    );
+  }
+  return (
+    <span className={clase} style={{ backgroundColor: "#198754" }}>
+      {contenido}
+    </span>
+  );
+}
+
+function ResguardoCell({ f }: { f: FacturaCliente }) {
+  const router = useRouter();
+  if (f.esAlquiler) return <span className="font-bold" style={{ color: "#198754" }}>{f.resguardo || "—"}</span>;
+  if (f.esManual) return <span className="font-bold" style={{ color: "#6f42c1" }}>{f.resguardo || "—"}</span>;
+  const cerrada = f.estadoEntrega === "ENTREGADO" || f.estadoEntrega === "ENVIO" || f.estadoEntrega === "RECICLAJE";
+  return (
+    <button
+      type="button"
+      className="font-bold text-primary underline-offset-2 hover:underline"
+      onClick={() => router.push(`/${cerrada ? "historial" : "reparaciones"}?resguardo=${encodeURIComponent(f.resguardo)}`)}
+    >
+      {f.resguardo || "—"}
+    </button>
+  );
+}
+
+function VerBoton({ f }: { f: FacturaCliente }) {
+  const router = useRouter();
+  if (f.esManual) return <span className="mr-1 inline-block size-7" />;
+  if (f.esAlquiler) {
+    return (
+      <Button variant="outline" size="icon-sm" className="mr-1" title="Ver alquiler" onClick={() => router.push("/equipos")}>
+        <Bank className="size-3.5" />
+      </Button>
+    );
+  }
+  const cerrada = f.estadoEntrega === "ENTREGADO" || f.estadoEntrega === "ENVIO" || f.estadoEntrega === "RECICLAJE";
+  return (
+    <Button
+      variant="outline"
+      size="icon-sm"
+      className="mr-1"
+      title="Ver reparación"
+      onClick={() => router.push(`/${cerrada ? "historial" : "reparaciones"}?resguardo=${encodeURIComponent(f.resguardo)}`)}
+    >
+      <Eye className="size-3.5" />
+    </Button>
+  );
+}
+
 export default function FacturasClientesPage() {
+  const confirmar = useConfirm();
+
   const [facturas, setFacturas] = useState<FacturaCliente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [filtroSerie, setFiltroSerie] = useState<"todas" | "1" | "3" | "alquiler">("todas");
+  const [estPend, setEstPend] = useState(true);
+  const [estCobr, setEstCobr] = useState(true);
+  const [estAnul, setEstAnul] = useState(true);
+  const [estDevol, setEstDevol] = useState(true);
+  const [filtroBanco, setFiltroBanco] = useState("");
+  const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>("todas");
   const [busqueda, setBusqueda] = useState("");
-  const [tipo, setTipo] = useState("");
+  const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
+
+  const [pagina, setPagina] = useState(1);
+  const [filasPorPagina, setFilasPorPagina] = useState(15);
+
+  const [facturaAcciones, setFacturaAcciones] = useState<FacturaCliente | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -59,134 +284,456 @@ export default function FacturasClientesPage() {
     cargar();
   }, []);
 
-  const filtradas = useMemo(() => {
-    let lista = facturas;
-    if (tipo) lista = lista.filter((f) => f.tipo === tipo);
+  function actualizar() {
+    setBusqueda("");
+    setFiltrosColumna({});
+    cargar();
+  }
+
+  // ── Filtrado (reproduce _fcListaFiltrada) ───────────────────────────────
+  const filtroEstadosActivo = !(estPend && estCobr && estAnul && estDevol);
+
+  function aplicarFiltrosBase(lista: FacturaCliente[]): FacturaCliente[] {
+    let out = lista;
+    if (filtroSerie === "alquiler") {
+      out = out.filter((f) => f.esAlquiler);
+    } else if (filtroSerie !== "todas") {
+      out = out.filter((f) => serieFactura(f.numero) === filtroSerie && f.tipo !== "alquiler" && f.tipo !== "recogida");
+    }
+    if (filtroEstadosActivo) {
+      out = out.filter((f) => {
+        const est = (f.estadoFactura || "").trim();
+        if (f.tipo === "rectificativa") return est === "Devolución" ? estDevol : estAnul;
+        if (est === "Anulada") return estAnul;
+        if (est === "Devolución") return estDevol;
+        const esCobrada = est === "Cobrada" || (!est && !!(f.formaPago && f.formaPago.trim()));
+        return esCobrada ? estCobr : estPend;
+      });
+    }
+    out = out.filter((f) => dentroDeRango(f.fecha, filtroFecha));
+    if (filtroBanco) out = out.filter((f) => (f.banco || "").trim() === filtroBanco);
     if (busqueda.trim()) {
       const q = busqueda.trim().toLowerCase();
-      lista = lista.filter(
+      out = out.filter(
         (f) =>
           f.resguardo.toLowerCase().includes(q) ||
           f.numero.toLowerCase().includes(q) ||
           f.cliente.toLowerCase().includes(q) ||
+          f.email.toLowerCase().includes(q) ||
           f.dniCif.toLowerCase().includes(q)
       );
     }
-    return [...lista].sort((a, b) => b.numero.localeCompare(a.numero));
-  }, [facturas, busqueda, tipo]);
+    return out;
+  }
 
-  const totalFacturado = useMemo(() => filtradas.reduce((acc, f) => acc + f.total, 0), [filtradas]);
+  function aplicarFiltrosColumna(lista: FacturaCliente[], excluir?: ColumnaFiltrable): FacturaCliente[] {
+    let out = lista;
+    for (const col of COLUMNAS_FILTRABLES) {
+      if (col === excluir) continue;
+      const seleccion = filtrosColumna[col];
+      if (!seleccion || !seleccion.size) continue;
+      out = out.filter((f) => seleccion.has(valorColumna(f, col)));
+    }
+    return out;
+  }
+
+  const listaBase = useMemo(
+    () => aplicarFiltrosBase(facturas),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [facturas, filtroSerie, estPend, estCobr, estAnul, estDevol, filtroFecha, filtroBanco, busqueda]
+  );
+
+  const listaFiltrada = useMemo(() => {
+    const out = aplicarFiltrosColumna(listaBase, undefined);
+    return [...out].sort((a, b) => {
+      const na = parseInt(a.numero.replace(/\D/g, "") || "0", 10);
+      const nb = parseInt(b.numero.replace(/\D/g, "") || "0", 10);
+      return nb - na;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listaBase, filtrosColumna]);
+
+  const sumaTotal = useMemo(() => listaFiltrada.reduce((acc, f) => acc + montoConIva(f), 0), [listaFiltrada]);
+
+  const totalPaginas = filasPorPagina > 0 ? Math.max(1, Math.ceil(listaFiltrada.length / filasPorPagina)) : 1;
+  const paginaSegura = Math.min(pagina, totalPaginas);
+  const inicio = filasPorPagina > 0 ? (paginaSegura - 1) * filasPorPagina : 0;
+  const fin = filasPorPagina > 0 ? Math.min(inicio + filasPorPagina, listaFiltrada.length) : listaFiltrada.length;
+  const paginaActual = listaFiltrada.slice(inicio, fin);
+
+  function opcionesColumna(col: ColumnaFiltrable): string[] {
+    const base = aplicarFiltrosColumna(listaBase, col);
+    const vistos = new Set<string>();
+    const vals: string[] = [];
+    for (const f of base) {
+      const v = valorColumna(f, col);
+      if (!vistos.has(v)) {
+        vistos.add(v);
+        vals.push(v);
+      }
+    }
+    vals.sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+    return vals;
+  }
+
+  function aplicarFiltroColumna(col: ColumnaFiltrable, seleccion: Set<string> | null) {
+    setFiltrosColumna((prev) => {
+      const siguiente = { ...prev };
+      if (seleccion === null) delete siguiente[col];
+      else siguiente[col] = seleccion;
+      return siguiente;
+    });
+    setPagina(1);
+  }
+
+  async function marcarComoCobrada(f: FacturaCliente) {
+    const ok = await confirmar(`¿Confirma que la factura ${f.numero} ha sido cobrada?`);
+    if (!ok) return;
+    try {
+      const res = await fetch("/api/facturas-clientes/marcar-cobrada", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resguardo: f.resguardo, tipo: f.tipo }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Factura marcada como Cobrada");
+      cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="mx-auto max-w-[110rem] p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-2">
+          <Receipt className="size-5 text-primary" />
           <h1 className="text-lg font-semibold">Facturas de Clientes</h1>
-          <p className="text-sm text-muted-foreground">Todas las facturas emitidas — reparación, revisión, mensajería y rectificativas</p>
         </div>
-        <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
-          <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={actualizar}>
+          <Refresh2 className={cn("size-4", cargando && "animate-spin")} /> Actualizar
         </Button>
       </div>
 
       {error && (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Error al cargar: {error}
+          Error al cargar facturas: {error}
         </div>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative w-64">
-          <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Resguardo, nº factura, cliente..." className="pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-        </div>
-        <Select value={tipo || "__todos__"} onValueChange={(v) => setTipo(!v || v === "__todos__" ? "" : v)}>
-          <SelectTrigger className="w-52">
-            <SelectValue>{(v: string) => (v === "__todos__" ? "Todos los tipos" : ETIQUETA_TIPO_FACTURA[v as TipoFactura])}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__todos__">Todos los tipos</SelectItem>
-            {Object.entries(ETIQUETA_TIPO_FACTURA).map(([v, label]) => (
-              <SelectItem key={v} value={v}>
-                {label}
-              </SelectItem>
+      <div className="grid gap-3 lg:grid-cols-[13rem_1fr]">
+        {/* ── Filtro lateral ── */}
+        <div className="h-fit rounded-lg border bg-card p-3 shadow-sm">
+          <p className="mb-1 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Series</p>
+          <Select
+            value={filtroSerie}
+            onValueChange={(v) => {
+              setFiltroSerie(v as typeof filtroSerie);
+              setPagina(1);
+            }}
+          >
+            <SelectTrigger className="mb-3 h-8 w-full text-xs">
+              <SelectValue>
+                {(v: string) => (v === "1" ? "Serie 1 — Cobros" : v === "3" ? "Serie 3 — Rectificativas" : v === "alquiler" ? "Alquiler" : "Todas")}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas</SelectItem>
+              <SelectItem value="1">Serie 1 — Cobros</SelectItem>
+              <SelectItem value="3">Serie 3 — Rectificativas</SelectItem>
+              <SelectItem value="alquiler">Alquiler</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <p className="mb-2 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Estados</p>
+          <div className="mb-3 flex flex-col gap-1.5">
+            {(
+              [
+                ["Pendientes", estPend, setEstPend, ESTADO_ESTILO.Pendiente],
+                ["Cobradas", estCobr, setEstCobr, ESTADO_ESTILO.Cobrada],
+                ["Anuladas", estAnul, setEstAnul, ESTADO_ESTILO.Anulada],
+                ["Devoluciones", estDevol, setEstDevol, ESTADO_ESTILO["Devolución"]],
+              ] as const
+            ).map(([label, valor, setValor, estilo]) => (
+              <label key={label} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={valor}
+                  onCheckedChange={(c) => {
+                    setValor(c === true);
+                    setPagina(1);
+                  }}
+                />
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                  style={{ backgroundColor: estilo.bg, color: estilo.color }}
+                >
+                  {label}
+                  <span className="inline-block size-2 rounded-[2px]" style={estilo.dot ? { backgroundColor: estilo.dot } : { border: "1.5px solid #6c757d" }} />
+                </span>
+              </label>
             ))}
-          </SelectContent>
-        </Select>
-        {!cargando && (
-          <span className="ml-auto text-sm text-muted-foreground">
-            {filtradas.length} facturas · <span className="font-semibold text-foreground">{euros(totalFacturado)}</span>
-          </span>
-        )}
-      </div>
+          </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nº Factura</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Resguardo</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Equipo</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Forma de pago</TableHead>
-              <TableHead>PDF</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {cargando &&
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 9 }).map((__, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
+          <hr className="my-2" />
+          <p className="mb-1 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Ref / Banco</p>
+          <Select
+            value={filtroBanco || "__todos__"}
+            onValueChange={(v) => {
+              setFiltroBanco(!v || v === "__todos__" ? "" : v);
+              setPagina(1);
+            }}
+          >
+            <SelectTrigger className="mb-3 h-8 w-full text-xs">
+              <SelectValue>{(v: string) => (v === "__todos__" ? "Todos" : v)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__todos__">Todos</SelectItem>
+              {BANCOS.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
 
-            {!cargando && filtradas.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-                  Sin resultados
-                </TableCell>
-              </TableRow>
-            )}
+          <hr className="my-2" />
+          <p className="mb-2 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Recientes</p>
+          <RadioGroup
+            value={/^(todas|hoy|semana|mes)$/.test(filtroFecha) ? filtroFecha : ""}
+            onValueChange={(v) => {
+              setFiltroFecha(v as FiltroFecha);
+              setPagina(1);
+            }}
+            className="flex flex-col gap-1.5"
+          >
+            {[
+              ["todas", "Todas"],
+              ["hoy", "Hoy"],
+              ["semana", "Última semana"],
+              ["mes", "Último mes"],
+            ].map(([v, label]) => (
+              <label key={v} className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value={v} />
+                {label}
+              </label>
+            ))}
+          </RadioGroup>
+        </div>
 
-            {!cargando &&
-              filtradas.map((f) => (
-                <TableRow key={`${f.resguardo}-${f.tipo}`}>
-                  <TableCell className="font-mono text-sm font-semibold">{f.numero}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={ESTILO_TIPO[f.tipo]}>
-                      {ETIQUETA_TIPO_FACTURA[f.tipo]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{f.resguardo}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">{f.cliente || "-"}</div>
-                    {f.dniCif && <div className="text-xs text-muted-foreground">{f.dniCif}</div>}
-                  </TableCell>
-                  <TableCell className="max-w-40 truncate text-sm text-muted-foreground">{f.equipo || "-"}</TableCell>
-                  <TableCell className="text-sm">{formatearFecha(f.fecha)}</TableCell>
-                  <TableCell className="text-right text-sm font-semibold tabular-nums">{euros(f.total)}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{f.formaPago || "-"}</TableCell>
-                  <TableCell>
-                    {f.url ? (
-                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        <DocumentText className="size-4" />
-                      </a>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
+        {/* ── Contenido principal ── */}
+        <div className="flex min-w-0 items-start gap-2">
+          {/* Franja de meses / trimestres */}
+          <div className="sticky top-3 flex shrink-0 flex-col gap-1">
+            {MESES.map((label, i) => (
+              <button
+                key={label}
+                type="button"
+                className={cn(
+                  "rounded-md border px-1 py-0.5 text-[.7rem] leading-tight",
+                  filtroFecha === `mes${i + 1}` ? "border-transparent bg-primary text-primary-foreground" : "border-input hover:bg-muted"
+                )}
+                onClick={() => {
+                  setFiltroFecha(`mes${i + 1}`);
+                  setPagina(1);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            <div className="my-0.5 border-t" />
+            {[1, 2, 3, 4].map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={cn(
+                  "rounded-md border px-1 py-0.5 text-[.7rem] leading-tight",
+                  filtroFecha === `trim${t}` ? "border-transparent bg-primary text-primary-foreground" : "border-input hover:bg-muted"
+                )}
+                onClick={() => {
+                  setFiltroFecha(`trim${t}`);
+                  setPagina(1);
+                }}
+              >
+                {t}T
+              </button>
+            ))}
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="relative max-w-md">
+              <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre, email o DNI / NIE / CIF…"
+                className="pl-7"
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setPagina(1);
+                }}
+              />
+            </div>
+
+            <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-sky-50 dark:bg-sky-950/40">
+                      {(
+                        [
+                          ["resguardo", "Resguardo"],
+                          ["numero", "Nº Factura"],
+                          ["serie", "Serie"],
+                          ["cliente", "Cliente"],
+                          ["equipo", "Equipo"],
+                          ["fecha", "Fecha"],
+                        ] as [ColumnaFiltrable, string][]
+                      ).map(([col, label]) => (
+                        <TableHead key={col} className="text-[.78rem] tracking-wide uppercase">
+                          <span className="inline-flex items-center">
+                            {label}
+                            <ColumnaFiltro opciones={opcionesColumna(col)} seleccion={filtrosColumna[col] ?? null} onAplicar={(s) => aplicarFiltroColumna(col, s)} />
+                          </span>
+                        </TableHead>
+                      ))}
+                      <TableHead className="text-[.78rem] tracking-wide uppercase">Estado</TableHead>
+                      <TableHead className="text-right text-[.78rem] tracking-wide uppercase">
+                        <span className="inline-flex items-center">
+                          Total
+                          <ColumnaFiltro opciones={opcionesColumna("total")} seleccion={filtrosColumna.total ?? null} onAplicar={(s) => aplicarFiltroColumna("total", s)} />
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-[.78rem] tracking-wide uppercase">
+                        <span className="inline-flex items-center">
+                          Tipo
+                          <ColumnaFiltro opciones={opcionesColumna("tipo")} seleccion={filtrosColumna.tipo ?? null} onAplicar={(s) => aplicarFiltroColumna("tipo", s)} />
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-[.78rem] tracking-wide uppercase">
+                        <span className="inline-flex items-center">
+                          Forma de pago
+                          <ColumnaFiltro opciones={opcionesColumna("formaPago")} seleccion={filtrosColumna.formaPago ?? null} onAplicar={(s) => aplicarFiltroColumna("formaPago", s)} />
+                        </span>
+                      </TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cargando &&
+                      Array.from({ length: 8 }).map((_, i) => (
+                        <TableRow key={i}>
+                          {Array.from({ length: 11 }).map((__, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+
+                    {!cargando && paginaActual.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                          Sin resultados
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
+
+                    {!cargando &&
+                      paginaActual.map((f, i) => (
+                        <TableRow key={`${f.resguardo}-${f.numero}-${f.tipo}-${i}`}>
+                          <TableCell>
+                            <ResguardoCell f={f} />
+                          </TableCell>
+                          <TableCell>
+                            <FacturaBadge f={f} />
+                          </TableCell>
+                          <TableCell>
+                            <SerieBadge numero={f.numero} />
+                          </TableCell>
+                          <TableCell className="text-sm">{f.cliente || "—"}</TableCell>
+                          <TableCell className="max-w-40 truncate text-sm text-muted-foreground">{f.equipo || "—"}</TableCell>
+                          <TableCell className="text-sm whitespace-nowrap">{formatearFecha(f.fecha)}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <EstadoBadge f={f} onClick={tipoPermiteMarcarCobrada(f.tipo) ? () => marcarComoCobrada(f) : undefined} />
+                          </TableCell>
+                          <TableCell className={cn("text-right text-sm font-semibold tabular-nums", montoConIva(f) < 0 && "text-destructive")}>
+                            {montoConIva(f) ? euros(montoConIva(f)) : <span className="font-normal text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell>
+                            <TipoBadge f={f} />
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{formaPagoLabel(f)}</TableCell>
+                          <TableCell className="text-nowrap">
+                            <VerBoton f={f} />
+                            <Button variant="outline" size="icon-sm" title="Detalle de factura" onClick={() => setFacturaAcciones(f)}>
+                              <DocumentText className="size-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/30 px-3 py-2">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {listaFiltrada.length} factura{listaFiltrada.length !== 1 ? "s" : ""} ·{" "}
+                  <span className="text-foreground">{euros(sumaTotal)}</span>
+                </span>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Filas por página:</span>
+                    <Select
+                      value={String(filasPorPagina)}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        setFilasPorPagina(parseInt(v, 10));
+                        setPagina(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-20 text-xs">
+                        <SelectValue>{(v: string) => (v === "0" ? "Todas" : v)}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["15", "25", "50", "100", "0"].map((v) => (
+                          <SelectItem key={v} value={v}>
+                            {v === "0" ? "Todas" : v}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon-sm" disabled={filasPorPagina === 0 || paginaSegura <= 1} onClick={() => setPagina(1)}>
+                      <ArrowLeft3 className="size-3.5" />
+                    </Button>
+                    <Button variant="outline" size="icon-sm" disabled={filasPorPagina === 0 || paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
+                      <ArrowLeft2 className="size-3.5" />
+                    </Button>
+                    <span className="px-1 text-xs whitespace-nowrap text-muted-foreground">
+                      {listaFiltrada.length === 0
+                        ? ""
+                        : filasPorPagina === 0 || totalPaginas <= 1
+                          ? `Mostrando ${listaFiltrada.length}`
+                          : `Página ${paginaSegura} de ${totalPaginas} (${inicio + 1}–${fin})`}
+                    </span>
+                    <Button variant="outline" size="icon-sm" disabled={filasPorPagina === 0 || paginaSegura >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
+                      <ArrowRight2 className="size-3.5" />
+                    </Button>
+                    <Button variant="outline" size="icon-sm" disabled={filasPorPagina === 0 || paginaSegura >= totalPaginas} onClick={() => setPagina(totalPaginas)}>
+                      <ArrowRight3 className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <DetalleFacturaDialog factura={facturaAcciones} onOpenChange={(o) => !o && setFacturaAcciones(null)} onCobrada={cargar} />
     </div>
   );
 }

@@ -139,6 +139,24 @@ function AbrirNuevaPorQuery({ onAbrir }: { onAbrir: () => void }) {
   return null;
 }
 
+/** Reproduce abrirReparacionDesdeFacturas() del original — Facturas de
+    Clientes enlaza aquí con ?resguardo=X para abrir el detalle directamente. */
+function AbrirDetallePorQuery({ onAbrir }: { onAbrir: (resguardo: string) => void }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const resguardo = searchParams.get("resguardo");
+    if (resguardo) {
+      onAbrir(resguardo);
+      router.replace("/reparaciones");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  return null;
+}
+
 export default function ReparacionesPage() {
   const [reparaciones, setReparaciones] = useState<Reparacion[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -544,6 +562,7 @@ export default function ReparacionesPage() {
 
       <Suspense fallback={null}>
         <AbrirNuevaPorQuery onAbrir={() => setNuevaAbierta(true)} />
+        <AbrirDetallePorQuery onAbrir={setResguardoDetalle} />
       </Suspense>
 
       <DetalleReparacionDialog

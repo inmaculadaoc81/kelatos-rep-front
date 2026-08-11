@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Refresh2, SearchNormal1, Eye, Star } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,24 @@ function EstadoBadge({ estado }: { estado: string }) {
 }
 
 const ENTREGA_LABEL: Record<string, string> = { ENTREGADO: "Entregado en local", ENVIO: "Envío mensajería", RECICLAJE: "Reciclaje" };
+
+/** Reproduce abrirReparacionDesdeFacturas() del original — Facturas de
+    Clientes enlaza aquí con ?resguardo=X para abrir el detalle directamente. */
+function AbrirDetallePorQuery({ onAbrir }: { onAbrir: (resguardo: string) => void }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const resguardo = searchParams.get("resguardo");
+    if (resguardo) {
+      onAbrir(resguardo);
+      router.replace("/historial");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  return null;
+}
 
 export default function HistorialPage() {
   const [reparaciones, setReparaciones] = useState<Reparacion[]>([]);
@@ -219,6 +238,10 @@ export default function HistorialPage() {
       </Badge>
 
       <DetalleReparacionDialog resguardo={resguardoDetalle} onOpenChange={(o) => !o && setResguardoDetalle(null)} onActualizado={cargar} />
+
+      <Suspense fallback={null}>
+        <AbrirDetallePorQuery onAbrir={setResguardoDetalle} />
+      </Suspense>
     </div>
   );
 }
