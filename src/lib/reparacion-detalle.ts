@@ -48,6 +48,9 @@ interface FilaReparacionSqlDetalle {
   motivo_sin_reparacion: string | null;
   tipo_ingreso: string | null;
   revision_pagada: boolean | null;
+  numero_factura_revision: string | null;
+  url_factura_revision: string | null;
+  cliente_factura_revision: unknown;
   ultimo_usuario: string | null;
   presupuestos_modo: string | null;
   datos_cintas: unknown;
@@ -213,6 +216,9 @@ export interface ReparacionDetalle {
   motivoSinReparacion: string;
   tipoIngreso: string;
   revisionPagada: string;
+  numeroFacturaRevision: string;
+  urlFacturaRevision: string;
+  clienteFacturaRevision: { nombre: string; direccion: string; dni: string; telefono: string; email: string } | null;
   ultimoUsuario: string;
   presupuestosModo: string;
   datosCintas: string;
@@ -344,6 +350,12 @@ export function mapearReparacionDetalle(
     motivoSinReparacion: row.motivo_sin_reparacion || "",
     tipoIngreso: row.tipo_ingreso || "NORMAL",
     revisionPagada: row.revision_pagada ? "SI" : "NO",
+    numeroFacturaRevision: row.numero_factura_revision || "",
+    urlFacturaRevision: row.url_factura_revision || "",
+    clienteFacturaRevision:
+      row.cliente_factura_revision && typeof row.cliente_factura_revision === "object"
+        ? (row.cliente_factura_revision as ReparacionDetalle["clienteFacturaRevision"])
+        : null,
     ultimoUsuario: row.ultimo_usuario || "",
     presupuestosModo: row.presupuestos_modo || "",
     datosCintas: json(row.datos_cintas),

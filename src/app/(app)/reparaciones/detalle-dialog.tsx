@@ -43,6 +43,7 @@ import { ProgresoTimeline } from "./progreso-timeline";
 import { AccionRequerida } from "./accion-requerida";
 import { derivarEventoHistorial } from "./historial-evento";
 import { MarcarGarantiaBoton } from "./marcar-garantia-boton";
+import { FacturaRevisionBoton } from "./factura-revision-boton";
 import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
 import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
 
@@ -417,6 +418,7 @@ export function DetalleReparacionDialog({
                     </Badge>
                   )}
                   <MarcarGarantiaBoton detalle={detalle} onActualizado={cargarDetalle} />
+                  <FacturaRevisionBoton detalle={detalle} onActualizado={cargarDetalle} />
                   <EstadosEspecialesPanel detalle={detalle} onActualizado={cargarDetalle} />
                 </div>
 
