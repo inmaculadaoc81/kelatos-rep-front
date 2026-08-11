@@ -231,9 +231,14 @@ function Vacio({ icono: Icono, texto }: { icono: Icon; texto: string }) {
 export function DetalleReparacionDialog({
   resguardo,
   onOpenChange,
+  onActualizado,
 }: {
   resguardo: string | null;
   onOpenChange: (open: boolean) => void;
+  /** Se llama además de refrescar el propio modal — para que la tabla y el
+      Dashboard de la página no queden con el estado antiguo hasta que el
+      usuario refresque manualmente después de cualquier acción de aquí. */
+  onActualizado?: () => void;
 }) {
   const [detalle, setDetalle] = useState<ReparacionDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -257,6 +262,13 @@ export function DetalleReparacionDialog({
         setDetalle(data.detalle as ReparacionDetalle);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Error desconocido"));
+  }
+
+  // Callback compuesto: cualquier acción de este modal refresca su propio
+  // detalle Y avisa a la página (tabla + Dashboard), no solo lo primero.
+  function actualizarTodo() {
+    cargarDetalle();
+    onActualizado?.();
   }
 
   useEffect(() => {
@@ -304,7 +316,7 @@ export function DetalleReparacionDialog({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Equipo enviado a punto limpio (${data.diasTotales} días)`);
-      cargarDetalle();
+      actualizarTodo();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     }
@@ -374,7 +386,7 @@ export function DetalleReparacionDialog({
               animate="visible"
             >
               <m.div variants={entrada}>
-                <LogisticaPanel detalle={detalle} onActualizado={cargarDetalle} />
+                <LogisticaPanel detalle={detalle} onActualizado={actualizarTodo} />
               </m.div>
 
               <m.section variants={entrada} className="rounded-xl border bg-card p-4">
@@ -422,9 +434,9 @@ export function DetalleReparacionDialog({
                       <ShieldTick className="size-3.5" /> Garantía
                     </Badge>
                   )}
-                  <MarcarGarantiaBoton detalle={detalle} onActualizado={cargarDetalle} />
-                  <FacturaRevisionBoton detalle={detalle} onActualizado={cargarDetalle} />
-                  <EstadosEspecialesPanel detalle={detalle} onActualizado={cargarDetalle} />
+                  <MarcarGarantiaBoton detalle={detalle} onActualizado={actualizarTodo} />
+                  <FacturaRevisionBoton detalle={detalle} onActualizado={actualizarTodo} />
+                  <EstadosEspecialesPanel detalle={detalle} onActualizado={actualizarTodo} />
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t pt-3 sm:grid-cols-4">
@@ -509,7 +521,7 @@ export function DetalleReparacionDialog({
                                 resguardo={detalle.resguardo}
                                 presupuesto={p}
                                 revisionPagada={detalle.revisionPagada === "SI"}
-                                onActualizado={cargarDetalle}
+                                onActualizado={actualizarTodo}
                               />
                             ))}
                           </m.div>
@@ -614,13 +626,13 @@ export function DetalleReparacionDialog({
             detalle={detalle}
             open={finalizarAbierto}
             onOpenChange={setFinalizarAbierto}
-            onFinalizada={cargarDetalle}
+            onFinalizada={actualizarTodo}
           />
           <MarcarEntregadoDialog
             resguardo={detalle.resguardo}
             open={entregaAbierta}
             onOpenChange={setEntregaAbierta}
-            onEntregado={cargarDetalle}
+            onEntregado={actualizarTodo}
           />
           <PresupuestoFormDialog
             resguardo={detalle.resguardo}
@@ -628,26 +640,26 @@ export function DetalleReparacionDialog({
             revisionPagada={detalle.revisionPagada === "SI"}
             open={nuevoPresupuestoAbierto}
             onOpenChange={setNuevoPresupuestoAbierto}
-            onGuardado={cargarDetalle}
+            onGuardado={actualizarTodo}
           />
           <QrRecogidaDialog resguardo={detalle.resguardo} open={qrAbierto} onOpenChange={setQrAbierto} />
           <IniciarReparacionDialog
             resguardo={detalle.resguardo}
             open={iniciarReparacionAbierto}
             onOpenChange={setIniciarReparacionAbierto}
-            onIniciado={cargarDetalle}
+            onIniciado={actualizarTodo}
           />
           <RegistrarPedidoDialog
             resguardo={detalle.resguardo}
             open={registrarPedidoAbierto}
             onOpenChange={setRegistrarPedidoAbierto}
-            onRegistrado={cargarDetalle}
+            onRegistrado={actualizarTodo}
           />
           <GestionPresupuestosDialog
             detalle={detalle}
             open={gestionPptosAbierto}
             onOpenChange={setGestionPptosAbierto}
-            onActualizado={cargarDetalle}
+            onActualizado={actualizarTodo}
           />
         </>
       )}

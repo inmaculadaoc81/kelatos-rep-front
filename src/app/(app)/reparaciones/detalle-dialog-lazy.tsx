@@ -17,10 +17,12 @@ const Detalle = dynamic(
 export function DetalleReparacionDialogLazy({
   resguardo,
   onOpenChange,
+  onActualizado,
 }: {
   resguardo: string | null;
   onOpenChange: (open: boolean) => void;
+  onActualizado?: () => void;
 }) {
   if (!resguardo) return null;
-  return <Detalle resguardo={resguardo} onOpenChange={onOpenChange} />;
+  return <Detalle resguardo={resguardo} onOpenChange={onOpenChange} onActualizado={onActualizado} />;
 }

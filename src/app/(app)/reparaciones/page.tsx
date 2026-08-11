@@ -549,13 +549,20 @@ export default function ReparacionesPage() {
       <DetalleReparacionDialog
         resguardo={resguardoDetalle}
         onOpenChange={(open) => !open && setResguardoDetalle(null)}
+        onActualizado={() => {
+          cargar();
+          cargarMetricas();
+        }}
       />
 
       <ReparacionSheet
         modo="nueva"
         open={nuevaAbierta}
         onOpenChange={setNuevaAbierta}
-        onGuardado={cargar}
+        onGuardado={() => {
+          cargar();
+          cargarMetricas();
+        }}
       />
 
       <ReparacionSheet
@@ -563,13 +570,19 @@ export default function ReparacionesPage() {
         reparacionPendiente={formularioPendiente?.modo === "confirmar" ? formularioPendiente.rep : null}
         open={formularioPendiente?.modo === "confirmar"}
         onOpenChange={(open) => !open && setFormularioPendiente(null)}
-        onGuardado={cargar}
+        onGuardado={() => {
+          cargar();
+          cargarMetricas();
+        }}
       />
 
       <RechazarFormularioDialog
         reparacion={formularioPendiente?.modo === "rechazar" ? formularioPendiente.rep : null}
         onOpenChange={(open) => !open && setFormularioPendiente(null)}
-        onResuelto={cargar}
+        onResuelto={() => {
+          cargar();
+          cargarMetricas();
+        }}
       />
     </div>
   );

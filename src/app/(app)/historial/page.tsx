@@ -218,7 +218,7 @@ export default function HistorialPage() {
         {conteo} resultados
       </Badge>
 
-      <DetalleReparacionDialog resguardo={resguardoDetalle} onOpenChange={(o) => !o && setResguardoDetalle(null)} />
+      <DetalleReparacionDialog resguardo={resguardoDetalle} onOpenChange={(o) => !o && setResguardoDetalle(null)} onActualizado={cargar} />
     </div>
   );
 }
