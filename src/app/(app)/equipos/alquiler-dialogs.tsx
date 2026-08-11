@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TimerStart, BoxTick } from "@/lib/icons";
+import { TimerStart } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -13,9 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Equipo, DatosNuevoAlquiler, DatosDevolucion } from "@/lib/equipos";
+import { Equipo, DatosNuevoAlquiler } from "@/lib/equipos";
 
 const VACIO_ALQUILER: DatosNuevoAlquiler = {
   clienteNombre: "",
@@ -158,130 +157,6 @@ export function NuevoAlquilerDialog({
           </Button>
           <Button onClick={guardar} disabled={enviando}>
             {enviando ? "Guardando..." : "Crear alquiler"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-const VACIO_DEVOLUCION: DatosDevolucion = {
-  fechaDevolucion: new Date().toISOString().slice(0, 10),
-  totalCobrado: 0,
-  fianzaDevuelta: 0,
-  estadoDevolucion: "BUENO",
-  descuentoDanos: 0,
-};
-
-export function DevolverAlquilerDialog({
-  equipo,
-  open,
-  onOpenChange,
-  onDevuelto,
-}: {
-  equipo: Equipo | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onDevuelto: () => void;
-}) {
-  const [datos, setDatos] = useState<DatosDevolucion>(VACIO_DEVOLUCION);
-  const [enviando, setEnviando] = useState(false);
-
-  async function guardar() {
-    if (!equipo?.alquilerActivo) return;
-    setEnviando(true);
-    try {
-      const res = await fetch(`/api/alquileres/${equipo.alquilerActivo.alquilerId}/devolver`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ equipoId: equipo.id, datos }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Alquiler devuelto — equipo disponible de nuevo");
-      setDatos(VACIO_DEVOLUCION);
-      onOpenChange(false);
-      onDevuelto();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-      <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BoxTick className="size-5" /> Devolver — {equipo?.marca} {equipo?.modelo}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="fechaDevolucion">Fecha de devolución</Label>
-            <Input
-              id="fechaDevolucion"
-              type="date"
-              value={datos.fechaDevolucion}
-              onChange={(e) => setDatos((p) => ({ ...p, fechaDevolucion: e.target.value }))}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="totalCobrado">Total cobrado (€)</Label>
-              <Input
-                id="totalCobrado"
-                type="number"
-                step="0.01"
-                value={datos.totalCobrado}
-                onChange={(e) => setDatos((p) => ({ ...p, totalCobrado: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="fianzaDevuelta">Fianza devuelta (€)</Label>
-              <Input
-                id="fianzaDevuelta"
-                type="number"
-                step="0.01"
-                value={datos.fianzaDevuelta}
-                onChange={(e) => setDatos((p) => ({ ...p, fianzaDevuelta: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Estado de devolución</Label>
-            <Select value={datos.estadoDevolucion} onValueChange={(v) => setDatos((p) => ({ ...p, estadoDevolucion: v || "BUENO" }))}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="BUENO">Buen estado</SelectItem>
-                <SelectItem value="DAÑADO">Con daños</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {datos.estadoDevolucion === "DAÑADO" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="descuentoDanos">Descuento por daños de la fianza (€)</Label>
-              <Input
-                id="descuentoDanos"
-                type="number"
-                step="0.01"
-                value={datos.descuentoDanos}
-                onChange={(e) => setDatos((p) => ({ ...p, descuentoDanos: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>
-            Cancelar
-          </Button>
-          <Button onClick={guardar} disabled={enviando}>
-            {enviando ? "Guardando..." : "Confirmar devolución"}
           </Button>
         </DialogFooter>
       </DialogContent>

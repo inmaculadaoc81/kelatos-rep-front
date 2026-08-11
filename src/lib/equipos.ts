@@ -37,6 +37,10 @@ export interface AlquilerResumen {
   numeroFactura: string;
   estadoDevolucion: string;
   descuentoDanos: number;
+  diasDiferencia: number;
+  envioActivado: boolean;
+  recogidaActivada: boolean;
+  urlFactura: string;
 }
 
 export interface Equipo {
@@ -93,10 +97,13 @@ export interface DatosNuevoAlquiler {
   observaciones: string;
 }
 
+export type EstadoDevolucionEquipo = "BUENO" | "DAÑOS_MENORES" | "ROTO";
+
 export interface DatosDevolucion {
   fechaDevolucion: string;
   totalCobrado: number;
   fianzaDevuelta: number;
-  estadoDevolucion: string;
+  estadoDevolucion: EstadoDevolucionEquipo;
   descuentoDanos: number;
+  diasDiferencia: number;
 }

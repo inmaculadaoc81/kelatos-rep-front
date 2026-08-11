@@ -18,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Equipo, EstadoEquipo } from "@/lib/equipos";
 import { NuevoEquipoDialog } from "./nuevo-equipo-dialog";
-import { NuevoAlquilerDialog, DevolverAlquilerDialog } from "./alquiler-dialogs";
+import { NuevoAlquilerDialog } from "./alquiler-dialogs";
+import { DevolverAlquilerDialog } from "./devolver-alquiler-dialog";
 
 const ETIQUETAS_ESTADO: Record<string, string> = {
   DISPONIBLE: "Disponible",

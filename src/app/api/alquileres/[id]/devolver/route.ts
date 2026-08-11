@@ -37,6 +37,7 @@ export async function POST(
         fianzaDevuelta: datos.fianzaDevuelta,
         estadoDevolucion: datos.estadoDevolucion,
         descuentoDanos: datos.descuentoDanos,
+        diasDiferencia: datos.diasDiferencia,
       }
     );
     return NextResponse.json({ ok: true, alquiler: resultado.alquiler });
