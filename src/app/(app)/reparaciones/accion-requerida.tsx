@@ -15,6 +15,7 @@ import {
   Clock,
   InfoCircle,
   Trash,
+  Receipt,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export interface CallbacksAccion {
   onIniciarReparacion: () => void;
   onRegistrarPedido: () => void;
   onEnviarPuntoLimpio: () => void;
+  onFacturacion: () => void;
 }
 
 const ESTADOS_LISTO_ENTREGA = ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"];
@@ -252,6 +254,16 @@ export function AccionRequerida({
       </Button>,
       <Button key="pedido-adicional" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
         <Box1 className="size-3.5" /> Pedir pieza adicional
+      </Button>
+    );
+  }
+  // Facturación: solo reparaciones normales (no garantía) que quedaron
+  // "Reparado" — igual que el original, el botón se muestra siempre en esa
+  // rama (ya haya factura o no); el propio diálogo decide lectura/escritura.
+  if (estado === "Reparado" && detalle.tipoIngreso !== "GARANTIA" && entregaAbierta) {
+    botones.push(
+      <Button key="facturacion" size="sm" className="gap-1.5" onClick={callbacks.onFacturacion}>
+        <Receipt className="size-3.5" /> Facturación
       </Button>
     );
   }

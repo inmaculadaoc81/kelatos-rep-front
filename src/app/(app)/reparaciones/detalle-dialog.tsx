@@ -36,6 +36,7 @@ import { ReparacionDetalle, type Pedido } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
 import { FinalizarReparacionDialog, MarcarEntregadoDialog } from "./finalizar-dialog";
+import { FacturaReparacionDialog } from "./factura-reparacion-dialog";
 import { EstadosEspecialesPanel } from "./estados-especiales-panel";
 import { PresupuestoCard } from "./presupuesto-card";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
@@ -252,6 +253,7 @@ export function DetalleReparacionDialog({
   const [iniciarReparacionAbierto, setIniciarReparacionAbierto] = useState(false);
   const [registrarPedidoAbierto, setRegistrarPedidoAbierto] = useState(false);
   const [gestionPptosAbierto, setGestionPptosAbierto] = useState(false);
+  const [facturaAbierta, setFacturaAbierta] = useState(false);
 
   function cargarDetalle() {
     if (!resguardo) return;
@@ -462,6 +464,7 @@ export function DetalleReparacionDialog({
                   onIniciarReparacion: () => setIniciarReparacionAbierto(true),
                   onRegistrarPedido: () => setRegistrarPedidoAbierto(true),
                   onEnviarPuntoLimpio: enviarPuntoLimpio,
+                  onFacturacion: () => setFacturaAbierta(true),
                   }}
                 />
               </m.div>
@@ -633,6 +636,12 @@ export function DetalleReparacionDialog({
             open={entregaAbierta}
             onOpenChange={setEntregaAbierta}
             onEntregado={actualizarTodo}
+          />
+          <FacturaReparacionDialog
+            detalle={detalle}
+            open={facturaAbierta}
+            onOpenChange={setFacturaAbierta}
+            onGenerada={actualizarTodo}
           />
           <PresupuestoFormDialog
             resguardo={detalle.resguardo}

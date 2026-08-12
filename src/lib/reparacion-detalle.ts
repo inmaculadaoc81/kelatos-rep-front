@@ -58,6 +58,13 @@ interface FilaReparacionSqlDetalle {
   creado_por: string | null;
   fecha_creacion: string | null;
   total_factura: string | number | null;
+  forma_pago: string | null;
+  banco: string | null;
+  estado_factura: string | null;
+  factura_borrador: boolean | null;
+  cliente_factura: unknown;
+  codigo_cliente: string | null;
+  anticipo_importe: string | number | null;
 }
 
 interface FilaPiezaSql {
@@ -226,6 +233,13 @@ export interface ReparacionDetalle {
   creadoPor: string;
   fechaCreacion: string | null;
   totalFactura: number;
+  formaPago: string;
+  banco: string;
+  estadoFactura: string;
+  facturaBorrador: boolean;
+  clienteFactura: { nombre: string; direccion: string; dni: string; telefono: string; email: string; codigo?: string } | null;
+  codigoCliente: string;
+  anticipoImporte: number;
   presupuestos: Presupuesto[];
   pedidos: Pedido[];
   historialEventos: HistorialEvento[];
@@ -363,6 +377,16 @@ export function mapearReparacionDetalle(
     creadoPor: row.creado_por || "",
     fechaCreacion: fecha(row.fecha_creacion),
     totalFactura: numero(row.total_factura),
+    formaPago: row.forma_pago || "",
+    banco: row.banco || "",
+    estadoFactura: row.estado_factura || "",
+    facturaBorrador: !!row.factura_borrador,
+    clienteFactura:
+      row.cliente_factura && typeof row.cliente_factura === "object"
+        ? (row.cliente_factura as ReparacionDetalle["clienteFactura"])
+        : null,
+    codigoCliente: row.codigo_cliente || "",
+    anticipoImporte: numero(row.anticipo_importe),
     presupuestos: presupuestosRaw.map((p) => mapearPresupuesto(p, piezasPorPresupuesto[p.presupuesto_id] || [])),
     pedidos: pedidosRaw.map(mapearPedido),
     historialEventos: historialRaw.map(mapearHistorial),
