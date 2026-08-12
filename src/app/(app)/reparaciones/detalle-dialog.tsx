@@ -5,10 +5,6 @@ import {
   Setting2,
   Send2,
   DocumentText,
-  Personalcard,
-  Call,
-  Sms,
-  Location,
   Box,
   Printer,
   CloseCircle,
@@ -49,6 +45,7 @@ import { FacturaRevisionBoton } from "./factura-revision-boton";
 import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
 import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
+import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -60,17 +57,6 @@ function EstadoBadge({ estado }: { estado: string }) {
     >
       {estado}
     </span>
-  );
-}
-
-/** Línea de dato con icono, como las del panel de cliente del sistema original. */
-function Linea({ icono: Icono, valor }: { icono: Icon; valor: string }) {
-  if (!valor) return null;
-  return (
-    <p className="flex items-start gap-2 text-sm">
-      <Icono className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <span className="wrap-break-word">{valor}</span>
-    </p>
   );
 }
 
@@ -393,35 +379,8 @@ export function DetalleReparacionDialog({
 
               <m.section variants={entrada} className="rounded-xl border bg-card p-4">
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Cliente
-                    </h3>
-                    <p className="text-base font-semibold">{detalle.cliente.nombre || "-"}</p>
-                    <Linea icono={Personalcard} valor={detalle.dniCif} />
-                    <Linea icono={Call} valor={detalle.cliente.telefono} />
-                    <Linea icono={Sms} valor={detalle.cliente.email} />
-                    <Linea icono={Location} valor={detalle.cliente.direccion} />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Equipo
-                    </h3>
-                    <p className="text-base font-semibold">{detalle.equipo.modelo || "-"}</p>
-                    <Dato label="Síntoma" valor={sintoma.principal} />
-                    {sintoma.extras.length > 0 && (
-                      <div className="space-y-0.5">
-                        {sintoma.extras.map((linea, i) => (
-                          <p key={i} className="text-xs text-muted-foreground">
-                            {linea}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                    <Dato label="Técnico asignado" valor={detalle.tecnicoAsignado} />
-                    <Dato label="Fecha recepción" valor={formatearFecha(detalle.fechaRecepcion)} />
-                  </div>
+                  <ClienteEditable detalle={detalle} onActualizado={actualizarTodo} />
+                  <EquipoEditable detalle={detalle} sintoma={sintoma} onActualizado={actualizarTodo} />
                 </div>
 
                 <hr className="my-4" />
