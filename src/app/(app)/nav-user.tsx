@@ -1,8 +1,10 @@
 "use client";
 
 import { useTransition } from "react";
-import { MoreCircle, Profile, Setting2, Logout } from "@/lib/icons";
+import type { Session } from "next-auth";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick } from "@/lib/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,18 +23,20 @@ import {
 } from "@/components/ui/sidebar";
 import { cerrarSesion } from "./acciones";
 
-// Placeholder estático hasta que haya credenciales de Google OAuth y el
-// login quede activo (ver layout.tsx) — entonces esto se sustituye por la
-// sesión real (auth()/useSession). Cerrar sesión sí es funcional ya.
-const USUARIO_ESTATICO = {
-  nombre: "Usuario Kelatos",
-  email: "usuario@kelatos.com",
-  iniciales: "UK",
-};
+function iniciales(nombre: string): string {
+  const partes = nombre.trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
 
-export function NavUser() {
+export function NavUser({ session }: { session: Session | null }) {
   const { isMobile } = useSidebar();
   const [cerrando, startTransition] = useTransition();
+
+  const nombre = session?.user?.name || session?.user?.email || "Usuario";
+  const email = session?.user?.email || "";
+  const esAdmin = session?.user?.role === "admin";
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -41,18 +45,18 @@ export function NavUser() {
           <DropdownMenu>
             <SidebarMenuButton
               size="lg"
-              tooltip={USUARIO_ESTATICO.nombre}
+              tooltip={nombre}
               className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
               render={<DropdownMenuTrigger />}
             >
               <Avatar size="sm" className="rounded-md">
                 <AvatarFallback className="rounded-md bg-sidebar-primary/12 text-sidebar-primary">
-                  {USUARIO_ESTATICO.iniciales}
+                  {iniciales(nombre)}
                 </AvatarFallback>
               </Avatar>
               <div className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-medium">{USUARIO_ESTATICO.nombre}</span>
-                <span className="truncate text-xs text-sidebar-foreground/60">{USUARIO_ESTATICO.email}</span>
+                <span className="truncate text-sm font-medium">{nombre}</span>
+                <span className="truncate text-xs text-sidebar-foreground/60">{email}</span>
               </div>
               <MoreCircle className="ml-auto size-4 text-sidebar-foreground/50" />
             </SidebarMenuButton>
@@ -67,9 +71,12 @@ export function NavUser() {
                   funciona sin envoltorio. */}
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="font-normal">
-                  <div className="grid text-left leading-tight">
-                    <span className="truncate text-sm font-medium">{USUARIO_ESTATICO.nombre}</span>
-                    <span className="truncate text-xs text-muted-foreground">{USUARIO_ESTATICO.email}</span>
+                  <div className="grid gap-1 text-left leading-tight">
+                    <span className="truncate text-sm font-medium">{nombre}</span>
+                    <span className="truncate text-xs text-muted-foreground">{email}</span>
+                    <Badge variant={esAdmin ? "default" : "secondary"} className="mt-0.5 w-fit gap-1 text-[10px]">
+                      <ShieldTick className="size-3" /> {esAdmin ? "Administrador" : "Usuario"}
+                    </Badge>
                   </div>
                 </DropdownMenuLabel>
               </DropdownMenuGroup>

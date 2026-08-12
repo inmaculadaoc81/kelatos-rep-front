@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowDown2 } from "@/lib/icons";
+import type { Session } from "next-auth";
 import { GRUPOS, type GrupoNavegacion, type ItemNavegacion } from "./navegacion";
 import { NavUser } from "./nav-user";
 
@@ -102,7 +103,7 @@ function GrupoColapsable({ grupo, pathname }: { grupo: GrupoNavegacion; pathname
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
 
   return (
@@ -163,7 +164,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <NavUser />
+      <NavUser session={session} />
     </Sidebar>
   );
 }

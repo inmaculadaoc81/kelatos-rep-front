@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { AppSidebar } from "./sidebar";
 import { Migas } from "./migas";
 import { BuscadorGlobal } from "./buscador-global";
@@ -5,14 +6,14 @@ import { NavbarCodigoAcceso } from "./navbar-codigo-acceso";
 import { NotificacionesBell } from "./notificaciones-bell";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
-// Redirect a /login DESACTIVADO TEMPORALMENTE (sin credenciales de Google
-// OAuth todavía) — para reactivar, restaurar "if (!session?.user)
-// redirect('/login')" antes del return. El bloque de usuario/cerrar sesión
-// que iba aquí se movió al pie del sidebar (nav-user.tsx).
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+// El redirect a /login ya lo hace proxy.ts a nivel de middleware para
+// todas las rutas de este grupo — aquí solo se lee la sesión para pasar
+// el usuario real al pie del sidebar (nav-user.tsx).
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar session={session} />
       <SidebarInset>
         {/* sticky: se queda fijo arriba al hacer scroll en vez de
             desaparecer con el contenido. El botón de colapso vive dentro
