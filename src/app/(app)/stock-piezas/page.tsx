@@ -74,7 +74,7 @@ export default function StockPiezasPage() {
   const bajoStockCount = useMemo(() => piezas.filter((p) => p.stockBajo).length, [piezas]);
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Stock de Piezas</h1>

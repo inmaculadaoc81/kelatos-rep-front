@@ -177,7 +177,7 @@ export default function ReportesPage() {
   const hayFiltros = tipo !== "" || anio !== "" || mes !== "";
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Reportes de Reparaciones</h1>

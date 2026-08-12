@@ -50,7 +50,7 @@ export default function ClientesPage() {
   }, [busqueda]);
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">Clientes</h1>

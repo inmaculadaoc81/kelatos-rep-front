@@ -267,7 +267,7 @@ export default function ReporteFacturasPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[100rem] p-6">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <ExportSquare className="size-5 text-primary" />

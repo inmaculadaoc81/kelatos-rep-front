@@ -125,7 +125,7 @@ export default function FormularioWebPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="p-6">
       <div className="mb-4 flex items-center gap-2.5">
         <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Monitor className="size-5" />

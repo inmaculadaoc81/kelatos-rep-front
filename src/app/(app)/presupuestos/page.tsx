@@ -53,7 +53,7 @@ export default function PresupuestosPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <DocumentText className="size-5 text-primary" />
         <h1 className="text-lg font-semibold">Presupuestos Enviados</h1>
