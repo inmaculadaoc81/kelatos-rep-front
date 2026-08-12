@@ -31,7 +31,6 @@ import { PiezaForm, TipoLineaPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
 import {
   DatosReparacionSheet,
-  EstadoInicial,
   TipoRecepcion,
   calcularTotalCintas,
   datosSheetVacios,
@@ -78,6 +77,56 @@ function SeccionTitulo({ icono: Icono, children }: { icono: typeof Shop; childre
     <p className="flex items-center gap-1.5 text-xs font-semibold text-primary uppercase">
       <Icono className="size-3.5" /> {children}
     </p>
+  );
+}
+
+type ColorSegmento = "secondary" | "primary" | "success" | "warning";
+
+// Reproduce el grupo de <input type="radio" class="btn-check"> +
+// <label class="btn btn-outline-*"> del original: outline en el color de
+// cada opción, y al marcarse pasa a relleno sólido en ese mismo color —
+// btn-check de Bootstrap hace justo ese cambio automáticamente.
+const CLASES_SEGMENTO: Record<ColorSegmento, { activo: string; inactivo: string }> = {
+  secondary: {
+    activo: "border-slate-600 bg-slate-600 text-white",
+    inactivo: "border-slate-400/50 text-slate-600 hover:bg-slate-500/10 dark:text-slate-400",
+  },
+  primary: {
+    activo: "border-primary bg-primary text-primary-foreground",
+    inactivo: "border-primary/40 text-primary hover:bg-primary/5",
+  },
+  success: {
+    activo: "border-emerald-600 bg-emerald-600 text-white",
+    inactivo: "border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400",
+  },
+  warning: {
+    activo: "border-amber-500 bg-amber-500 text-white",
+    inactivo: "border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400",
+  },
+};
+
+function BotonSegmento({
+  activo,
+  color,
+  icono: Icono,
+  onClick,
+  children,
+}: {
+  activo: boolean;
+  color: ColorSegmento;
+  icono: typeof Shop;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const clase = CLASES_SEGMENTO[color];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${activo ? clase.activo : clase.inactivo}`}
+    >
+      <Icono className="size-4 shrink-0" /> {children}
+    </button>
   );
 }
 
@@ -380,14 +429,14 @@ export function ReparacionSheet({
           {/* Recepción y estado inicial */}
           <div className="rounded-xl border bg-card p-4">
             <SeccionTitulo icono={Truck}>Tipo de recepción</SeccionTitulo>
-            <RadioGroup value={datos.tipoRecepcion} onValueChange={(v) => actualizar("tipoRecepcion", v as TipoRecepcion)} className="mt-3 flex gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="LOCAL" /> <Shop className="size-4" /> Cliente trajo al local
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="ENVIO" /> <Truck className="size-4" /> Recibido por envío
-              </label>
-            </RadioGroup>
+            <div className="mt-3 flex gap-2">
+              <BotonSegmento activo={datos.tipoRecepcion === "LOCAL"} color="secondary" icono={Shop} onClick={() => actualizar("tipoRecepcion", "LOCAL")}>
+                Cliente trajo al local
+              </BotonSegmento>
+              <BotonSegmento activo={datos.tipoRecepcion === "ENVIO"} color="secondary" icono={Truck} onClick={() => actualizar("tipoRecepcion", "ENVIO")}>
+                Recibido por envío
+              </BotonSegmento>
+            </div>
             {datos.tipoRecepcion === "ENVIO" && (
               <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                 <Switch checked={datos.entregaMensajeria} onCheckedChange={(v) => actualizar("entregaMensajeria", v)} />
@@ -398,17 +447,17 @@ export function ReparacionSheet({
             <hr className="my-4" />
 
             <SeccionTitulo icono={ShieldTick}>Estado inicial</SeccionTitulo>
-            <RadioGroup value={datos.estado} onValueChange={(v) => actualizar("estado", v as EstadoInicial)} className="mt-3 flex flex-wrap gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="Presupuesto Pendiente" /> <Receipt className="size-4" /> Presupuesto Pendiente
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="Garantía" /> <ShieldTick className="size-4" /> Garantía
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="aceptar_ahora" /> <Verify className="size-4" /> Aceptar ahora
-              </label>
-            </RadioGroup>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <BotonSegmento activo={datos.estado === "Presupuesto Pendiente"} color="primary" icono={Receipt} onClick={() => actualizar("estado", "Presupuesto Pendiente")}>
+                Presupuesto Pendiente
+              </BotonSegmento>
+              <BotonSegmento activo={datos.estado === "Garantía"} color="success" icono={ShieldTick} onClick={() => actualizar("estado", "Garantía")}>
+                Garantía
+              </BotonSegmento>
+              <BotonSegmento activo={esAceptarAhora} color="warning" icono={Verify} onClick={() => actualizar("estado", "aceptar_ahora")}>
+                Aceptar ahora
+              </BotonSegmento>
+            </div>
           </div>
 
           {esAceptarAhora && (
