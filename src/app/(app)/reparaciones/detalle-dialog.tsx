@@ -35,6 +35,7 @@ import { FinalizarReparacionDialog, MarcarEntregadoDialog } from "./finalizar-di
 import { FacturaReparacionDialog } from "./factura-reparacion-dialog";
 import { EstadosEspecialesPanel } from "./estados-especiales-panel";
 import { PresupuestoCard } from "./presupuesto-card";
+import { PresupuestosEnvioBar } from "./presupuestos-envio-bar";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 import { QrRecogidaDialog } from "./qr-recogida-dialog";
 import { ProgresoTimeline } from "./progreso-timeline";
@@ -488,6 +489,12 @@ export function DetalleReparacionDialog({
                             ))}
                           </m.div>
                         )}
+                        <PresupuestosEnvioBar
+                          resguardo={detalle.resguardo}
+                          presupuestos={detalle.presupuestos}
+                          clienteTelefono={detalle.cliente.telefono}
+                          onActualizado={actualizarTodo}
+                        />
                       </Seccion>
 
                       <Seccion icono={Box} titulo="Pedidos" cuenta={pedidosVisibles.length}>

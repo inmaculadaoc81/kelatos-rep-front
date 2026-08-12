@@ -8,6 +8,7 @@ import { m, lista as listaAnim, ProveedorAnimacion } from "@/lib/animacion";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { PresupuestoCard } from "./presupuesto-card";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
+import { PresupuestosEnvioBar } from "./presupuestos-envio-bar";
 
 /**
  * Reproduce el modal #modalGestionPresupuestos del original
@@ -71,6 +72,12 @@ export function GestionPresupuestosDialog({
                   ))}
                 </m.div>
               )}
+              <PresupuestosEnvioBar
+                resguardo={detalle.resguardo}
+                presupuestos={detalle.presupuestos}
+                clienteTelefono={detalle.cliente.telefono}
+                onActualizado={onActualizado}
+              />
             </div>
           </ProveedorAnimacion>
         </DialogContent>
