@@ -27,6 +27,7 @@ export type Icon = ComponentType<IconProps>;
 export const Add = withDefaults(Iconsax.Add);
 export const AddCircle = withDefaults(Iconsax.AddCircle);
 export const Bank = withDefaults(Iconsax.Bank);
+export const Cd = withDefaults(Iconsax.Cd);
 export const ArrowDown2 = withDefaults(Iconsax.ArrowDown2);
 export const ArrowLeft2 = withDefaults(Iconsax.ArrowLeft2);
 export const ArrowLeft3 = withDefaults(Iconsax.ArrowLeft3);

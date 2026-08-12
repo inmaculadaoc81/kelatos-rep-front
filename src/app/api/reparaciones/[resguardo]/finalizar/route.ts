@@ -42,6 +42,8 @@ export async function POST(
           piezaOk: datos.piezaOk,
           piezaNoResuelve: datos.piezaNoResuelve,
           codigoDevolucion: datos.codigoDevolucion.trim(),
+          minutosNotificacion: datos.minutosNotificacion,
+          pesoArchivo: datos.pesoArchivo.trim(),
         },
       }
     );
