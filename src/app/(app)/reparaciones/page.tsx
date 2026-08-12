@@ -486,7 +486,11 @@ export default function ReparacionesPage() {
                   <TableRow
                     key={rep.resguardo}
                     className="group cursor-pointer"
-                    onClick={() => setResguardoDetalle(rep.resguardo)}
+                    onClick={() =>
+                      rep.estado === "Formulario Pendiente"
+                        ? setFormularioPendiente({ rep, modo: "confirmar" })
+                        : setResguardoDetalle(rep.resguardo)
+                    }
                     title={`Abrir reparación ${rep.resguardo}`}
                   >
                     <TableCell className="font-semibold">{rep.resguardo}</TableCell>

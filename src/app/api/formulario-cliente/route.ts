@@ -102,7 +102,7 @@ export async function POST(req: Request) {
         reparacion: {
           fechaRecepcion: new Date().toISOString(),
           clienteNombre: datos.nombre.trim(),
-          clienteTelefono: "",
+          clienteTelefono: telefono,
           clienteEmail: email,
           equipoModelo,
           sintoma,
