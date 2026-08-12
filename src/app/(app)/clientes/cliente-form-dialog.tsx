@@ -43,7 +43,7 @@ export function ClienteFormDialog({
   clienteExistente: Cliente | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onGuardado: () => void;
+  onGuardado: (cliente: Cliente) => void;
 }) {
   const [datos, setDatos] = useState<ClienteFormData>(() => (clienteExistente ? desdeExistente(clienteExistente) : vacio()));
   const [enviando, setEnviando] = useState(false);
@@ -68,7 +68,7 @@ export function ClienteFormDialog({
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(esEdicion ? "Cliente actualizado" : `Cliente creado (código ${data.cliente.codigo})`);
       onOpenChange(false);
-      onGuardado();
+      onGuardado(data.cliente);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
