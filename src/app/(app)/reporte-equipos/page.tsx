@@ -17,57 +17,79 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { cn } from "@/lib/utils";
+import { DetalleEquipoDialog } from "./detalle-equipo-dialog";
 
-type Periodo = "hoy" | "semana" | "mes" | "todo";
+type Periodo = "hoy" | "ayer" | "semana" | "mes" | "todo";
 
 const PERIODOS: { valor: Periodo; label: string }[] = [
   { valor: "hoy", label: "Hoy" },
-  { valor: "semana", label: "Esta semana" },
-  { valor: "mes", label: "Este mes" },
-  { valor: "todo", label: "Todo" },
+  { valor: "ayer", label: "Ayer" },
+  { valor: "semana", label: "Semana" },
+  { valor: "mes", label: "Mes" },
+  { valor: "todo", label: "Todos" },
 ];
 
-// Mismo cálculo de rango que _re2Rango() en el original: hoy/semana/mes
-// como fecha-solo (sin hora), comparados contra fechaRecepcion.
-function inicioSemana(d: Date): Date {
-  const dia = d.getDay() || 7; // lunes=1 ... domingo=7
-  const r = new Date(d);
-  r.setDate(d.getDate() - dia + 1);
-  r.setHours(0, 0, 0, 0);
+// Mismos 9 estados que el desplegable del original (_re2 no incluye todos
+// los estados reales — p. ej. "Formulario Pendiente" o "Presupuesto
+// Aceptado" quedan fuera del filtro aunque sí aparecen en la tabla).
+const ESTADOS_FILTRO = [
+  "En Diagnóstico",
+  "Presupuesto Pendiente",
+  "Presupuesto Enviado",
+  "Presupuesto Rechazado",
+  "Pieza Pendiente",
+  "En Reparación",
+  "Reparado",
+  "No tiene Reparación",
+  "Garantía",
+];
+
+function soloDia(d: Date): Date {
+  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   return r;
 }
 
+// Reproduce _re2Rango() del original exactamente: hoy/ayer como un único
+// día; semana/mes como los últimos 7/30 días (no "esta semana natural").
 function enRango(fechaRecepcion: string | null, periodo: Periodo): boolean {
-  if (periodo === "todo" || !fechaRecepcion) return periodo === "todo" ? true : false;
-  const f = new Date(fechaRecepcion);
-  f.setHours(0, 0, 0, 0);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  if (periodo === "todo") return true;
+  if (!fechaRecepcion) return false;
+  const f = soloDia(new Date(fechaRecepcion));
+  const hoy = soloDia(new Date());
   if (periodo === "hoy") return f.getTime() === hoy.getTime();
-  if (periodo === "semana") return f.getTime() >= inicioSemana(hoy).getTime();
-  if (periodo === "mes") return f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth();
+  if (periodo === "ayer") {
+    const ayer = new Date(hoy);
+    ayer.setDate(ayer.getDate() - 1);
+    return f.getTime() === ayer.getTime();
+  }
+  if (periodo === "semana") {
+    const inicio = new Date(hoy);
+    inicio.setDate(inicio.getDate() - 6);
+    return f.getTime() >= inicio.getTime() && f.getTime() <= hoy.getTime();
+  }
+  if (periodo === "mes") {
+    const inicio = new Date(hoy);
+    inicio.setDate(inicio.getDate() - 29);
+    return f.getTime() >= inicio.getTime() && f.getTime() <= hoy.getTime();
+  }
   return true;
 }
 
-// Mismos 10 estados que en Todas las Reparaciones — este módulo aún no
-// expone un endpoint de catálogos (ver nota en reparaciones/page.tsx).
-const ESTADOS_REPARACION = Object.keys(COLOR_ESTADO).concat(["Pieza Pendiente"]);
-
+/** Reproduce #vistaReporteEquipos (_reAplicarFiltros2/_re2Render) del original. */
 export default function ReporteEquiposPage() {
   const [reparaciones, setReparaciones] = useState<Reparacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [periodo, setPeriodo] = useState<Periodo>("mes");
+  const [periodo, setPeriodo] = useState<Periodo>("hoy");
   const [estado, setEstado] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [detalle, setDetalle] = useState<Reparacion | null>(null);
 
   async function cargar() {
     setCargando(true);
     setError(null);
     try {
-      // finalizadas vacío -> sin filtrar por estado de entrega (activas +
-      // finalizadas), igual que apiBuscarReparaciones({}) en el original.
-      const res = await fetch("/api/reparaciones?finalizadas=&porPagina=0");
+      const res = await fetch("/api/reporte-equipos");
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       setReparaciones(data.resultados as Reparacion[]);
@@ -88,14 +110,14 @@ export default function ReporteEquiposPage() {
     if (busqueda.trim()) {
       const q = busqueda.trim().toLowerCase();
       lista = lista.filter((r) =>
-        [r.resguardo, r.cliente.nombre, r.tecnicoAsignado, r.equipo.modelo, r.estado].join(" ").toLowerCase().includes(q)
+        [r.resguardo, r.codigoCliente, r.cliente.nombre, r.tecnicoAsignado, r.equipo.modelo, r.estado].join(" ").toLowerCase().includes(q)
       );
     }
     return [...lista].sort((a, b) => new Date(b.fechaRecepcion || 0).getTime() - new Date(a.fechaRecepcion || 0).getTime());
   }, [reparaciones, periodo, estado, busqueda]);
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Reporte Equipos</h1>
@@ -133,7 +155,7 @@ export default function ReporteEquiposPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__todos__">Todos los estados</SelectItem>
-            {ESTADOS_REPARACION.map((e) => (
+            {ESTADOS_FILTRO.map((e) => (
               <SelectItem key={e} value={e}>
                 {e}
               </SelectItem>
@@ -142,28 +164,29 @@ export default function ReporteEquiposPage() {
         </Select>
         <div className="relative">
           <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar..." className="w-56 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <Input placeholder="Cliente, código, modelo..." className="w-56 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
         {!cargando && <span className="ml-auto text-sm text-muted-foreground">{filtradas.length} equipos</span>}
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="[&_tr]:border-b-0">
+            <TableRow className="bg-primary hover:bg-primary [&_th]:text-primary-foreground">
               <TableHead>Código</TableHead>
               <TableHead>F. Entrada</TableHead>
+              <TableHead>Cód. Cliente</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Técnico</TableHead>
               <TableHead>Aparato / Modelo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead className="text-center">Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cargando &&
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 6 }).map((__, j) => (
+                  {Array.from({ length: 7 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -173,8 +196,8 @@ export default function ReporteEquiposPage() {
 
             {!cargando && filtradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                  Sin resultados en este período
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  Sin registros para los filtros seleccionados
                 </TableCell>
               </TableRow>
             )}
@@ -183,16 +206,17 @@ export default function ReporteEquiposPage() {
               filtradas.map((r) => {
                 const color = COLOR_ESTADO[r.estado];
                 return (
-                  <TableRow key={r.resguardo}>
-                    <TableCell className="font-semibold">{r.resguardo}</TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">{formatearFecha(r.fechaRecepcion)}</TableCell>
+                  <TableRow key={r.resguardo} className="cursor-pointer" onClick={() => setDetalle(r)}>
+                    <TableCell className="font-semibold text-primary">{r.resguardo}</TableCell>
+                    <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{formatearFecha(r.fechaRecepcion)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{r.codigoCliente || "—"}</TableCell>
                     <TableCell className="text-sm">{r.cliente.nombre || "-"}</TableCell>
-                    <TableCell className="text-sm">{r.tecnicoAsignado || "-"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{r.equipo.modelo || "-"}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{r.tecnicoAsignado || "-"}</TableCell>
+                    <TableCell className="text-sm" title={r.equipo.modelo}>{r.equipo.modelo || "-"}</TableCell>
+                    <TableCell className="text-center">
                       {color ? (
                         <span
-                          className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
                           style={{ backgroundColor: color.bg, color: color.fg }}
                         >
                           {r.estado}
@@ -207,6 +231,8 @@ export default function ReporteEquiposPage() {
           </TableBody>
         </Table>
       </div>
+
+      <DetalleEquipoDialog reparacion={detalle} open={detalle !== null} onOpenChange={(o) => !o && setDetalle(null)} />
     </div>
   );
 }

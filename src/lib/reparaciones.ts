@@ -52,6 +52,9 @@ export interface Reparacion {
   resguardo: string;
   fechaRecepcion: string | null;
   cliente: ReparacionCliente;
+  /** Solo se rellena en Reporte Equipos (lookup por DNI/teléfono contra el
+      directorio de clientes) — el resto de vistas no lo necesitan. */
+  codigoCliente?: string;
   dniCif: string;
   equipo: ReparacionEquipo;
   datosCintas: DatosCintas | null;
