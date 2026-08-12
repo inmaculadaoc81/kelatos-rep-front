@@ -10,12 +10,12 @@ import type { RolUsuario } from "@/types/next-auth";
  *
  * El original no tenía roles (verificarPermisos() solo comprobaba el
  * dominio, sin distinguir usuarios) — esto es una capa nueva: dos roles,
- * Administrador y Usuario, determinados por email. La cuenta de
- * kelatoscielo@gmail.com es la única fuera del dominio @kelatos.com y es
- * quien ejerce de Administrador.
+ * Administrador y Usuario, determinados por email. kelatoscielo@gmail.com
+ * y kelatosclaude2@gmail.com son las únicas cuentas fuera del dominio
+ * @kelatos.com y ejercen de Administrador.
  */
 const DOMINIO_ADMIN = "kelatos.com";
-const EMAILS_ADMIN = new Set(["kelatoscielo@gmail.com"]);
+const EMAILS_ADMIN = new Set(["kelatoscielo@gmail.com", "kelatosclaude2@gmail.com"]);
 
 function emailPermitido(email: string): boolean {
   const e = email.toLowerCase();
