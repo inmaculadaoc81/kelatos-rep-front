@@ -15,10 +15,9 @@ import { Presupuesto } from "@/lib/reparacion-detalle";
  * "Enviar por WhatsApp" solo si el cliente tiene teléfono. "Reenviar
  * email" solo si ya hay algo enviado.
  *
- * Canal whatsapp: el backend ya reserva número y marca el estado como
- * 'enviado' (mismo saga que email), pero todavía NO hay integración real
- * (n8n u otra) que mande el mensaje — decisión explícita de dejar el
- * botón visible para cuando se conecte, en vez de ocultarlo.
+ * Canal whatsapp: el envío real pasa por el mismo webhook de n8n que usaba
+ * Apps Script (enviarPresupuestosWhatsAppSql) — mismo payload y mismo
+ * orden preparar→iniciar→enviar→confirmar/fallar.
  */
 export function PresupuestosEnvioBar({
   resguardo,
@@ -63,7 +62,7 @@ export function PresupuestosEnvioBar({
       toast.success(
         canal === "email"
           ? "Presupuesto(s) enviado(s) al cliente por email"
-          : "Presupuesto(s) marcado(s) como enviado(s) por WhatsApp"
+          : "Presupuesto(s) enviado(s) al cliente por WhatsApp"
       );
       (canal === "email" ? setRequestIdEmail : setRequestIdWhatsapp)(null);
       onActualizado();
@@ -123,11 +122,10 @@ export function PresupuestosEnvioBar({
               className="h-8 gap-1.5 border-emerald-600 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
               disabled={enviandoWhatsapp}
               onClick={() => enviar("whatsapp")}
-              title="El envío real por WhatsApp aún no está conectado — solo registra el estado"
             >
               <Message className="size-3.5" /> {enviandoWhatsapp ? "Enviando..." : "Enviar por WhatsApp"}
             </Button>
-            <span className="text-xs text-amber-600 dark:text-amber-400">Aún no conectado: solo registra el estado, no envía el mensaje</span>
+            <span className="text-xs text-muted-foreground">Envía todos los borradores al cliente por WhatsApp</span>
           </div>
         )}
 

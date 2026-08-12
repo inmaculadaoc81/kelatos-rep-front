@@ -64,4 +64,6 @@ export interface ResultadoFactura {
   total: number;
   baseImponible: number;
   reparacion: Record<string, unknown>;
+  /** Solo presente cuando la llamada incluyó incluirEntrega. */
+  diasTotales?: number;
 }

@@ -32,13 +32,54 @@ const MESES = [
   ["09", "Septiembre"], ["10", "Octubre"], ["11", "Noviembre"], ["12", "Diciembre"],
 ];
 
-function Delta({ pct, base }: { pct: number | null; base: string }) {
-  if (pct === null) return <div className="h-4" />;
-  const sube = pct >= 0;
+/** Umbral de indiferencia: variaciones dentro de ±2% se consideran "Estable". */
+function direccionDesdePct(pct: number | null): "up" | "down" | "flat" | null {
+  if (pct === null) return null;
+  if (pct > 2) return "up";
+  if (pct < -2) return "down";
+  return "flat";
+}
+
+const TENDENCIA: Record<"up" | "down" | "flat", { texto: string; clase: string; flecha: string }> = {
+  up: { texto: "Creciendo", clase: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", flecha: "↗" },
+  down: { texto: "Bajando", clase: "bg-red-500/15 text-red-700 dark:text-red-400", flecha: "↘" },
+  flat: { texto: "Estable", clase: "bg-muted text-muted-foreground", flecha: "—" },
+};
+
+function TendenciaPill({ direccion, pct }: { direccion: "up" | "down" | "flat"; pct?: number | null }) {
+  const t = TENDENCIA[direccion];
   return (
-    <div className={`text-[0.7rem] ${sube ? "text-green-600 dark:text-green-500" : "text-destructive"}`}>
-      {sube ? "▲" : "▼"} {sube ? "+" : ""}{pct}% vs {base}
-    </div>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-medium ${t.clase}`}>
+      {t.flecha} {t.texto}{typeof pct === "number" ? ` ${pct > 0 ? "+" : ""}${pct}%` : ""}
+    </span>
+  );
+}
+
+/**
+ * Línea de tendencia minimal: 2px, extremo final marcado, área tenue
+ * debajo — mismas specs de marca que Barras (pista recesiva, dato con
+ * relieve), aplicadas aquí a una serie temporal en vez de una magnitud.
+ */
+function Sparkline({ valores, color }: { valores: number[]; color: string }) {
+  if (valores.length < 2 || valores.every((v) => v === valores[0])) return null;
+  const w = 100, h = 32, pad = 3;
+  const max = Math.max(...valores);
+  const min = Math.min(...valores);
+  const rango = max - min || 1;
+  const puntos = valores.map((v, i) => {
+    const x = (i / (valores.length - 1)) * w;
+    const y = h - pad - ((v - min) / rango) * (h - pad * 2);
+    return [x, y] as const;
+  });
+  const linea = "M" + puntos.map(([x, y]) => `${x},${y}`).join(" L");
+  const area = `${linea} L${w},${h} L0,${h} Z`;
+  const [ux, uy] = puntos[puntos.length - 1];
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-8 w-full" preserveAspectRatio="none" aria-hidden="true">
+      <path d={area} fill={color} opacity={0.12} />
+      <path d={linea} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={ux} cy={uy} r={2.5} fill={color} />
+    </svg>
   );
 }
 
@@ -47,30 +88,45 @@ function Kpi({
   valor,
   icono: Icono,
   color,
-  delta,
+  acento,
+  pct,
+  serie,
   detalle,
 }: {
   titulo: string;
   valor: string;
   icono: React.ElementType;
   color: string;
-  delta?: React.ReactNode;
+  /** Color hex de acento para la línea de tendencia (coherente con `color`). */
+  acento: string;
+  /** Variación vs. periodo anterior, si aplica — alimenta la píldora de tendencia. */
+  pct?: number | null;
+  /** Serie temporal real para el sparkline (mínimo 2 puntos); se omite el gráfico si no hay serie fiable. */
+  serie?: number[];
   detalle?: string;
 }) {
+  const direccion = direccionDesdePct(pct ?? null);
   return (
     <div className="rounded-xl border bg-card p-4 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="mb-1 truncate text-sm text-muted-foreground">{titulo}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 truncate text-xs font-semibold tracking-wide text-muted-foreground uppercase">{titulo}</p>
           {/* Cifra destacada: figuras proporcionales, no tabulares */}
           <p className="text-2xl font-bold">{valor}</p>
-          {delta}
-          {detalle && <p className="text-[0.7rem] text-muted-foreground">{detalle}</p>}
+          <div className="mt-1 flex items-center gap-2">
+            {direccion && <TendenciaPill direccion={direccion} pct={pct} />}
+            {detalle && <p className="truncate text-[0.7rem] text-muted-foreground">{detalle}</p>}
+          </div>
         </div>
         <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${color}`}>
           <Icono className="size-4" />
         </div>
       </div>
+      {serie && serie.length > 1 && (
+        <div className="mt-3">
+          <Sparkline valores={serie} color={acento} />
+        </div>
+      )}
     </div>
   );
 }
@@ -150,6 +206,22 @@ export default function ReportesPage() {
     if (!r) return [];
     return r.porDia.filter((d) => (!diaDesde || d.fecha >= diaDesde) && (!diaHasta || d.fecha <= diaHasta));
   }, [r, diaDesde, diaHasta]);
+
+  // Series reales para los sparklines de los KPIs — nunca datos inventados:
+  // se omite el gráfico en las tarjetas sin una serie temporal fiable
+  // (tasa de cierre y tiempo medio son ratios sobre todo el periodo
+  // filtrado, no series por día/mes).
+  const serieCerradas = useMemo(() => (r ? r.porDia.slice(-14).map((d) => d.count) : []), [r]);
+  const serieTotalAcumulado = useMemo(() => {
+    if (!r) return [];
+    let acc = 0;
+    return r.porDia.slice(-30).map((d) => (acc += d.count));
+  }, [r]);
+  const serieGanancia = useMemo(() => (r ? r.porMes.slice(-6).map((m) => m.ganancia) : []), [r]);
+  const serieTicketMedio = useMemo(
+    () => (r ? r.porDia.filter((d) => d.count > 0).slice(-14).map((d) => d.ganancia / d.count) : []),
+    [r]
+  );
 
   const barrasDia: FilaBarra[] = diasFiltrados.map((d) => ({
     clave: d.fecha,
@@ -280,13 +352,18 @@ export default function ReportesPage() {
               valor={String(r.cerradasPeriodo)}
               icono={TickCircle}
               color="bg-blue-500/10 text-blue-600"
-              delta={<Delta pct={r.deltaCerradas} base={r.mesAnteriorLabel} />}
+              acento="#2563eb"
+              pct={r.deltaCerradas}
+              serie={serieCerradas}
+              detalle={r.deltaCerradas !== null ? `vs ${r.mesAnteriorLabel}` : undefined}
             />
             <Kpi
               titulo={tipo === "venta" ? "Total ventas" : tipo === "reparacion" ? "Total reparaciones" : "Total cerradas"}
               valor={String(r.totalEntradas)}
               icono={Setting2}
               color="bg-slate-500/10 text-slate-600"
+              acento="#475569"
+              serie={serieTotalAcumulado}
               detalle="acumulado del filtro activo"
             />
             <Kpi
@@ -294,14 +371,20 @@ export default function ReportesPage() {
               valor={euros(r.gananciaPeriodo)}
               icono={Wallet}
               color="bg-emerald-500/10 text-emerald-600"
-              delta={<Delta pct={r.deltaGanancia} base={r.mesAnteriorLabel} />}
+              acento="#059669"
+              pct={r.deltaGanancia}
+              serie={serieGanancia}
+              detalle={r.deltaGanancia !== null ? `vs ${r.mesAnteriorLabel}` : undefined}
             />
             <Kpi
               titulo="Ticket medio"
               valor={euros(r.ticketMedio)}
               icono={Receipt}
               color="bg-amber-500/10 text-amber-600"
-              delta={<Delta pct={r.deltaTicket} base={r.mesAnteriorLabel} />}
+              acento="#d97706"
+              pct={r.deltaTicket}
+              serie={serieTicketMedio}
+              detalle={r.deltaTicket !== null ? `vs ${r.mesAnteriorLabel}` : undefined}
             />
           </div>
 
@@ -311,6 +394,7 @@ export default function ReportesPage() {
               valor={r.tasaCierre !== null ? `${r.tasaCierre} %` : "—"}
               icono={Chart}
               color="bg-cyan-500/10 text-cyan-600"
+              acento="#0891b2"
               detalle={r.totalReparadas + r.totalSinReparacion > 0 ? `${r.totalReparadas} reparadas · ${r.totalSinReparacion} sin arreglo` : undefined}
             />
             <Kpi
@@ -318,6 +402,7 @@ export default function ReportesPage() {
               valor={r.tiempoMedio !== null ? `${r.tiempoMedio} días` : "—"}
               icono={Clock}
               color="bg-violet-500/10 text-violet-600"
+              acento="#7c3aed"
               detalle={r.muestraTiempo > 0 ? `sobre ${r.muestraTiempo} reparaciones` : undefined}
             />
           </div>

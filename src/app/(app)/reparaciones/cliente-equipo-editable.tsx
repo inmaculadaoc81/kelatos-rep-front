@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { formatearFecha } from "@/lib/dias-entrega";
+import { esEmailValido } from "@/lib/validacion";
 
 function Linea({ icono: Icono, valor }: { icono: Icon; valor: string }) {
   if (!valor) return null;
@@ -52,6 +53,7 @@ export function ClienteEditable({ detalle, onActualizado }: { detalle: Reparacio
 
   async function guardar() {
     if (!nombre.trim()) return toast.error("El nombre es obligatorio");
+    if (!esEmailValido(email)) return toast.error("El email no es válido");
     setGuardando(true);
     try {
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/cliente`, {

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Equipo, EstadoDevolucionEquipo } from "@/lib/equipos";
+import { esEmailValido } from "@/lib/validacion";
 import {
   calcularLiquidacionPuntual,
   calcularDuracionDesdeFechas,
@@ -136,6 +137,7 @@ export function DevolverAlquilerDialog({
 
   function validarFacturacion(): boolean {
     if (!email.trim()) { toast.error("Indica el email del cliente"); return false; }
+    if (!esEmailValido(email)) { toast.error("El email no tiene un formato válido"); return false; }
     if (!metodo) { toast.error("Selecciona el método de pago"); return false; }
     if (metodo === "tarjeta" && !banco) { toast.error("Selecciona el banco para el pago con tarjeta"); return false; }
     return true;

@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import type { LineaFactura } from "@/lib/factura";
+import { esEmailValido } from "@/lib/validacion";
 
 export type TipoFacturaBase =
   | "normal" | "revision" | "mensajeria" | "anticipo"
@@ -247,6 +248,7 @@ function TabPdfEnviar({
   const [enviando, setEnviando] = useState(false);
 
   async function enviar() {
+    if (!esEmailValido(emailDestino)) return toast.error("El email no tiene un formato válido");
     setEnviando(true);
     try {
       const res = await fetch(`/api/reparaciones/${resguardo}/facturas/enviar`, {
@@ -615,6 +617,7 @@ function EnvioCombinado({
   const [enviando, setEnviando] = useState(false);
 
   async function enviar() {
+    if (!esEmailValido(emailDestino)) return toast.error("El email no tiene un formato válido");
     setEnviando(true);
     try {
       const res = await fetch(`/api/reparaciones/${resguardo}/facturas/enviar`, {

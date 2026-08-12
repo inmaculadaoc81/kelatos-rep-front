@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Cliente, ClienteFormData } from "@/lib/clientes";
+import { esEmailValido } from "@/lib/validacion";
 
 function vacio(): ClienteFormData {
   return { nombre: "", dniCif: "", telefono: "", email: "", direccion: "", cp: "", localidad: "", provincia: "", notas: "" };
@@ -55,6 +56,7 @@ export function ClienteFormDialog({
 
   async function guardar() {
     if (!datos.nombre.trim()) return toast.error("El nombre es obligatorio");
+    if (!esEmailValido(datos.email)) return toast.error("El email no es válido");
 
     setEnviando(true);
     try {

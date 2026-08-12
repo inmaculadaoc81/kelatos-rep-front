@@ -14,9 +14,17 @@ const ESTADOS_CON_TOGGLE_EQUIPO = ["Pieza Pendiente", "En Tránsito", "Pieza Ent
 export function LogisticaPanel({
   detalle,
   onActualizado,
+  onClienteSeLleva,
+  onClienteLoTrajo,
 }: {
   detalle: ReparacionDetalle;
   onActualizado: () => void;
+  /** Reproduce toggleEquipoEnLocal(): "Cliente se lleva" NO cambia el
+   * estado directamente — abre la factura de anticipo (50%) antes, y es
+   * esa confirmación la que deja el equipo en 'NO'. */
+  onClienteSeLleva: () => void;
+  /** Dirección inversa: confirmación simple + toggle directo (marcarEquipoRecibido). */
+  onClienteLoTrajo: () => void;
 }) {
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
   const [enviando, setEnviando] = useState(false);
@@ -113,7 +121,7 @@ export function LogisticaPanel({
             size="sm"
             variant={equipoEnLocal ? "outline" : "default"}
             disabled={enviando}
-            onClick={() => ejecutar("equipo_en_local", { estado: equipoEnLocal ? "NO" : "SI" })}
+            onClick={equipoEnLocal ? onClienteSeLleva : onClienteLoTrajo}
           >
             {equipoEnLocal ? "Cliente se lleva" : "Cliente lo trajo"}
           </Button>

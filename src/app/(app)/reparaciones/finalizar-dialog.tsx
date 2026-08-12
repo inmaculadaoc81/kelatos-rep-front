@@ -5,9 +5,7 @@ import { TickCircle, CloseCircle, BoxTick, Cd, Notification } from "@/lib/icons"
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -317,121 +315,13 @@ export function FinalizarReparacionDialog({
   );
 }
 
-const VACIO_ENTREGA = {
-  fechaRecogida: new Date().toISOString().slice(0, 10),
-  tipoEntrega: "ENTREGADO" as const,
-  numeroFactura: "",
-  resena: "NO" as const,
-  observaciones: "",
-};
-
-export function MarcarEntregadoDialog({
-  resguardo,
-  open,
-  onOpenChange,
-  onEntregado,
-}: {
-  resguardo: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onEntregado: () => void;
-}) {
-  const [datos, setDatos] = useState(VACIO_ENTREGA);
-  const [enviando, setEnviando] = useState(false);
-
-  async function guardar() {
-    setEnviando(true);
-    try {
-      const res = await fetch(`/api/reparaciones/${resguardo}/salidas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`Entrega registrada (${data.diasTotales} días desde recepción)`);
-      setDatos(VACIO_ENTREGA);
-      onOpenChange(false);
-      onEntregado();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-      <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BoxTick className="size-5" /> Marcar como entregado #{resguardo}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="fechaRecogida">Fecha de recogida *</Label>
-              <Input id="fechaRecogida" type="date" value={datos.fechaRecogida} onChange={(e) => setDatos((p) => ({ ...p, fechaRecogida: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Tipo de entrega</Label>
-              <Select value={datos.tipoEntrega} onValueChange={(v) => setDatos((p) => ({ ...p, tipoEntrega: v as typeof p.tipoEntrega }))}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ENTREGADO">Entregado en local</SelectItem>
-                  <SelectItem value="ENVIO">Enviado por mensajería</SelectItem>
-                  <SelectItem value="RECICLAJE">Punto limpio</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="numeroFactura">Nº factura (opcional)</Label>
-            <Input id="numeroFactura" value={datos.numeroFactura} onChange={(e) => setDatos((p) => ({ ...p, numeroFactura: e.target.value }))} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>¿Deja reseña?</Label>
-            <RadioGroup value={datos.resena} onValueChange={(v) => setDatos((p) => ({ ...p, resena: v as typeof p.resena }))} className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="SI" /> Sí
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="NO" /> No
-              </label>
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="observacionesEntrega">Observaciones</Label>
-            <Textarea id="observacionesEntrega" rows={2} value={datos.observaciones} onChange={(e) => setDatos((p) => ({ ...p, observaciones: e.target.value }))} />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>
-            Cancelar
-          </Button>
-          <Button onClick={guardar} disabled={enviando}>
-            {enviando ? "Guardando..." : "Confirmar entrega"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 /**
  * Reproduce #modalConfirmarEntregaLocal / abrirConfirmarEntrega() /
  * confirmarEntregaLocal() (Index.html) — la confirmación rápida que se usa
  * cuando la reparación ya está "Reparado" (y por tanto ya facturada): un
- * solo clic, sin formulario. Reutiliza la MISMA ruta que MarcarEntregadoDialog
- * (POST /salidas, acción marcar_entregado) con los valores que el original
+ * solo clic, sin formulario. Reutiliza la MISMA ruta que la vista "sin
+ * factura" de EntregarConFacturaDialog (POST /salidas, acción
+ * marcar_entregado) con los valores que el original
  * fija de antemano (fecha de hoy, tipoEntrega ENTREGADO, sin reseña, sin
  * observaciones) — el backend conserva el nº de factura ya existente porque
  * no se envía uno nuevo (numeroFactura vacío → COALESCE).

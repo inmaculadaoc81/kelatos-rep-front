@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1 } from "@/lib/icons";
+import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1, Star, Send2, TickCircle, DocumentDownload } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
+import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
-import { FacturaModalShell } from "./factura-modal-shell";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -169,6 +169,105 @@ function CampoLectura({ label, valor }: { label: string; valor: string }) {
   );
 }
 
+const ETIQUETA_METODO_PAGO: Record<string, string> = Object.fromEntries(METODOS_PAGO.map((m) => [m.value, m.label]));
+
+/**
+ * Reproduce #modalVistaFactura en modo "ya generada" (todos los campos
+ * bloqueados salvo Reseña, tal como quedan tras generarPdfFactura()) — NO
+ * el modal #modalFcAcciones (ese es el que usa FacturaModalShell/
+ * FacturaAccionesTabs, reservado para "Facturas de Clientes" y para la
+ * factura de revisión). Aquí solo hay que ver los datos ya emitidos, el
+ * enlace al PDF y, si aplica, enviarla al cliente — nunca generar
+ * devoluciones/rectificativas desde la ficha de la reparación, igual que
+ * el original (esas viven en la página de Facturas de Clientes).
+ */
+/**
+ * Reproduce el bloque "Reseña" de #modalVistaFactura (_vfInitResena/
+ * _vfResenaChange/_vfProgramarResena/_vfCancelarResena, Index.html) — tres
+ * estados: NO (botón para programar el envío real por WhatsApp a 7 días, o
+ * marcar que ya se pidió en persona), SI (ya se pidió, se puede deshacer) y
+ * PROGRAMADA (envío ya agendado, con opción de cancelarlo).
+ */
+function TarjetaResena({
+  resguardo,
+  resena,
+  onActualizado,
+}: {
+  resguardo: string;
+  resena: string;
+  onActualizado: () => void;
+}) {
+  const [enviando, setEnviando] = useState(false);
+
+  async function ejecutar(accion: "programar" | "cancelar" | "marcar_si") {
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/resena`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(
+        accion === "programar" ? "Reseña programada — se enviará por WhatsApp en 1 semana"
+          : accion === "cancelar" ? "Reseña cancelada"
+          : "Reseña marcada como enviada"
+      );
+      onActualizado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border bg-card shadow-sm">
+      <div className="flex items-center gap-1.5 rounded-t-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white">
+        <Star className="size-3.5" /> Reseña
+      </div>
+      <div className="space-y-2 p-3 text-xs">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold">¿Se envió reseña?</span>
+          <div className="flex overflow-hidden rounded-md border">
+            <button
+              type="button"
+              disabled={enviando || resena === "SI"}
+              onClick={() => ejecutar("marcar_si")}
+              className={`px-2.5 py-1 font-medium transition-colors ${resena === "SI" ? "bg-emerald-600 text-white" : "bg-card text-muted-foreground hover:bg-muted"}`}
+            >
+              Sí
+            </button>
+            <button
+              type="button"
+              disabled={enviando || resena === "NO" || resena === ""}
+              onClick={() => ejecutar("cancelar")}
+              className={`border-l px-2.5 py-1 font-medium transition-colors ${resena === "SI" || resena === "PROGRAMADA" ? "bg-card text-muted-foreground hover:bg-muted" : "bg-muted text-foreground"}`}
+            >
+              No
+            </button>
+          </div>
+        </div>
+        {resena === "PROGRAMADA" ? (
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
+              <TickCircle className="size-3.5" /> Programada para 1 semana
+            </span>
+            <button type="button" className="text-destructive underline disabled:opacity-50" disabled={enviando} onClick={() => ejecutar("cancelar")}>
+              Cancelar
+            </button>
+          </div>
+        ) : resena !== "SI" ? (
+          <Button size="sm" variant="outline" className="h-7 gap-1.5 border-amber-500 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400" disabled={enviando} onClick={() => ejecutar("programar")}>
+            <Send2 className="size-3.5" /> {enviando ? "Enviando…" : "Enviar reseña (en 1 semana)"}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function VistaGenerada({
   detalle,
   open,
@@ -180,7 +279,190 @@ function VistaGenerada({
   onOpenChange: (open: boolean) => void;
   onActualizado: () => void;
 }) {
-  return <FacturaModalShell detalle={detalle} tipoBase="normal" open={open} onOpenChange={onOpenChange} onActualizado={onActualizado} />;
+  const [emailDestino, setEmailDestino] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  const cliente = detalle.clienteFactura;
+  const lineas = detalle.lineasFactura.length > 0
+    ? detalle.lineasFactura
+    : [{ descripcion: "Factura", cantidad: 1, precio: detalle.totalFactura }];
+  const base = lineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
+  const iva = base * 0.21;
+  const formaPagoTexto = detalle.formaPago
+    ? (ETIQUETA_METODO_PAGO[detalle.formaPago] || detalle.formaPago) + (detalle.banco ? ` (${detalle.banco})` : "")
+    : "—";
+
+  async function enviarAlCliente() {
+    if (!esEmailValido(emailDestino)) return toast.error("El email no tiene un formato válido");
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/facturas/enviar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "normal", emailDestino: emailDestino.trim() }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (!data.enviado) throw new Error(data.motivo === "facturas_deshabilitado" ? "El envío de facturas por correo está deshabilitado por ahora." : (data.motivo || "No se pudo enviar"));
+      toast.success(`Factura enviada a ${emailDestino.trim() || cliente?.email || detalle.cliente.email}`);
+      onActualizado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
+        <CabeceraAzul titulo={`Factura — Ref. ${detalle.resguardo}`} onClose={() => onOpenChange(false)} />
+
+        <ScrollArea className="max-h-[75vh]">
+          <div className="space-y-4 bg-muted/30 p-4">
+            <div className="grid gap-3 sm:grid-cols-5">
+              <CampoLectura label="Tipo de factura" valor="Serie 1 — Cobros" />
+              <CampoLectura label="N.º Factura" valor={detalle.numeroFactura || "—"} />
+              <CampoLectura label="Fecha de factura" valor={detalle.fechaFactura ? new Date(detalle.fechaFactura).toLocaleDateString("es-ES") : "—"} />
+              <CampoLectura label="Forma de pago" valor={formaPagoTexto} />
+              <CampoLectura label="Estado" valor={detalle.estadoFactura || "—"} />
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-[5fr_7fr]">
+              <div className="space-y-3">
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="flex items-center gap-1.5 rounded-t-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white">
+                    <Building className="size-3.5" /> Emisor
+                  </div>
+                  <div className="space-y-0.5 p-3 text-xs">
+                    <p className="font-semibold">KELATOS INFORMÁTICA</p>
+                    <p className="text-muted-foreground">Affirma Technology Group S.L.</p>
+                    <p>CIF: B72990443</p>
+                    <p>Blasco de Garay 63 BJ 2, 28015 Madrid</p>
+                    <p>918 294 660 · soporte@kelatos.com</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="flex items-center gap-1.5 rounded-t-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white">
+                    <Profile className="size-3.5" /> Cliente <span className="font-normal opacity-75">(factura emitida)</span>
+                  </div>
+                  <div className="space-y-1 p-3 text-xs">
+                    <FilaLectura etiqueta="Nombre" valor={cliente?.nombre || detalle.cliente.nombre} />
+                    <FilaLectura etiqueta="DNI/CIF" valor={cliente?.dni || detalle.dniCif} />
+                    <FilaLectura etiqueta="Teléfono" valor={cliente?.telefono || detalle.cliente.telefono} />
+                    <FilaLectura etiqueta="Email" valor={cliente?.email || detalle.cliente.email} />
+                    <FilaLectura etiqueta="Dirección" valor={cliente?.direccion || detalle.cliente.direccion} />
+                  </div>
+                </div>
+
+                <TarjetaResena resguardo={detalle.resguardo} resena={detalle.resena} onActualizado={onActualizado} />
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="flex items-center gap-1.5 rounded-t-lg bg-sky-500 px-3 py-2 text-xs font-semibold text-white">
+                    Equipo / Servicio
+                  </div>
+                  <div className="space-y-1 p-3 text-xs">
+                    <p><span className="text-muted-foreground">Referencia:</span> <strong>{detalle.resguardo}</strong></p>
+                    <p><span className="text-muted-foreground">Modelo:</span> {detalle.equipo.modelo || "-"}</p>
+                    <p><span className="text-muted-foreground">Descripción:</span> {detalle.equipo.sintoma || "-"}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="flex items-center gap-1.5 rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
+                    Conceptos
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="w-20 p-2 text-left">Ref.</th>
+                          <th className="p-2 text-left">Descripción</th>
+                          <th className="w-14 p-2 text-center">Cant.</th>
+                          <th className="w-16 p-2 text-center">Dto. %</th>
+                          <th className="w-24 p-2 text-right">P. unit.</th>
+                          <th className="w-24 p-2 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lineas.map((l, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="p-2 font-mono text-xs text-muted-foreground">{l.referencia || "—"}</td>
+                            <td className="p-2">{l.descripcion}</td>
+                            <td className="p-2 text-center">{l.cantidad}</td>
+                            <td className="p-2 text-center">{l.descuento || 0}</td>
+                            <td className="p-2 text-right">{euros(l.precio)}</td>
+                            <td className="p-2 text-right whitespace-nowrap">{euros(l.cantidad * l.precio * (1 - (l.descuento || 0) / 100))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-muted/30 text-sm">
+                        <tr>
+                          <td colSpan={5} className="p-1.5 text-right text-xs text-muted-foreground">Base imponible</td>
+                          <td className="p-1.5 text-right font-semibold">{euros(base)}</td>
+                        </tr>
+                        <tr>
+                          <td colSpan={5} className="p-1.5 text-right text-xs text-muted-foreground">IVA (21%)</td>
+                          <td className="p-1.5 text-right">{euros(iva)}</td>
+                        </tr>
+                        <tr className="bg-primary/10">
+                          <td colSpan={5} className="p-1.5 text-right font-bold">TOTAL</td>
+                          <td className="p-1.5 text-right text-base font-bold">{euros(base + iva)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                {detalle.urlFactura ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-800 dark:text-emerald-400">
+                    <span className="flex items-center gap-1.5">
+                      <TickCircle className="size-4 shrink-0" />
+                      PDF generado:{" "}
+                      <a href={detalle.urlFactura} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold underline">
+                        <DocumentDownload className="size-3.5" /> Ver factura en Drive
+                      </a>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder={cliente?.email || detalle.cliente.email || "correo@ejemplo.com"}
+                        value={emailDestino}
+                        onChange={(e) => setEmailDestino(e.target.value)}
+                        className="h-8 w-48 bg-card text-xs"
+                      />
+                      <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarAlCliente} disabled={enviando}>
+                        <Send2 className="size-3.5" /> {enviando ? "Enviando…" : "Enviar al cliente"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-400">
+                    Factura guardada como borrador — todavía sin fecha ni PDF definitivos.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </ScrollArea>
+
+        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FilaLectura({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <div className="grid grid-cols-[5rem_1fr] gap-2">
+      <span className="text-muted-foreground">{etiqueta}</span>
+      <span className="font-medium">{valor || "-"}</span>
+    </div>
+  );
 }
 
 function VistaGenerar({
@@ -271,6 +553,7 @@ function VistaGenerar({
     if (lineasValidas.length === 0) return toast.error("Añade al menos un concepto");
     if (!metodo) return toast.error("Selecciona el método de pago");
     if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    if (!esEmailValido(email)) return toast.error("El email del cliente no tiene un formato válido");
 
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();

@@ -22,6 +22,7 @@ import { DatosPresupuestoForm, PiezaForm, TipoPieza } from "@/lib/presupuesto-fo
 import { Empleado } from "@/app/api/empleados/route";
 import { Proveedor } from "@/app/api/proveedores/route";
 import { StockPieza } from "@/lib/stock-piezas";
+import { esUrlValida } from "@/lib/validacion";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 
 function vacio(): DatosPresupuestoForm {
@@ -132,9 +133,11 @@ export function PresupuestoFormDialog({
       const pedidoActivo = campo === "pedido" ? valor : tienePedido;
       const nuevoTipo: TipoPieza = stockActivo && pedidoActivo ? "mixto" : stockActivo ? "stock" : pedidoActivo ? "pedido" : "no";
       let piezas = prev.piezas;
-      // Al activar una sección vacía por primera vez, arranca con una fila.
+      // Reproduce toggleSeccionPiezasPpto(): solo "Pieza en stock" arranca
+      // con una fila automática al marcarse por primera vez; "Pieza por
+      // pedido" solo revela la sección vacía — la fila se añade con el
+      // botón "+ Agregar Pieza".
       if (campo === "stock" && valor && piezasStock.length === 0) piezas = [...piezas, piezaStockVacia()];
-      if (campo === "pedido" && valor && piezasPedido.length === 0) piezas = [...piezas, piezaPedidoVacia()];
       return { ...prev, tipoPieza: nuevoTipo, piezas };
     });
   }
@@ -222,6 +225,7 @@ export function PresupuestoFormDialog({
         if (!(p.costo > 0)) return toast.error(`Pieza pedido #${i + 1}: El costo debe ser mayor a 0`);
         if (!(p.precio > 0)) return toast.error(`Pieza pedido #${i + 1}: El precio de venta es obligatorio`);
         if (!p.enlace.trim()) return toast.error(`Pieza pedido #${i + 1}: El enlace de compra es obligatorio`);
+        if (!esUrlValida(p.enlace)) return toast.error(`Pieza pedido #${i + 1}: el enlace debe ser una URL válida (https://...)`);
       }
     }
 
@@ -368,13 +372,25 @@ export function PresupuestoFormDialog({
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-2 p-3">
+                <div className="space-y-3 p-3">
                   {piezasStock.map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-                      <Input placeholder="REF" value={p.referenciaStock} onChange={(e) => actualizarPieza("stock", i, "referenciaStock", e.target.value.toUpperCase())} />
-                      <Input className="col-span-2" placeholder="Nombre de la pieza" value={p.descripcion} onChange={(e) => actualizarPieza("stock", i, "descripcion", e.target.value)} />
-                      <Input type="number" step="0.01" placeholder="Coste" value={p.costo} onChange={(e) => actualizarPieza("stock", i, "costo", parseFloat(e.target.value) || 0)} />
-                      <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("stock", i, "precio", parseFloat(e.target.value) || 0)} />
+                    <div key={i} className="grid grid-cols-2 items-end gap-2 sm:grid-cols-6">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-normal text-muted-foreground">REF</Label>
+                        <Input placeholder="REF" value={p.referenciaStock} onChange={(e) => actualizarPieza("stock", i, "referenciaStock", e.target.value.toUpperCase())} />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <Label className="text-[11px] font-normal text-muted-foreground">Nombre de la pieza</Label>
+                        <Input placeholder="Nombre de la pieza" value={p.descripcion} onChange={(e) => actualizarPieza("stock", i, "descripcion", e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-normal text-muted-foreground">Coste (nuestro)</Label>
+                        <Input type="number" step="0.01" placeholder="Coste" value={p.costo} onChange={(e) => actualizarPieza("stock", i, "costo", parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-normal text-muted-foreground">Precio cliente</Label>
+                        <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("stock", i, "precio", parseFloat(e.target.value) || 0)} />
+                      </div>
                       <Button size="icon" variant="ghost" className="text-destructive" onClick={() => quitarPieza("stock", i)}>
                         <Trash className="size-4" />
                       </Button>
@@ -403,17 +419,40 @@ export function PresupuestoFormDialog({
                           <Trash className="size-3.5" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                        <Input className="sm:col-span-1" placeholder="Descripción" value={p.descripcion} onChange={(e) => actualizarPieza("pedido", i, "descripcion", e.target.value)} />
-                        <Select value={p.proveedorId} onValueChange={(v) => actualizarPieza("pedido", i, "proveedorId", v || "")}>
-                          <SelectTrigger className="w-full"><SelectValue placeholder="Proveedor..." /></SelectTrigger>
-                          <SelectContent>
-                            {proveedores.map((pv) => <SelectItem key={pv.proveedorId} value={pv.proveedorId}>{pv.nombre}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <Input type="number" step="0.01" placeholder="Costo" value={p.costo} onChange={(e) => actualizarPieza("pedido", i, "costo", parseFloat(e.target.value) || 0)} />
-                        <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("pedido", i, "precio", parseFloat(e.target.value) || 0)} />
-                        <Input className="col-span-2 sm:col-span-1" placeholder="Enlace *" value={p.enlace} onChange={(e) => actualizarPieza("pedido", i, "enlace", e.target.value)} />
+                      <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-5">
+                        <div className="sm:col-span-1 space-y-1">
+                          <Label className="text-[11px] font-normal text-muted-foreground">Descripción</Label>
+                          <Input placeholder="Descripción" value={p.descripcion} onChange={(e) => actualizarPieza("pedido", i, "descripcion", e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-normal text-muted-foreground">Proveedor</Label>
+                          <Select value={p.proveedorId} onValueChange={(v) => actualizarPieza("pedido", i, "proveedorId", v || "")}>
+                            <SelectTrigger className="w-full">
+                              {/* Sin esto, al editar un presupuesto existente el select
+                                  muestra el id crudo del proveedor en vez de su nombre —
+                                  el popup (y sus SelectItem) no existe en el DOM mientras
+                                  está cerrado, así que Select.Value no puede resolverlo solo. */}
+                              <SelectValue>
+                                {(v: string) => (v ? proveedores.find((pv) => pv.proveedorId === v)?.nombre || v : "Proveedor...")}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {proveedores.map((pv) => <SelectItem key={pv.proveedorId} value={pv.proveedorId}>{pv.nombre}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-normal text-muted-foreground">Costo (nuestro)</Label>
+                          <Input type="number" step="0.01" placeholder="Costo" value={p.costo} onChange={(e) => actualizarPieza("pedido", i, "costo", parseFloat(e.target.value) || 0)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-normal text-muted-foreground">Precio cliente</Label>
+                          <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("pedido", i, "precio", parseFloat(e.target.value) || 0)} />
+                        </div>
+                        <div className="col-span-2 sm:col-span-1 space-y-1">
+                          <Label className="text-[11px] font-normal text-muted-foreground">Enlace de compra *</Label>
+                          <Input placeholder="Enlace *" value={p.enlace} onChange={(e) => actualizarPieza("pedido", i, "enlace", e.target.value)} />
+                        </div>
                       </div>
                     </div>
                   ))}

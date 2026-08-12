@@ -16,6 +16,10 @@ import {
   InfoCircle,
   Trash,
   Receipt,
+  CloseCircle,
+  Wallet,
+  Edit2,
+  Shop,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -47,9 +51,16 @@ export interface CallbacksAccion {
   onFinalizar: () => void;
   onMarcarEntregado: () => void;
   onEntregadoLocal: () => void;
+  onFacturarMensajeria: () => void;
+  onNoCubiertoPorGarantia: () => void;
+  onClienteSeLlevaAnticipo: () => void;
   onVerQr: () => void;
   onIniciarReparacion: () => void;
   onRegistrarPedido: () => void;
+  onMarcarEnTransito: () => void;
+  onMarcarPiezaRecibida: () => void;
+  onEditarPedido: () => void;
+  onMarcarEquipoRecibido: () => void;
   onEnviarPuntoLimpio: () => void;
   onFacturacion: () => void;
 }
@@ -112,6 +123,16 @@ function describir(detalle: ReparacionDetalle): Accion | null {
   }
 
   if (estado === "Presupuesto Aceptado") {
+    if (detalle.equipoEnLocal === "NO" && detalle.anticipoImporte > 0) {
+      const importeFmt = detalle.anticipoImporte.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return {
+        tono: "warning",
+        icono: Wallet,
+        titulo: "Anticipo Registrado — Equipo con el Cliente",
+        texto: `El cliente se llevó el equipo con un anticipo de ${importeFmt} €. Cuando esté lista la reparación, el cliente traerá el equipo para la factura final del resto.`,
+        nota: detalle.numeroFacturaAnticipo ? <>Factura {detalle.numeroFacturaAnticipo}</> : undefined,
+      };
+    }
     return {
       tono: "success",
       icono: Box,
@@ -237,16 +258,87 @@ export function AccionRequerida({
       </Button>,
       <Button key="pedido-garantia" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
         <Box1 className="size-3.5" /> Registrar pedido de pieza
+      </Button>,
+      // Reproduce el tercer botón de la tarjeta FASE 1 "Garantía"
+      // (solicitarPresupuestoDesdeGarantia) — el escape cuando resulta que
+      // el equipo NO está cubierto.
+      <Button key="no-cubierto" size="sm" variant="outline" className="gap-1.5 text-muted-foreground" onClick={callbacks.onNoCubiertoPorGarantia}>
+        <CloseCircle className="size-3.5" /> No cubierto por garantía
       </Button>
     );
   }
   // No aplica a la rama de cintas (digitalización, sin piezas por pedido).
   if (estado === "Presupuesto Aceptado" && !detalle.datosCintas) {
+    const anticipoRegistrado = detalle.equipoEnLocal === "NO" && detalle.anticipoImporte > 0;
     botones.push(
       <Button key="pedido-aceptado" size="sm" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
         <Box1 className="size-3.5" /> Registrar pedido de pieza
       </Button>
     );
+    // Reproduce clienteSeYLlevaConFactura() — solo disponible mientras no
+    // haya ya un anticipo registrado para esta reparación.
+    if (!anticipoRegistrado) {
+      botones.push(
+        <Button key="anticipo" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onClienteSeLlevaAnticipo}>
+          <Wallet className="size-3.5" /> Cliente se lleva el equipo
+        </Button>
+      );
+    }
+  }
+  // Reproduce las dos variantes de la tarjeta FASE 4 "Pieza Pendiente"
+  // (estadoPedido 'Pedido' vs 'En Tránsito' en renderizarAccion()) — mismos
+  // tres botones en ambas, solo cambia el primero.
+  if (estado === "Pieza Pendiente") {
+    const pedido = detalle.pedidos[0];
+    if (pedido?.estado === "En Tránsito") {
+      botones.push(
+        <Button key="recibida" size="sm" className="gap-1.5 bg-amber-500 text-white hover:bg-amber-600" onClick={callbacks.onMarcarPiezaRecibida}>
+          <TickCircle className="size-3.5" /> Marcar como Recibida
+        </Button>,
+        <Button key="editar-pedido" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onEditarPedido}>
+          <Edit2 className="size-3.5" /> Editar Pedido
+        </Button>,
+        <Button key="ppto" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onGestionarPresupuestos}>
+          <DocumentText className="size-3.5" /> Presupuesto
+        </Button>
+      );
+    } else if (pedido?.estado === "Pedido") {
+      botones.push(
+        <Button key="transito" size="sm" className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700" onClick={callbacks.onMarcarEnTransito}>
+          <Truck className="size-3.5" /> Marcar En Tránsito
+        </Button>,
+        <Button key="editar-pedido" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onEditarPedido}>
+          <Edit2 className="size-3.5" /> Editar Pedido
+        </Button>,
+        <Button key="ppto" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onGestionarPresupuestos}>
+          <DocumentText className="size-3.5" /> Presupuesto
+        </Button>
+      );
+    }
+  }
+  // Reproduce las dos variantes de la tarjeta FASE 4 "Pieza Entregada":
+  // si el cliente se había llevado el equipo, primero hay que recuperarlo;
+  // si ya estaba en el local, se puede iniciar la reparación directamente.
+  if (estado === "Pieza Entregada") {
+    if (detalle.equipoEnLocal === "NO") {
+      botones.push(
+        <Button key="equipo-recibido" size="sm" className="gap-1.5 bg-amber-500 text-white hover:bg-amber-600" onClick={callbacks.onMarcarEquipoRecibido}>
+          <Shop className="size-3.5" /> Marcar Equipo Recibido
+        </Button>,
+        <Button key="ppto" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onGestionarPresupuestos}>
+          <DocumentText className="size-3.5" /> Presupuesto
+        </Button>
+      );
+    } else {
+      botones.push(
+        <Button key="iniciar-reparacion" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onIniciarReparacion}>
+          <Setting2 className="size-3.5" /> Iniciar Reparación
+        </Button>,
+        <Button key="ppto" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onGestionarPresupuestos}>
+          <DocumentText className="size-3.5" /> Presupuesto
+        </Button>
+      );
+    }
   }
   if (estado === "En Reparación") {
     botones.push(
@@ -275,20 +367,39 @@ export function AccionRequerida({
     // ("No tiene Reparación"/"Presupuesto Rechazado") abre el formulario
     // completo (abrirModalEntregarEquipo), porque ahí puede faltar todavía
     // registrar cómo se cierra la salida — mismo texto de botón en ambas
-    // ramas, solo cambia a qué modal apunta.
+    // ramas, solo cambia a qué modal apunta. Excepción dentro de "Reparado":
+    // garantía recibida por mensajería que se recoge en local también va al
+    // formulario completo, porque ahí se cobra el trayecto (_garantiaConRecojo
+    // en el original) — y en ese caso concreto no se ofrece QR Recogida.
+    const garantiaConRecojo = estado === "Reparado" && detalle.tipoIngreso === "GARANTIA" && detalle.tipoRecepcion === "ENVIO";
     botones.push(
       <Button
         key="entrega"
         size="sm"
         className="gap-1.5"
-        onClick={estado === "Reparado" ? callbacks.onEntregadoLocal : callbacks.onMarcarEntregado}
+        onClick={estado === "Reparado" && !garantiaConRecojo ? callbacks.onEntregadoLocal : callbacks.onMarcarEntregado}
       >
         <BoxTick className="size-3.5" /> Entregado en Local
-      </Button>,
-      <Button key="qr" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onVerQr}>
-        <ScanBarcode className="size-3.5" /> Ver QR de recogida
       </Button>
     );
+    if (!garantiaConRecojo) {
+      botones.push(
+        <Button key="qr" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onVerQr}>
+          <ScanBarcode className="size-3.5" /> Ver QR de recogida
+        </Button>
+      );
+    }
+    // Reproduce el botón "Facturar y Enviar por Mensajería" — mismas tres
+    // ramas que ofrecen "Entregado en Local" (Reparado con garantía incluido),
+    // cuando el cliente pidió devolución por mensajería y esa mensajería
+    // todavía no tiene factura propia.
+    if (detalle.entregaMensajeria === "SI" && !detalle.numeroFacturaMensajeria) {
+      botones.push(
+        <Button key="facturar-mensajeria" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onFacturarMensajeria}>
+          <Truck className="size-3.5" /> Facturar y Enviar por Mensajería
+        </Button>
+      );
+    }
     // Solo "No tiene Reparación"/"Presupuesto Rechazado" — el original no la
     // ofrece cuando el equipo sí está "Reparado".
     if (estado !== "Reparado") {

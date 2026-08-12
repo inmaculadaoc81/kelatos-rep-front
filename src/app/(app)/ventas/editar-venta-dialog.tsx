@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Venta, DatosEditarVenta } from "@/lib/ventas";
+import { esEmailValido } from "@/lib/validacion";
 
 const ESTADOS_VENTA = ["Pedido por Completar", "Pieza Pendiente", "En Tránsito", "Pieza Recibida", "Entregado", "Cancelado"];
 const ESTADOS_PAGO = ["Pagado", "Pendiente", "Garantía"];
@@ -44,6 +45,7 @@ export function EditarVentaDialog({
 
   async function guardar() {
     if (!venta || !datos) return;
+    if (!esEmailValido(datos.clienteEmail)) return toast.error("El email no es válido");
     setEnviando(true);
     try {
       const res = await fetch(`/api/ventas/${venta.ventaId}`, {

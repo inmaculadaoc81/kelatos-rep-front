@@ -28,8 +28,13 @@ export async function POST(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { resguardo } = await params;
-  const body = (await req.json()) as { requestId: string; tipo: TipoFactura; datos: DatosFactura };
-  const { requestId, tipo, datos } = body;
+  const body = (await req.json()) as {
+    requestId: string; tipo: TipoFactura; datos: DatosFactura;
+    /** Combina la entrega en la misma transacción que /confirmar (ver _aplicarMarcarEntregadoTx en server.js) — usado por abrirModalEntregarEquipo('ENTREGADO'|'ENVIO') en el original, cuando la factura y la salida se registran en un único paso. */
+    incluirEntrega?: boolean;
+    entregaDatos?: { fecha: string; tipoEntrega: "ENTREGADO" | "ENVIO" | "RECICLAJE"; resena?: string; observaciones?: string };
+  };
+  const { requestId, tipo, datos, incluirEntrega, entregaDatos } = body;
 
   if (!requestId || !/^[0-9a-f-]{36}$/i.test(requestId)) {
     return NextResponse.json({ ok: false, error: "requestId inválido" }, { status: 400 });
@@ -92,9 +97,12 @@ export async function POST(
     //    banco/estadoFactura, rectificativa usa motivo/numeroOriginal,
     //    corregida usa numeroFacturaOriginal/cliente — server.js ignora
     //    los campos que no le correspondan a su tipo.
-    const confirmar = await kelatosApiPost<{ ok: boolean; reparacion: Record<string, unknown> }>(
+    const confirmar = await kelatosApiPost<{ ok: boolean; reparacion: Record<string, unknown>; diasTotales?: number }>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/facturas/confirmar`,
-      { requestId, usuario, urlPdf: generado.url, datos }
+      {
+        requestId, usuario, urlPdf: generado.url, datos,
+        ...(incluirEntrega ? { incluirEntrega: true, entregaDatos } : {}),
+      }
     );
 
     const resultado: ResultadoFactura = {
@@ -102,7 +110,8 @@ export async function POST(
       url: generado.url,
       total: generado.total,
       baseImponible: generado.baseImponible,
-      reparacion: confirmar.reparacion
+      reparacion: confirmar.reparacion,
+      diasTotales: confirmar.diasTotales
     };
     return NextResponse.json({ ok: true, ...resultado });
   } catch (error) {

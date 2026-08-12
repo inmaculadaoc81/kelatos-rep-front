@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Receipt, TickCircle, CloseCircle } from "@/lib/icons";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,8 +93,9 @@ function VistaGenerar({
   // debe reservar un segundo número fiscal para la misma operación.
   const [requestId, setRequestId] = useState<string | null>(null);
 
-  function cerrar(o: boolean) {
+  function cerrar(o: boolean, eventDetails?: { reason?: string; cancel?: () => void }) {
     if (enviando) return;
+    if (eventDetails && esCierreAccidental(o, eventDetails)) return;
     if (!o) { setRequestId(null); }
     onOpenChange(o);
   }

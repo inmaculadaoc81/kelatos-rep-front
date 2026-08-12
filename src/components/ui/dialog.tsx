@@ -11,6 +11,24 @@ function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
+/**
+ * Bloquea los cierres que Base UI dispara sin una acción explícita del
+ * usuario (clic fuera del diálogo / tecla Esc) — para diálogos con
+ * formularios de facturación donde perder los datos ya rellenados por un
+ * clic accidental saldría caro. Un botón "Cancelar" explícito del propio
+ * diálogo sigue funcionando porque llama a la función de cierre
+ * directamente (con un solo argumento), sin pasar por este "reason".
+ */
+export function esCierreAccidental(
+  open: boolean,
+  eventDetails: { reason?: string; cancel?: () => void }
+): boolean {
+  if (open) return false
+  const accidental = eventDetails.reason === "outside-press" || eventDetails.reason === "escape-key"
+  if (accidental) eventDetails.cancel?.()
+  return accidental
+}
+
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }

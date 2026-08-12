@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { DatosNuevoEquipo, TARIFAS_EQUIPO, TipoEquipo } from "@/lib/equipos";
+import { esUrlValida } from "@/lib/validacion";
 
 const VACIO: DatosNuevoEquipo = {
   tipo: "normal",
@@ -78,7 +79,8 @@ export function NuevoEquipoDialog({ onCreado }: { onCreado: () => void }) {
     if (!datos.modelo.trim()) return toast.error("El modelo es obligatorio");
     if (!datos.sistemaOperativo.trim()) return toast.error("El sistema operativo es obligatorio");
     if (!datos.imagenUrl.trim()) return toast.error("La imagen URL es obligatoria para el catálogo web");
-    if (!/^https?:\/\/.+/.test(datos.imagenUrl.trim())) return toast.error("La Imagen URL debe ser una URL válida (debe empezar por https://)");
+    if (!esUrlValida(datos.imagenUrl)) return toast.error("La Imagen URL debe ser una URL válida (debe empezar por https://)");
+    if (!esUrlValida(datos.enlaceRepuesto)) return toast.error("El enlace del repuesto debe ser una URL válida (debe empezar por https://)");
     if (!datos.caracteristicas.trim()) return toast.error("Las características son obligatorias");
 
     setEnviando(true);

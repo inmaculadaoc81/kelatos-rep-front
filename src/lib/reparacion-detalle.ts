@@ -38,6 +38,8 @@ interface FilaReparacionSqlDetalle {
   resultado_reparacion: string | null;
   numero_factura: string | null;
   url_factura: string | null;
+  fecha_factura: string | null;
+  resena: string | null;
   fecha_entrega: string | null;
   estado_entrega: string | null;
   firma_recogida_url: string | null;
@@ -239,6 +241,8 @@ export interface ReparacionDetalle {
   resultadoReparacion: string;
   numeroFactura: string;
   urlFactura: string;
+  fechaFactura: string | null;
+  resena: string;
   fechaEntrega: string | null;
   estadoEntrega: string;
   firmaRecogidaUrl: string;
@@ -402,6 +406,8 @@ export function mapearReparacionDetalle(
     resultadoReparacion: row.resultado_reparacion || "",
     numeroFactura: row.numero_factura || "",
     urlFactura: row.url_factura || "",
+    fechaFactura: fecha(row.fecha_factura),
+    resena: row.resena || "NO",
     fechaEntrega: fecha(row.fecha_entrega),
     estadoEntrega: row.estado_entrega || "PENDIENTE",
     firmaRecogidaUrl: row.firma_recogida_url || "",

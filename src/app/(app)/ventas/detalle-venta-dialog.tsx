@@ -24,6 +24,7 @@ import {
   ESTILO_ESTADO_ITEM_VENTA,
 } from "@/lib/ventas";
 import type { Proveedor } from "@/app/api/proveedores/route";
+import { esUrlValida } from "@/lib/validacion";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -173,6 +174,7 @@ export function DetalleVentaDialog({
     if (!pedNumero.trim()) return toast.error("El Nº de pedido es obligatorio");
     if (!pedFecha) return toast.error("La fecha estimada es obligatoria");
     if (!pedEnlace.trim()) return toast.error("El enlace es obligatorio");
+    if (!esUrlValida(pedEnlace)) return toast.error("El enlace debe ser una URL válida (https://...)");
     setEnviando(true);
     try {
       const res = await fetch(`/api/items-venta/${itemPidiendo}/registrar-pedido`, {
@@ -242,6 +244,7 @@ export function DetalleVentaDialog({
     if (nuevoPrecio <= 0) return toast.error("El precio es obligatorio");
     if (!nuevoProveedor) return toast.error("El proveedor es obligatorio");
     if (!nuevoEnlace.trim()) return toast.error("El enlace es obligatorio");
+    if (!esUrlValida(nuevoEnlace)) return toast.error("El enlace debe ser una URL válida (https://...)");
     setEnviando(true);
     try {
       const res = await fetch(`/api/ventas/${venta.ventaId}/items`, {

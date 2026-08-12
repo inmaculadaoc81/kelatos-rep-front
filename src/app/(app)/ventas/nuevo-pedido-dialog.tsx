@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { DatosNuevoPedido, ItemPedidoForm, FormaPagoPedido } from "@/lib/ventas";
+import { esEmailValido } from "@/lib/validacion";
 
 const FORMAS_PAGO: { value: FormaPagoPedido; label: string }[] = [
   { value: "efectivo", label: "Efectivo" },
@@ -101,6 +102,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
 
   async function guardar() {
     if (!datos.clienteNombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    if (!esEmailValido(datos.clienteEmail)) return toast.error("El email no es válido");
     if (datos.items.length === 0) return toast.error("Añade al menos una pieza");
     for (const [i, it] of datos.items.entries()) {
       if (!it.descripcion.trim()) return toast.error(`La descripción de la pieza ${i + 1} es obligatoria`);

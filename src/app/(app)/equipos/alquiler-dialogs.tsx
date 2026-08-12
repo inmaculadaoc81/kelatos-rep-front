@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Equipo, DatosNuevoAlquiler } from "@/lib/equipos";
 import { Cliente } from "@/lib/clientes";
+import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 
 const METODOS_PAGO = ["Efectivo", "Tarjeta bancaria", "Bizum", "Transferencia"];
@@ -181,7 +182,7 @@ export function NuevoAlquilerDialog({
     if (!factu.clienteNombre.trim() || !factu.clienteTelefono.trim() || !factu.clienteDNI.trim() || !factu.clienteEmail.trim()) {
       return toast.error("Nombre, teléfono, DNI y email son obligatorios");
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(factu.clienteEmail.trim())) return toast.error("El email no tiene un formato válido");
+    if (!esEmailValido(factu.clienteEmail)) return toast.error("El email no tiene un formato válido");
     if (!factu.metodoPago) return toast.error("El método de pago es obligatorio");
     if (factu.metodoPago === "Tarjeta bancaria" && !factu.banco) return toast.error("Selecciona el banco para el pago con tarjeta");
 

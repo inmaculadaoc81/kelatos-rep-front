@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import type { DatosRegistrarPedido, PiezaPedidoForm } from "@/app/api/reparaciones/[resguardo]/pedidos/route";
 import type { Empleado } from "@/app/api/empleados/route";
 import type { Proveedor } from "@/app/api/proveedores/route";
+import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { esUrlValida } from "@/lib/validacion";
 
 function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -18,6 +20,58 @@ function hoyISO(): string {
 
 function piezaVacia(): PiezaPedidoForm {
   return { descripcion: "", proveedor: "", enlace: "", numeroPedido: "", fechaEstimada: "" };
+}
+
+/**
+ * Reproduce la precarga de abrirModalRegistrarPedido() (Index.html):
+ * toma las piezas tipo "pedido" de TODOS los presupuestos ya aceptados con
+ * tipoPieza 'pedido'/'mixto' (descripción, proveedor, enlace, piezaId para
+ * enlazar el pedido con esa pieza concreta) — siguen siendo editables, solo
+ * se evita volver a escribir lo que ya se rellenó al crear el presupuesto.
+ * Si no hay ninguna pieza de presupuesto pendiente, arranca con una fila
+ * vacía (mismo fallback que agregarPieza() en el original).
+ */
+function piezasIniciales(detalle: ReparacionDetalle): PiezaPedidoForm[] {
+  const pptosAceptados = detalle.presupuestos.filter(
+    (p) => p.estado === "aceptado" && (p.tipoPieza === "pedido" || p.tipoPieza === "mixto")
+  );
+  const piezas: PiezaPedidoForm[] = [];
+  for (const ppto of pptosAceptados) {
+    for (const pz of ppto.piezas) {
+      if (!pz.tipo || pz.tipo === "pedido") {
+        piezas.push({
+          piezaId: pz.piezaId,
+          descripcion: pz.descripcion || "",
+          proveedor: pz.proveedorId || "",
+          enlace: pz.enlace || "",
+          numeroPedido: "",
+          fechaEstimada: "",
+        });
+      }
+    }
+  }
+  return piezas.length > 0 ? piezas : [piezaVacia()];
+}
+
+const ESTADOS_PEDIDO_EDITABLES = ["Pendiente", "Pedido", "En Tránsito"];
+
+/**
+ * Reproduce abrirModalEditarPedido() (Index.html) — precarga desde los
+ * pedidos ya existentes (no desde el presupuesto) para poder corregir
+ * datos ya registrados; el pedidoId de cada fila hace que el guardado
+ * actualice esa fila en vez de crear una nueva.
+ */
+function piezasParaEditar(detalle: ReparacionDetalle): PiezaPedidoForm[] {
+  const pedidos = detalle.pedidos.filter((p) => ESTADOS_PEDIDO_EDITABLES.includes(p.estado));
+  return pedidos.map((p) => ({
+    pedidoId: p.pedidoId,
+    piezaId: p.piezaId,
+    descripcion: p.notas || "",
+    proveedor: p.proveedorId || "",
+    enlace: p.enlace || "",
+    numeroPedido: p.numeroPedido || "",
+    fechaEstimada: p.fechaEstimada ? p.fechaEstimada.slice(0, 10) : "",
+  }));
 }
 
 /**
@@ -35,16 +89,19 @@ function piezaVacia(): PiezaPedidoForm {
  * etiqueta.
  */
 export function RegistrarPedidoDialog({
-  resguardo,
+  detalle,
+  modo = "crear",
   open,
   onOpenChange,
   onRegistrado,
 }: {
-  resguardo: string;
+  detalle: ReparacionDetalle;
+  modo?: "crear" | "editar";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRegistrado: () => void;
 }) {
+  const esEdicion = modo === "editar";
   const [compradoPor, setCompradoPor] = useState("");
   const [fechaPedido, setFechaPedido] = useState(hoyISO());
   const [piezas, setPiezas] = useState<PiezaPedidoForm[]>([piezaVacia()]);
@@ -54,9 +111,20 @@ export function RegistrarPedidoDialog({
 
   useEffect(() => {
     if (!open) return;
-    setCompradoPor("");
-    setFechaPedido(hoyISO());
-    setPiezas([piezaVacia()]);
+    if (esEdicion) {
+      const pendientes = detalle.pedidos.filter((p) => ESTADOS_PEDIDO_EDITABLES.includes(p.estado));
+      setCompradoPor(pendientes[0]?.compradoPor || "");
+      setFechaPedido(pendientes[0]?.fechaPedido ? pendientes[0].fechaPedido.slice(0, 10) : hoyISO());
+      setPiezas(piezasParaEditar(detalle));
+    } else {
+      setCompradoPor("");
+      setFechaPedido(hoyISO());
+      setPiezas(piezasIniciales(detalle));
+    }
+    // Solo se recarga al abrir, no en cada cambio de "detalle" — evita
+    // perder lo que el usuario ya haya editado si el detalle se refresca
+    // mientras el diálogo sigue abierto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -76,6 +144,7 @@ export function RegistrarPedidoDialog({
       if (!p.descripcion.trim()) return `Pieza ${i + 1}: falta descripción`;
       if (!p.proveedor.trim()) return `Pieza ${i + 1}: falta proveedor`;
       if (!p.enlace.trim()) return `Pieza ${i + 1}: falta enlace`;
+      if (!esUrlValida(p.enlace)) return `Pieza ${i + 1}: el enlace debe ser una URL válida (https://...)`;
       if (!p.numeroPedido.trim()) return `Pieza ${i + 1}: falta número de pedido`;
       if (!p.fechaEstimada) return `Pieza ${i + 1}: falta fecha estimada`;
     }
@@ -89,14 +158,14 @@ export function RegistrarPedidoDialog({
     setEnviando(true);
     try {
       const datos: DatosRegistrarPedido = { compradoPor, fechaPedido, piezas };
-      const res = await fetch(`/api/reparaciones/${resguardo}/pedidos`, {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/pedidos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(datos),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`${piezas.length} pedido(s) registrado(s)`);
+      toast.success(esEdicion ? "Pedido actualizado" : `${piezas.length} pedido(s) registrado(s)`);
       onOpenChange(false);
       onRegistrado();
     } catch (e) {
@@ -111,7 +180,7 @@ export function RegistrarPedidoDialog({
       <DialogContent className="max-w-3xl gap-0 p-0 sm:max-w-3xl" showCloseButton={false}>
         <header className="flex items-center gap-2 rounded-t-xl bg-cyan-500 px-5 py-3.5 text-white">
           <Box className="size-5 shrink-0" />
-          <DialogTitle className="text-base font-semibold text-white">Registrar Pedido de Pieza(s)</DialogTitle>
+          <DialogTitle className="text-base font-semibold text-white">{esEdicion ? "Editar Pedido" : "Registrar Pedido de Pieza(s)"}</DialogTitle>
           <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={() => onOpenChange(false)} disabled={enviando}>
             <CloseCircle className="size-5" />
           </Button>
@@ -172,7 +241,16 @@ export function RegistrarPedidoDialog({
                       <div className="space-y-1.5">
                         <Label>Proveedor *</Label>
                         <Select value={p.proveedor} onValueChange={(v) => actualizarPieza(i, "proveedor", v || "")}>
-                          <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar proveedor..." /></SelectTrigger>
+                          <SelectTrigger className="w-full">
+                            {/* El popup solo existe en el DOM mientras está abierto, así que
+                                Select.Value no puede resolver la etiqueta del valor ya
+                                seleccionado (p.ej. al precargar desde el presupuesto) salvo
+                                que se le indique explícitamente cómo hacerlo — si no, muestra
+                                el id crudo en vez del nombre del proveedor. */}
+                            <SelectValue>
+                              {(v: string) => (v ? proveedores.find((prov) => prov.proveedorId === v)?.nombre || v : "Seleccionar proveedor...")}
+                            </SelectValue>
+                          </SelectTrigger>
                           <SelectContent>
                             {proveedores.map((prov) => <SelectItem key={prov.proveedorId} value={prov.proveedorId}>{prov.nombre}</SelectItem>)}
                           </SelectContent>
@@ -205,7 +283,7 @@ export function RegistrarPedidoDialog({
             Cancelar
           </Button>
           <Button className="gap-1.5 bg-cyan-600 text-white hover:bg-cyan-700" onClick={confirmar} disabled={enviando}>
-            {enviando ? "Guardando..." : "Guardar Pedido"}
+            {enviando ? "Guardando..." : esEdicion ? "Guardar Cambios" : "Guardar Pedido"}
           </Button>
         </footer>
       </DialogContent>

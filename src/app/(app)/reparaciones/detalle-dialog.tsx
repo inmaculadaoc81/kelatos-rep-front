@@ -31,7 +31,9 @@ import { separarSintoma } from "@/lib/progreso-reparacion";
 import { ReparacionDetalle, type Pedido } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
-import { FinalizarReparacionDialog, MarcarEntregadoDialog, ConfirmarEntregaLocalDialog } from "./finalizar-dialog";
+import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog } from "./finalizar-dialog";
+import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
+import { AnticipoDialog } from "./anticipo-dialog";
 import { FacturaReparacionDialog } from "./factura-reparacion-dialog";
 import { EstadosEspecialesPanel } from "./estados-especiales-panel";
 import { PresupuestoCard } from "./presupuesto-card";
@@ -45,6 +47,7 @@ import { MarcarGarantiaBoton } from "./marcar-garantia-boton";
 import { FacturaRevisionBoton } from "./factura-revision-boton";
 import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
 import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
+import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
 
@@ -242,6 +245,10 @@ export function DetalleReparacionDialog({
   const [registrarPedidoAbierto, setRegistrarPedidoAbierto] = useState(false);
   const [gestionPptosAbierto, setGestionPptosAbierto] = useState(false);
   const [facturaAbierta, setFacturaAbierta] = useState(false);
+  const [facturarMensajeriaAbierto, setFacturarMensajeriaAbierto] = useState(false);
+  const [anticipoAbierto, setAnticipoAbierto] = useState(false);
+  const [editarPedidoAbierto, setEditarPedidoAbierto] = useState(false);
+  const [recepcionAbierta, setRecepcionAbierta] = useState(false);
 
   function cargarDetalle() {
     if (!resguardo) return;
@@ -312,6 +319,96 @@ export function DetalleReparacionDialog({
     }
   }
 
+  // Reproduce solicitarPresupuestoDesdeGarantia() — el escape del estado
+  // "Garantía" cuando el equipo resulta NO estar cubierto.
+  async function noCubiertoPorGarantia() {
+    if (!resguardo) return;
+    const ok = await confirmar("¿El equipo NO está cubierto por garantía?\n\nSe cambiará el estado a 'Presupuesto Pendiente' para elaborar presupuesto.");
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/solicitar-presupuesto`, { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Estado cambiado a Presupuesto Pendiente");
+      actualizarTodo();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
+  async function cambiarEstadoPedidos(pedidoIds: string[], estado: string) {
+    const res = await fetch("/api/pedidos/cambiar-estado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pedidos: pedidoIds, estado }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Error desconocido");
+  }
+
+  // Reproduce marcarPiezaEnTransito() — confirmación simple, sin formulario.
+  async function marcarEnTransito() {
+    if (!detalle) return;
+    const ok = await confirmar("¿Marcar pieza como En Tránsito?");
+    if (!ok) return;
+    const pedidoIds = detalle.pedidos.filter((p) => p.estado === "Pedido").map((p) => p.pedidoId);
+    if (pedidoIds.length === 0) return;
+    try {
+      await cambiarEstadoPedidos(pedidoIds, "En Tránsito");
+      toast.success("Pieza marcada como En Tránsito");
+      actualizarTodo();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
+  // Reproduce marcarPiezaRecibida(): confirmación directa si solo hay un
+  // pedido pendiente; si hay varios, abre el selector con checkboxes.
+  async function marcarPiezaRecibida() {
+    if (!detalle) return;
+    const pendientes = detalle.pedidos.filter((p) => p.estado === "Pedido" || p.estado === "En Tránsito");
+    if (pendientes.length === 0) {
+      toast.info("No hay pedidos pendientes de recibir");
+      return;
+    }
+    if (pendientes.length > 1) {
+      setRecepcionAbierta(true);
+      return;
+    }
+    const p = pendientes[0];
+    const desc = p.notas || "Sin descripción";
+    const ok = await confirmar(`¿Confirma que la pieza ha sido recibida?\n\n• ${desc}${p.numeroPedido ? " — N° " + p.numeroPedido : ""}`);
+    if (!ok) return;
+    try {
+      await cambiarEstadoPedidos([p.pedidoId], "Recibido");
+      toast.success("Pieza marcada como recibida");
+      actualizarTodo();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
+  // Reproduce marcarEquipoRecibido() — el cliente trajo de vuelta el
+  // equipo que se había llevado mientras llegaba la pieza.
+  async function marcarEquipoRecibido() {
+    if (!resguardo) return;
+    const ok = await confirmar("¿El cliente trajo el equipo al local?");
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/logistica`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "equipo_recibido" }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Equipo recibido en el local");
+      actualizarTodo();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
   const sintoma = detalle ? separarSintoma(detalle.equipo.sintoma) : null;
   // Los cancelados no se listan, igual que en renderizarInfoDetallada().
   const pedidosVisibles = (detalle?.pedidos ?? []).filter((p) => p.estado !== "Cancelado");
@@ -376,7 +473,12 @@ export function DetalleReparacionDialog({
               animate="visible"
             >
               <m.div variants={entrada}>
-                <LogisticaPanel detalle={detalle} onActualizado={actualizarTodo} />
+                <LogisticaPanel
+                  detalle={detalle}
+                  onActualizado={actualizarTodo}
+                  onClienteSeLleva={() => setAnticipoAbierto(true)}
+                  onClienteLoTrajo={marcarEquipoRecibido}
+                />
               </m.div>
 
               <m.section variants={entrada} className="rounded-xl border bg-card p-4">
@@ -422,9 +524,16 @@ export function DetalleReparacionDialog({
                   onFinalizar: () => setFinalizarAbierto(true),
                   onMarcarEntregado: () => setEntregaAbierta(true),
                   onEntregadoLocal: () => setEntregaLocalAbierta(true),
+                  onFacturarMensajeria: () => setFacturarMensajeriaAbierto(true),
+                  onNoCubiertoPorGarantia: noCubiertoPorGarantia,
+                  onClienteSeLlevaAnticipo: () => setAnticipoAbierto(true),
                   onVerQr: () => setQrAbierto(true),
                   onIniciarReparacion: () => setIniciarReparacionAbierto(true),
                   onRegistrarPedido: () => setRegistrarPedidoAbierto(true),
+                  onMarcarEnTransito: marcarEnTransito,
+                  onMarcarPiezaRecibida: marcarPiezaRecibida,
+                  onEditarPedido: () => setEditarPedidoAbierto(true),
+                  onMarcarEquipoRecibido: marcarEquipoRecibido,
                   onEnviarPuntoLimpio: enviarPuntoLimpio,
                   onFacturacion: () => setFacturaAbierta(true),
                   }}
@@ -599,17 +708,31 @@ export function DetalleReparacionDialog({
             onOpenChange={setFinalizarAbierto}
             onFinalizada={actualizarTodo}
           />
-          <MarcarEntregadoDialog
-            resguardo={detalle.resguardo}
+          <EntregarConFacturaDialog
+            detalle={detalle}
+            tipoEntrega="ENTREGADO"
             open={entregaAbierta}
             onOpenChange={setEntregaAbierta}
-            onEntregado={actualizarTodo}
+            onCompletado={actualizarTodo}
+          />
+          <EntregarConFacturaDialog
+            detalle={detalle}
+            tipoEntrega="ENVIO"
+            open={facturarMensajeriaAbierto}
+            onOpenChange={setFacturarMensajeriaAbierto}
+            onCompletado={actualizarTodo}
           />
           <ConfirmarEntregaLocalDialog
             resguardo={detalle.resguardo}
             open={entregaLocalAbierta}
             onOpenChange={setEntregaLocalAbierta}
             onEntregado={actualizarTodo}
+          />
+          <AnticipoDialog
+            detalle={detalle}
+            open={anticipoAbierto}
+            onOpenChange={setAnticipoAbierto}
+            onCompletado={actualizarTodo}
           />
           <FacturaReparacionDialog
             detalle={detalle}
@@ -633,10 +756,23 @@ export function DetalleReparacionDialog({
             onIniciado={actualizarTodo}
           />
           <RegistrarPedidoDialog
-            resguardo={detalle.resguardo}
+            detalle={detalle}
             open={registrarPedidoAbierto}
             onOpenChange={setRegistrarPedidoAbierto}
             onRegistrado={actualizarTodo}
+          />
+          <RegistrarPedidoDialog
+            detalle={detalle}
+            modo="editar"
+            open={editarPedidoAbierto}
+            onOpenChange={setEditarPedidoAbierto}
+            onRegistrado={actualizarTodo}
+          />
+          <RecepcionPedidosDialog
+            pendientes={detalle.pedidos.filter((p) => p.estado === "Pedido" || p.estado === "En Tránsito")}
+            open={recepcionAbierta}
+            onOpenChange={setRecepcionAbierta}
+            onRecibidos={actualizarTodo}
           />
           <GestionPresupuestosDialog
             detalle={detalle}
