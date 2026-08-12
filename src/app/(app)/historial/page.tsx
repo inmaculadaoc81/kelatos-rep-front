@@ -109,29 +109,6 @@ export default function HistorialPage() {
   const [filtroFactura, setFiltroFactura] = useState("");
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [reparandoFechas, setReparandoFechas] = useState(false);
-  const [sincronizandoFacturas, setSincronizandoFacturas] = useState(false);
-
-  async function sincronizarFacturas() {
-    setSincronizandoFacturas(true);
-    try {
-      const res = await fetch("/api/facturas/sincronizar-gmail", { method: "POST" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      if (data.asignadas > 0) {
-        toast.success(`${data.asignadas} factura(s) asignada(s) correctamente`);
-        cargar();
-      } else {
-        const detalles = [];
-        if (data.omitidas) detalles.push(`${data.omitidas} ya asignada(s)`);
-        if (data.sinMatch) detalles.push(`${data.sinMatch} sin resguardo`);
-        toast.info(`No hay facturas nuevas por asignar${detalles.length ? ` (${detalles.join(", ")})` : ""}`);
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setSincronizandoFacturas(false);
-    }
-  }
 
   async function repararFechas() {
     setReparandoFechas(true);
@@ -226,16 +203,6 @@ export default function HistorialPage() {
             <SelectItem value="sin">Sin factura</SelectItem>
           </SelectContent>
         </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={sincronizarFacturas}
-          disabled={sincronizandoFacturas}
-          title="Busca en los correos enviados de Gmail las facturas y las asigna automáticamente a las reparaciones"
-        >
-          <Refresh2 className={`size-3.5 ${sincronizandoFacturas ? "animate-spin" : ""}`} /> {sincronizandoFacturas ? "Sincronizando..." : "Sync Facturas"}
-        </Button>
         <Button
           variant="outline"
           size="sm"
