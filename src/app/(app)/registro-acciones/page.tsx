@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Refresh2, SearchNormal1, ArrowDown2 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, ArrowDown2, Calendar, Hierarchy } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -14,8 +14,68 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatearFecha } from "@/lib/dias-entrega";
 import { EventoRegistro } from "@/lib/registro-acciones";
+import { derivarEventoHistorial } from "../reparaciones/historial-evento";
+import { estiloEntidad, humanizarTipo, colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
+
+function fechaHoraCorta(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function tiempoRelativo(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 1) return "ahora mismo";
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `hace ${diffH} h`;
+  const diffD = Math.round(diffH / 24);
+  if (diffD < 30) return `hace ${diffD} d`;
+  const diffMonth = Math.round(diffD / 30);
+  if (diffMonth < 12) return `hace ${diffMonth} mes${diffMonth > 1 ? "es" : ""}`;
+  return `hace ${Math.round(diffMonth / 12)} año${Math.round(diffMonth / 12) > 1 ? "s" : ""}`;
+}
+
+function EntidadBadge({ entidad }: { entidad: string }) {
+  const estilo = estiloEntidad(entidad);
+  const Icono = estilo.icon;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${estilo.badge}`}>
+      <Icono className="size-3.5 shrink-0" />
+      {entidad}
+    </span>
+  );
+}
+
+function TipoCelda({ tipo, entidad }: { tipo: string; entidad: string }) {
+  const meta = derivarEventoHistorial(tipo);
+  const tieneMeta = meta.clase !== "bg-muted text-muted-foreground";
+  const dot = tieneMeta ? meta.clase.match(/text-[a-z]+-\d+/)?.[0].replace("text-", "bg-") : estiloEntidad(entidad).dot;
+  return (
+    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      <span className={`size-1.5 shrink-0 rounded-full ${dot || "bg-muted-foreground/40"}`} />
+      {humanizarTipo(tipo)}
+    </span>
+  );
+}
+
+function UsuarioCelda({ nombre }: { nombre: string }) {
+  if (!nombre) return <span className="text-sm text-muted-foreground">—</span>;
+  return (
+    <span className="flex items-center gap-2">
+      <Avatar size="sm">
+        <AvatarFallback className={colorAvatar(nombre)}>{iniciales(nombre)}</AvatarFallback>
+      </Avatar>
+      <span className="text-sm">{nombre}</span>
+    </span>
+  );
+}
 
 export default function RegistroAccionesPage() {
   const [eventos, setEventos] = useState<EventoRegistro[]>([]);
@@ -61,9 +121,14 @@ export default function RegistroAccionesPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold">Registro de Acciones</h1>
-          <p className="text-sm text-muted-foreground">Historial de eventos de todo el sistema — reparaciones, clientes, ventas, alquileres...</p>
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Hierarchy className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-lg font-semibold">Registro de Acciones</h1>
+            <p className="text-sm text-muted-foreground">Historial de eventos de todo el sistema — reparaciones, clientes, ventas, alquileres...</p>
+          </div>
         </div>
         <Button variant="outline" size="icon" className="size-8" onClick={() => cargar(pagina)} title="Actualizar">
           <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
@@ -76,28 +141,35 @@ export default function RegistroAccionesPage() {
         </div>
       )}
 
-      <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border bg-card p-3">
+      <div className="mb-3 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3.5 shadow-sm">
         <div className="relative">
-          <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Resguardo, usuario..." className="w-56 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <SearchNormal1 className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Resguardo, usuario..." className="w-56 pl-8" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Desde</label>
-          <Input type="date" className="w-36" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Hasta</label>
-          <Input type="date" className="w-36" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+        <div className="flex items-center gap-2">
+          <Calendar className="mb-2 size-4 text-muted-foreground" />
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Desde</label>
+            <Input type="date" className="w-36" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Hasta</label>
+            <Input type="date" className="w-36" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+          </div>
         </div>
         {(busqueda || fechaDesde || fechaHasta) && (
           <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setBusqueda(""); setFechaDesde(""); setFechaHasta(""); }}>
-            Limpiar
+            Limpiar filtros
           </Button>
         )}
-        {!cargando && <span className="ml-auto text-sm text-muted-foreground">{total.toLocaleString("es-ES")} eventos</span>}
+        {!cargando && (
+          <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+            {total.toLocaleString("es-ES")} eventos
+          </span>
+        )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -122,7 +194,7 @@ export default function RegistroAccionesPage() {
 
             {!cargando && eventos.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                   Sin eventos
                 </TableCell>
               </TableRow>
@@ -133,16 +205,23 @@ export default function RegistroAccionesPage() {
               // en filas heredadas (hay nulos y algún ID repetido) — la
               // ruta ni siquiera expone el id interno de PostgreSQL.
               eventos.map((ev, i) => (
-                <TableRow key={`${ev.eventoId || "sin-id"}-${i}`}>
-                  <TableCell className="text-sm whitespace-nowrap tabular-nums">{formatearFecha(ev.fechaHora)}</TableCell>
+                <TableRow key={`${ev.eventoId || "sin-id"}-${i}`} className="align-top">
+                  <TableCell className="text-sm whitespace-nowrap">
+                    <div className="font-medium tabular-nums">{fechaHoraCorta(ev.fechaHora)}</div>
+                    <div className="text-xs text-muted-foreground">{tiempoRelativo(ev.fechaHora)}</div>
+                  </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{ev.entidad}</Badge>
+                    <EntidadBadge entidad={ev.entidad} />
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{ev.tipo}</TableCell>
-                  <TableCell className="max-w-md truncate text-sm" title={ev.descripcion}>
-                    {ev.descripcion || "-"}
+                  <TableCell>
+                    <TipoCelda tipo={ev.tipo} entidad={ev.entidad} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{ev.empleadoId || "-"}</TableCell>
+                  <TableCell className="max-w-md text-sm" title={ev.descripcion}>
+                    <span className="line-clamp-2">{ev.descripcion || "-"}</span>
+                  </TableCell>
+                  <TableCell>
+                    <UsuarioCelda nombre={ev.empleadoId} />
+                  </TableCell>
                 </TableRow>
               ))}
           </TableBody>
