@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Add, Trash, Receipt, Building, Profile, TickCircle, CloseCircle, DocumentText } from "@/lib/icons";
+import { Add, Trash, Receipt, Building, Profile, TickCircle, CloseCircle, DocumentText, SearchNormal1 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { Cliente } from "@/lib/clientes";
+import { BuscarClienteDialog } from "./buscar-cliente-dialog";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -235,6 +237,17 @@ function VistaGenerar({
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+
+  function seleccionarCliente(c: Cliente) {
+    setCodigo(c.codigo || "");
+    setNombre(c.nombre || "");
+    setDni(c.dniCif || "");
+    setTelefono(c.telefono || "");
+    setEmail(c.email || "");
+    setDireccion(c.direccion || "");
+    toast.success("Cliente cargado");
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -367,8 +380,11 @@ function VistaGenerar({
                 </div>
 
                 <div className="rounded-lg border bg-card shadow-sm">
-                  <div className="flex items-center gap-1.5 rounded-t-lg bg-muted-foreground/80 px-3 py-2 text-xs font-semibold text-white">
-                    <Profile className="size-3.5" /> Cliente
+                  <div className="flex items-center justify-between gap-1.5 rounded-t-lg bg-muted-foreground/80 px-3 py-2 text-xs font-semibold text-white">
+                    <span className="flex items-center gap-1.5"><Profile className="size-3.5" /> Cliente</span>
+                    <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setBuscarClienteAbierto(true)}>
+                      <SearchNormal1 className="size-3" /> Buscar
+                    </Button>
                   </div>
                   <div className="space-y-2 p-3">
                     <div className="grid grid-cols-[5rem_1fr] items-center gap-2 text-sm">
@@ -500,6 +516,8 @@ function VistaGenerar({
           </Button>
         </footer>
       </DialogContent>
+
+      <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
     </Dialog>
   );
 }
