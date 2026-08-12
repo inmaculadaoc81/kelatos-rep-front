@@ -195,6 +195,15 @@ export function PresupuestoFormDialog({
     if (datos.descripcion.trim().length < 20) return toast.error("El diagnóstico del equipo es obligatorio y debe tener al menos 20 caracteres");
     if (!noRequiere && !tieneStock && !tienePedido) return toast.error('Selecciona al menos un tipo de pieza, o marca "No requiere pieza".');
 
+    // Reproduce guardarBorradorPresupuesto(): la mano de obra debe ser > 0
+    // cuando no se requieren piezas (es lo único que cobra el presupuesto);
+    // si se requieren piezas puede ser 0, pero nunca negativa.
+    if (noRequiere) {
+      if (!(datos.manoObra > 0)) return toast.error("La mano de obra es obligatoria cuando no se requieren piezas");
+    } else if (isNaN(datos.manoObra) || datos.manoObra < 0) {
+      return toast.error("La mano de obra es obligatoria. Ingresa 0 si no aplica mano de obra en este presupuesto");
+    }
+
     if (tieneStock) {
       if (piezasStock.length === 0) return toast.error("Debe agregar al menos una pieza en stock");
       for (let i = 0; i < piezasStock.length; i++) {
@@ -296,7 +305,9 @@ export function PresupuestoFormDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="manoObra">Mano de Obra *</Label>
                   <Input id="manoObra" type="number" min={0} step="0.01" value={datos.manoObra} onChange={(e) => actualizar("manoObra", parseFloat(e.target.value) || 0)} />
-                  <p className="text-[11px] text-muted-foreground">Poner 0 si no aplica</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {noRequiere ? "Obligatoria (mayor a 0) al no requerir piezas" : "Poner 0 si no aplica"}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Costo Piezas (nuestro)</Label>
