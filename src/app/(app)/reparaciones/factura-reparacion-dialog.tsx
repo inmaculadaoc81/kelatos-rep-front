@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Add, Trash, Receipt, Building, Profile, TickCircle, CloseCircle, DocumentText } from "@/lib/icons";
-import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -493,12 +493,12 @@ function VistaGenerar({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="border-t bg-muted/50 px-4 py-3">
+        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
           <Button onClick={confirmar} disabled={enviando}>
             {enviando ? "Generando…" : "Generar Factura"}
           </Button>
-        </DialogFooter>
+        </footer>
       </DialogContent>
     </Dialog>
   );

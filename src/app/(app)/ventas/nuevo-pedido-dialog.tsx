@@ -6,7 +6,6 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -300,7 +299,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
           </div>
         </ScrollArea>
 
-        <DialogFooter className="border-t bg-muted/50 px-4 py-3">
+        <footer className="flex flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={enviando}>
             Cancelar
           </Button>
@@ -315,7 +314,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
           <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={guardar} disabled={enviando}>
             {enviando ? "Generando…" : datos.esGarantia ? "Registrar Garantía" : "Generar Factura"}
           </Button>
-        </DialogFooter>
+        </footer>
       </DialogContent>
     </Dialog>
   );
