@@ -129,6 +129,7 @@ export function AppSidebar() {
               width={290}
               height={82}
               priority
+              unoptimized
               className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:hidden"
             />
             <Image
@@ -137,6 +138,7 @@ export function AppSidebar() {
               width={81}
               height={82}
               priority
+              unoptimized
               className="hidden h-7 w-auto shrink-0 group-data-[collapsible=icon]:block"
             />
           </Link>

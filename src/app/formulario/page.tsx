@@ -49,7 +49,7 @@ function EncabezadoLogo() {
   return (
     <header className="mb-4 flex justify-center lg:mb-10 lg:justify-start">
       <span className="flex h-10 items-center rounded-md bg-white px-3 shadow-sm">
-        <Image src="/logos/kelatos.png" alt="Kelatos" width={290} height={82} priority className="h-6 w-auto" />
+        <Image src="/logos/kelatos.png" alt="Kelatos" width={290} height={82} priority unoptimized className="h-6 w-auto" />
       </span>
     </header>
   );
