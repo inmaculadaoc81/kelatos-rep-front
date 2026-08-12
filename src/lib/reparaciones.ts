@@ -70,6 +70,7 @@ export interface Reparacion {
   observaciones: string;
   numeroFactura: string;
   resena: string;
+  tipoIngreso: string;
   pptoDescripcion: string;
   presupuestos: PresupuestoResumen[];
   pedidos: PedidoResumen[];
@@ -105,6 +106,7 @@ interface FilaReparacionSql {
   observaciones: string | null;
   numero_factura: string | null;
   resena: string | null;
+  tipo_ingreso: string | null;
 }
 
 interface PptoAceptado {
@@ -169,6 +171,7 @@ export function mapearFilaReparacion(
     observaciones: row.observaciones || "",
     numeroFactura: row.numero_factura || "",
     resena: row.resena || "",
+    tipoIngreso: row.tipo_ingreso || "",
     pptoDescripcion: ppto?.descripcion || "",
     // presupuestos (histórico completo) no viene en este endpoint — solo el
     // resumen del presupuesto aceptado (pptoAceptadoSummary), igual que

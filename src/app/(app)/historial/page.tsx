@@ -2,7 +2,10 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Refresh2, SearchNormal1, Eye, Star } from "@/lib/icons";
+import {
+  Refresh2, SearchNormal1, Eye, ShieldTick, DocumentText, Copy,
+  BoxTick, Trash, Clock, Truck, Receipt, Danger, Calendar,
+} from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
@@ -28,6 +32,50 @@ function EstadoBadge({ estado }: { estado: string }) {
       {estado}
     </span>
   );
+}
+
+// Reproduce obtenerBadgeEntrega() (Index.html) — mismos colores/iconos por estadoEntrega.
+const ENTREGA_BADGE: Record<string, { clase: string; icono: typeof BoxTick; label: string }> = {
+  ENTREGADO: { clase: "bg-emerald-600 text-white", icono: BoxTick, label: "ENTREGADO" },
+  RECICLAJE: { clase: "bg-muted-foreground text-white", icono: Trash, label: "RECICLAJE" },
+  PENDIENTE: { clase: "bg-amber-500 text-white", icono: Clock, label: "PENDIENTE" },
+  ENVIO: { clase: "bg-sky-500 text-white", icono: Truck, label: "ENVIO" },
+};
+
+function EntregaBadge({ estado }: { estado: string }) {
+  const cfg = ENTREGA_BADGE[estado] || ENTREGA_BADGE.PENDIENTE;
+  const Icono = cfg.icono;
+  return (
+    <Badge className={`gap-1 ${cfg.clase}`}>
+      <Icono className="size-3" /> {cfg.label}
+    </Badge>
+  );
+}
+
+// Reproduce la celda de Factura de renderizarTablaHistorial(): garantía no
+// factura, Reparado/Presupuesto Aceptado sí (número si existe, si no
+// "Pendiente"), el resto sin nada que mostrar.
+function FacturaCelda({ r }: { r: Reparacion }) {
+  const esGarantia = r.tipoIngreso === "GARANTIA";
+  const requiereFactura = !esGarantia && (r.estado === "Reparado" || r.estado === "Presupuesto Aceptado");
+  if (esGarantia) {
+    return <Badge className="gap-1 bg-muted-foreground text-white"><ShieldTick className="size-3" /> Garantía</Badge>;
+  }
+  if (requiereFactura) {
+    return r.numeroFactura ? (
+      <Badge className="gap-1 bg-emerald-600 text-white"><Receipt className="size-3" /> {r.numeroFactura}</Badge>
+    ) : (
+      <Badge className="gap-1 bg-amber-500 text-white"><Danger className="size-3" /> Pendiente</Badge>
+    );
+  }
+  return <span className="text-muted-foreground">—</span>;
+}
+
+function ResenaCelda({ resena }: { resena: string }) {
+  const v = (resena || "NO").toUpperCase();
+  if (v === "PROGRAMADA") return <Badge className="gap-1 bg-emerald-600 text-white"><Calendar className="size-3" /> Programada</Badge>;
+  if (v === "SI") return <Badge className="bg-emerald-600 text-white">Sí</Badge>;
+  return <Badge variant="secondary">No</Badge>;
 }
 
 const ENTREGA_LABEL: Record<string, string> = { ENTREGADO: "Entregado en local", ENVIO: "Envío mensajería", RECICLAJE: "Reciclaje" };
@@ -160,7 +208,7 @@ export default function HistorialPage() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -205,17 +253,46 @@ export default function HistorialPage() {
                   title={`Abrir reparación ${r.resguardo}`}
                 >
                   <TableCell className="font-semibold">{r.resguardo}</TableCell>
-                  <TableCell className="text-sm">{r.cliente.nombre || "-"}</TableCell>
+                  <TableCell className="max-w-52 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{r.cliente.nombre || "N/A"}</span>
+                      {r.tipoIngreso === "GARANTIA" && (
+                        <Badge className="shrink-0 gap-1 bg-slate-800 text-white"><ShieldTick className="size-3" /> Garantía</Badge>
+                      )}
+                      {r.tipoIngreso === "formulario_web" && (
+                        <Badge className="shrink-0 gap-1 bg-sky-500 text-white" title="Solicitud recibida vía formulario web">
+                          <DocumentText className="size-3" /> Web
+                        </Badge>
+                      )}
+                    </div>
+                    {r.cliente.telefono && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span>{r.cliente.telefono}</span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Copiar teléfono"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(r.cliente.telefono);
+                            toast.success("Teléfono copiado");
+                          }}
+                        >
+                          <Copy className="size-3" />
+                        </button>
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-sm">{r.equipo.modelo || "-"}</TableCell>
                   <TableCell>
                     <EstadoBadge estado={r.estado} />
                   </TableCell>
-                  <TableCell className="text-sm">{ENTREGA_LABEL[r.estadoEntrega] || r.estadoEntrega || "-"}</TableCell>
-                  <TableCell className="text-sm">{r.numeroFactura || "-"}</TableCell>
+                  <TableCell className="text-sm"><EntregaBadge estado={r.estadoEntrega || "PENDIENTE"} /></TableCell>
+                  <TableCell className="text-sm"><FacturaCelda r={r} /></TableCell>
                   <TableCell className="text-sm">{formatearFecha(r.fechaEntrega)}</TableCell>
                   <TableCell className="text-sm">{r.tecnicoAsignado || "-"}</TableCell>
                   <TableCell className="text-sm">
-                    {r.resena === "SI" ? <Star className="size-4 fill-amber-400 text-amber-400" /> : "-"}
+                    <ResenaCelda resena={r.resena} />
                   </TableCell>
                   <TableCell className="sticky right-0 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)] group-hover:bg-muted/50">
                     <Button
