@@ -196,3 +196,43 @@ export function numerosPedidoDeVenta(venta: Pick<Venta, "items">): string {
   const nums = venta.items.map((i) => i.numeroPedido).filter(Boolean);
   return nums.length ? nums.join(", ") : "-";
 }
+
+// ── Nuevo Pedido (modalNuevoPedido / generarFacturaPedido) ──────────────
+// DNI y dirección del cliente NUNCA se persisten en `ventas` (esa tabla no
+// tiene esas columnas) — solo viajan una vez, dentro de la factura PDF que
+// se genera al crear el pedido. Cada línea de "Conceptos" en el original
+// (_npAddLinea) solo captura descripción/cantidad/precio unitario: NUNCA
+// proveedor ni enlace (el propio código de generarFacturaPedido() lee
+// `.np-prov`/`.np-enlace`, pero esos selectores no existen en el HTML que
+// genera _npAddLinea — son campos muertos) ni costo (se guarda siempre a
+// 0, se corrige después editando la pieza desde el detalle). Por fidelidad
+// se reproduce ese comportamiento real, no el que el código sugiere que
+// "debería" hacer.
+
+export type FormaPagoPedido = "efectivo" | "tarjeta" | "transferencia" | "bizum";
+
+export interface ItemPedidoForm {
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+}
+
+export interface DatosNuevoPedido {
+  esGarantia: boolean;
+  clienteDni: string;
+  clienteNombre: string;
+  clienteTelefono: string;
+  clienteEmail: string;
+  clienteDireccion: string;
+  formaPago: FormaPagoPedido | "";
+  banco: string;
+  descuentoPct: number;
+  observaciones: string;
+  items: ItemPedidoForm[];
+}
+
+export interface ResultadoNuevoPedido {
+  ventaId: string;
+  numeroFactura: string;
+  urlPdf: string;
+}

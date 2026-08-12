@@ -36,6 +36,7 @@ export const ArrowRotateLeft = withDefaults(Iconsax.ArrowRotateLeft);
 export const ArrowSwapHorizontal = withDefaults(Iconsax.ArrowSwapHorizontal);
 export const Box = withDefaults(Iconsax.Box);
 export const Box1 = withDefaults(Iconsax.Box1);
+export const Building = withDefaults(Iconsax.Building);
 export const BoxRemove = withDefaults(Iconsax.BoxRemove);
 export const BoxSearch = withDefaults(Iconsax.BoxSearch);
 export const BoxTick = withDefaults(Iconsax.BoxTick);
