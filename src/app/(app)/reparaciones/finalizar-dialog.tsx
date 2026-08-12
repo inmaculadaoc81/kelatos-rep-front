@@ -425,3 +425,83 @@ export function MarcarEntregadoDialog({
     </Dialog>
   );
 }
+
+/**
+ * Reproduce #modalConfirmarEntregaLocal / abrirConfirmarEntrega() /
+ * confirmarEntregaLocal() (Index.html) — la confirmación rápida que se usa
+ * cuando la reparación ya está "Reparado" (y por tanto ya facturada): un
+ * solo clic, sin formulario. Reutiliza la MISMA ruta que MarcarEntregadoDialog
+ * (POST /salidas, acción marcar_entregado) con los valores que el original
+ * fija de antemano (fecha de hoy, tipoEntrega ENTREGADO, sin reseña, sin
+ * observaciones) — el backend conserva el nº de factura ya existente porque
+ * no se envía uno nuevo (numeroFactura vacío → COALESCE).
+ */
+export function ConfirmarEntregaLocalDialog({
+  resguardo,
+  open,
+  onOpenChange,
+  onEntregado,
+}: {
+  resguardo: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEntregado: () => void;
+}) {
+  const [enviando, setEnviando] = useState(false);
+
+  async function confirmar() {
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/salidas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fechaRecogida: new Date().toISOString().slice(0, 10),
+          tipoEntrega: "ENTREGADO",
+          numeroFactura: "",
+          resena: "NO",
+          observaciones: "",
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Equipo marcado como entregado");
+      onOpenChange(false);
+      onEntregado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
+      <DialogContent className="max-w-sm gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
+        <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-2.5 text-white">
+          <BoxTick className="size-4.5 shrink-0" />
+          <DialogTitle className="text-sm font-semibold text-white">Entregado en Local</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto text-white hover:bg-white/15 hover:text-white"
+            onClick={() => !enviando && onOpenChange(false)}
+          >
+            <CloseCircle className="size-4" />
+          </Button>
+        </header>
+
+        <p className="px-4 py-6 text-center text-sm">¿Confirmas que el equipo ha sido entregado al cliente en local?</p>
+
+        <footer className="flex justify-center gap-2 rounded-b-xl border-t bg-muted/50 px-4 py-2.5">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={enviando}>
+            Cancelar
+          </Button>
+          <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
+            <TickCircle className="size-3.5" /> {enviando ? "Marcando..." : "Confirmar"}
+          </Button>
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
+}

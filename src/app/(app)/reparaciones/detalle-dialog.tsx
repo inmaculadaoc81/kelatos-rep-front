@@ -31,7 +31,7 @@ import { separarSintoma } from "@/lib/progreso-reparacion";
 import { ReparacionDetalle, type Pedido } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
-import { FinalizarReparacionDialog, MarcarEntregadoDialog } from "./finalizar-dialog";
+import { FinalizarReparacionDialog, MarcarEntregadoDialog, ConfirmarEntregaLocalDialog } from "./finalizar-dialog";
 import { FacturaReparacionDialog } from "./factura-reparacion-dialog";
 import { EstadosEspecialesPanel } from "./estados-especiales-panel";
 import { PresupuestoCard } from "./presupuesto-card";
@@ -235,6 +235,7 @@ export function DetalleReparacionDialog({
   const confirmar = useConfirm();
   const [finalizarAbierto, setFinalizarAbierto] = useState(false);
   const [entregaAbierta, setEntregaAbierta] = useState(false);
+  const [entregaLocalAbierta, setEntregaLocalAbierta] = useState(false);
   const [nuevoPresupuestoAbierto, setNuevoPresupuestoAbierto] = useState(false);
   const [qrAbierto, setQrAbierto] = useState(false);
   const [iniciarReparacionAbierto, setIniciarReparacionAbierto] = useState(false);
@@ -420,6 +421,7 @@ export function DetalleReparacionDialog({
                   onGestionarPresupuestos: () => setGestionPptosAbierto(true),
                   onFinalizar: () => setFinalizarAbierto(true),
                   onMarcarEntregado: () => setEntregaAbierta(true),
+                  onEntregadoLocal: () => setEntregaLocalAbierta(true),
                   onVerQr: () => setQrAbierto(true),
                   onIniciarReparacion: () => setIniciarReparacionAbierto(true),
                   onRegistrarPedido: () => setRegistrarPedidoAbierto(true),
@@ -601,6 +603,12 @@ export function DetalleReparacionDialog({
             resguardo={detalle.resguardo}
             open={entregaAbierta}
             onOpenChange={setEntregaAbierta}
+            onEntregado={actualizarTodo}
+          />
+          <ConfirmarEntregaLocalDialog
+            resguardo={detalle.resguardo}
+            open={entregaLocalAbierta}
+            onOpenChange={setEntregaLocalAbierta}
             onEntregado={actualizarTodo}
           />
           <FacturaReparacionDialog

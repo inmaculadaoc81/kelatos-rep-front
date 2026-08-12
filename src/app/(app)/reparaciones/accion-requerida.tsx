@@ -46,6 +46,7 @@ export interface CallbacksAccion {
   onGestionarPresupuestos: () => void;
   onFinalizar: () => void;
   onMarcarEntregado: () => void;
+  onEntregadoLocal: () => void;
   onVerQr: () => void;
   onIniciarReparacion: () => void;
   onRegistrarPedido: () => void;
@@ -268,9 +269,21 @@ export function AccionRequerida({
     );
   }
   if (ESTADOS_LISTO_ENTREGA.includes(estado) && entregaAbierta) {
+    // Reproduce la rama de renderizarAccion() (Index.html): "Reparado" ya
+    // está facturado, así que "Entregado en Local" abre la confirmación
+    // rápida de un clic (abrirConfirmarEntrega); en el resto de estados
+    // ("No tiene Reparación"/"Presupuesto Rechazado") abre el formulario
+    // completo (abrirModalEntregarEquipo), porque ahí puede faltar todavía
+    // registrar cómo se cierra la salida — mismo texto de botón en ambas
+    // ramas, solo cambia a qué modal apunta.
     botones.push(
-      <Button key="entrega" size="sm" className="gap-1.5" onClick={callbacks.onMarcarEntregado}>
-        <BoxTick className="size-3.5" /> Marcar como entregado
+      <Button
+        key="entrega"
+        size="sm"
+        className="gap-1.5"
+        onClick={estado === "Reparado" ? callbacks.onEntregadoLocal : callbacks.onMarcarEntregado}
+      >
+        <BoxTick className="size-3.5" /> Entregado en Local
       </Button>,
       <Button key="qr" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onVerQr}>
         <ScanBarcode className="size-3.5" /> Ver QR de recogida
