@@ -18,7 +18,15 @@ import {
   formaPagoLabel,
 } from "@/lib/facturas-cliente";
 import type { ReparacionDetalle } from "@/lib/reparacion-detalle";
-import { FacturaAccionesTabs } from "../reparaciones/factura-acciones-tabs";
+import { FacturaModalShell } from "../reparaciones/factura-modal-shell";
+import type { TipoFacturaBase } from "../reparaciones/factura-acciones-tabs";
+
+const TIPO_BASE_POR_TIPO_FACTURA: Partial<Record<FacturaCliente["tipo"], TipoFacturaBase>> = {
+  reparacion: "normal",
+  revision: "revision",
+  mensajeria: "mensajeria",
+  anticipo: "anticipo",
+};
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -51,12 +59,13 @@ export function DetalleFacturaDialog({
 }) {
   if (!factura) return null;
 
-  const tieneTabs = factura.tipo === "reparacion" || factura.tipo === "revision";
-  if (tieneTabs) {
+  const tipoBase = TIPO_BASE_POR_TIPO_FACTURA[factura.tipo];
+  if (tipoBase) {
     return (
       <DetalleFacturaConTabs
         key={factura.resguardo + factura.tipo}
         factura={factura}
+        tipoBase={tipoBase}
         onOpenChange={onOpenChange}
         onActualizado={onCobrada}
       />
@@ -67,10 +76,12 @@ export function DetalleFacturaDialog({
 
 function DetalleFacturaConTabs({
   factura,
+  tipoBase,
   onOpenChange,
   onActualizado,
 }: {
   factura: FacturaCliente;
+  tipoBase: TipoFacturaBase;
   onOpenChange: (open: boolean) => void;
   onActualizado: () => void;
 }) {
@@ -103,42 +114,37 @@ function DetalleFacturaConTabs({
     onActualizado();
   }
 
-  return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
-        <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
-          <Receipt className="size-4.5 shrink-0" />
-          <DialogTitle className="text-sm font-semibold text-primary-foreground">
-            {factura.numero} — {factura.cliente || "Sin nombre"}
-          </DialogTitle>
-          <Button variant="ghost" size="icon-sm" className="ml-auto text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={() => onOpenChange(false)}>
-            <CloseCircle className="size-4" />
-          </Button>
-        </header>
-
-        {cargando && (
+  if (cargando || error || !detalle) {
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
+          <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
+            <Receipt className="size-4.5 shrink-0" />
+            <DialogTitle className="text-sm font-semibold text-primary-foreground">
+              {factura.numero} — {factura.cliente || "Sin nombre"}
+            </DialogTitle>
+            <Button variant="ghost" size="icon-sm" className="ml-auto text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={() => onOpenChange(false)}>
+              <CloseCircle className="size-4" />
+            </Button>
+          </header>
           <div className="space-y-2 p-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-24 w-full" />
+            {error ? (
+              <p className="text-sm text-destructive">Error al cargar: {error}</p>
+            ) : (
+              <>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-24 w-full" />
+              </>
+            )}
           </div>
-        )}
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
-        {!cargando && error && (
-          <p className="p-4 text-sm text-destructive">Error al cargar: {error}</p>
-        )}
-
-        {!cargando && !error && detalle && (
-          <div className="p-4">
-            <FacturaAccionesTabs detalle={detalle} tipoBase={factura.tipo === "revision" ? "revision" : "normal"} onActualizado={actualizar} />
-          </div>
-        )}
-
-        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>
-        </footer>
-      </DialogContent>
-    </Dialog>
+  return (
+    <FacturaModalShell detalle={detalle} tipoBase={tipoBase} open onOpenChange={onOpenChange} onActualizado={actualizar} />
   );
 }
 

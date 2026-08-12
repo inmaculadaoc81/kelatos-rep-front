@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import type { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import type { LineaFactura } from "@/lib/factura";
 
+export type TipoFacturaBase = "normal" | "revision" | "mensajeria" | "anticipo";
+
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
   { value: "tarjeta", label: "Tarjeta bancaria" },
@@ -23,16 +25,97 @@ const METODOS_PAGO = [
 ];
 const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 
-function euros(n: number): string {
+// Mismos colores/etiquetas que tipoBadgeMap en _mfaRenderResumen (Index.html) —
+// no hay entrada de "corregida" en el original tampoco, la insignia siempre
+// refleja el tipo BASE del documento (reparación/revisión/mensajería/anticipo).
+export const TIPO_BADGE: Record<TipoFacturaBase, { label: string; className: string }> = {
+  normal: { label: "Reparación", className: "bg-[#0d6efd] text-white" },
+  revision: { label: "Revisión Pagada", className: "bg-[#fd7e14] text-white" },
+  mensajeria: { label: "Mensajería", className: "bg-[#0dcaf0] text-black" },
+  anticipo: { label: "Anticipo", className: "bg-secondary text-secondary-foreground" },
+};
+
+// Igual que _mfaRenderResumen(): el total de cabecera siempre se muestra CON
+// IVA (×1.21), aunque lo guardado en BD sea la base — para todos los tipos.
+export function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+
+interface DatosFacturaDerivados {
+  numeroFactura: string;
+  urlFactura: string;
+  totalConIva: number;
+  clienteNombre: string;
+  clienteEmailDefault: string;
+  lineasOriginales: LineaFactura[];
+  rectificativa: { numeroFactura: string; urlFactura: string } | null;
+  corregida: { numeroFactura: string; urlFactura: string } | null;
+  tipoRect: string;
+  tipoCorr: string;
+  tipoCombinado: string;
+  /** El original nunca implementó devolución/rectificativa para anticipo
+      (apiGenerarDevolucion no tiene rama 'anticipo') — se replica esa misma
+      limitación real, no es un hueco de la migración. */
+  permiteDevolucion: boolean;
+}
+
+export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFacturaBase): DatosFacturaDerivados {
+  if (tipoBase === "mensajeria") {
+    return {
+      numeroFactura: detalle.numeroFacturaMensajeria,
+      urlFactura: detalle.urlFacturaMensajeria,
+      totalConIva: detalle.totalFacturaMensajeria * 1.21,
+      clienteNombre: detalle.clienteFacturaMensajeria?.nombre || detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.clienteFacturaMensajeria?.email || detalle.cliente.email || "",
+      lineasOriginales: [{ descripcion: "Envío por mensajería", cantidad: 1, precio: detalle.totalFacturaMensajeria }],
+      rectificativa: detalle.rectificativa, corregida: detalle.corregida,
+      tipoRect: "rectificativa", tipoCorr: "corregida", tipoCombinado: "combinado",
+      permiteDevolucion: true,
+    };
+  }
+  if (tipoBase === "anticipo") {
+    return {
+      numeroFactura: detalle.numeroFacturaAnticipo,
+      urlFactura: detalle.urlFacturaAnticipo,
+      totalConIva: detalle.anticipoImporte * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: null, corregida: null,
+      tipoRect: "", tipoCorr: "", tipoCombinado: "",
+      permiteDevolucion: false,
+    };
+  }
+  const esRevision = tipoBase === "revision";
+  const clienteBase = esRevision ? detalle.clienteFacturaRevision : detalle.clienteFactura;
+  return {
+    numeroFactura: esRevision ? detalle.numeroFacturaRevision : detalle.numeroFactura,
+    urlFactura: esRevision ? detalle.urlFacturaRevision : detalle.urlFactura,
+    totalConIva: (esRevision ? 20 : detalle.totalFactura) * 1.21,
+    clienteNombre: clienteBase?.nombre || detalle.cliente.nombre || "",
+    clienteEmailDefault: clienteBase?.email || detalle.cliente.email || "",
+    lineasOriginales: esRevision
+      ? [{ descripcion: "Revisión técnica del equipo", cantidad: 1, precio: 20 }]
+      : detalle.lineasFactura.length > 0
+        ? detalle.lineasFactura
+        : [{ descripcion: "Factura", cantidad: 1, precio: detalle.totalFactura }],
+    rectificativa: esRevision ? detalle.rectificativaRevision : detalle.rectificativa,
+    corregida: esRevision ? detalle.corregidaRevision : detalle.corregida,
+    tipoRect: esRevision ? "rectificativa_revision" : "rectificativa",
+    tipoCorr: esRevision ? "corregida_revision" : "corregida",
+    tipoCombinado: esRevision ? "combinado_revision" : "combinado",
+    permiteDevolucion: true,
+  };
 }
 
 /**
  * Reproduce las pestañas del modal #modalFcAcciones (Index.html) — PDF /
- * Enviar, Devolución, Rectificativo — para reparación normal y revisión.
- * A diferencia del original, aquí SÍ hay una guarda en el backend contra
- * generar dos rectificativas para el mismo documento (decisión explícita,
- * no un defecto de la migración — ver _validarGuardCorregidaTx).
+ * Enviar, Devolución, Rectificativo — para reparación, revisión,
+ * mensajería y anticipo (este último solo con PDF/Enviar, igual que el
+ * original). A diferencia del original, aquí SÍ hay una guarda en el
+ * backend contra generar dos rectificativas para el mismo documento
+ * (decisión explícita, no un defecto de la migración — ver
+ * _validarGuardCorregidaTx).
  */
 export function FacturaAccionesTabs({
   detalle,
@@ -40,78 +123,64 @@ export function FacturaAccionesTabs({
   onActualizado,
 }: {
   detalle: ReparacionDetalle;
-  tipoBase: "normal" | "revision";
+  tipoBase: TipoFacturaBase;
   onActualizado: () => void;
 }) {
-  const esRevision = tipoBase === "revision";
-  const numeroFactura = esRevision ? detalle.numeroFacturaRevision : detalle.numeroFactura;
-  const urlFactura = esRevision ? detalle.urlFacturaRevision : detalle.urlFactura;
-  const totalFactura = esRevision ? 20 : detalle.totalFactura;
-  const clienteBase = esRevision ? detalle.clienteFacturaRevision : detalle.clienteFactura;
-  const clienteNombre = clienteBase?.nombre || detalle.cliente.nombre || "";
-  const clienteEmailDefault = clienteBase?.email || detalle.cliente.email || "";
-
-  const rectificativa = esRevision ? detalle.rectificativaRevision : detalle.rectificativa;
-  const corregida = esRevision ? detalle.corregidaRevision : detalle.corregida;
-  const tipoRect = esRevision ? "rectificativa_revision" : "rectificativa";
-  const tipoCorr = esRevision ? "corregida_revision" : "corregida";
-  const tipoCombinado = esRevision ? "combinado_revision" : "combinado";
-
-  const lineasOriginales: LineaFactura[] = esRevision
-    ? [{ descripcion: "Revisión técnica del equipo", cantidad: 1, precio: 20 }]
-    : detalle.lineasFactura.length > 0
-      ? detalle.lineasFactura
-      : [{ descripcion: "Factura", cantidad: 1, precio: detalle.totalFactura }];
+  const d = derivarDatosFactura(detalle, tipoBase);
 
   return (
     <Tabs defaultValue="pdf" className="w-full">
       <TabsList className="w-full">
         <TabsTrigger value="pdf">PDF / Enviar</TabsTrigger>
-        <TabsTrigger value="devolucion" disabled={!!rectificativa}>Devolución</TabsTrigger>
-        <TabsTrigger value="rectificativo" disabled={!!rectificativa && !!corregida && !corregida}>Rectificativo</TabsTrigger>
+        <TabsTrigger value="devolucion" disabled={!d.permiteDevolucion || !!d.rectificativa}>Devolución</TabsTrigger>
+        <TabsTrigger value="rectificativo" disabled={!d.permiteDevolucion}>Rectificativo</TabsTrigger>
       </TabsList>
 
       <TabsContent value="pdf" className="p-4">
         <TabPdfEnviar
           resguardo={detalle.resguardo}
           tipo={tipoBase}
-          numeroFactura={numeroFactura}
-          urlFactura={urlFactura}
-          totalFactura={totalFactura}
-          clienteEmailDefault={clienteEmailDefault}
+          numeroFactura={d.numeroFactura}
+          urlFactura={d.urlFactura}
+          totalFactura={d.totalConIva}
+          clienteEmailDefault={d.clienteEmailDefault}
           motivoRectificativa={detalle.motivoRectificativa}
           esDevolucionEsteDocumento={false}
         />
       </TabsContent>
 
-      <TabsContent value="devolucion" className="p-4">
-        <TabDevolucionRectificativo
-          resguardo={detalle.resguardo}
-          tipoDestino={tipoRect}
-          numeroFacturaOriginal={numeroFactura}
-          lineasOriginales={lineasOriginales}
-          clienteEmailDefault={clienteEmailDefault}
-          yaGenerada={rectificativa}
-          modoDevolucion
-          onGenerada={onActualizado}
-        />
-      </TabsContent>
+      {d.permiteDevolucion && (
+        <>
+          <TabsContent value="devolucion" className="p-4">
+            <TabDevolucionRectificativo
+              resguardo={detalle.resguardo}
+              tipoDestino={d.tipoRect}
+              numeroFacturaOriginal={d.numeroFactura}
+              lineasOriginales={d.lineasOriginales}
+              clienteEmailDefault={d.clienteEmailDefault}
+              yaGenerada={d.rectificativa}
+              modoDevolucion
+              onGenerada={onActualizado}
+            />
+          </TabsContent>
 
-      <TabsContent value="rectificativo" className="p-4">
-        <TabRectificativo
-          resguardo={detalle.resguardo}
-          tipoRect={tipoRect}
-          tipoCorr={tipoCorr}
-          tipoCombinado={tipoCombinado}
-          numeroFacturaOriginal={numeroFactura}
-          lineasOriginales={lineasOriginales}
-          clienteNombreDefault={clienteNombre}
-          clienteEmailDefault={clienteEmailDefault}
-          rectificativa={rectificativa}
-          corregida={corregida}
-          onActualizado={onActualizado}
-        />
-      </TabsContent>
+          <TabsContent value="rectificativo" className="p-4">
+            <TabRectificativo
+              resguardo={detalle.resguardo}
+              tipoRect={d.tipoRect}
+              tipoCorr={d.tipoCorr}
+              tipoCombinado={d.tipoCombinado}
+              numeroFacturaOriginal={d.numeroFactura}
+              lineasOriginales={d.lineasOriginales}
+              clienteNombreDefault={d.clienteNombre}
+              clienteEmailDefault={d.clienteEmailDefault}
+              rectificativa={d.rectificativa}
+              corregida={d.corregida}
+              onActualizado={onActualizado}
+            />
+          </TabsContent>
+        </>
+      )}
     </Tabs>
   );
 }

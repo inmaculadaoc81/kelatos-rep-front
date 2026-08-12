@@ -65,6 +65,12 @@ interface FilaReparacionSqlDetalle {
   cliente_factura: unknown;
   codigo_cliente: string | null;
   anticipo_importe: string | number | null;
+  numero_factura_anticipo: string | null;
+  url_factura_anticipo: string | null;
+  numero_factura_mensajeria: string | null;
+  url_factura_mensajeria: string | null;
+  total_factura_mensajeria: string | number | null;
+  cliente_factura_mensajeria: unknown;
   lineas_factura: unknown;
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -260,6 +266,12 @@ export interface ReparacionDetalle {
   clienteFactura: { nombre: string; direccion: string; dni: string; telefono: string; email: string; codigo?: string } | null;
   codigoCliente: string;
   anticipoImporte: number;
+  numeroFacturaAnticipo: string;
+  urlFacturaAnticipo: string;
+  numeroFacturaMensajeria: string;
+  urlFacturaMensajeria: string;
+  totalFacturaMensajeria: number;
+  clienteFacturaMensajeria: { nombre: string; direccion: string; dni: string; telefono: string; email: string } | null;
   lineasFactura: { referencia?: string; descripcion: string; cantidad: number; precio: number; descuento?: number }[];
   rectificativa: {
     numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
@@ -423,6 +435,15 @@ export function mapearReparacionDetalle(
         : null,
     codigoCliente: row.codigo_cliente || "",
     anticipoImporte: numero(row.anticipo_importe),
+    numeroFacturaAnticipo: row.numero_factura_anticipo || "",
+    urlFacturaAnticipo: row.url_factura_anticipo || "",
+    numeroFacturaMensajeria: row.numero_factura_mensajeria || "",
+    urlFacturaMensajeria: row.url_factura_mensajeria || "",
+    totalFacturaMensajeria: numero(row.total_factura_mensajeria),
+    clienteFacturaMensajeria:
+      row.cliente_factura_mensajeria && typeof row.cliente_factura_mensajeria === "object"
+        ? (row.cliente_factura_mensajeria as ReparacionDetalle["clienteFacturaMensajeria"])
+        : null,
     lineasFactura: Array.isArray(row.lineas_factura)
       ? (row.lineas_factura as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
           referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),

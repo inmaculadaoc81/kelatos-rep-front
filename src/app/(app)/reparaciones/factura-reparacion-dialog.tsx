@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
-import { FacturaAccionesTabs } from "./factura-acciones-tabs";
+import { FacturaModalShell } from "./factura-modal-shell";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -180,24 +180,7 @@ function VistaGenerada({
   onOpenChange: (open: boolean) => void;
   onActualizado: () => void;
 }) {
-  const cli = detalle.clienteFactura;
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
-        <CabeceraAzul titulo={`Factura ${detalle.resguardo ? `— Ref. ${detalle.resguardo}` : ""}`} onClose={() => onOpenChange(false)} />
-        <div className="grid grid-cols-2 gap-3 border-b bg-muted/30 p-4">
-          <CampoLectura label="Nombre / Razón social" valor={cli?.nombre || detalle.cliente.nombre || ""} />
-          <CampoLectura label="DNI / CIF" valor={cli?.dni || detalle.dniCif || ""} />
-        </div>
-        <div className="p-4">
-          <FacturaAccionesTabs detalle={detalle} tipoBase="normal" onActualizado={onActualizado} />
-        </div>
-        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>
-        </footer>
-      </DialogContent>
-    </Dialog>
-  );
+  return <FacturaModalShell detalle={detalle} tipoBase="normal" open={open} onOpenChange={onOpenChange} onActualizado={onActualizado} />;
 }
 
 function VistaGenerar({
