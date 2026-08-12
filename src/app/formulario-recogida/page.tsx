@@ -116,10 +116,12 @@ function FormularioRecogidaInterno() {
     setError("");
     setEnviando(true);
     try {
+      const dataUrl = canvasRef.current?.toDataURL("image/png") || "";
+      const firmaBase64 = dataUrl.split(",")[1] || "";
       const res = await fetch("/api/formulario-recogida", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resguardo, token, nombre }),
+        body: JSON.stringify({ resguardo, token, nombre, firmaBase64 }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo registrar la recogida.");

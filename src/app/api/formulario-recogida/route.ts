@@ -3,12 +3,6 @@ import { NextResponse } from "next/server";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { validarTokenRecogida } from "@/lib/token-recogida";
 
-// La firma se captura visualmente en el formulario, pero esta migración no
-// tiene integración con Google Drive (donde el original guarda la imagen)
-// — firmaUrl es un campo obligatorio en el endpoint real, así que se envía
-// este marcador explícito en vez de fingir una URL de archivo inexistente.
-const FIRMA_URL_MARCADOR = "[Firma capturada sin adjunto — integración con Drive pendiente]";
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const resguardo = searchParams.get("resguardo") || "";
@@ -36,21 +30,37 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { resguardo, token, nombre } = (await req.json()) as { resguardo: string; token: string; nombre: string };
+  const { resguardo, token, nombre, firmaBase64 } = (await req.json()) as {
+    resguardo: string; token: string; nombre: string; firmaBase64?: string;
+  };
 
   const validacion = validarTokenRecogida(resguardo, token);
   if (!validacion.valido) {
     return NextResponse.json({ ok: false, error: validacion.error }, { status: 403 });
   }
   if (!nombre?.trim()) return NextResponse.json({ ok: false, error: "El nombre es obligatorio" }, { status: 400 });
+  if (!firmaBase64 || firmaBase64.length <= 100) {
+    return NextResponse.json({ ok: false, error: "La firma es obligatoria" }, { status: 400 });
+  }
 
   try {
+    // Sube la firma a la misma carpeta de Drive que usa el formulario de
+    // recepción (fotos/firmas de clientes) — devuelve el fileId real, no
+    // un marcador, para que firma_recogida_url apunte a un archivo real.
+    const archivos = await kelatosApiPost<{ ok: boolean; firmaUrl: string }>(
+      `/v1/formulario/${encodeURIComponent(resguardo)}/archivos`,
+      { firmaBase64 }
+    );
+    if (!archivos.firmaUrl) {
+      return NextResponse.json({ ok: false, error: "No se pudo guardar la firma" }, { status: 502 });
+    }
+
     const resultado = await kelatosApiPost<{ ok: boolean; reparacion: Record<string, unknown>; yaEntregado: boolean }>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/recogida-publica`,
       {
         requestId: crypto.randomUUID(),
         usuario: "formulario-publico",
-        firmaUrl: FIRMA_URL_MARCADOR,
+        firmaUrl: archivos.firmaUrl,
         fecha: new Date().toISOString().slice(0, 10),
       }
     );
