@@ -119,7 +119,7 @@ export default function RegistroAccionesPage() {
   }, [busqueda, fechaDesde, fechaHasta]);
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
