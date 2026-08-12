@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Refresh2, SearchNormal1, Eye, ShieldTick, DocumentText, Copy,
-  BoxTick, Trash, Clock, Truck, Receipt, Danger, Calendar,
+  BoxTick, Trash, Clock, Truck, Receipt, Danger, Calendar, Setting2,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +108,25 @@ export default function HistorialPage() {
   const [filtroEntrega, setFiltroEntrega] = useState("");
   const [filtroFactura, setFiltroFactura] = useState("");
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
+  const [reparandoFechas, setReparandoFechas] = useState(false);
+
+  async function repararFechas() {
+    setReparandoFechas(true);
+    try {
+      const res = await fetch("/api/reparaciones/reparar-fechas", { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      const partes = [`${data.arregladas} fechas reparación corregidas`];
+      if (data.sinHistorial > 0) partes.push(`${data.sinHistorial} sin historial, usaron fallback`);
+      if (data.entregaArregladas > 0) partes.push(`${data.entregaArregladas} fechas entrega`);
+      toast.success(partes.join(" · "));
+      if (data.arregladas > 0 || data.entregaArregladas > 0) cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setReparandoFechas(false);
+    }
+  }
 
   async function cargar() {
     setCargando(true);
@@ -184,6 +203,16 @@ export default function HistorialPage() {
             <SelectItem value="sin">Sin factura</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 border-amber-500 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
+          onClick={repararFechas}
+          disabled={reparandoFechas}
+          title="Rellena fecha_reparacion y fecha_entrega en blanco para registros históricos"
+        >
+          <Setting2 className={`size-3.5 ${reparandoFechas ? "animate-spin" : ""}`} /> {reparandoFechas ? "Reparando..." : "Reparar fechas"}
+        </Button>
         {(busqueda || fechaDesde || fechaHasta || filtroEntrega || filtroFactura) && (
           <Button
             variant="ghost"
