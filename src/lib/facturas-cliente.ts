@@ -41,6 +41,11 @@ export interface FacturaCliente {
   telefono: string;
   email: string;
   dniCif: string;
+  /** Código del cliente en el directorio de kelatos_app.clientes — se
+      rellena aparte (ver lookupCodigoCliente en obtener-facturas.ts), por
+      DNI o teléfono, igual que _lookupCodigo() en el original: nunca viene
+      ya en la fila de origen (reparación/alquiler/manual/venta). */
+  codigoCliente?: string;
   equipo: string;
   /** estado_entrega de la reparación — solo relevante en tipos derivados de
       `reparaciones`; decide si "Ver" debe abrir Activas o Historial. */

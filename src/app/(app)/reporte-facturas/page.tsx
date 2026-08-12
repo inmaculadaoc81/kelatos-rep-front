@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, CloseCircle, ExportSquare, DocumentDownload, ArrowLeft2, ArrowRight2 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, CloseCircle, ExportSquare, DocumentDownload, ArrowLeft2, ArrowRight2, Clock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,6 +20,7 @@ import { TipoFactura } from "@/lib/facturas-cliente";
 import { FacturaConDesglose, RF_TIPOS_FILTRABLES, RF_TIPO_ESTILO, generarCsvReporte, descargarCsv, numeroDocumento } from "@/lib/reporte-facturas";
 import { ColumnaFiltro } from "../facturas-clientes/columna-filtro";
 import { ColumnaFiltroRango, RangoFiltro } from "./columna-filtro-rango";
+import { HistorialExportacionesDialog } from "./historial-exportaciones-dialog";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -76,6 +77,7 @@ export default function ReporteFacturasPage() {
   const [filtroTotal, setFiltroTotal] = useState<RangoFiltro | null>(null);
 
   const [pagina, setPagina] = useState(1);
+  const [historialAbierto, setHistorialAbierto] = useState(false);
 
   async function cargar(desde: string, hasta: string) {
     setCargando(true);
@@ -236,15 +238,32 @@ export default function ReporteFacturasPage() {
     const series: string[] = [];
     if (serie1) series.push("1");
     if (serie3) series.push("3");
+    const seriesFinal = series.length ? series : ["1", "3"];
     const csv = generarCsvReporte(visibles, {
       fechaDesde: datos.fechaDesde,
       fechaHasta: datos.fechaHasta,
-      series: series.length ? series : ["1", "3"],
+      series: seriesFinal,
       docDesde,
       docHasta,
       usuario: "",
     });
     descargarCsv(csv, `ReporteFacturas_${datos.fechaDesde.replace(/-/g, "")}_${datos.fechaHasta.replace(/-/g, "")}.csv`);
+
+    // Constancia del historial de exportaciones — best-effort, nunca bloquea la descarga.
+    fetch("/api/reporte-facturas/exportaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fechaDesde: datos.fechaDesde,
+        fechaHasta: datos.fechaHasta,
+        series: seriesFinal,
+        docDesde,
+        docHasta,
+        filtroTexto: clienteFiltro.trim(),
+        numFacturas: visibles.length,
+        totalExportado: visibles.reduce((s, f) => s + f.totalConIva, 0),
+      }),
+    }).catch(() => {});
   }
 
   return (
@@ -257,6 +276,9 @@ export default function ReporteFacturasPage() {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => cargar(fechaDesde, fechaHasta)}>
             <Refresh2 className={cn("size-4", cargando && "animate-spin")} /> Actualizar
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setHistorialAbierto(true)}>
+            <Clock className="size-4" /> Historial
           </Button>
           {visibles.length > 0 && (
             <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={exportarCsv}>
@@ -577,6 +599,8 @@ export default function ReporteFacturasPage() {
           </div>
         </div>
       )}
+
+      <HistorialExportacionesDialog open={historialAbierto} onOpenChange={setHistorialAbierto} />
     </div>
   );
 }

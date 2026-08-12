@@ -37,7 +37,7 @@ export function calcularDesglose(f: FacturaCliente): FacturaConDesglose {
     iva = round2(baseImponible * 0.21);
     totalConIva = round2(baseImponible + iva);
   }
-  return { ...f, serie, baseImponible, iva, totalConIva, codigoCliente: "" };
+  return { ...f, serie, baseImponible, iva, totalConIva, codigoCliente: f.codigoCliente || "" };
 }
 
 export function numeroDocumento(factura: string): number {
