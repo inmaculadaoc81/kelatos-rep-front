@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Receipt, TickCircle, CloseCircle, DocumentText } from "@/lib/icons";
+import { Receipt, TickCircle, CloseCircle } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { FacturaAccionesTabs } from "./factura-acciones-tabs";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -40,7 +40,7 @@ export function FacturaRevisionDialog({
 }) {
   const yaGenerada = !!(detalle.numeroFacturaRevision || detalle.urlFacturaRevision);
 
-  if (yaGenerada) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} />;
+  if (yaGenerada) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
   return <VistaGenerar detalle={detalle} open={open} onOpenChange={onOpenChange} onGenerada={onGenerada} />;
 }
 
@@ -69,36 +69,24 @@ function VistaGenerada({
   detalle,
   open,
   onOpenChange,
+  onActualizado,
 }: {
   detalle: ReparacionDetalle;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onActualizado: () => void;
 }) {
   const cli = detalle.clienteFacturaRevision;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
         <CabeceraVerde titulo="Factura de revisión" onClose={() => onOpenChange(false)} />
-        <div className="space-y-3 p-4">
-          <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <TickCircle className="size-4 shrink-0" />
-            Factura generada — <strong>{detalle.numeroFacturaRevision}</strong>
-            {detalle.urlFacturaRevision && (
-              <Button size="sm" variant="outline" nativeButton={false} className="ml-auto h-7 gap-1 border-destructive text-destructive hover:bg-destructive/10" render={<Link href={detalle.urlFacturaRevision} target="_blank" rel="noreferrer" />}>
-                <DocumentText className="size-3.5" /> Ver PDF
-              </Button>
-            )}
-          </div>
+        <div className="grid grid-cols-2 gap-3 border-b bg-muted/30 p-4">
           <CampoLectura label="Nombre / Razón social" valor={cli?.nombre || detalle.cliente.nombre || ""} />
-          <CampoLectura label="Dirección fiscal" valor={cli?.direccion || detalle.cliente.direccion || ""} />
-          <div className="grid grid-cols-2 gap-3">
-            <CampoLectura label="DNI / CIF" valor={cli?.dni || detalle.dniCif || ""} />
-            <CampoLectura label="Teléfono" valor={cli?.telefono || detalle.cliente.telefono || ""} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <CampoLectura label="Importe (€ s/IVA)" valor="20,00" />
-            <CampoLectura label="Email cliente" valor={cli?.email || detalle.cliente.email || ""} />
-          </div>
+          <CampoLectura label="DNI / CIF" valor={cli?.dni || detalle.dniCif || ""} />
+        </div>
+        <div className="p-4">
+          <FacturaAccionesTabs detalle={detalle} tipoBase="revision" onActualizado={onActualizado} />
         </div>
         <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
           <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>

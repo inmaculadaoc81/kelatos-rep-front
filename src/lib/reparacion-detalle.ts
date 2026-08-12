@@ -65,6 +65,26 @@ interface FilaReparacionSqlDetalle {
   cliente_factura: unknown;
   codigo_cliente: string | null;
   anticipo_importe: string | number | null;
+  lineas_factura: unknown;
+  numero_factura_rectificativa: string | null;
+  url_factura_rectificativa: string | null;
+  total_factura_rectificativa: string | number | null;
+  fecha_factura_rectificativa: string | null;
+  numero_factura_rectificativa_revision: string | null;
+  url_factura_rectificativa_revision: string | null;
+  total_factura_rectificativa_revision: string | number | null;
+  fecha_factura_rectificativa_revision: string | null;
+  motivo_rectificativa: string | null;
+  estado_factura_rectificativa: string | null;
+  numero_factura_corregida: string | null;
+  url_factura_corregida: string | null;
+  total_factura_corregida: string | number | null;
+  fecha_factura_corregida: string | null;
+  numero_factura_corregida_revision: string | null;
+  url_factura_corregida_revision: string | null;
+  total_factura_corregida_revision: string | number | null;
+  fecha_factura_corregida_revision: string | null;
+  cliente_factura_corregida: unknown;
 }
 
 interface FilaPiezaSql {
@@ -240,6 +260,22 @@ export interface ReparacionDetalle {
   clienteFactura: { nombre: string; direccion: string; dni: string; telefono: string; email: string; codigo?: string } | null;
   codigoCliente: string;
   anticipoImporte: number;
+  lineasFactura: { referencia?: string; descripcion: string; cantidad: number; precio: number; descuento?: number }[];
+  rectificativa: {
+    numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
+  } | null;
+  rectificativaRevision: {
+    numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
+  } | null;
+  motivoRectificativa: string;
+  estadoFacturaRectificativa: string;
+  corregida: {
+    numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
+  } | null;
+  corregidaRevision: {
+    numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
+  } | null;
+  clienteFacturaCorregida: { nombre: string; direccion: string; dni: string; telefono: string; email: string } | null;
   presupuestos: Presupuesto[];
   pedidos: Pedido[];
   historialEventos: HistorialEvento[];
@@ -387,6 +423,29 @@ export function mapearReparacionDetalle(
         : null,
     codigoCliente: row.codigo_cliente || "",
     anticipoImporte: numero(row.anticipo_importe),
+    lineasFactura: Array.isArray(row.lineas_factura)
+      ? (row.lineas_factura as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
+          referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
+        }))
+      : [],
+    rectificativa: row.numero_factura_rectificativa
+      ? { numeroFactura: row.numero_factura_rectificativa, urlFactura: row.url_factura_rectificativa || "", totalFactura: numero(row.total_factura_rectificativa), fechaFactura: fecha(row.fecha_factura_rectificativa) }
+      : null,
+    rectificativaRevision: row.numero_factura_rectificativa_revision
+      ? { numeroFactura: row.numero_factura_rectificativa_revision, urlFactura: row.url_factura_rectificativa_revision || "", totalFactura: numero(row.total_factura_rectificativa_revision), fechaFactura: fecha(row.fecha_factura_rectificativa_revision) }
+      : null,
+    motivoRectificativa: row.motivo_rectificativa || "",
+    estadoFacturaRectificativa: row.estado_factura_rectificativa || "",
+    corregida: row.numero_factura_corregida
+      ? { numeroFactura: row.numero_factura_corregida, urlFactura: row.url_factura_corregida || "", totalFactura: numero(row.total_factura_corregida), fechaFactura: fecha(row.fecha_factura_corregida) }
+      : null,
+    corregidaRevision: row.numero_factura_corregida_revision
+      ? { numeroFactura: row.numero_factura_corregida_revision, urlFactura: row.url_factura_corregida_revision || "", totalFactura: numero(row.total_factura_corregida_revision), fechaFactura: fecha(row.fecha_factura_corregida_revision) }
+      : null,
+    clienteFacturaCorregida:
+      row.cliente_factura_corregida && typeof row.cliente_factura_corregida === "object"
+        ? (row.cliente_factura_corregida as ReparacionDetalle["clienteFacturaCorregida"])
+        : null,
     presupuestos: presupuestosRaw.map((p) => mapearPresupuesto(p, piezasPorPresupuesto[p.presupuesto_id] || [])),
     pedidos: pedidosRaw.map(mapearPedido),
     historialEventos: historialRaw.map(mapearHistorial),

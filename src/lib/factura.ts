@@ -35,8 +35,10 @@ export interface LineaFactura {
 }
 
 export interface DatosFactura {
-  cliente: ClienteFactura;
-  formaPago: string;
+  /** Obligatorio en normal/revision/corregida; no aplica a rectificativa. */
+  cliente?: ClienteFactura;
+  /** Obligatorio en normal/revision; no aplica a rectificativa/corregida. */
+  formaPago?: string;
   banco?: string;
   lineas: LineaFactura[];
   fianza?: number;
@@ -48,6 +50,12 @@ export interface DatosFactura {
   esBorrador?: boolean;
   /** Solo tipo "revision": si true, clienteOverride pisa el cliente_factura_revision ya guardado. */
   clienteOverrideProvisto?: boolean;
+  /** Solo tipo "rectificativa"/"rectificativa_revision": motivo obligatorio de la devolución. */
+  motivo?: string;
+  /** Solo tipo "rectificativa"/"rectificativa_revision": número de la factura que se rectifica. */
+  numeroOriginal?: string;
+  /** Solo tipo "corregida"/"corregida_revision": número de la factura original que se corrige. */
+  numeroFacturaOriginal?: string;
 }
 
 export interface ResultadoFactura {

@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { Add, Trash, Receipt, Building, Profile, TickCircle, CloseCircle, DocumentText, SearchNormal1 } from "@/lib/icons";
+import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import { FacturaAccionesTabs } from "./factura-acciones-tabs";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -144,7 +144,7 @@ export function FacturaReparacionDialog({
 }) {
   const yaGenerada = !!(detalle.numeroFactura || detalle.urlFactura);
 
-  if (yaGenerada) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} />;
+  if (yaGenerada) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
   return <VistaGenerar detalle={detalle} open={open} onOpenChange={onOpenChange} onGenerada={onGenerada} />;
 }
 
@@ -173,36 +173,24 @@ function VistaGenerada({
   detalle,
   open,
   onOpenChange,
+  onActualizado,
 }: {
   detalle: ReparacionDetalle;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onActualizado: () => void;
 }) {
   const cli = detalle.clienteFactura;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
-        <CabeceraAzul titulo="Factura" onClose={() => onOpenChange(false)} />
-        <div className="space-y-3 p-4">
-          <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <TickCircle className="size-4 shrink-0" />
-            Factura generada — <strong>{detalle.numeroFactura}</strong>
-            {detalle.urlFactura && (
-              <Button size="sm" variant="outline" nativeButton={false} className="ml-auto h-7 gap-1" render={<Link href={detalle.urlFactura} target="_blank" rel="noreferrer" />}>
-                <DocumentText className="size-3.5" /> Ver PDF
-              </Button>
-            )}
-          </div>
+      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
+        <CabeceraAzul titulo={`Factura ${detalle.resguardo ? `— Ref. ${detalle.resguardo}` : ""}`} onClose={() => onOpenChange(false)} />
+        <div className="grid grid-cols-2 gap-3 border-b bg-muted/30 p-4">
           <CampoLectura label="Nombre / Razón social" valor={cli?.nombre || detalle.cliente.nombre || ""} />
-          <CampoLectura label="Dirección fiscal" valor={cli?.direccion || detalle.cliente.direccion || ""} />
-          <div className="grid grid-cols-2 gap-3">
-            <CampoLectura label="DNI / CIF" valor={cli?.dni || detalle.dniCif || ""} />
-            <CampoLectura label="Teléfono" valor={cli?.telefono || detalle.cliente.telefono || ""} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <CampoLectura label="Base imponible" valor={euros(detalle.totalFactura)} />
-            <CampoLectura label="Forma de pago" valor={detalle.banco ? `${detalle.formaPago} · ${detalle.banco}` : detalle.formaPago} />
-          </div>
+          <CampoLectura label="DNI / CIF" valor={cli?.dni || detalle.dniCif || ""} />
+        </div>
+        <div className="p-4">
+          <FacturaAccionesTabs detalle={detalle} tipoBase="normal" onActualizado={onActualizado} />
         </div>
         <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
           <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>

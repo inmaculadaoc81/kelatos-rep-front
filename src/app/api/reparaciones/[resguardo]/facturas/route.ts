@@ -86,21 +86,15 @@ export async function POST(
       }, { status: 502 });
     }
 
-    // 4) Confirmar: persiste número/PDF/cliente en la reparación.
+    // 4) Confirmar: persiste número/PDF/cliente en la reparación. Se pasa
+    //    "datos" completo (no una lista fija de campos) porque cada tipo
+    //    lee campos distintos: normal/revision usan cliente/formaPago/
+    //    banco/estadoFactura, rectificativa usa motivo/numeroOriginal,
+    //    corregida usa numeroFacturaOriginal/cliente — server.js ignora
+    //    los campos que no le correspondan a su tipo.
     const confirmar = await kelatosApiPost<{ ok: boolean; reparacion: Record<string, unknown> }>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/facturas/confirmar`,
-      {
-        requestId, usuario, urlPdf: generado.url,
-        datos: {
-          lineas: datos.lineas,
-          cliente: datos.cliente,
-          formaPago: datos.formaPago,
-          banco: datos.banco,
-          estadoFactura: datos.estadoFactura,
-          esBorrador: datos.esBorrador,
-          clienteOverrideProvisto: datos.clienteOverrideProvisto
-        }
-      }
+      { requestId, usuario, urlPdf: generado.url, datos }
     );
 
     const resultado: ResultadoFactura = {
