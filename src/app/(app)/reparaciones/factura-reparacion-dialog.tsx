@@ -228,6 +228,22 @@ function VistaGenerar({
       .then((r) => r.json())
       .then((data) => { if (data.ok) setNumeroPreview(data.numero); })
       .catch(() => {});
+
+    // Reproduce el bloque "Código y dirección de cliente (lookup si alguno
+    // falta)" de abrirVistaFactura() — mismo disparador exacto: solo si
+    // código o dirección vienen vacíos Y hay DNI o teléfono con qué buscar,
+    // y solo rellena el campo que efectivamente faltaba (nunca pisa uno ya
+    // presente).
+    if ((!codigo.trim() || !direccion.trim()) && (dni.trim() || telefono.trim())) {
+      fetch(`/api/clientes/buscar-exacto?dni=${encodeURIComponent(dni.trim())}&telefono=${encodeURIComponent(telefono.trim())}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.ok || !data.cliente) return;
+          if (!codigo.trim() && data.cliente.codigo) setCodigo(data.cliente.codigo);
+          if (!direccion.trim() && data.cliente.direccion) setDireccion(data.cliente.direccion);
+        })
+        .catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -362,7 +378,7 @@ function VistaGenerar({
                       <Label htmlFor="vfDni" className="text-xs text-muted-foreground">DNI / CIF</Label>
                       <Input id="vfDni" className="h-8 text-sm" value={dni} onChange={(e) => setDni(e.target.value)} />
                       <Label htmlFor="vfCodigo" className="text-xs text-muted-foreground">Código</Label>
-                      <Input id="vfCodigo" className="h-8 font-mono text-sm" maxLength={5} value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+                      <Input id="vfCodigo" className="h-8 bg-muted/50 font-mono text-sm" maxLength={5} value={codigo} readOnly disabled />
                       <Label htmlFor="vfNombre" className="text-xs text-muted-foreground">Nombre</Label>
                       <Input id="vfNombre" className="h-8 text-sm" value={nombre} onChange={(e) => setNombre(e.target.value)} />
                       <Label htmlFor="vfTel" className="text-xs text-muted-foreground">Teléfono</Label>
