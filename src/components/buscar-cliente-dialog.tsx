@@ -22,10 +22,13 @@ function FilaEsqueleto() {
 
 /**
  * Reproduce el modal #modalBuscarCliente (abrirBuscarCliente/_bcFiltrar/
- * _bcSeleccionar/_bcAbrirEditar/_bcToggleNuevo) del original, en modo "vf"
- * (factura) — búsqueda en vivo sobre el directorio de clientes, con edición
- * inline (lápiz por fila) y alta de cliente nuevo desde el pie, reutilizando
- * el mismo ClienteFormDialog ya construido para la pantalla de Clientes.
+ * _bcSeleccionar/_bcAbrirEditar/_bcToggleNuevo) del original — reutilizado
+ * por la Facturación de reparaciones y por Nuevo Alquiler (el original
+ * comparte el mismo modal entre "vf" y "alq" vía _bcModo; aquí cada
+ * llamador solo necesita pasar su propio onSeleccionar). Búsqueda en vivo
+ * sobre el directorio de clientes, con edición inline (lápiz por fila) y
+ * alta de cliente nuevo desde el pie, reutilizando el mismo
+ * ClienteFormDialog ya construido para la pantalla de Clientes.
  */
 export function BuscarClienteDialog({
   open,

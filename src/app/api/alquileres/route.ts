@@ -43,9 +43,11 @@ export async function POST(req: Request) {
       dias: datos.dias,
       metodoPago: datos.metodoPago,
       observaciones: datos.observaciones.trim(),
+      envioActivado: datos.envioActivado === true,
+      recogidaActivada: datos.recogidaActivada === true,
     });
 
-    return NextResponse.json({ ok: true, alquiler: resultado.alquiler, total: resultado.total });
+    return NextResponse.json({ ok: true, alquiler: resultado.alquiler, alquilerId: resultado.alquiler.alquiler_id, total: resultado.total });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });

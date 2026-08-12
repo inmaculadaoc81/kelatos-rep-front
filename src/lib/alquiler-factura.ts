@@ -150,6 +150,18 @@ export type SolicitudFacturaAlquiler =
       banco?: string;
       equipoNombre: string;
       duracionReal: DuracionReal;
+    }
+  | {
+      tipo: "alquiler";
+      requestId: string;
+      cliente: ClienteFacturaAlquiler;
+      formaPago: string;
+      banco?: string;
+      equipoNombre: string;
+      estadoFactura: string;
+      /** Portes de mensajería, ya calculados por el cliente (12,40€, o 0 si la duración da derecho a envío gratis) — se añaden como línea normal, igual que el original. */
+      envioLinea?: number;
+      recogidaLinea?: number;
     };
 
 export interface ResultadoFacturaAlquiler {

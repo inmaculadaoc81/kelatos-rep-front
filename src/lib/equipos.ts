@@ -80,6 +80,8 @@ export interface DatosNuevoEquipo {
   caracteristicas: string;
   defectos: string;
   observaciones: string;
+  enlaceRepuesto: string;
+  imagenUrl: string;
 }
 
 export interface DatosNuevoAlquiler {
@@ -95,6 +97,8 @@ export interface DatosNuevoAlquiler {
   dias: number;
   metodoPago: string;
   observaciones: string;
+  envioActivado: boolean;
+  recogidaActivada: boolean;
 }
 
 export type EstadoDevolucionEquipo = "BUENO" | "DAÑOS_MENORES" | "ROTO";

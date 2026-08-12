@@ -127,6 +127,33 @@ export async function POST(
       return { numero: preparar.numeroFactura, url: generado.url, total: generado.total };
     }
 
+    if (solicitud.tipo === "alquiler") {
+      const lineas = lineasAlquiler(solicitud.equipoNombre, a.meses || 0, a.semanas || 0, a.dias || 0, 1, tarifas);
+      const fianza = num(a.fianza_cobrada);
+      if (fianza > 0) lineas.push({ descripcion: "Fianza", cantidad: 1, precio: fianza });
+      if (solicitud.envioLinea !== undefined) lineas.push({ descripcion: "Envío a domicilio", cantidad: 1, precio: solicitud.envioLinea });
+      if (solicitud.recogidaLinea !== undefined) lineas.push({ descripcion: "Recogida a domicilio", cantidad: 1, precio: solicitud.recogidaLinea });
+
+      const doc = await generarUnDocumento({
+        tipo: "alquiler",
+        requestId: solicitud.requestId,
+        lineasParaReserva: lineas,
+        lineasParaPdf: lineas,
+      });
+
+      await kelatosApiPost(`/v1/alquileres/facturas/confirmar`, {
+        requestId: solicitud.requestId,
+        usuario,
+        dryRun: false,
+        urlPdf: doc.url,
+        alquilerId: id,
+        columnas: { numero_factura: doc.numero, url_factura: doc.url, total_cobrado: doc.total, estado_factura: solicitud.estadoFactura || "Pendiente" },
+      });
+
+      const resultado: ResultadoFacturaAlquiler = { numeroFactura: doc.numero, url: doc.url };
+      return NextResponse.json({ ok: true, ...resultado });
+    }
+
     if (solicitud.tipo === "rectificativa_fianza") {
       const fianza = num(a.fianza_cobrada);
       if (fianza <= 0) return NextResponse.json({ ok: false, error: "Este alquiler no tiene fianza registrada" }, { status: 400 });

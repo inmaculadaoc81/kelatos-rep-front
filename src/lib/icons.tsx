@@ -62,6 +62,7 @@ export const ExportSquare = withDefaults(Iconsax.ExportSquare);
 export const Eye = withDefaults(Iconsax.Eye);
 export const Filter = withDefaults(Iconsax.Filter);
 export const Gallery = withDefaults(Iconsax.Gallery);
+export const Gameboy = withDefaults(Iconsax.Gameboy);
 export const Hashtag = withDefaults(Iconsax.Hashtag);
 export const Hierarchy = withDefaults(Iconsax.Hierarchy);
 export const Home = withDefaults(Iconsax.Home);

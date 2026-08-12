@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
-import { BuscarClienteDialog } from "./buscar-cliente-dialog";
+import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
