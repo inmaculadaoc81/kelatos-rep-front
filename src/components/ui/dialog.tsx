@@ -30,8 +30,15 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
+      // forceRender: por defecto Base UI no renderiza el backdrop de un
+      // diálogo anidado en el árbol de React (p.ej. BuscarClienteDialog
+      // dentro de otro <Dialog>), asumiendo que basta con el backdrop del
+      // padre — así, dos backdrops semitransparentes se apilan y el
+      // conjunto se ve claramente más oscuro que un solo modal, marcando
+      // visualmente que hay un submodal encima de otro.
+      forceRender
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/35 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-black/45 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}

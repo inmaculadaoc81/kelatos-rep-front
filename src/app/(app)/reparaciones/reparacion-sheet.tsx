@@ -29,6 +29,8 @@ import { toast } from "sonner";
 import { Reparacion } from "@/lib/reparaciones";
 import { PiezaForm, TipoLineaPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
+import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { FacturaRevisionDialog } from "./factura-revision-dialog";
 import {
   DatosReparacionSheet,
   TipoRecepcion,
@@ -149,6 +151,7 @@ export function ReparacionSheet({
   const [cargandoResguardo, setCargandoResguardo] = useState(false);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [guardando, setGuardando] = useState(false);
+  const [detalleParaRevision, setDetalleParaRevision] = useState<ReparacionDetalle | null>(null);
 
   const esConfirmar = modo === "confirmar";
   const esAceptarAhora = datos.estado === "aceptar_ahora";
@@ -255,6 +258,17 @@ export function ReparacionSheet({
       toast.success(esConfirmar ? `Recepción ${reparacionPendiente!.resguardo} confirmada — ${data.nuevoEstado}` : `Reparación ${data.resguardo} registrada`);
       onOpenChange(false);
       onGuardado();
+
+      // Reproduce _lanzarFacturaRevisionPostRegistro del original: si la
+      // revisión (20€) corresponde y hay email, se abre automáticamente el
+      // modal de factura de revisión justo después de confirmar/registrar.
+      const resguardoFinal = esConfirmar ? reparacionPendiente!.resguardo : data.resguardo;
+      if (!datos.esCintas && datos.revisionPagada === "corresponde" && !datos.noTieneEmail && datos.clienteEmail.trim()) {
+        fetch(`/api/reparaciones/${resguardoFinal}`)
+          .then((r) => r.json())
+          .then((d) => { if (d.ok) setDetalleParaRevision(d.detalle as ReparacionDetalle); })
+          .catch(() => {});
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -263,6 +277,7 @@ export function ReparacionSheet({
   }
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(o) => !guardando && onOpenChange(o)}>
       <SheetContent className="w-full gap-0 p-0 data-[side=right]:sm:max-w-4xl" showCloseButton={false}>
         {/* Mismo patrón que detalle-dialog.tsx: cabecera a sangre en bg-primary
@@ -580,5 +595,15 @@ export function ReparacionSheet({
         </footer>
       </SheetContent>
     </Sheet>
+
+    {detalleParaRevision && (
+      <FacturaRevisionDialog
+        detalle={detalleParaRevision}
+        open={!!detalleParaRevision}
+        onOpenChange={(o) => !o && setDetalleParaRevision(null)}
+        onGenerada={() => { setDetalleParaRevision(null); onGuardado(); }}
+      />
+    )}
+    </>
   );
 }

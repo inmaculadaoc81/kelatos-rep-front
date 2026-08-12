@@ -27,8 +27,11 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
   return (
     <SheetPrimitive.Backdrop
       data-slot="sheet-overlay"
+      // Ver comentario de forceRender en components/ui/dialog.tsx — mismo
+      // primitivo de Base UI por debajo, mismo problema de backdrop anidado.
+      forceRender
       className={cn(
-        "fixed inset-0 z-50 bg-black/35 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 z-50 bg-black/45 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
       {...props}
