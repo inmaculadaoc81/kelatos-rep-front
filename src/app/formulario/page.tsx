@@ -200,6 +200,9 @@ export default function FormularioClientePage() {
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ resguardo: string } | null>(null);
   const [errorEnvio, setErrorEnvio] = useState("");
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [clienteEncontrado, setClienteEncontrado] = useState(false);
+  const dniBuscadoRef = useRef("");
 
   if (!accesoConcedido) {
     return <PantallaCodigoAcceso onAcceso={() => setAccesoConcedido(true)} />;
@@ -207,6 +210,42 @@ export default function FormularioClientePage() {
 
   function actualizar<K extends keyof DatosFormularioCliente>(campo: K, valor: DatosFormularioCliente[K]) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
+  }
+
+  /**
+   * Reproduce apiBuscarClientePorDniPublico() (Apps Script): autocompleta
+   * nombre/teléfono/email/dirección con los datos ya registrados de este
+   * mismo cliente, si el DNI/CIF ya coincide con uno guardado. Coincidencia
+   * exacta — no es un buscador de terceros.
+   */
+  async function buscarClientePorDni(dni: string) {
+    const dniLimpio = dni.trim();
+    if (dniLimpio.length < 5 || dniLimpio === dniBuscadoRef.current) return;
+    dniBuscadoRef.current = dniLimpio;
+    setBuscandoCliente(true);
+    setClienteEncontrado(false);
+    try {
+      const res = await fetch(`/api/formulario-cliente/buscar-cliente?dni=${encodeURIComponent(dniLimpio)}`);
+      const data = await res.json();
+      if (data.ok && data.cliente) {
+        const c = data.cliente as { nombre: string; telefono: string; email: string; direccion: string; cp: string; localidad: string; provincia: string };
+        setDatos((prev) => ({
+          ...prev,
+          nombre: c.nombre || prev.nombre,
+          telefono: c.telefono ? c.telefono.replace(/[^\d]/g, "") : prev.telefono,
+          email: c.email || prev.email,
+          viaNombre: c.direccion || prev.viaNombre,
+          cp: c.cp || prev.cp,
+          localidad: c.localidad || prev.localidad,
+          provincia: c.provincia || prev.provincia,
+        }));
+        setClienteEncontrado(true);
+      }
+    } catch {
+      // Best-effort — si falla la búsqueda, el cliente simplemente rellena a mano.
+    } finally {
+      setBuscandoCliente(false);
+    }
   }
 
   const esCintas = datos.tipoProducto === "Conversión de cintas";
@@ -329,8 +368,26 @@ export default function FormularioClientePage() {
               <span>Estos datos son los que aparecerán en la factura.</span>
             </div>
             <Campo label="DNI / NIF / Pasaporte / CIF" required error={errores.dniCif}>
-              <Input className="h-11 text-base" value={datos.dniCif} onChange={(e) => actualizar("dniCif", e.target.value)} />
+              <Input
+                className="h-11 text-base"
+                value={datos.dniCif}
+                onChange={(e) => actualizar("dniCif", e.target.value)}
+                onBlur={(e) => buscarClientePorDni(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    buscarClientePorDni(datos.dniCif);
+                  }
+                }}
+              />
             </Campo>
+            {buscandoCliente && <p className="mb-4 text-xs text-muted-foreground">Buscando datos…</p>}
+            {clienteEncontrado && !buscandoCliente && (
+              <div className="mb-4 flex items-center gap-2 rounded-md bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400">
+                <TickCircle className="size-3.5 shrink-0" />
+                <span>Te reconocimos — completamos tus datos automáticamente. Revísalos y corrígelos si algo cambió.</span>
+              </div>
+            )}
             <Campo label="Nombre, apellidos o empresa" required error={errores.nombre}>
               <Input className="h-11 text-base" value={datos.nombre} onChange={(e) => actualizar("nombre", e.target.value)} />
             </Campo>
