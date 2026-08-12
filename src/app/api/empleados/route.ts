@@ -20,13 +20,23 @@ interface FilaEmpleadoSql {
   activo: boolean | null;
 }
 
-/** GET — lista de empleados, para el desplegable "Responsable" del presupuesto inmediato ("Aceptar ahora"). */
-export async function GET() {
+/**
+ * GET — lista de empleados, para el desplegable "Responsable" del
+ * presupuesto inmediato ("Aceptar ahora") y para la lista de usuarios de
+ * Configuración (?todos=1 incluye también los inactivos, solo para esa
+ * vista de administrador).
+ */
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
+  const todos = new URL(req.url).searchParams.get("todos") === "1";
+
   try {
-    const data = await kelatosApiGet<{ ok: boolean; rows: FilaEmpleadoSql[] }>("/v1/empleados", { activo: true, limit: 200 });
+    const data = await kelatosApiGet<{ ok: boolean; rows: FilaEmpleadoSql[] }>(
+      "/v1/empleados",
+      todos ? { limit: 500, order: "nombre" } : { activo: true, limit: 200 }
+    );
     const empleados: Empleado[] = data.rows.map((row) => ({
       empleadoId: row.empleado_id,
       nombre: row.nombre,

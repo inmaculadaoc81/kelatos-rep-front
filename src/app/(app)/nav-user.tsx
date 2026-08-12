@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import type { Session } from "next-auth";
 import { MoreCircle, Profile, Setting2, Logout, ShieldTick } from "@/lib/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -46,7 +47,7 @@ export function NavUser({ session }: { session: Session | null }) {
             <SidebarMenuButton
               size="lg"
               tooltip={nombre}
-              className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
+              className="data-popup-open:bg-sidebar-primary/15 data-popup-open:text-sidebar-primary"
               render={<DropdownMenuTrigger />}
             >
               <Avatar size="sm" className="rounded-md">
@@ -87,10 +88,16 @@ export function NavUser({ session }: { session: Session | null }) {
                 <Profile /> Mi perfil
                 <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <Setting2 /> Configuración
-                <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
-              </DropdownMenuItem>
+              {esAdmin ? (
+                <DropdownMenuItem render={<Link href="/configuracion" />}>
+                  <Setting2 /> Configuración
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem disabled>
+                  <Setting2 /> Configuración
+                  <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"

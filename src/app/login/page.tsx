@@ -28,14 +28,7 @@ export default async function LoginPage({
             </p>
           </>
         ) : (
-          <>
-            <div className="mb-4 text-4xl">🔒</div>
-            <h2 className="mb-2 text-xl font-semibold">Acceso restringido</h2>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Esta herramienta es solo para uso interno de Kelatos. Necesitas iniciar sesión con
-              tu cuenta de Google.
-            </p>
-          </>
+          <h2 className="mb-6 text-xl font-semibold">Iniciar sesión</h2>
         )}
         <form
           action={async () => {

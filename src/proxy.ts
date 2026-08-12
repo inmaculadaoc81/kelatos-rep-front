@@ -14,6 +14,10 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     return NextResponse.redirect(loginUrl);
   }
+  // Configuración (lista de usuarios) es solo para el Administrador.
+  if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
 });
 
 export const config = {
