@@ -21,12 +21,29 @@ import type { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { FacturaModalShell } from "../reparaciones/factura-modal-shell";
 import type { TipoFacturaBase } from "../reparaciones/factura-acciones-tabs";
 
-const TIPO_BASE_POR_TIPO_FACTURA: Partial<Record<FacturaCliente["tipo"], TipoFacturaBase>> = {
-  reparacion: "normal",
-  revision: "revision",
-  mensajeria: "mensajeria",
-  anticipo: "anticipo",
-};
+/**
+ * Resuelve a qué tipoBase corresponde una fila de la lista — para
+ * rectificativa/corregida hace falta tipoOriginal (reparación o revisión)
+ * porque ambas colapsan al mismo "tipo" visible en la lista, pero son
+ * documentos distintos (numero_factura_rectificativa vs. ..._revision).
+ * Alquiler/recogida/manual/venta no tienen un resguardo de reparación real
+ * (ALQ-xxx/MANUAL-xxx) — se quedan en la vista simple, fuera de alcance.
+ */
+function resolverTipoBase(factura: FacturaCliente): TipoFacturaBase | null {
+  // Alquiler también usa tipo:'rectificativa'/'alquiler' con su propio
+  // resguardo (ALQ-xxx, no un resguardo de reparación real) — nunca tiene
+  // el detalle completo que necesitan las pestañas.
+  if (factura.esAlquiler || factura.esManual) return null;
+  switch (factura.tipo) {
+    case "reparacion": return "normal";
+    case "revision": return "revision";
+    case "mensajeria": return "mensajeria";
+    case "anticipo": return "anticipo";
+    case "rectificativa": return factura.tipoOriginal === "revision" ? "rectificativa_revision" : "rectificativa";
+    case "corregida": return factura.tipoOriginal === "revision" ? "corregida_revision" : "corregida";
+    default: return null;
+  }
+}
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -42,11 +59,12 @@ function Fila({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode })
 }
 
 /**
- * Reproduce abrirModalFcAcciones() del original — para tipo 'reparacion'/
- * 'revision' muestra las 3 pestañas completas (PDF/Enviar, Devolución,
- * Rectificativo), igual que el modal #modalFcAcciones. Para el resto de
- * tipos (mensajería, anticipo, alquiler, recogida, manual, venta) se
- * mantiene la vista reducida de solo lectura — fuera de alcance por ahora.
+ * Reproduce abrirModalFcAcciones() del original. reparación/revisión/
+ * mensajería tienen las 3 pestañas completas; anticipo/rectificativa/
+ * corregida solo PDF/Enviar (igual que _esRect en _mfaRenderResumen: un
+ * documento que ya es una rectificativa o corregida no encadena su propia
+ * devolución). Alquiler/recogida/manual/venta se quedan en la vista
+ * reducida de solo lectura — fuera de alcance por ahora.
  */
 export function DetalleFacturaDialog({
   factura,
@@ -59,7 +77,7 @@ export function DetalleFacturaDialog({
 }) {
   if (!factura) return null;
 
-  const tipoBase = TIPO_BASE_POR_TIPO_FACTURA[factura.tipo];
+  const tipoBase = resolverTipoBase(factura);
   if (tipoBase) {
     return (
       <DetalleFacturaConTabs

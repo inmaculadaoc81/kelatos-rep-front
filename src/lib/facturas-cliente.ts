@@ -65,8 +65,10 @@ export interface FacturaCliente {
   numero: string;
   url: string;
   tipo: TipoFactura;
-  /** Solo para tipo:'corregida' — de qué factura original viene, para
-      mostrar "Revisión Pagada" o "Reparación" en el badge de tipo. */
+  /** Solo para tipo:'rectificativa'/'corregida' — de qué factura original
+      viene (reparación o revisión), para resolver a qué documento
+      (numero_factura_rectificativa vs. ..._revision, etc.) corresponde
+      realmente esta fila. */
   tipoOriginal?: "reparacion" | "revision";
   esAlquiler?: boolean;
   esManual?: boolean;
@@ -329,6 +331,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       banco: "",
       estadoFactura: texto(row.estado_factura_rectificativa),
       tipo: "rectificativa",
+      tipoOriginal: "reparacion",
     });
   }
   const numRectRev = texto(row.numero_factura_rectificativa_revision);
@@ -348,6 +351,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       banco: "",
       estadoFactura: texto(row.estado_factura_rectificativa),
       tipo: "rectificativa",
+      tipoOriginal: "revision",
     });
   }
 

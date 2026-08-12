@@ -15,7 +15,9 @@ import { toast } from "sonner";
 import type { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import type { LineaFactura } from "@/lib/factura";
 
-export type TipoFacturaBase = "normal" | "revision" | "mensajeria" | "anticipo";
+export type TipoFacturaBase =
+  | "normal" | "revision" | "mensajeria" | "anticipo"
+  | "rectificativa" | "rectificativa_revision" | "corregida" | "corregida_revision";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -25,14 +27,18 @@ const METODOS_PAGO = [
 ];
 const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 
-// Mismos colores/etiquetas que tipoBadgeMap en _mfaRenderResumen (Index.html) —
-// no hay entrada de "corregida" en el original tampoco, la insignia siempre
-// refleja el tipo BASE del documento (reparación/revisión/mensajería/anticipo).
-export const TIPO_BADGE: Record<TipoFacturaBase, { label: string; className: string }> = {
+// Mismos colores/etiquetas que tipoBadgeMap en _mfaRenderResumen (Index.html)
+// — "corregida" tampoco tiene entrada ahí (tipoBadgeMap[tipo] || '' queda en
+// blanco), se replica exactamente: sin insignia para corregida/corregida_revision.
+export const TIPO_BADGE: Record<TipoFacturaBase, { label: string; className: string } | null> = {
   normal: { label: "Reparación", className: "bg-[#0d6efd] text-white" },
   revision: { label: "Revisión Pagada", className: "bg-[#fd7e14] text-white" },
   mensajeria: { label: "Mensajería", className: "bg-[#0dcaf0] text-black" },
   anticipo: { label: "Anticipo", className: "bg-secondary text-secondary-foreground" },
+  rectificativa: { label: "Rectificativa", className: "bg-destructive text-white" },
+  rectificativa_revision: { label: "Rectificativa", className: "bg-destructive text-white" },
+  corregida: null,
+  corregida_revision: null,
 };
 
 // Igual que _mfaRenderResumen(): el total de cabecera siempre se muestra CON
@@ -80,6 +86,38 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       totalConIva: detalle.anticipoImporte * 1.21,
       clienteNombre: detalle.cliente.nombre || "",
       clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: null, corregida: null,
+      tipoRect: "", tipoCorr: "", tipoCombinado: "",
+      permiteDevolucion: false,
+    };
+  }
+  // Rectificativa/corregida vistas directamente desde su propia fila en la
+  // lista — igual que _esRect en _mfaRenderResumen: un documento que YA es
+  // una rectificativa o una corregida no puede tener su propia devolución
+  // ni rectificativa (sin encadenar). Solo PDF/Enviar queda disponible.
+  if (tipoBase === "rectificativa" || tipoBase === "rectificativa_revision") {
+    const doc = tipoBase === "rectificativa_revision" ? detalle.rectificativaRevision : detalle.rectificativa;
+    return {
+      numeroFactura: doc?.numeroFactura || "",
+      urlFactura: doc?.urlFactura || "",
+      totalConIva: (doc?.totalFactura || 0) * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: null, corregida: null,
+      tipoRect: "", tipoCorr: "", tipoCombinado: "",
+      permiteDevolucion: false,
+    };
+  }
+  if (tipoBase === "corregida" || tipoBase === "corregida_revision") {
+    const doc = tipoBase === "corregida_revision" ? detalle.corregidaRevision : detalle.corregida;
+    return {
+      numeroFactura: doc?.numeroFactura || "",
+      urlFactura: doc?.urlFactura || "",
+      totalConIva: (doc?.totalFactura || 0) * 1.21,
+      clienteNombre: detalle.clienteFacturaCorregida?.nombre || detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.clienteFacturaCorregida?.email || detalle.cliente.email || "",
       lineasOriginales: [],
       rectificativa: null, corregida: null,
       tipoRect: "", tipoCorr: "", tipoCombinado: "",
@@ -144,7 +182,7 @@ export function FacturaAccionesTabs({
           urlFactura={d.urlFactura}
           totalFactura={d.totalConIva}
           clienteEmailDefault={d.clienteEmailDefault}
-          motivoRectificativa={detalle.motivoRectificativa}
+          motivoRectificativa={tipoBase === "rectificativa" || tipoBase === "rectificativa_revision" ? detalle.motivoRectificativa : ""}
           esDevolucionEsteDocumento={false}
         />
       </TabsContent>

@@ -40,7 +40,7 @@ export function FacturaModalShell({
               <div className="mb-1 flex items-center gap-2">
                 <Receipt className="size-4.5 shrink-0" />
                 <DialogTitle className="text-sm font-bold text-primary-foreground">{d.numeroFactura || "Factura"}</DialogTitle>
-                <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", badge.className)}>{badge.label}</span>
+                {badge && <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", badge.className)}>{badge.label}</span>}
               </div>
               <p className="truncate text-xs text-primary-foreground/70">{d.clienteNombre || "Sin nombre"}</p>
             </div>
