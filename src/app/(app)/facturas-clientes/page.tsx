@@ -19,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -404,8 +403,10 @@ export default function FacturasClientesPage() {
     }
   }
 
+  const filtroFechaEsRapido = /^(todas|hoy|semana|mes)$/.test(filtroFecha);
+
   return (
-    <div className="mx-auto max-w-[110rem] p-6">
+    <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Receipt className="size-5 text-primary" />
@@ -422,158 +423,164 @@ export default function FacturasClientesPage() {
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-[13rem_1fr]">
-        {/* ── Filtro lateral ── */}
-        <div className="h-fit rounded-lg border bg-card p-3 shadow-sm">
-          <p className="mb-1 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Series</p>
-          <Select
-            value={filtroSerie}
-            onValueChange={(v) => {
-              setFiltroSerie(v as typeof filtroSerie);
-              setPagina(1);
-            }}
-          >
-            <SelectTrigger className="mb-3 h-8 w-full text-xs">
-              <SelectValue>
-                {(v: string) => (v === "1" ? "Serie 1 — Cobros" : v === "3" ? "Serie 3 — Rectificativas" : v === "alquiler" ? "Alquiler" : "Todas")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
-              <SelectItem value="1">Serie 1 — Cobros</SelectItem>
-              <SelectItem value="3">Serie 3 — Rectificativas</SelectItem>
-              <SelectItem value="alquiler">Alquiler</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <p className="mb-2 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Estados</p>
-          <div className="mb-3 flex flex-col gap-1.5">
-            {(
-              [
-                ["Pendientes", estPend, setEstPend, ESTADO_ESTILO.Pendiente],
-                ["Cobradas", estCobr, setEstCobr, ESTADO_ESTILO.Cobrada],
-                ["Anuladas", estAnul, setEstAnul, ESTADO_ESTILO.Anulada],
-                ["Devoluciones", estDevol, setEstDevol, ESTADO_ESTILO["Devolución"]],
-              ] as const
-            ).map(([label, valor, setValor, estilo]) => (
-              <label key={label} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={valor}
-                  onCheckedChange={(c) => {
-                    setValor(c === true);
-                    setPagina(1);
-                  }}
-                />
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
-                  style={{ backgroundColor: estilo.bg, color: estilo.color }}
-                >
-                  {label}
-                  <span className="inline-block size-2 rounded-[2px]" style={estilo.dot ? { backgroundColor: estilo.dot } : { border: "1.5px solid #6c757d" }} />
-                </span>
-              </label>
-            ))}
+      {/* ── Barra de filtros (antes en un panel lateral) ── */}
+      <div className="mb-4 space-y-3 rounded-lg border bg-card p-3 shadow-sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="relative">
+            <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre, email o DNI / NIE / CIF…"
+              className="w-64 pl-7"
+              value={busqueda}
+              onChange={(e) => {
+                setBusqueda(e.target.value);
+                setPagina(1);
+              }}
+            />
           </div>
 
-          <hr className="my-2" />
-          <p className="mb-1 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Ref / Banco</p>
-          <Select
-            value={filtroBanco || "__todos__"}
-            onValueChange={(v) => {
-              setFiltroBanco(!v || v === "__todos__" ? "" : v);
-              setPagina(1);
-            }}
-          >
-            <SelectTrigger className="mb-3 h-8 w-full text-xs">
-              <SelectValue>{(v: string) => (v === "__todos__" ? "Todos" : v)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__todos__">Todos</SelectItem>
-              {BANCOS.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div>
+            <p className="mb-1 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Series</p>
+            <Select
+              value={filtroSerie}
+              onValueChange={(v) => {
+                setFiltroSerie(v as typeof filtroSerie);
+                setPagina(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-44 text-xs">
+                <SelectValue>
+                  {(v: string) => (v === "1" ? "Serie 1 — Cobros" : v === "3" ? "Serie 3 — Rectificativas" : v === "alquiler" ? "Alquiler" : "Todas")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="1">Serie 1 — Cobros</SelectItem>
+                <SelectItem value="3">Serie 3 — Rectificativas</SelectItem>
+                <SelectItem value="alquiler">Alquiler</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <hr className="my-2" />
-          <p className="mb-2 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Recientes</p>
-          <RadioGroup
-            value={/^(todas|hoy|semana|mes)$/.test(filtroFecha) ? filtroFecha : ""}
-            onValueChange={(v) => {
-              setFiltroFecha(v as FiltroFecha);
-              setPagina(1);
-            }}
-            className="flex flex-col gap-1.5"
-          >
-            {[
-              ["todas", "Todas"],
-              ["hoy", "Hoy"],
-              ["semana", "Última semana"],
-              ["mes", "Último mes"],
-            ].map(([v, label]) => (
-              <label key={v} className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value={v} />
-                {label}
-              </label>
-            ))}
-          </RadioGroup>
+          <div>
+            <p className="mb-1 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Ref / Banco</p>
+            <Select
+              value={filtroBanco || "__todos__"}
+              onValueChange={(v) => {
+                setFiltroBanco(!v || v === "__todos__" ? "" : v);
+                setPagina(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue>{(v: string) => (v === "__todos__" ? "Todos" : v)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__todos__">Todos</SelectItem>
+                {BANCOS.map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {b}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <p className="mb-1 text-[.7rem] font-bold tracking-wider text-muted-foreground uppercase">Estados</p>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["Pendientes", estPend, setEstPend, ESTADO_ESTILO.Pendiente],
+                  ["Cobradas", estCobr, setEstCobr, ESTADO_ESTILO.Cobrada],
+                  ["Anuladas", estAnul, setEstAnul, ESTADO_ESTILO.Anulada],
+                  ["Devoluciones", estDevol, setEstDevol, ESTADO_ESTILO["Devolución"]],
+                ] as const
+              ).map(([label, valor, setValor, estilo]) => (
+                <label key={label} className="flex items-center gap-1.5 text-sm">
+                  <Checkbox
+                    checked={valor}
+                    onCheckedChange={(c) => {
+                      setValor(c === true);
+                      setPagina(1);
+                    }}
+                  />
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{ backgroundColor: estilo.bg, color: estilo.color }}
+                  >
+                    {label}
+                    <span className="inline-block size-2 rounded-[2px]" style={estilo.dot ? { backgroundColor: estilo.dot } : { border: "1.5px solid #6c757d" }} />
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* ── Contenido principal ── */}
-        <div className="flex min-w-0 items-start gap-2">
-          {/* Franja de meses / trimestres */}
-          <div className="sticky top-3 flex shrink-0 flex-col gap-1">
-            {MESES.map((label, i) => (
-              <button
-                key={label}
-                type="button"
-                className={cn(
-                  "rounded-md border px-1 py-0.5 text-[.7rem] leading-tight",
-                  filtroFecha === `mes${i + 1}` ? "border-transparent bg-primary text-primary-foreground" : "border-input hover:bg-muted"
-                )}
-                onClick={() => {
-                  setFiltroFecha(`mes${i + 1}`);
-                  setPagina(1);
-                }}
-              >
-                {label}
-              </button>
-            ))}
-            <div className="my-0.5 border-t" />
-            {[1, 2, 3, 4].map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={cn(
-                  "rounded-md border px-1 py-0.5 text-[.7rem] leading-tight",
-                  filtroFecha === `trim${t}` ? "border-transparent bg-primary text-primary-foreground" : "border-input hover:bg-muted"
-                )}
-                onClick={() => {
-                  setFiltroFecha(`trim${t}`);
-                  setPagina(1);
-                }}
-              >
-                {t}T
-              </button>
-            ))}
-          </div>
+        {/* Fecha: rápidos + meses + trimestres, todo en una sola fila (antes
+            "Recientes" en el panel lateral + la franja de meses/trimestres
+            pegada al lateral de la tabla). */}
+        <div className="flex flex-wrap items-center gap-1 border-t pt-3">
+          {[
+            ["todas", "Todas"],
+            ["hoy", "Hoy"],
+            ["semana", "Última semana"],
+            ["mes", "Último mes"],
+          ].map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              className={cn(
+                "rounded-md border px-2 py-1 text-xs font-medium",
+                filtroFechaEsRapido && filtroFecha === v ? "border-transparent bg-primary text-primary-foreground" : "border-input hover:bg-muted"
+              )}
+              onClick={() => {
+                setFiltroFecha(v as FiltroFecha);
+                setPagina(1);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="mx-1 h-4 w-px bg-border" />
+          {MESES.map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              className={cn(
+                "rounded-md border px-2 py-1 text-xs font-medium",
+                filtroFecha === `mes${i + 1}` ? "border-transparent bg-primary text-primary-foreground" : "border-input hover:bg-muted"
+              )}
+              onClick={() => {
+                setFiltroFecha(`mes${i + 1}`);
+                setPagina(1);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="mx-1 h-4 w-px bg-border" />
+          {[1, 2, 3, 4].map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={cn(
+                "rounded-md border px-2 py-1 text-xs font-medium",
+                filtroFecha === `trim${t}` ? "border-transparent bg-primary text-primary-foreground" : "border-input hover:bg-muted"
+              )}
+              onClick={() => {
+                setFiltroFecha(`trim${t}`);
+                setPagina(1);
+              }}
+            >
+              {t}T
+            </button>
+          ))}
+        </div>
+      </div>
 
-          <div className="min-w-0 flex-1 space-y-3">
-            <div className="relative max-w-md">
-              <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre, email o DNI / NIE / CIF…"
-                className="pl-7"
-                value={busqueda}
-                onChange={(e) => {
-                  setBusqueda(e.target.value);
-                  setPagina(1);
-                }}
-              />
-            </div>
-
+      {/* ── Contenido principal ── */}
+      <div className="min-w-0 space-y-3">
             <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
               <div className="overflow-x-auto">
                 <Table>
@@ -729,8 +736,6 @@ export default function FacturasClientesPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
       </div>
 
       <DetalleFacturaDialog factura={facturaAcciones} onOpenChange={(o) => !o && setFacturaAcciones(null)} onCobrada={cargar} />
