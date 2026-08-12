@@ -49,7 +49,14 @@ export async function POST(req: Request) {
         numero_factura: datos.numeroFactura.trim(),
         metodo_pago: datos.metodoPago.trim(),
         observaciones: datos.observaciones.trim(),
-        items: datos.items.map((i) => ({ descripcion: i.descripcion.trim(), costo: i.costo, precio: i.precio, enlace: i.enlace.trim(), notas: i.notas.trim() })),
+        items: datos.items.map((i) => ({
+          descripcion: i.descripcion.trim(),
+          costo: i.costo,
+          precio: i.precio,
+          proveedor_id: i.proveedorId,
+          enlace: i.enlace.trim(),
+          notas: i.notas.trim(),
+        })),
       }
     );
 

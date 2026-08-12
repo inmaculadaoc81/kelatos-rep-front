@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Add, Trash, ShoppingCart } from "@/lib/icons";
 import {
   Dialog,
@@ -16,21 +16,34 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { DatosNuevaVenta, ItemVentaForm } from "@/lib/ventas";
+import type { Proveedor } from "@/app/api/proveedores/route";
+
+const METODOS_PAGO = ["Efectivo", "Tarjeta", "Bizum", "Transferencia"];
+const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 
 function vacio(): DatosNuevaVenta {
-  return { esGarantia: false, clienteNombre: "", clienteTelefono: "", clienteEmail: "", numeroFactura: "", metodoPago: "", observaciones: "", items: [] };
+  return { esGarantia: false, clienteNombre: "", clienteTelefono: "", clienteEmail: "", numeroFactura: "", metodoPago: "", banco: "", observaciones: "", items: [] };
 }
 
 function itemVacio(): ItemVentaForm {
-  return { descripcion: "", costo: 0, precio: 0, enlace: "", notas: "" };
+  return { descripcion: "", costo: 0, precio: 0, proveedorId: "", enlace: "", notas: "" };
 }
 
 export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   const [open, setOpen] = useState(false);
   const [datos, setDatos] = useState<DatosNuevaVenta>(vacio());
   const [enviando, setEnviando] = useState(false);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+
+  useEffect(() => {
+    fetch("/api/proveedores")
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setProveedores(data.proveedores); })
+      .catch(() => {});
+  }, []);
 
   function actualizar<K extends keyof DatosNuevaVenta>(campo: K, valor: DatosNuevaVenta[K]) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
@@ -43,9 +56,20 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   const totalPrecio = datos.esGarantia ? 0 : datos.items.reduce((s, i) => s + (Number(i.precio) || 0), 0);
 
   async function guardar() {
-    if (!datos.esGarantia && !datos.numeroFactura.trim()) return toast.error("El número de factura es obligatorio");
-    if (datos.items.length === 0) return toast.error("Añade al menos un item");
-    if (datos.items.some((i) => !i.descripcion.trim())) return toast.error("Todos los items deben tener descripción");
+    if (!datos.clienteNombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    if (!datos.esGarantia) {
+      if (!datos.numeroFactura.trim()) return toast.error("El número de factura es obligatorio");
+      if (!datos.metodoPago) return toast.error("Selecciona el método de pago");
+      if (datos.metodoPago === "Tarjeta" && !datos.banco) return toast.error("Selecciona el banco");
+    }
+    if (datos.items.length === 0) return toast.error("Añade al menos una pieza");
+    for (const it of datos.items) {
+      if (!it.descripcion.trim()) return toast.error("Todas las piezas deben tener descripción");
+      if (!it.costo || it.costo <= 0) return toast.error("El costo es obligatorio en todas las piezas");
+      if (!datos.esGarantia && (!it.precio || it.precio <= 0)) return toast.error("El precio es obligatorio en todas las piezas");
+      if (!it.proveedorId) return toast.error("El proveedor es obligatorio en todas las piezas");
+      if (!it.enlace.trim()) return toast.error("El enlace es obligatorio en todas las piezas");
+    }
 
     setEnviando(true);
     try {
@@ -104,32 +128,48 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                     <Input id="numeroFacturaVenta" value={datos.numeroFactura} onChange={(e) => actualizar("numeroFactura", e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="metodoPagoVenta">Método de pago</Label>
-                    <Input id="metodoPagoVenta" value={datos.metodoPago} onChange={(e) => actualizar("metodoPago", e.target.value)} />
+                    <Label>Método de pago *</Label>
+                    <Select value={datos.metodoPago} onValueChange={(v) => { actualizar("metodoPago", v || ""); if (v !== "Tarjeta") actualizar("banco", ""); }}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+                      <SelectContent>
+                        {METODOS_PAGO.map((m) => <SelectItem key={m} value={m}>{m === "Tarjeta" ? "Tarjeta bancaria" : m}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {datos.metodoPago === "Tarjeta" && (
+                    <div className="space-y-1.5">
+                      <Label>Banco *</Label>
+                      <Select value={datos.banco} onValueChange={(v) => actualizar("banco", v || "")}>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                        <SelectContent>
+                          {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </>
               )}
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Items</Label>
+                <Label>Piezas</Label>
                 <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => actualizar("items", [...datos.items, itemVacio()])}>
-                  <Add className="size-3.5" /> Añadir item
+                  <Add className="size-3.5" /> Agregar Pieza
                 </Button>
               </div>
-              {datos.items.length === 0 && <p className="text-xs text-muted-foreground">Sin items.</p>}
+              {datos.items.length === 0 && <p className="text-xs text-muted-foreground">Sin piezas.</p>}
               <div className="space-y-2">
                 {datos.items.map((it, i) => (
                   <div key={i} className="grid grid-cols-2 gap-2 rounded-md border p-2 sm:grid-cols-5">
                     <Input
                       className="col-span-2"
-                      placeholder="Descripción"
+                      placeholder="Descripción *"
                       value={it.descripcion}
                       onChange={(e) => actualizarItem(i, "descripcion", e.target.value)}
                     />
-                    <Input type="number" placeholder="Costo" step="0.01" value={it.costo} onChange={(e) => actualizarItem(i, "costo", parseFloat(e.target.value) || 0)} />
-                    <Input type="number" placeholder="Precio" step="0.01" value={it.precio} onChange={(e) => actualizarItem(i, "precio", parseFloat(e.target.value) || 0)} />
+                    <Input type="number" placeholder="Costo *" step="0.01" value={it.costo} onChange={(e) => actualizarItem(i, "costo", parseFloat(e.target.value) || 0)} />
+                    <Input type="number" placeholder="Precio *" step="0.01" value={it.precio} onChange={(e) => actualizarItem(i, "precio", parseFloat(e.target.value) || 0)} />
                     <Button
                       size="icon"
                       variant="ghost"
@@ -138,9 +178,15 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                     >
                       <Trash className="size-4" />
                     </Button>
+                    <Select value={it.proveedorId} onValueChange={(v) => actualizarItem(i, "proveedorId", v || "")}>
+                      <SelectTrigger className="col-span-2 w-full sm:col-span-2"><SelectValue placeholder="Proveedor *" /></SelectTrigger>
+                      <SelectContent>
+                        {proveedores.map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                     <Input
-                      className="col-span-2 sm:col-span-5"
-                      placeholder="Enlace de compra"
+                      className="col-span-2 sm:col-span-3"
+                      placeholder="Enlace de compra *"
                       value={it.enlace}
                       onChange={(e) => actualizarItem(i, "enlace", e.target.value)}
                     />

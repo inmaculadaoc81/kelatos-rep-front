@@ -1,8 +1,24 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { kelatosApiPost } from "@/lib/kelatos-api";
+import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearVenta, DatosEditarVenta } from "@/lib/ventas";
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ ventaId: string }> }
+) {
+  const { ventaId } = await params;
+  try {
+    const resultado = await kelatosApiGet<{ ok: boolean; venta: Parameters<typeof mapearVenta>[0]; items: Parameters<typeof mapearVenta>[1] }>(
+      `/v1/lecturas/ventas/${encodeURIComponent(ventaId)}`
+    );
+    return NextResponse.json({ ok: true, venta: mapearVenta(resultado.venta, resultado.items) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ ok: false, error: message }, { status: 502 });
+  }
+}
 
 export async function PATCH(
   req: Request,

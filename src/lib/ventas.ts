@@ -75,7 +75,7 @@ interface FilaItemVentaSql {
   notas: string | null;
 }
 
-function mapearItem(row: FilaItemVentaSql): ItemVenta {
+export function mapearItem(row: FilaItemVentaSql): ItemVenta {
   return {
     itemId: row.item_id,
     ventaId: row.venta_id,
@@ -118,6 +118,7 @@ export interface ItemVentaForm {
   descripcion: string;
   costo: number;
   precio: number;
+  proveedorId: string;
   enlace: string;
   notas: string;
 }
@@ -129,6 +130,7 @@ export interface DatosNuevaVenta {
   clienteEmail: string;
   numeroFactura: string;
   metodoPago: string;
+  banco: string;
   observaciones: string;
   items: ItemVentaForm[];
 }
@@ -140,4 +142,57 @@ export interface DatosEditarVenta {
   observaciones: string;
   estado: string;
   estadoPago: string;
+}
+
+/** Reproduce _badgeEstadoVenta() del original — "Garantía" (estado_pago,
+    no `estado`) manda sobre el estado normal del pedido, y "Pieza
+    Pendiente" se relabela a "Pedido Pendiente" solo para mostrar. */
+export const ESTILO_ESTADO_VENTA: Record<string, { bg: string; color?: string }> = {
+  "Pieza Pendiente": { bg: "#fd7e14" },
+  "En Tránsito": { bg: "#ffc107", color: "#212529" },
+  "Pieza Recibida": { bg: "#20c997" },
+  Entregado: { bg: "#28a745" },
+  Cancelado: { bg: "#dc3545" },
+  Garantía: { bg: "#0d6efd" },
+};
+
+export function estadoVentaMostrado(venta: Pick<Venta, "estado" | "estadoPago">): { estado: string; texto: string; estilo: { bg: string; color?: string } } {
+  const estado = venta.estadoPago === "Garantía" ? "Garantía" : venta.estado || "Pieza Pendiente";
+  const texto = estado === "Pieza Pendiente" ? "Pedido Pendiente" : estado;
+  return { estado, texto, estilo: ESTILO_ESTADO_VENTA[estado] || { bg: "#6c757d" } };
+}
+
+export const ESTILO_ESTADO_ITEM_VENTA: Record<string, { bg: string; color?: string }> = {
+  "Pieza Pendiente": { bg: "#fd7e14" },
+  "En Tránsito": { bg: "#ffc107", color: "#212529" },
+  "Pieza Recibida": { bg: "#20c997" },
+  Problema: { bg: "#dc3545" },
+};
+
+export interface DatosNuevoItem {
+  descripcion: string;
+  costo: number;
+  precio: number;
+  proveedorId: string;
+  enlace: string;
+}
+
+export interface DatosEditarItem {
+  descripcion: string;
+  costo: number;
+  precio: number;
+}
+
+export interface DatosRegistrarPedido {
+  proveedorId: string;
+  numeroPedido: string;
+  fechaEstimada: string;
+  enlace: string;
+}
+
+/** Reproduce `numsPedido.join(', ')` de renderizarTablaVentas() — una venta
+    puede tener varias piezas pedidas a la vez, cada una con su propio nº. */
+export function numerosPedidoDeVenta(venta: Pick<Venta, "items">): string {
+  const nums = venta.items.map((i) => i.numeroPedido).filter(Boolean);
+  return nums.length ? nums.join(", ") : "-";
 }

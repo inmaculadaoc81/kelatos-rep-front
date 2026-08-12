@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, Edit2 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Edit2, Eye } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,18 +15,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Venta } from "@/lib/ventas";
+import { Venta, estadoVentaMostrado, numerosPedidoDeVenta } from "@/lib/ventas";
 import { NuevoPedidoDialog } from "./nuevo-pedido-dialog";
 import { EditarVentaDialog } from "./editar-venta-dialog";
-
-const COLOR_ESTADO: Record<string, string> = {
-  "Pedido por Completar": "bg-slate-500/10 text-slate-600",
-  "Pieza Pendiente": "bg-amber-500/10 text-amber-600",
-  "En Tránsito": "bg-blue-500/10 text-blue-600",
-  "Pieza Recibida": "bg-cyan-500/10 text-cyan-600",
-  Entregado: "bg-green-500/10 text-green-600",
-  Cancelado: "bg-red-500/10 text-red-600",
-};
+import { DetalleVentaDialog } from "./detalle-venta-dialog";
 
 export default function VentasPage() {
   const [ventas, setVentas] = useState<Venta[]>([]);
@@ -35,6 +27,7 @@ export default function VentasPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [ventaEditando, setVentaEditando] = useState<Venta | null>(null);
+  const [ventaVerId, setVentaVerId] = useState<string | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -66,7 +59,7 @@ export default function VentasPage() {
         venta: v,
         total: v.items.reduce((s, i) => s + i.precio, 0),
         ganancia: v.items.reduce((s, i) => s + (i.precio - i.costo), 0),
-        numeroPedido: v.items.find((i) => i.numeroPedido)?.numeroPedido || "-",
+        numeroPedido: numerosPedidoDeVenta(v),
       })),
     [ventas]
   );
@@ -150,34 +143,41 @@ export default function VentasPage() {
             )}
 
             {!cargando &&
-              conTotales.map(({ venta: v, total, ganancia, numeroPedido }) => (
-                <TableRow key={v.ventaId}>
-                  <TableCell className="font-semibold">{v.ventaId}</TableCell>
-                  <TableCell className="text-sm">{v.fecha ? new Date(v.fecha).toLocaleDateString("es-ES") : "-"}</TableCell>
-                  <TableCell className="text-sm">
-                    <div>{v.clienteNombre || "-"}</div>
-                    <div className="text-xs text-muted-foreground">{v.clienteTelefono}</div>
-                  </TableCell>
-                  <TableCell className="text-sm">{v.items.length}</TableCell>
-                  <TableCell className="text-sm">{numeroPedido}</TableCell>
-                  <TableCell className="text-sm">{total.toFixed(2)} €</TableCell>
-                  <TableCell className="text-sm">{ganancia.toFixed(2)} €</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${COLOR_ESTADO[v.estado] || ""}`}>
-                      {v.estado}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-sm">{v.numeroFactura || "-"}</TableCell>
-                  <TableCell className="max-w-32 truncate text-sm text-muted-foreground" title={v.observaciones}>
-                    {v.observaciones || "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => setVentaEditando(v)}>
-                      <Edit2 className="size-3.5" /> Editar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              conTotales.map(({ venta: v, total, ganancia, numeroPedido }) => {
+                const estadoInfo = estadoVentaMostrado(v);
+                return (
+                  <TableRow key={v.ventaId} className="cursor-pointer" onClick={() => setVentaVerId(v.ventaId)}>
+                    <TableCell className="font-semibold">{v.ventaId}</TableCell>
+                    <TableCell className="text-sm">{v.fecha ? new Date(v.fecha).toLocaleDateString("es-ES") : "-"}</TableCell>
+                    <TableCell className="text-sm">
+                      <div>{v.clienteNombre || "-"}</div>
+                      <div className="text-xs text-muted-foreground">{v.clienteTelefono}</div>
+                      <div className="text-xs text-muted-foreground">{v.clienteEmail}</div>
+                    </TableCell>
+                    <TableCell className="text-sm">{v.items.length} pieza{v.items.length !== 1 ? "s" : ""}</TableCell>
+                    <TableCell className="text-sm">{numeroPedido}</TableCell>
+                    <TableCell className="text-sm">{total.toFixed(2)} €</TableCell>
+                    <TableCell className={`text-sm ${ganancia >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>{ganancia.toFixed(2)} €</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estadoInfo.estilo.bg, color: estadoInfo.estilo.color || "#fff" }}>
+                        {estadoInfo.texto}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">{v.numeroFactura || "-"}</TableCell>
+                    <TableCell className="max-w-32 truncate text-sm text-muted-foreground" title={v.observaciones}>
+                      {v.observaciones || "-"}
+                    </TableCell>
+                    <TableCell className="text-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <Button size="sm" variant="outline" className="mr-1 h-7 gap-1" onClick={() => setVentaVerId(v.ventaId)}>
+                        <Eye className="size-3.5" /> Ver
+                      </Button>
+                      <Button size="icon-sm" variant="ghost" title="Editar cabecera" onClick={() => setVentaEditando(v)}>
+                        <Edit2 className="size-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
       </div>
@@ -187,6 +187,7 @@ export default function VentasPage() {
       </Badge>
 
       <EditarVentaDialog venta={ventaEditando} open={ventaEditando !== null} onOpenChange={(o) => !o && setVentaEditando(null)} onGuardado={cargar} />
+      <DetalleVentaDialog ventaId={ventaVerId} open={ventaVerId !== null} onOpenChange={(o) => !o && setVentaVerId(null)} onActualizado={cargar} />
     </div>
   );
 }
