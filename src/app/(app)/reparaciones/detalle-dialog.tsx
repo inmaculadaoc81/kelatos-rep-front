@@ -8,6 +8,7 @@ import {
   Box,
   Printer,
   CloseCircle,
+  Trash,
   Receipt,
   ShieldTick,
   TickCircle,
@@ -25,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
+import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
+import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { separarSintoma } from "@/lib/progreso-reparacion";
@@ -250,6 +253,8 @@ export function DetalleReparacionDialog({
   const [editarPedidoAbierto, setEditarPedidoAbierto] = useState(false);
   const [recepcionAbierta, setRecepcionAbierta] = useState(false);
   const [imprimiendoResguardo, setImprimiendoResguardo] = useState(false);
+  const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const esSuperadmin = useEsSuperadmin();
 
   async function imprimirResguardo() {
     if (!resguardo || imprimiendoResguardo) return;
@@ -710,6 +715,11 @@ export function DetalleReparacionDialog({
         </div>
 
         <footer className="no-imprimir flex justify-end gap-2 border-t bg-muted/50 px-5 py-3">
+          {esSuperadmin && detalle && (
+            <Button variant="destructive" className="mr-auto gap-1.5" onClick={() => setEliminarAbierto(true)}>
+              <Trash className="size-4" /> Eliminar
+            </Button>
+          )}
           <Button variant="outline" className="gap-1.5" disabled={imprimiendoResguardo} onClick={imprimirResguardo}>
             <Printer className="size-4" /> {imprimiendoResguardo ? "Generando..." : "Imprimir resguardo"}
           </Button>
@@ -719,6 +729,18 @@ export function DetalleReparacionDialog({
         </footer>
         </ProveedorAnimacion>
       </DialogContent>
+
+      {detalle && (
+        <EliminarRegistroDialog
+          tipo="reparación"
+          id={detalle.resguardo}
+          apiUrl={`/api/reparaciones/${detalle.resguardo}`}
+          tieneFacturaReal={!!(detalle.numeroFactura || detalle.rectificativa?.numeroFactura || detalle.corregida?.numeroFactura)}
+          open={eliminarAbierto}
+          onOpenChange={setEliminarAbierto}
+          onEliminado={() => { onOpenChange(false); onActualizado?.(); }}
+        />
+      )}
 
       {detalle && (
         <>

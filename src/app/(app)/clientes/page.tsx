@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Refresh2, SearchNormal1, UserAdd, Edit2 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, UserAdd, Edit2, Trash } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import { Cliente } from "@/lib/clientes";
 import { ClienteFormDialog } from "./cliente-form-dialog";
+import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
+import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -23,6 +25,8 @@ export default function ClientesPage() {
   const [busqueda, setBusqueda] = useState("");
   const [formAbierto, setFormAbierto] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
+  const [clienteEliminando, setClienteEliminando] = useState<Cliente | null>(null);
+  const esSuperadmin = useEsSuperadmin();
 
   async function cargar(filtro?: string) {
     setCargando(true);
@@ -142,6 +146,16 @@ export default function ClientesPage() {
                     >
                       <Edit2 className="size-3.5" /> Editar
                     </Button>
+                    {esSuperadmin && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 text-destructive hover:text-destructive"
+                        onClick={() => setClienteEliminando(c)}
+                      >
+                        <Trash className="size-3.5" /> Eliminar
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -155,6 +169,17 @@ export default function ClientesPage() {
         onOpenChange={setFormAbierto}
         onGuardado={() => cargar(busqueda)}
       />
+
+      {clienteEliminando && (
+        <EliminarRegistroDialog
+          tipo="cliente"
+          id={clienteEliminando.codigo}
+          apiUrl={`/api/clientes/${clienteEliminando.codigo}`}
+          open={!!clienteEliminando}
+          onOpenChange={(o) => !o && setClienteEliminando(null)}
+          onEliminado={() => cargar(busqueda)}
+        />
+      )}
     </div>
   );
 }

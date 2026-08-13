@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
+import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
+import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { formatearFecha } from "@/lib/dias-entrega";
 import {
   Venta,
@@ -59,6 +61,8 @@ export function DetalleVentaDialog({
   onActualizado: () => void;
 }) {
   const confirmar = useConfirm();
+  const esSuperadmin = useEsSuperadmin();
+  const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [venta, setVenta] = useState<Venta | null>(null);
   const [cargando, setCargando] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -491,10 +495,27 @@ export function DetalleVentaDialog({
                 <CloseCircle className="size-3.5" /> Cancelar Venta
               </Button>
             )}
+            {venta && esSuperadmin && (
+              <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setEliminarAbierto(true)} disabled={enviando}>
+                <Trash className="size-3.5" /> Eliminar
+              </Button>
+            )}
           </div>
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={enviando}>Cerrar</Button>
         </footer>
       </DialogContent>
+
+      {venta && (
+        <EliminarRegistroDialog
+          tipo="venta"
+          id={venta.ventaId}
+          apiUrl={`/api/ventas/${venta.ventaId}`}
+          tieneFacturaReal={!!venta.numeroFactura}
+          open={eliminarAbierto}
+          onOpenChange={setEliminarAbierto}
+          onEliminado={() => { onOpenChange(false); onActualizado(); }}
+        />
+      )}
     </Dialog>
   );
 }

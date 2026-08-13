@@ -1,9 +1,12 @@
 "use client";
 
-import { Receipt, CloseCircle, Hashtag, Calendar, Money } from "@/lib/icons";
+import { useState } from "react";
+import { Receipt, CloseCircle, Hashtag, Calendar, Money, Trash } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
+import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import type { AlquilerFacturaDetalle } from "@/lib/alquiler-detalle";
 import { TabPdfEnviar, TabDevolucionRectificativo, euros } from "../reparaciones/factura-acciones-tabs";
 
@@ -40,6 +43,8 @@ export function AlquilerModalShell({
   onOpenChange: (open: boolean) => void;
   onActualizado: () => void;
 }) {
+  const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const esSuperadmin = useEsSuperadmin();
   const esHistorico = !!documentoHistorico;
   const numeroFactura = documentoHistorico?.numeroFactura || detalle.numeroFactura;
   const urlFactura = documentoHistorico?.urlFactura || detalle.urlFactura;
@@ -130,10 +135,25 @@ export function AlquilerModalShell({
           </Tabs>
         </div>
 
-        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
+        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
+          {esSuperadmin && !esHistorico && (
+            <Button variant="destructive" className="mr-auto gap-1.5" onClick={() => setEliminarAbierto(true)}>
+              <Trash className="size-4" /> Eliminar
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>
         </footer>
       </DialogContent>
+
+      <EliminarRegistroDialog
+        tipo="alquiler"
+        id={detalle.resguardo}
+        apiUrl={`/api/alquileres/${detalle.resguardo}`}
+        tieneFacturaReal={!!(detalle.numeroFactura || detalle.rectificativa?.numeroFactura || detalle.corregida?.numeroFactura)}
+        open={eliminarAbierto}
+        onOpenChange={setEliminarAbierto}
+        onEliminado={() => { onOpenChange(false); onActualizado(); }}
+      />
     </Dialog>
   );
 }

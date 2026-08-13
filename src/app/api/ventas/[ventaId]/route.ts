@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearVenta, DatosEditarVenta } from "@/lib/ventas";
 
+const SUPERADMIN_EMAIL = "kelatoscielo@gmail.com";
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ ventaId: string }> }
@@ -50,6 +52,33 @@ export async function PATCH(
     );
 
     return NextResponse.json({ ok: true, venta: mapearVenta(resultado.venta, []) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ ok: false, error: message }, { status: 502 });
+  }
+}
+
+/** Borrado real desde el dashboard — restringido al superadmin. */
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ ventaId: string }> }
+) {
+  const session = await auth();
+  const email = session?.user?.email?.toLowerCase() || "";
+  if (email !== SUPERADMIN_EMAIL) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+
+  const { ventaId } = await params;
+  const body = (await req.json().catch(() => ({}))) as { motivo?: string };
+  const motivo = typeof body.motivo === "string" ? body.motivo.trim() : "";
+  if (!motivo) return NextResponse.json({ ok: false, error: "El motivo es obligatorio" }, { status: 400 });
+
+  try {
+    const data = await kelatosApiPost<{ ok: boolean; eliminado: boolean; tieneFacturaReal: boolean }>(
+      `/v1/ventas/${encodeURIComponent(ventaId)}`,
+      { usuario: email, motivo },
+      "DELETE"
+    );
+    return NextResponse.json({ ok: true, eliminado: data.eliminado, tieneFacturaReal: data.tieneFacturaReal });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });

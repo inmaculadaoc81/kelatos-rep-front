@@ -1,9 +1,12 @@
 "use client";
 
-import { Receipt, CloseCircle, Hashtag, Calendar, Money } from "@/lib/icons";
+import { useState } from "react";
+import { Receipt, CloseCircle, Hashtag, Calendar, Money, Trash } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
+import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import type { FacturaManualDetalle } from "@/lib/factura-manual";
 import { TabPdfEnviar, TabDevolucionRectificativo, TabRectificativo, euros } from "../reparaciones/factura-acciones-tabs";
 
@@ -79,6 +82,8 @@ export function FacturaManualModalShell({
   onOpenChange: (open: boolean) => void;
   onActualizado: () => void;
 }) {
+  const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const esSuperadmin = useEsSuperadmin();
   const d = derivarDatosFacturaManual(detalle, vistaRectificativa);
   const apiBase = `/api/facturas-manuales/${detalle.resguardo}/facturas`;
   const fecha = detalle.fechaFactura ? new Date(detalle.fechaFactura).toLocaleDateString("es-ES") : "—";
@@ -179,10 +184,27 @@ export function FacturaManualModalShell({
           </Tabs>
         </div>
 
-        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
+        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
+          {esSuperadmin && !vistaRectificativa && (
+            <Button variant="destructive" className="mr-auto gap-1.5" onClick={() => setEliminarAbierto(true)}>
+              <Trash className="size-4" /> Eliminar
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>
         </footer>
       </DialogContent>
+
+      {!vistaRectificativa && (
+        <EliminarRegistroDialog
+          tipo="factura manual"
+          id={detalle.resguardo}
+          apiUrl={`/api/facturas-manuales/${detalle.resguardo}`}
+          tieneFacturaReal={!!(detalle.numeroFactura || detalle.rectificativa?.numeroFactura || detalle.corregida?.numeroFactura)}
+          open={eliminarAbierto}
+          onOpenChange={setEliminarAbierto}
+          onEliminado={() => { onOpenChange(false); onActualizado(); }}
+        />
+      )}
     </Dialog>
   );
 }
