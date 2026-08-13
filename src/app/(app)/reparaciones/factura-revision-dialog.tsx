@@ -87,7 +87,9 @@ function VistaGenerar({
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
   const [dni, setDni] = useState(detalle.dniCif || "");
   const [telefono, setTelefono] = useState(detalle.cliente.telefono || "");
-  const [importe, setImporte] = useState("20");
+  // El importe de la revisión es fijo (20€ s/IVA) — no editable, coincide
+  // con el precio de tienda anunciado al cliente.
+  const importe = "20";
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -132,6 +134,8 @@ function VistaGenerar({
             banco: metodo === "tarjeta" ? banco : "",
             lineas: [{ referencia: "REV-01", descripcion: "Revisión técnica del equipo", cantidad: 1, precio: parseFloat(importe) || 20 }],
             clienteOverrideProvisto: true,
+            // El cliente ya pagó al confirmar este modal — la factura nace cobrada, nunca pendiente.
+            estadoFactura: "Cobrada",
           },
         }),
       });
@@ -184,7 +188,7 @@ function VistaGenerar({
           <div className="grid grid-cols-[auto_1fr] gap-3">
             <div className="w-24 space-y-1.5">
               <Label htmlFor="frImporte">Importe (€ s/IVA)</Label>
-              <Input id="frImporte" type="number" min={0} step="0.01" value={importe} onChange={(e) => setImporte(e.target.value)} />
+              <Input id="frImporte" value={importe} disabled className="bg-muted" />
             </div>
             <div className="space-y-1.5">
               <Label>Método de pago</Label>
