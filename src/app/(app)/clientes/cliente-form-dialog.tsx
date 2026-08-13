@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UserAdd } from "@/lib/icons";
 import {
   Dialog,
@@ -49,6 +49,15 @@ export function ClienteFormDialog({
   const [datos, setDatos] = useState<ClienteFormData>(() => (clienteExistente ? desdeExistente(clienteExistente) : vacio()));
   const [enviando, setEnviando] = useState(false);
   const esEdicion = clienteExistente !== null;
+
+  // El diálogo se monta una sola vez y solo se abre/cierra (no se
+  // desmonta entre ediciones) — sin esto, el inicializador perezoso de
+  // useState de arriba solo corre en el montaje inicial, así que al
+  // editar un cliente distinto el formulario se quedaba con los datos
+  // del cliente anterior (o vacío, si el primer uso fue "Nuevo cliente").
+  useEffect(() => {
+    if (open) setDatos(clienteExistente ? desdeExistente(clienteExistente) : vacio());
+  }, [open, clienteExistente]);
 
   function actualizar<K extends keyof ClienteFormData>(campo: K, valor: string) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
