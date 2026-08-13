@@ -255,7 +255,7 @@ export function NuevoAlquilerDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-        <DialogContent className="max-w-3xl gap-0 p-0 sm:max-w-3xl" showCloseButton={false}>
+        <DialogContent className="max-w-6xl gap-0 p-0 sm:max-w-6xl" showCloseButton={false}>
           <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
             <TimerStart className="size-4.5 shrink-0" />
             <DialogTitle className="text-sm font-semibold text-primary-foreground">

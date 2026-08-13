@@ -90,7 +90,7 @@ export function FacturaManualModalShell({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
         <header className="rounded-t-xl bg-primary px-4 pt-3 pb-2 text-primary-foreground">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">

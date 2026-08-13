@@ -138,7 +138,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       <DialogTrigger className={buttonVariants({ size: "sm", className: "gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" })}>
         <ShoppingCart className="size-4" /> Nuevo Pedido
       </DialogTrigger>
-      <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
+      <DialogContent className="max-w-6xl gap-0 p-0 sm:max-w-6xl" showCloseButton={false}>
         <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-3 text-white">
           <ShoppingCart className="size-4.5 shrink-0" />
           <DialogTitle className="text-sm font-semibold text-white">Nuevo Pedido de Piezas</DialogTitle>
