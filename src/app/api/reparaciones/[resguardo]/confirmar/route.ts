@@ -9,6 +9,7 @@ interface RespuestaConfirmarFormulario {
   resguardo: string;
   reparacion: Record<string, unknown>;
   nuevoEstado: string;
+  duplicate?: boolean;
 }
 
 /** Mismo cálculo que /api/reparaciones/altas — ver ahí el porqué de cada rama (esCintasAceptarAhora sin mano de obra/piezas, etc.). */
@@ -89,6 +90,24 @@ export async function POST(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/formulario/confirmar`,
       body
     );
+
+    // Reproduce el paso posterior de _confirmarReparacionFormularioSql
+    // (Code.js, Fase 7-A.5): las "Notas adicionales" del presupuesto
+    // inmediato ("Aceptar ahora") también quedan como observación de la
+    // reparación, no solo en el presupuesto — antes lo hacía Apps Script
+    // como llamador de este mismo endpoint tras la confirmación; ahora que
+    // Next.js es el llamador, ese paso nunca se replicó. Best-effort, nunca
+    // bloquea la respuesta de confirmar.
+    const notasInmediato = esAceptarAhora ? datos.presupuestoInmediato?.notas?.trim() : "";
+    if (notasInmediato && resultado.duplicate !== true) {
+      try {
+        await kelatosApiPost(`/v1/reparaciones/${encodeURIComponent(resguardo)}/observaciones`, {
+          requestId: crypto.randomUUID(), usuario, texto: notasInmediato,
+        });
+      } catch (errorObs) {
+        console.error(`Error guardando notas como observación (confirmar formulario) ${resguardo}:`, errorObs);
+      }
+    }
 
     return NextResponse.json({ ok: true, reparacion: resultado.reparacion, nuevoEstado: resultado.nuevoEstado });
   } catch (error) {
