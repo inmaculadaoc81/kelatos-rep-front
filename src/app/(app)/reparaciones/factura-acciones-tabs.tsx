@@ -505,7 +505,11 @@ export function TabDevolucionRectificativo({
     const rid = requestId || crypto.randomUUID();
     setRequestId(rid);
     try {
-      const lineasNegadas = lineasOriginales.map((l) => ({ ...l, precio: -Math.abs(l.precio) }));
+      // -l.precio (no -Math.abs(l.precio)): una línea que ya era negativa en
+      // el original (p.ej. "Descuento revisión pagada", precio -20) debe
+      // pasar a +20 para cancelarse en la rectificativa, no quedarse en -20
+      // (que la sumaba dos veces en vez de anularla — bug real detectado).
+      const lineasNegadas = lineasOriginales.map((l) => ({ ...l, precio: -l.precio }));
       const res = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
