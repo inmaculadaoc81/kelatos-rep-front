@@ -245,19 +245,46 @@ export default function FormularioClientePage() {
             telefonoLocal = c.telefono.replace(/[^\d]/g, "");
           }
         }
-        // c.direccion es la dirección COMPLETA ya compuesta (vía + número +
-        // cp + localidad + provincia, ver route.ts) de un envío anterior —
-        // no un único campo "nombre de vía", así que no se reparte en
-        // viaTipo/viaNombre/viaNumero: hacerlo duplicaría cp/localidad/
-        // provincia en el próximo envío (compuestos otra vez desde sus
-        // propios campos). Solo se autocompletan los campos estructurados
-        // que sí son valores simples.
+        // c.direccion es la dirección COMPLETA ya compuesta por route.ts:
+        // "{viaTipo}, {viaNombre}, {viaNumero}, {cp}, {localidad}, {provincia}"
+        // (partes vacías omitidas). Como cp/localidad/provincia ya se
+        // conocen por separado, se les quita ese sufijo exacto de
+        // c.direccion para recuperar solo "{viaTipo}, {viaNombre},
+        // {viaNumero}" y repartirlo — así no hay que adivinar dónde
+        // termina la calle, y no se duplica nada en el siguiente envío
+        // porque siempre se reconstruye desde el dato guardado, nunca
+        // acumulando sobre un valor ya repartido antes.
+        let viaTipo = datos.viaTipo;
+        let viaNombre = datos.viaNombre;
+        let viaNumero = datos.viaNumero;
+        if (c.direccion) {
+          const sufijo = [c.cp, c.localidad, c.provincia].filter(Boolean).join(", ");
+          let calle = c.direccion.trim();
+          if (sufijo && calle.endsWith(sufijo)) {
+            calle = calle.slice(0, calle.length - sufijo.length).replace(/,\s*$/, "").trim();
+          }
+          const partes = calle.split(",").map((s) => s.trim()).filter(Boolean);
+          const TIPOS_VIA = ["Calle", "Avenida", "Plaza", "Paseo", "Carretera", "Camino", "Urbanización", "Otra"];
+          if (partes.length && TIPOS_VIA.includes(partes[0])) {
+            viaTipo = partes[0];
+            viaNombre = partes[1] || "";
+            viaNumero = partes[2] || "";
+          } else if (calle) {
+            // Dirección antigua sin un tipo de vía reconocible al principio
+            // (dato heredado) — se deja como nombre de vía en bruto, sin
+            // adivinar el tipo, mejor que perder el dato por completo.
+            viaNombre = calle;
+          }
+        }
         setDatos((prev) => ({
           ...prev,
           nombre: c.nombre || prev.nombre,
           telPrefijo,
           telefono: telefonoLocal,
           email: c.email || prev.email,
+          viaTipo,
+          viaNombre,
+          viaNumero,
           cp: c.cp || prev.cp,
           localidad: c.localidad || prev.localidad,
           provincia: c.provincia || prev.provincia,
