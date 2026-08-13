@@ -249,6 +249,26 @@ export function DetalleReparacionDialog({
   const [anticipoAbierto, setAnticipoAbierto] = useState(false);
   const [editarPedidoAbierto, setEditarPedidoAbierto] = useState(false);
   const [recepcionAbierta, setRecepcionAbierta] = useState(false);
+  const [imprimiendoResguardo, setImprimiendoResguardo] = useState(false);
+
+  async function imprimirResguardo() {
+    if (!resguardo || imprimiendoResguardo) return;
+    setImprimiendoResguardo(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/resguardo-html`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "No se pudo generar el resguardo");
+      const ventana = window.open("", "_blank");
+      if (!ventana) throw new Error("El navegador bloqueó la ventana de impresión");
+      ventana.document.write(data.html);
+      ventana.document.close();
+      ventana.onload = () => ventana.print();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setImprimiendoResguardo(false);
+    }
+  }
 
   function cargarDetalle() {
     if (!resguardo) return;
@@ -690,8 +710,8 @@ export function DetalleReparacionDialog({
         </div>
 
         <footer className="no-imprimir flex justify-end gap-2 border-t bg-muted/50 px-5 py-3">
-          <Button variant="outline" className="gap-1.5" onClick={() => window.print()}>
-            <Printer className="size-4" /> Imprimir resguardo
+          <Button variant="outline" className="gap-1.5" disabled={imprimiendoResguardo} onClick={imprimirResguardo}>
+            <Printer className="size-4" /> {imprimiendoResguardo ? "Generando..." : "Imprimir resguardo"}
           </Button>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Cerrar

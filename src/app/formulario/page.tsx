@@ -229,12 +229,35 @@ export default function FormularioClientePage() {
       const data = await res.json();
       if (data.ok && data.cliente) {
         const c = data.cliente as { nombre: string; telefono: string; email: string; direccion: string; cp: string; localidad: string; provincia: string };
+        // c.telefono viene guardado como "{prefijo} {número}" (ver
+        // /api/formulario-cliente route.ts) — solo se separa el prefijo si
+        // coincide con uno de los soportados, para no volver a prependerlo
+        // sobre el número guardado en el siguiente envío.
+        const PREFIJOS = ["+34", "+33", "+351", "+44", "+1"];
+        let telPrefijo = datos.telPrefijo;
+        let telefonoLocal = datos.telefono;
+        if (c.telefono) {
+          const partes = c.telefono.trim().split(/\s+/);
+          if (partes.length > 1 && PREFIJOS.includes(partes[0])) {
+            telPrefijo = partes[0];
+            telefonoLocal = partes.slice(1).join("").replace(/[^\d]/g, "");
+          } else {
+            telefonoLocal = c.telefono.replace(/[^\d]/g, "");
+          }
+        }
+        // c.direccion es la dirección COMPLETA ya compuesta (vía + número +
+        // cp + localidad + provincia, ver route.ts) de un envío anterior —
+        // no un único campo "nombre de vía", así que no se reparte en
+        // viaTipo/viaNombre/viaNumero: hacerlo duplicaría cp/localidad/
+        // provincia en el próximo envío (compuestos otra vez desde sus
+        // propios campos). Solo se autocompletan los campos estructurados
+        // que sí son valores simples.
         setDatos((prev) => ({
           ...prev,
           nombre: c.nombre || prev.nombre,
-          telefono: c.telefono ? c.telefono.replace(/[^\d]/g, "") : prev.telefono,
+          telPrefijo,
+          telefono: telefonoLocal,
           email: c.email || prev.email,
-          viaNombre: c.direccion || prev.viaNombre,
           cp: c.cp || prev.cp,
           localidad: c.localidad || prev.localidad,
           provincia: c.provincia || prev.provincia,
