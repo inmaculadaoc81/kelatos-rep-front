@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 
-const ENTREGA_CERRADA = ["ENTREGADO", "ENVIO", "RECICLAJE"];
+export const ENTREGA_CERRADA = ["ENTREGADO", "ENVIO", "RECICLAJE"];
 
 /**
  * Reproduce el botón "Marcar Garantía" de la fila "Estado Actual" del

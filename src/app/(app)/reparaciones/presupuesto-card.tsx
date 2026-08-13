@@ -55,11 +55,16 @@ export function PresupuestoCard({
   resguardo,
   presupuesto: p,
   revisionPagada = false,
+  reparacionCerrada = false,
   onActualizado,
 }: {
   resguardo: string;
   presupuesto: Presupuesto;
   revisionPagada?: boolean;
+  /** El equipo ya salió del taller (entregado/enviado/reciclado) — no tiene
+      sentido aceptar/rechazar/anular/editar un presupuesto de una
+      reparación ya cerrada, solo queda "Ver detalles". */
+  reparacionCerrada?: boolean;
   onActualizado: () => void;
 }) {
   const [motivoAbierto, setMotivoAbierto] = useState<"rechazar" | "anular" | null>(null);
@@ -116,7 +121,7 @@ export function PresupuestoCard({
     }
   }
 
-  const acciones =
+  const acciones = reparacionCerrada ? null :
     p.estado === "enviado" ? (
       <>
         <Button size="sm" variant="outline" className="h-7 gap-1 text-emerald-600" disabled={enviando} onClick={() => ejecutar("aceptar")}>
@@ -132,7 +137,7 @@ export function PresupuestoCard({
       </Button>
     ) : null;
 
-  const accionesEdicion = editable ? (
+  const accionesEdicion = editable && !reparacionCerrada ? (
     <>
       <Button size="sm" variant="ghost" className="h-7 gap-1" disabled={enviando} onClick={() => setEditarAbierto(true)}>
         <Edit2 className="size-3.5" /> Editar

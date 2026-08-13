@@ -46,7 +46,7 @@ import { QrRecogidaDialog } from "./qr-recogida-dialog";
 import { ProgresoTimeline } from "./progreso-timeline";
 import { AccionRequerida } from "./accion-requerida";
 import { derivarEventoHistorial } from "./historial-evento";
-import { MarcarGarantiaBoton } from "./marcar-garantia-boton";
+import { MarcarGarantiaBoton, ENTREGA_CERRADA } from "./marcar-garantia-boton";
 import { FacturaRevisionBoton } from "./factura-revision-boton";
 import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
 import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
@@ -437,6 +437,9 @@ export function DetalleReparacionDialog({
   const sintoma = detalle ? separarSintoma(detalle.equipo.sintoma) : null;
   // Los cancelados no se listan, igual que en renderizarInfoDetallada().
   const pedidosVisibles = (detalle?.pedidos ?? []).filter((p) => p.estado !== "Cancelado");
+  // Con el equipo ya entregado no tiene sentido crear/anular presupuestos
+  // (la reparación está cerrada) — mismo criterio que MarcarGarantiaBoton.
+  const reparacionCerrada = !!detalle && ENTREGA_CERRADA.includes(detalle.estadoEntrega);
 
   return (
     <Dialog open={resguardo !== null} onOpenChange={onOpenChange}>
@@ -600,14 +603,16 @@ export function DetalleReparacionDialog({
                         titulo="Presupuestos"
                         cuenta={detalle.presupuestos.length}
                         accion={
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 gap-1.5"
-                            onClick={() => setNuevoPresupuestoAbierto(true)}
-                          >
-                            <DocumentText className="size-3.5" /> Nuevo
-                          </Button>
+                          !reparacionCerrada && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1.5"
+                              onClick={() => setNuevoPresupuestoAbierto(true)}
+                            >
+                              <DocumentText className="size-3.5" /> Nuevo
+                            </Button>
+                          )
                         }
                       >
                         {detalle.presupuestos.length === 0 ? (
@@ -620,6 +625,7 @@ export function DetalleReparacionDialog({
                                 resguardo={detalle.resguardo}
                                 presupuesto={p}
                                 revisionPagada={detalle.revisionPagada === "SI"}
+                                reparacionCerrada={reparacionCerrada}
                                 onActualizado={actualizarTodo}
                               />
                             ))}
