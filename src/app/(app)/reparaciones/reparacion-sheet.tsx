@@ -521,6 +521,14 @@ export function ReparacionSheet({
                             <AddCircle className="size-3.5" /> Añadir pieza
                           </Button>
                         </div>
+                        {datos.presupuestoInmediato.piezas.length > 0 && (
+                          <div className="hidden grid-cols-6 gap-2 px-2 sm:grid">
+                            <span className="col-span-2 text-xs font-medium text-muted-foreground">Descripción</span>
+                            <span className="text-xs font-medium text-muted-foreground">Tipo</span>
+                            <span className="text-xs font-medium text-muted-foreground">Costo (€)</span>
+                            <span className="text-xs font-medium text-muted-foreground">Precio cliente (€)</span>
+                          </div>
+                        )}
                         {datos.presupuestoInmediato.piezas.map((p, i) => (
                           <div key={i} className="grid grid-cols-2 gap-2 rounded-md border bg-card p-2 sm:grid-cols-6">
                             <Input className="col-span-2" placeholder="Descripción" value={p.descripcion} onChange={(e) => actualizarPieza(i, "descripcion", e.target.value)} />
@@ -531,8 +539,8 @@ export function ReparacionSheet({
                                 <SelectItem value="pedido">Por pedido</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Input type="number" placeholder="Costo" step="0.01" value={p.costo} onChange={(e) => actualizarPieza(i, "costo", parseFloat(e.target.value) || 0)} />
-                            <Input type="number" placeholder="Precio" step="0.01" value={p.precio} onChange={(e) => actualizarPieza(i, "precio", parseFloat(e.target.value) || 0)} />
+                            <Input type="number" placeholder="Costo (€)" step="0.01" value={p.costo} onChange={(e) => actualizarPieza(i, "costo", parseFloat(e.target.value) || 0)} />
+                            <Input type="number" placeholder="Precio cliente (€)" step="0.01" value={p.precio} onChange={(e) => actualizarPieza(i, "precio", parseFloat(e.target.value) || 0)} />
                             <Button type="button" size="icon" variant="ghost" className="text-destructive" onClick={() => quitarPieza(i)}>
                               <Trash className="size-4" />
                             </Button>
