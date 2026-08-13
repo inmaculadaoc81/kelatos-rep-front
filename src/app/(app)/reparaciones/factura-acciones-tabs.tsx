@@ -826,7 +826,7 @@ function FaseCorregida({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-      <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
+      <DialogContent className="max-w-5xl gap-0 p-0 sm:max-w-5xl" showCloseButton={false}>
         <CabeceraFactura titulo={`Factura Corregida — Ref. ${resguardo}`} onClose={() => onOpenChange(false)} />
 
         <ScrollArea className="max-h-[75vh]">

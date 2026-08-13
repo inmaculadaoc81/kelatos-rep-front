@@ -315,7 +315,7 @@ function VistaGenerada({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
+      <DialogContent className="max-w-5xl gap-0 p-0 sm:max-w-5xl" showCloseButton={false}>
         <CabeceraAzul titulo={`Factura — Ref. ${detalle.resguardo}`} onClose={() => onOpenChange(false)} />
 
         <ScrollArea className="max-h-[75vh]">
@@ -597,7 +597,7 @@ function VistaGenerar({
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
+      <DialogContent className="max-w-5xl gap-0 p-0 sm:max-w-5xl" showCloseButton={false}>
         <CabeceraAzul titulo={`Factura — Ref. ${detalle.resguardo}`} onClose={() => cerrar(false)} />
 
         <ScrollArea className="max-h-[75vh]">

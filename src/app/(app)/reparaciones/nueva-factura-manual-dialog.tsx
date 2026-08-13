@@ -138,7 +138,7 @@ export function NuevaFacturaManualDialog({
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
+      <DialogContent className="max-w-5xl gap-0 p-0 sm:max-w-5xl" showCloseButton={false}>
         <CabeceraFactura titulo="Nueva Factura Manual" onClose={() => cerrar(false)} />
 
         <ScrollArea className="max-h-[75vh]">
