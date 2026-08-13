@@ -20,6 +20,8 @@ import {
   Wallet,
   Edit2,
   Shop,
+  Video,
+  Profile,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,7 @@ export interface CallbacksAccion {
   onFacturarMensajeria: () => void;
   onNoCubiertoPorGarantia: () => void;
   onClienteSeLlevaAnticipo: () => void;
+  onClienteSeLoLlevo: () => void;
   onVerQr: () => void;
   onIniciarReparacion: () => void;
   onRegistrarPedido: () => void;
@@ -123,6 +126,17 @@ function describir(detalle: ReparacionDetalle): Accion | null {
   }
 
   if (estado === "Presupuesto Aceptado") {
+    // Reproduce la tarjeta "Listo para Digitalizar" (Index.html:12892-12913)
+    // — distinta de "Registrar Pedido de Pieza": las cintas no piden
+    // piezas, solo esperan turno de digitalización.
+    if (detalle.datosCintas) {
+      return {
+        tono: "success",
+        icono: Video,
+        titulo: "Listo para Digitalizar",
+        texto: "Presupuesto aceptado. Inicia la digitalización cuando el técnico esté disponible.",
+      };
+    }
     if (detalle.equipoEnLocal === "NO" && detalle.anticipoImporte > 0) {
       const importeFmt = detalle.anticipoImporte.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       return {
@@ -264,6 +278,19 @@ export function AccionRequerida({
       // el equipo NO está cubierto.
       <Button key="no-cubierto" size="sm" variant="outline" className="gap-1.5 text-muted-foreground" onClick={callbacks.onNoCubiertoPorGarantia}>
         <CloseCircle className="size-3.5" /> No cubierto por garantía
+      </Button>
+    );
+  }
+  // Reproduce los dos botones de la tarjeta "Listo para Digitalizar"
+  // (Index.html:12900-12906): iniciar digitalización o, si el cliente
+  // prefiere, llevarse el equipo mientras espera turno.
+  if (estado === "Presupuesto Aceptado" && detalle.datosCintas) {
+    botones.push(
+      <Button key="iniciar-digitalizacion" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onIniciarReparacion}>
+        <Video className="size-3.5" /> Iniciar Digitalización
+      </Button>,
+      <Button key="se-lo-llevo" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onClienteSeLoLlevo}>
+        <Profile className="size-3.5" /> Se llevó el equipo
       </Button>
     );
   }

@@ -19,7 +19,7 @@ export async function POST(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { resguardo } = await params;
-  const body = (await req.json()) as DatosMarcarEntregado | { accion: "punto_limpio" };
+  const body = (await req.json()) as DatosMarcarEntregado | { accion: "punto_limpio" } | { accion: "cliente_se_lleva"; observaciones: string };
 
   // Segunda acción del mismo endpoint del backend (enviarAPuntoLimpio del
   // original) — sin datos propios, a diferencia de marcar_entregado.
@@ -28,6 +28,22 @@ export async function POST(
       const resultado = await kelatosApiPost<RespuestaSalidas>(
         `/v1/reparaciones/${encodeURIComponent(resguardo)}/salidas`,
         { requestId: crypto.randomUUID(), usuario, accion: "punto_limpio" }
+      );
+      return NextResponse.json({ ok: true, reparacion: resultado.reparacion, diasTotales: resultado.diasTotales });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error desconocido";
+      return NextResponse.json({ ok: false, error: message }, { status: 502 });
+    }
+  }
+
+  // Reproduce guardarClienteSeLoLlevo()/apiClienteSeLoLlevo() — solo se
+  // reenvía "observaciones" (la fecha del picker no se persiste, ni
+  // siquiera en el original: kelatosApiEjecutarSalidaSql solo usa now()).
+  if ("accion" in body && body.accion === "cliente_se_lleva") {
+    try {
+      const resultado = await kelatosApiPost<RespuestaSalidas>(
+        `/v1/reparaciones/${encodeURIComponent(resguardo)}/salidas`,
+        { requestId: crypto.randomUUID(), usuario, accion: "cliente_se_lleva", datos: { observaciones: body.observaciones.trim() } }
       );
       return NextResponse.json({ ok: true, reparacion: resultado.reparacion, diasTotales: resultado.diasTotales });
     } catch (error) {

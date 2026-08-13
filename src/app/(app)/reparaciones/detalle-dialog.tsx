@@ -45,6 +45,7 @@ import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 import { QrRecogidaDialog } from "./qr-recogida-dialog";
 import { ProgresoTimeline } from "./progreso-timeline";
 import { AccionRequerida } from "./accion-requerida";
+import { ClienteSeLoLlevoDialog } from "./cliente-se-lo-llevo-dialog";
 import { derivarEventoHistorial } from "./historial-evento";
 import { MarcarGarantiaBoton, ENTREGA_CERRADA } from "./marcar-garantia-boton";
 import { FacturaRevisionBoton } from "./factura-revision-boton";
@@ -254,6 +255,7 @@ export function DetalleReparacionDialog({
   const [recepcionAbierta, setRecepcionAbierta] = useState(false);
   const [imprimiendoResguardo, setImprimiendoResguardo] = useState(false);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const [clienteSeLoLlevoAbierto, setClienteSeLoLlevoAbierto] = useState(false);
   const esSuperadmin = useEsSuperadmin();
 
   async function imprimirResguardo() {
@@ -555,6 +557,7 @@ export function DetalleReparacionDialog({
                   onFacturarMensajeria: () => setFacturarMensajeriaAbierto(true),
                   onNoCubiertoPorGarantia: noCubiertoPorGarantia,
                   onClienteSeLlevaAnticipo: () => setAnticipoAbierto(true),
+                  onClienteSeLoLlevo: () => setClienteSeLoLlevoAbierto(true),
                   onVerQr: () => setQrAbierto(true),
                   onIniciarReparacion: () => setIniciarReparacionAbierto(true),
                   onRegistrarPedido: () => setRegistrarPedidoAbierto(true),
@@ -781,6 +784,12 @@ export function DetalleReparacionDialog({
             open={anticipoAbierto}
             onOpenChange={setAnticipoAbierto}
             onCompletado={actualizarTodo}
+          />
+          <ClienteSeLoLlevoDialog
+            resguardo={detalle.resguardo}
+            open={clienteSeLoLlevoAbierto}
+            onOpenChange={setClienteSeLoLlevoAbierto}
+            onConfirmado={actualizarTodo}
           />
           <FacturaReparacionDialog
             detalle={detalle}
