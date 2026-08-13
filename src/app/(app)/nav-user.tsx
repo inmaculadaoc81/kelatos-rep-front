@@ -82,11 +82,8 @@ export function NavUser({ session }: { session: Session | null }) {
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              {/* Sin conectar todavía — el resto del sistema usa el mismo
-                  patrón "pronto" para módulos aún no construidos. */}
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem render={<Link href="/mi-perfil" />}>
                 <Profile /> Mi perfil
-                <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
               </DropdownMenuItem>
               {esAdmin ? (
                 <DropdownMenuItem render={<Link href="/configuracion" />}>
