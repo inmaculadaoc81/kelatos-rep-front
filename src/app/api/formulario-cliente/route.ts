@@ -50,6 +50,16 @@ export async function POST(req: Request) {
   const requestId = crypto.randomUUID();
   const origen = "formulario_publico";
 
+  // Reproduce _insertarFilaFormulario (backend/FormularioCliente.js): mismo
+  // cálculo de total, precioUnitario 0 hasta que se acepte el presupuesto.
+  const datosCintas = esCintas
+    ? {
+        tipos: datos.cintas,
+        total: Object.values(datos.cintas).reduce((acc, n) => acc + (Number(n) || 0), 0),
+        precioUnitario: 0,
+      }
+    : null;
+
   const cargaUtil = {
     clienteNombre: datos.nombre.trim(),
     clienteEmail: email,
@@ -118,6 +128,7 @@ export async function POST(req: Request) {
           observaciones,
           fotoUrl,
           firmaUrl,
+          datosCintas,
         },
         cliente: {
           nombre: datos.nombre.trim(),

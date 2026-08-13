@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar } from "@/lib/icons";
+import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt } from "@/lib/icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,6 +28,7 @@ import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "./detall
 import { ReparacionSheet } from "./reparacion-sheet";
 import { RechazarFormularioDialog } from "./formulario-pendiente-dialog";
 import { DashboardMetricas } from "./dashboard-metricas";
+import { NuevaFacturaManualDialog } from "./nueva-factura-manual-dialog";
 
 type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | null };
 
@@ -174,6 +175,7 @@ export default function ReparacionesPage() {
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [formularioPendiente, setFormularioPendiente] = useState<{ rep: Reparacion; modo: "confirmar" | "rechazar" } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
+  const [nuevaFacturaAbierta, setNuevaFacturaAbierta] = useState(false);
 
   const [metricas, setMetricas] = useState<MetricasDashboard | null>(null);
   const [errorMetricas, setErrorMetricas] = useState<string | null>(null);
@@ -371,9 +373,18 @@ export default function ReparacionesPage() {
           {!cargando && <span className="text-sm text-muted-foreground">{filtradas.length} resultados</span>}
         </div>
 
-        <Button className="h-8 gap-1.5" onClick={() => setNuevaAbierta(true)}>
-          <AddCircle className="size-4" /> Nueva Reparación
-        </Button>
+        <div className="flex gap-2">
+          <Button className="h-8 gap-1.5" onClick={() => setNuevaAbierta(true)}>
+            <AddCircle className="size-4" /> Nueva Reparación
+          </Button>
+          <Button
+            className="h-8 w-8 bg-emerald-600 p-0 text-white hover:bg-emerald-700"
+            onClick={() => setNuevaFacturaAbierta(true)}
+            title="Nueva Factura Manual"
+          >
+            <Receipt className="size-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -583,6 +594,15 @@ export default function ReparacionesPage() {
         open={nuevaAbierta}
         onOpenChange={setNuevaAbierta}
         onGuardado={() => {
+          cargar();
+          cargarMetricas();
+        }}
+      />
+
+      <NuevaFacturaManualDialog
+        open={nuevaFacturaAbierta}
+        onOpenChange={setNuevaFacturaAbierta}
+        onGenerada={() => {
           cargar();
           cargarMetricas();
         }}

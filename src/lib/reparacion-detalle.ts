@@ -93,6 +93,7 @@ interface FilaReparacionSqlDetalle {
   total_factura_corregida_revision: string | number | null;
   fecha_factura_corregida_revision: string | null;
   cliente_factura_corregida: unknown;
+  lineas_factura_corregida: unknown;
 }
 
 interface FilaPiezaSql {
@@ -292,6 +293,12 @@ export interface ReparacionDetalle {
     numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
   } | null;
   clienteFacturaCorregida: { nombre: string; direccion: string; dni: string; telefono: string; email: string } | null;
+  /** Líneas reales con las que se generó la última corregida (migración
+      026) — a diferencia de lineasFactura (siempre las de la factura
+      original), esto permite cancelar correctamente los importes si se
+      encadena otra rectificativa sobre la corregida. null en corregidas
+      generadas antes de esta migración. */
+  lineasFacturaCorregida: { referencia?: string; descripcion: string; cantidad: number; precio: number; descuento?: number }[] | null;
   presupuestos: Presupuesto[];
   pedidos: Pedido[];
   historialEventos: HistorialEvento[];
@@ -473,6 +480,11 @@ export function mapearReparacionDetalle(
       row.cliente_factura_corregida && typeof row.cliente_factura_corregida === "object"
         ? (row.cliente_factura_corregida as ReparacionDetalle["clienteFacturaCorregida"])
         : null,
+    lineasFacturaCorregida: Array.isArray(row.lineas_factura_corregida)
+      ? (row.lineas_factura_corregida as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
+          referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
+        }))
+      : null,
     presupuestos: presupuestosRaw.map((p) => mapearPresupuesto(p, piezasPorPresupuesto[p.presupuesto_id] || [])),
     pedidos: pedidosRaw.map(mapearPedido),
     historialEventos: historialRaw.map(mapearHistorial),

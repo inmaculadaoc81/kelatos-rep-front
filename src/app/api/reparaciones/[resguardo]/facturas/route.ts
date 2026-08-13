@@ -4,6 +4,10 @@ import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import type { TipoFactura, DatosFactura, ResultadoFactura } from "@/lib/factura";
 
+function fechaHoyEs(): string {
+  return new Date().toLocaleDateString("es-ES", { timeZone: "Europe/Madrid" });
+}
+
 /**
  * Orquesta el saga completo de facturación (preparar → iniciar →
  * generar-pdf → confirmar) en una sola llamada — los 4 pasos ya existen
@@ -75,7 +79,7 @@ export async function POST(
     try {
       generado = await kelatosApiPost<{ ok: boolean; url: string; fileId: string; total: number; baseImponible: number }>(
         `/v1/reparaciones/${encodeURIComponent(resguardo)}/facturas/generar-pdf`,
-        { datos: { ...datos, numero: preparar.numeroFactura } }
+        { datos: { ...datos, numero: preparar.numeroFactura, fecha: fechaHoyEs() } }
       );
     } catch (errorPdf) {
       // El número ya está reservado y no se libera (numeración irreversible)

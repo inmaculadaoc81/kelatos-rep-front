@@ -143,6 +143,23 @@ export type SolicitudFacturaAlquiler =
       equipoNombre: string;
     }
   | {
+      /** Reproduce _apiGenerarDevolucionAlquilerModal() del original — el
+          tab "Devolución" del modal genérico de Facturas de Clientes
+          (#modalFcAcciones), distinto de "Devolver equipo": anula la
+          factura completa del alquiler (líneas negativas por meses/
+          semanas/días) en vez de solo la fianza. Comparte las MISMAS
+          columnas de rectificativa que rectificativa_fianza/ajuste_*
+          (igual que en el original — una sola rectificativa "vigente" a
+          la vez por alquiler). */
+      tipo: "alquiler_rectificativa";
+      requestId: string;
+      cliente: ClienteFacturaAlquiler;
+      formaPago: string;
+      banco?: string;
+      equipoNombre: string;
+      motivo?: string;
+    }
+  | {
       tipo: "ajuste_duracion";
       requestId: string;
       cliente: ClienteFacturaAlquiler;

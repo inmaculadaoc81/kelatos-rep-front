@@ -20,6 +20,7 @@ interface FilaAlquilerSql {
   fecha_inicio: string | null;
   numero_factura_rectificativa: string | null;
   numero_factura_inicial: string | null;
+  numero_factura_corregida: string | null;
   estado_factura: string | null;
 }
 
@@ -83,6 +84,7 @@ export async function POST(
       fianza?: number;
       fianzaDescripcion?: string;
       rectificaDe?: string;
+      estadoFactura?: string;
     }): Promise<{ numero: string; url: string; total: number }> {
       const preparar = await kelatosApiPost<{ ok: boolean; numeroFactura: string }>("/v1/facturas/entidades/preparar", {
         requestId: opts.requestId,
@@ -116,6 +118,7 @@ export async function POST(
             lineas: opts.lineasParaPdf,
             fianza: opts.fianza || 0,
             fianzaDescripcion: opts.fianzaDescripcion || "",
+            estadoFactura: opts.estadoFactura || "",
           },
         });
       } catch (errorPdf) {
@@ -176,6 +179,42 @@ export async function POST(
         urlPdf: doc.url,
         alquilerId: id,
         columnas: { numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: -fianza },
+      });
+
+      const resultado: ResultadoFacturaAlquiler = { numeroFactura: doc.numero, url: doc.url };
+      return NextResponse.json({ ok: true, ...resultado });
+    }
+
+    if (solicitud.tipo === "alquiler_rectificativa") {
+      // Guard de _apiGenerarDevolucionAlquilerModal(): bloquea solo si la
+      // rectificativa existente es de una devolución anterior — no si ya
+      // hay una corregida (factura nueva, ciclo distinto) ni si el
+      // alquiler viene de un ajuste de duración ya cerrado.
+      const rectExistente = (a.numero_factura_rectificativa || "").trim();
+      const corrExistente = (a.numero_factura_corregida || "").trim();
+      const esPostAjuste = !!(a.numero_factura_inicial || "").trim();
+      if (!esPostAjuste && !corrExistente && rectExistente) {
+        return NextResponse.json({ ok: false, error: `Ya existe una rectificativa para este alquiler: ${rectExistente}` }, { status: 409 });
+      }
+
+      const lineasRect = lineasAlquiler(solicitud.equipoNombre, a.meses || 0, a.semanas || 0, a.dias || 0, -1, tarifas);
+      const fechaOrig = a.fecha_inicio ? new Date(a.fecha_inicio).toLocaleDateString("es-ES") : "";
+      const doc = await generarUnDocumento({
+        tipo: "alquiler_rectificativa",
+        requestId: solicitud.requestId,
+        lineasParaReserva: lineasRect,
+        lineasParaPdf: lineasRect,
+        rectificaDe: `Rectifica La factura ${numOriginal}${fechaOrig ? ` emitida el ${fechaOrig}` : ""}`,
+        estadoFactura: "Devolución",
+      });
+
+      await kelatosApiPost(`/v1/alquileres/facturas/confirmar`, {
+        requestId: solicitud.requestId,
+        usuario,
+        dryRun: false,
+        urlPdf: doc.url,
+        alquilerId: id,
+        columnas: { numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: doc.total },
       });
 
       const resultado: ResultadoFacturaAlquiler = { numeroFactura: doc.numero, url: doc.url };

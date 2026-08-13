@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Receipt, TickCircle, CloseCircle } from "@/lib/icons";
+import { Receipt, TickCircle, CloseCircle, SearchNormal1 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { Cliente } from "@/lib/clientes";
+import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { FacturaModalShell } from "./factura-modal-shell";
 
 const METODOS_PAGO = [
@@ -92,6 +94,15 @@ function VistaGenerar({
   // Se conserva el mismo requestId entre reintentos — un fallo de red no
   // debe reservar un segundo número fiscal para la misma operación.
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+
+  function seleccionarCliente(c: Cliente) {
+    setNombre(c.nombre || "");
+    setDireccion(c.direccion || "");
+    setDni(c.dniCif || "");
+    setTelefono(c.telefono || "");
+    toast.success("Cliente cargado");
+  }
 
   function cerrar(o: boolean, eventDetails?: { reason?: string; cancel?: () => void }) {
     if (enviando) return;
@@ -139,13 +150,18 @@ function VistaGenerar({
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
         <CabeceraVerde titulo="Marcar revisión pagada" onClose={() => cerrar(false)} />
         <div className="space-y-3 p-4">
           <p className="text-sm text-muted-foreground">Verifica los datos que aparecerán en la factura y confirma el pago.</p>
 
           <div className="space-y-1.5">
-            <Label htmlFor="frNombre">Nombre / Razón social *</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="frNombre">Nombre / Razón social *</Label>
+              <Button type="button" size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setBuscarClienteAbierto(true)}>
+                <SearchNormal1 className="size-3" /> Buscar
+              </Button>
+            </div>
             <Input id="frNombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre completo o empresa" />
           </div>
           <div className="space-y-1.5">
@@ -200,6 +216,8 @@ function VistaGenerar({
           </Button>
         </footer>
       </DialogContent>
+
+      <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
     </Dialog>
   );
 }
