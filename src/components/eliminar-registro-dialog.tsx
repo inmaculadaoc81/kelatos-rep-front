@@ -1,19 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trash, Warning2, CloseCircle } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
+
+interface FilaResumen {
+  tabla: string;
+  cantidad: number;
+}
 
 /**
  * Borrado real de un registro de la base de datos — reemplaza el borrado
- * manual que antes se hacía directamente en Sheets, ahora restringido al
- * superadmin (kelatoscielo@gmail.com) y auditado en
- * kelatos_app.registros_eliminados antes de ejecutarse (ver server.js).
+ * manual que antes se hacía directamente en Sheets, restringido al
+ * superadmin y auditado en kelatos_app.registros_eliminados antes de
+ * ejecutarse (ver server.js). Al abrirse consulta {apiUrl}/eliminar-preview
+ * (solo lectura) para mostrar qué filas dependientes se borrarían junto
+ * con el registro, antes de que el usuario confirme nada.
  *
  * A diferencia del ConfirmProvider genérico (sí/no), esto exige escribir
  * el identificador exacto y un motivo — es una acción irreversible sobre
@@ -23,7 +39,6 @@ export function EliminarRegistroDialog({
   tipo,
   id,
   apiUrl,
-  tieneFacturaReal,
   open,
   onOpenChange,
   onEliminado,
@@ -32,8 +47,6 @@ export function EliminarRegistroDialog({
   tipo: string;
   id: string;
   apiUrl: string;
-  /** Si el registro tiene un número de factura fiscal real emitido — se muestra un aviso adicional, pero no bloquea el borrado. */
-  tieneFacturaReal?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEliminado: () => void;
@@ -41,6 +54,16 @@ export function EliminarRegistroDialog({
   const [confirmacion, setConfirmacion] = useState("");
   const [motivo, setMotivo] = useState("");
   const [eliminando, setEliminando] = useState(false);
+  const [preview, setPreview] = useState<{ tieneFacturaReal: boolean; resumen: FilaResumen[] } | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!open) return;
+    setPreview(undefined);
+    fetch(`${apiUrl}/eliminar-preview`)
+      .then((r) => r.json())
+      .then((data) => setPreview(data.ok ? { tieneFacturaReal: !!data.tieneFacturaReal, resumen: data.resumen || [] } : null))
+      .catch(() => setPreview(null));
+  }, [open, apiUrl]);
 
   function cerrar(o: boolean) {
     if (eliminando) return;
@@ -75,10 +98,11 @@ export function EliminarRegistroDialog({
   }
 
   const puedeEliminar = confirmacion.trim() === id.trim() && !!motivo.trim();
+  const filasConDatos = preview?.resumen.filter((f) => f.cantidad > 0) || [];
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
         <header className="flex items-center gap-2 rounded-t-xl bg-destructive px-4 py-3 text-destructive-foreground">
           <Trash className="size-4.5 shrink-0" />
           <DialogTitle className="text-sm font-semibold text-destructive-foreground">Eliminar {tipo}</DialogTitle>
@@ -92,7 +116,47 @@ export function EliminarRegistroDialog({
             Esto borra el registro <strong className="text-foreground">{id}</strong> de la base de datos de forma permanente. Queda registrado en la auditoría interna, pero no se puede deshacer desde aquí.
           </p>
 
-          {tieneFacturaReal && (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Se eliminarán también, ligados a {id}</Label>
+            {preview === undefined && (
+              <div className="space-y-1.5 rounded-md border p-2.5">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            )}
+            {preview === null && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-xs text-destructive">
+                No se pudo comprobar qué registros dependientes se borrarían. Comprueba la conexión antes de continuar.
+              </p>
+            )}
+            {preview && filasConDatos.length === 0 && (
+              <p className="rounded-md border bg-muted/30 p-2.5 text-xs text-muted-foreground">
+                Sin filas dependientes — solo se borra este registro.
+              </p>
+            )}
+            {preview && filasConDatos.length > 0 && (
+              <div className="overflow-hidden rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="h-8 text-xs">Tabla</TableHead>
+                      <TableHead className="h-8 text-right text-xs">Filas</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filasConDatos.map((f) => (
+                      <TableRow key={f.tabla}>
+                        <TableCell className="py-1.5 text-sm capitalize">{f.tabla}</TableCell>
+                        <TableCell className="py-1.5 text-right text-sm tabular-nums">{f.cantidad}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+
+          {preview?.tieneFacturaReal && (
             <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
               <Warning2 className="mt-0.5 size-4 shrink-0" />
               <span>

@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt } from "@/lib/icons";
+import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash } from "@/lib/icons";
+import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
+import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -176,6 +178,8 @@ export default function ReparacionesPage() {
   const [formularioPendiente, setFormularioPendiente] = useState<{ rep: Reparacion; modo: "confirmar" | "rechazar" } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [nuevaFacturaAbierta, setNuevaFacturaAbierta] = useState(false);
+  const [eliminarResguardo, setEliminarResguardo] = useState<string | null>(null);
+  const esSuperadmin = useEsSuperadmin();
 
   const [metricas, setMetricas] = useState<MetricasDashboard | null>(null);
   const [errorMetricas, setErrorMetricas] = useState<string | null>(null);
@@ -558,14 +562,26 @@ export default function ReparacionesPage() {
                           </Button>
                         </div>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 gap-1"
-                          onClick={(e) => { e.stopPropagation(); setResguardoDetalle(rep.resguardo); }}
-                        >
-                          <Eye className="size-3.5" /> Ver
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1"
+                            onClick={(e) => { e.stopPropagation(); setResguardoDetalle(rep.resguardo); }}
+                          >
+                            <Eye className="size-3.5" /> Ver
+                          </Button>
+                          {esSuperadmin && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1 text-destructive hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); setEliminarResguardo(rep.resguardo); }}
+                            >
+                              <Trash className="size-3.5" /> Eliminar
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -579,6 +595,17 @@ export default function ReparacionesPage() {
         <AbrirNuevaPorQuery onAbrir={() => setNuevaAbierta(true)} />
         <AbrirDetallePorQuery onAbrir={setResguardoDetalle} />
       </Suspense>
+
+      {eliminarResguardo && (
+        <EliminarRegistroDialog
+          tipo="reparación"
+          id={eliminarResguardo}
+          apiUrl={`/api/reparaciones/${eliminarResguardo}`}
+          open={!!eliminarResguardo}
+          onOpenChange={(o) => !o && setEliminarResguardo(null)}
+          onEliminado={() => { cargar(); cargarMetricas(); }}
+        />
+      )}
 
       <DetalleReparacionDialog
         resguardo={resguardoDetalle}

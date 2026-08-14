@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, Edit2, Eye } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Edit2, Eye, Trash } from "@/lib/icons";
+import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
+import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,8 @@ export default function VentasPage() {
   const [filtroEstado, setFiltroEstado] = useState("");
   const [ventaEditando, setVentaEditando] = useState<Venta | null>(null);
   const [ventaVerId, setVentaVerId] = useState<string | null>(null);
+  const [ventaEliminarId, setVentaEliminarId] = useState<string | null>(null);
+  const esSuperadmin = useEsSuperadmin();
 
   async function cargar() {
     setCargando(true);
@@ -174,6 +178,11 @@ export default function VentasPage() {
                       <Button size="icon-sm" variant="ghost" title="Editar cabecera" onClick={() => setVentaEditando(v)}>
                         <Edit2 className="size-3.5" />
                       </Button>
+                      {esSuperadmin && (
+                        <Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" title="Eliminar" onClick={() => setVentaEliminarId(v.ventaId)}>
+                          <Trash className="size-3.5" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -188,6 +197,16 @@ export default function VentasPage() {
 
       <EditarVentaDialog venta={ventaEditando} open={ventaEditando !== null} onOpenChange={(o) => !o && setVentaEditando(null)} onGuardado={cargar} />
       <DetalleVentaDialog ventaId={ventaVerId} open={ventaVerId !== null} onOpenChange={(o) => !o && setVentaVerId(null)} onActualizado={cargar} />
+      {ventaEliminarId && (
+        <EliminarRegistroDialog
+          tipo="venta"
+          id={ventaEliminarId}
+          apiUrl={`/api/ventas/${ventaEliminarId}`}
+          open={!!ventaEliminarId}
+          onOpenChange={(o) => !o && setVentaEliminarId(null)}
+          onEliminado={cargar}
+        />
+      )}
     </div>
   );
 }

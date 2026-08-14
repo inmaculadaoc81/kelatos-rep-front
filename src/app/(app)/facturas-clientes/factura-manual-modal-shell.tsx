@@ -199,7 +199,6 @@ export function FacturaManualModalShell({
           tipo="factura manual"
           id={detalle.resguardo}
           apiUrl={`/api/facturas-manuales/${detalle.resguardo}`}
-          tieneFacturaReal={!!(detalle.numeroFactura || detalle.rectificativa?.numeroFactura || detalle.corregida?.numeroFactura)}
           open={eliminarAbierto}
           onOpenChange={setEliminarAbierto}
           onEliminado={() => { onOpenChange(false); onActualizado(); }}

@@ -510,7 +510,6 @@ export function DetalleVentaDialog({
           tipo="venta"
           id={venta.ventaId}
           apiUrl={`/api/ventas/${venta.ventaId}`}
-          tieneFacturaReal={!!venta.numeroFactura}
           open={eliminarAbierto}
           onOpenChange={setEliminarAbierto}
           onEliminado={() => { onOpenChange(false); onActualizado(); }}

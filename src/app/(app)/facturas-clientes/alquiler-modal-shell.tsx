@@ -149,7 +149,6 @@ export function AlquilerModalShell({
         tipo="alquiler"
         id={detalle.resguardo}
         apiUrl={`/api/alquileres/${detalle.resguardo}`}
-        tieneFacturaReal={!!(detalle.numeroFactura || detalle.rectificativa?.numeroFactura || detalle.corregida?.numeroFactura)}
         open={eliminarAbierto}
         onOpenChange={setEliminarAbierto}
         onEliminado={() => { onOpenChange(false); onActualizado(); }}

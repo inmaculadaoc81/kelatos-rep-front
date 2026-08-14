@@ -744,7 +744,6 @@ export function DetalleReparacionDialog({
           tipo="reparación"
           id={detalle.resguardo}
           apiUrl={`/api/reparaciones/${detalle.resguardo}`}
-          tieneFacturaReal={!!(detalle.numeroFactura || detalle.rectificativa?.numeroFactura || detalle.corregida?.numeroFactura)}
           open={eliminarAbierto}
           onOpenChange={setEliminarAbierto}
           onEliminado={() => { onOpenChange(false); onActualizado?.(); }}
