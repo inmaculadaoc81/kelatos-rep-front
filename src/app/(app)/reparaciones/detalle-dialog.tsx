@@ -37,7 +37,7 @@ import { LogisticaPanel } from "./logistica-panel";
 import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog } from "./finalizar-dialog";
 import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
 import { AnticipoDialog } from "./anticipo-dialog";
-import { FacturaReparacionDialog } from "./factura-reparacion-dialog";
+import { FacturaReparacionDialog, TarjetaResena } from "./factura-reparacion-dialog";
 import { EstadosEspecialesPanel } from "./estados-especiales-panel";
 import { PresupuestoCard } from "./presupuesto-card";
 import { PresupuestosEnvioBar } from "./presupuestos-envio-bar";
@@ -618,6 +618,18 @@ export function DetalleReparacionDialog({
                         <FilaDato etiqueta="Síntoma" valor={detalle.equipo.sintoma} />
                         <FilaDato etiqueta="Factura" valor={<EstadoFactura detalle={detalle} />} />
                       </dl>
+                      {/* Reproduce vfResenaCard (Index.html): en el original solo
+                          vive dentro del modal de factura de reparación
+                          "Reparado", así que una entrega por mensajería/punto
+                          limpio (Presupuesto Rechazado, Garantía, etc.) nunca
+                          tenía dónde gestionar la reseña después de entregar —
+                          se muestra aquí, en la ficha, en cuanto el equipo ya
+                          salió, sin importar por qué modal se facturó. */}
+                      {reparacionCerrada && (
+                        <div className="mt-4">
+                          <TarjetaResena resguardo={detalle.resguardo} resena={detalle.resena} onActualizado={actualizarTodo} />
+                        </div>
+                      )}
                     </section>
 
                     <div className="space-y-5">

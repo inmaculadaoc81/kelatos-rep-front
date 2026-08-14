@@ -188,7 +188,7 @@ const ETIQUETA_METODO_PAGO: Record<string, string> = Object.fromEntries(METODOS_
  * marcar que ya se pidió en persona), SI (ya se pidió, se puede deshacer) y
  * PROGRAMADA (envío ya agendado, con opción de cancelarlo).
  */
-function TarjetaResena({
+export function TarjetaResena({
   resguardo,
   resena,
   onActualizado,
