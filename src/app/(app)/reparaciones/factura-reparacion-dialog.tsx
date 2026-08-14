@@ -569,13 +569,33 @@ function VistaGenerar({
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: email.trim(), codigo: codigo.trim() },
             formaPago: metodo,
             banco: metodo === "tarjeta" ? banco : "",
-            lineas: lineasValidas.map((l) => ({
-              referencia: l.referencia.trim(),
-              descripcion: l.descripcion.trim(),
-              cantidad: l.cantidad,
-              precio: l.precioUnitario,
-              descuento: l.descuentoPct,
-            })),
+            // El descuento global solo afectaba a la vista previa en pantalla
+            // y nunca llegaba a la factura real (bug detectado: el importe
+            // final facturado no coincidía con el mostrado). Se envía ahora
+            // como una línea propia negativa —igual que ya se hace con
+            // "Descuento revisión pagada"— para que quede reflejado y
+            // visible en el PDF, en vez de perderse silenciosamente.
+            lineas: (() => {
+              const base = lineasValidas.map((l) => ({
+                referencia: l.referencia.trim(),
+                descripcion: l.descripcion.trim(),
+                cantidad: l.cantidad,
+                precio: l.precioUnitario,
+                descuento: l.descuentoPct,
+              }));
+              const pctGlobal = Math.min(100, Math.max(0, descuentoGlobalPct || 0));
+              const importeGlobal = Math.round(descuentoAmt * 100) / 100;
+              if (pctGlobal > 0 && importeGlobal > 0) {
+                base.push({
+                  referencia: "",
+                  descripcion: `Descuento global (${pctGlobal}%)`,
+                  cantidad: 1,
+                  precio: -importeGlobal,
+                  descuento: 0,
+                });
+              }
+              return base;
+            })(),
             estadoFactura,
             esBorrador: false,
           },
