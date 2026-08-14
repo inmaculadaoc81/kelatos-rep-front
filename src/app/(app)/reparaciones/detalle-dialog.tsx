@@ -442,7 +442,7 @@ export function DetalleReparacionDialog({
   // Con el equipo ya entregado no tiene sentido crear/anular presupuestos
   // (la reparación está cerrada) — mismo criterio que MarcarGarantiaBoton.
   const reparacionCerrada = !!detalle && ENTREGA_CERRADA.includes(detalle.estadoEntrega);
-  const clienteFacturado = !!detalle && !!(
+  const tieneFacturaReal = !!detalle && !!(
     detalle.numeroFactura ||
     detalle.numeroFacturaRevision ||
     detalle.numeroFacturaAnticipo ||
@@ -451,6 +451,9 @@ export function DetalleReparacionDialog({
     detalle.corregida?.numeroFactura ||
     detalle.corregidaRevision?.numeroFactura
   );
+  // "En historial": ya entregado Y ya facturado — a partir de ahí el
+  // registro queda cerrado y no tiene sentido seguir editando cliente/equipo.
+  const clienteEquipoBloqueado = reparacionCerrada && tieneFacturaReal;
 
   return (
     <Dialog open={resguardo !== null} onOpenChange={onOpenChange}>
@@ -522,8 +525,8 @@ export function DetalleReparacionDialog({
 
               <m.section variants={entrada} className="rounded-xl border bg-card p-4">
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <ClienteEditable detalle={detalle} onActualizado={actualizarTodo} bloqueado={clienteFacturado} />
-                  <EquipoEditable detalle={detalle} sintoma={sintoma} onActualizado={actualizarTodo} />
+                  <ClienteEditable detalle={detalle} onActualizado={actualizarTodo} bloqueado={clienteEquipoBloqueado} />
+                  <EquipoEditable detalle={detalle} sintoma={sintoma} onActualizado={actualizarTodo} bloqueado={clienteEquipoBloqueado} />
                 </div>
 
                 <hr className="my-4" />

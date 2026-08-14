@@ -120,7 +120,7 @@ export function ClienteEditable({
       {bloqueado ? (
         <h3
           className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-          title="Reparación facturada: los datos del cliente no se pueden editar"
+          title="Reparación entregada y facturada: los datos del cliente no se pueden editar"
         >
           Cliente
           <Lock className="size-3" />
@@ -134,7 +134,7 @@ export function ClienteEditable({
       <Linea icono={Sms} valor={detalle.cliente.email} />
       <Linea icono={Location} valor={detalle.cliente.direccion} />
       {bloqueado && (
-        <p className="text-xs text-muted-foreground italic">Reparación facturada: no se pueden editar los datos del cliente.</p>
+        <p className="text-xs text-muted-foreground italic">Reparación entregada y facturada: no se pueden editar los datos del cliente.</p>
       )}
     </div>
   );
@@ -145,10 +145,13 @@ export function EquipoEditable({
   detalle,
   sintoma,
   onActualizado,
+  bloqueado = false,
 }: {
   detalle: ReparacionDetalle;
   sintoma: { principal: string; extras: string[] };
   onActualizado: () => void;
+  /** Reparación ya entregada y facturada: el equipo ya salió del taller, no tiene sentido seguir editando su ficha. */
+  bloqueado?: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [modelo, setModelo] = useState("");
@@ -202,7 +205,17 @@ export function EquipoEditable({
 
   return (
     <div className="space-y-1.5">
-      <TituloEditable onEditar={empezarEdicion}>Equipo</TituloEditable>
+      {bloqueado ? (
+        <h3
+          className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          title="Reparación entregada y facturada: los datos del equipo no se pueden editar"
+        >
+          Equipo
+          <Lock className="size-3" />
+        </h3>
+      ) : (
+        <TituloEditable onEditar={empezarEdicion}>Equipo</TituloEditable>
+      )}
       <p className="text-base font-semibold">{detalle.equipo.modelo || "-"}</p>
       <p className="text-sm"><span className="text-muted-foreground">Síntoma:</span> {sintoma.principal || "-"}</p>
       {sintoma.extras.length > 0 && (
@@ -213,6 +226,9 @@ export function EquipoEditable({
         </div>
       )}
       <p className="text-sm"><span className="text-muted-foreground">Fecha recepción:</span> {formatearFecha(detalle.fechaRecepcion)}</p>
+      {bloqueado && (
+        <p className="text-xs text-muted-foreground italic">Reparación entregada y facturada: no se pueden editar los datos del equipo.</p>
+      )}
     </div>
   );
 }
