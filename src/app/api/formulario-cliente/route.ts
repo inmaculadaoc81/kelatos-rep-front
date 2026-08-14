@@ -145,6 +145,21 @@ export async function POST(req: Request) {
         historial: { tipo: "entrada", descripcion: "Solicitud registrada desde el formulario público (web)" },
       });
 
+      // Rota el código de acceso activo tras cada envío exitoso — reproduce
+      // generarCodigoPublicoNuevaSolicitud() (FormularioCliente.js:1466),
+      // que en el original nunca llegó a invocarse desde ningún sitio real
+      // (función "muerta": definida y expuesta como apiGenerarCodigoPublico
+      // NuevaSolicitud, pero sin ningún llamador en FormularioCliente.html
+      // ni en el resto del código). Sin esto, el mismo código de acceso
+      // (pensado como un solo uso: un cliente, una visita) se puede reutilizar
+      // indefinidamente hasta que caduque (24h) o el personal genere otro a
+      // mano — cualquiera que lo capture puede registrar solicitudes
+      // ilimitadas con él. Best-effort: un fallo aquí no debe impedir que el
+      // cliente reciba su resguardo ya confirmado.
+      kelatosApiPost("/v1/formulario/codigo-acceso", { usuario: "Formulario Web (auto tras envío)" }).catch((e) => {
+        console.error("Error rotando código de acceso tras envío del formulario:", e);
+      });
+
       return NextResponse.json({ ok: true, resguardo: confirmado.resguardo });
     } catch (confirmError) {
       await kelatosApiPost("/v1/reparaciones/altas/fallar", {
