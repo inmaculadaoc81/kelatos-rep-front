@@ -714,6 +714,16 @@ export function DetalleReparacionDialog({
                       const meta = derivarEventoHistorial(ev.tipo);
                       const Icono = meta.icon;
                       const esUltimo = i === detalle.historialEventos.length - 1;
+                      // Un número de factura reservado no se libera nunca: si
+                      // este evento vino de una rectificativa/corregida que
+                      // luego quedó sustituida por otra más reciente, este es
+                      // el único sitio de la app donde su PDF sigue siendo
+                      // accesible.
+                      let urlPdf = "";
+                      try {
+                        const extra = ev.datosExtra ? JSON.parse(ev.datosExtra) : null;
+                        if (extra && typeof extra.url_pdf === "string" && /^https?:\/\//i.test(extra.url_pdf)) urlPdf = extra.url_pdf;
+                      } catch { /* datosExtra no es JSON válido o no trae url_pdf */ }
                       return (
                         <li key={ev.eventoId} className="relative flex gap-3">
                           {!esUltimo && <span className="absolute top-8 bottom-0 left-3.75 w-px bg-border" />}
@@ -722,7 +732,14 @@ export function DetalleReparacionDialog({
                           </span>
                           <div className={`min-w-0 flex-1 pt-1 ${esUltimo ? "pb-0" : "pb-5"}`}>
                             <p className="text-sm text-foreground">{ev.descripcion}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">{formatearFecha(ev.fechaHora)}</p>
+                            <div className="mt-0.5 flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground">{formatearFecha(ev.fechaHora)}</p>
+                              {urlPdf && (
+                                <a href={urlPdf} target="_blank" rel="noreferrer" className="text-xs font-medium text-primary hover:underline">
+                                  Ver PDF
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </li>
                       );
