@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Personalcard, Call, Sms, Location, TickCircle, CloseCircle } from "@/lib/icons";
+import { Edit2, Lock, Personalcard, Call, Sms, Location, TickCircle, CloseCircle } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,16 @@ function TituloEditable({ children, onEditar }: { children: React.ReactNode; onE
 }
 
 /** Reproduce el toggle "Cliente" (btnEditarCliente/guardarEditarCliente) del original — vista de lectura ↔ formulario inline, sin modal aparte. */
-export function ClienteEditable({ detalle, onActualizado }: { detalle: ReparacionDetalle; onActualizado: () => void }) {
+export function ClienteEditable({
+  detalle,
+  onActualizado,
+  bloqueado = false,
+}: {
+  detalle: ReparacionDetalle;
+  onActualizado: () => void;
+  /** Una vez facturada la reparación, los datos del cliente ya quedaron impresos en la factura real; no se dejan editar aquí para evitar que la ficha y el PDF emitido diverjan. */
+  bloqueado?: boolean;
+}) {
   const [editando, setEditando] = useState(false);
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -108,12 +117,25 @@ export function ClienteEditable({ detalle, onActualizado }: { detalle: Reparacio
 
   return (
     <div className="space-y-1.5">
-      <TituloEditable onEditar={empezarEdicion}>Cliente</TituloEditable>
+      {bloqueado ? (
+        <h3
+          className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          title="Reparación facturada: los datos del cliente no se pueden editar"
+        >
+          Cliente
+          <Lock className="size-3" />
+        </h3>
+      ) : (
+        <TituloEditable onEditar={empezarEdicion}>Cliente</TituloEditable>
+      )}
       <p className="text-base font-semibold">{detalle.cliente.nombre || "-"}</p>
       <Linea icono={Personalcard} valor={detalle.dniCif} />
       <Linea icono={Call} valor={detalle.cliente.telefono} />
       <Linea icono={Sms} valor={detalle.cliente.email} />
       <Linea icono={Location} valor={detalle.cliente.direccion} />
+      {bloqueado && (
+        <p className="text-xs text-muted-foreground italic">Reparación facturada: no se pueden editar los datos del cliente.</p>
+      )}
     </div>
   );
 }

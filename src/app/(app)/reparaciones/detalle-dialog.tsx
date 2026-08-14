@@ -442,6 +442,15 @@ export function DetalleReparacionDialog({
   // Con el equipo ya entregado no tiene sentido crear/anular presupuestos
   // (la reparación está cerrada) — mismo criterio que MarcarGarantiaBoton.
   const reparacionCerrada = !!detalle && ENTREGA_CERRADA.includes(detalle.estadoEntrega);
+  const clienteFacturado = !!detalle && !!(
+    detalle.numeroFactura ||
+    detalle.numeroFacturaRevision ||
+    detalle.numeroFacturaAnticipo ||
+    detalle.rectificativa?.numeroFactura ||
+    detalle.rectificativaRevision?.numeroFactura ||
+    detalle.corregida?.numeroFactura ||
+    detalle.corregidaRevision?.numeroFactura
+  );
 
   return (
     <Dialog open={resguardo !== null} onOpenChange={onOpenChange}>
@@ -513,7 +522,7 @@ export function DetalleReparacionDialog({
 
               <m.section variants={entrada} className="rounded-xl border bg-card p-4">
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <ClienteEditable detalle={detalle} onActualizado={actualizarTodo} />
+                  <ClienteEditable detalle={detalle} onActualizado={actualizarTodo} bloqueado={clienteFacturado} />
                   <EquipoEditable detalle={detalle} sintoma={sintoma} onActualizado={actualizarTodo} />
                 </div>
 
