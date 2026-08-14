@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Eye, Calendar, Send2, InfoCircle } from "@/lib/icons";
+import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Eye, Calendar, Send2, InfoCircle, AddCircle } from "@/lib/icons";
 import { m, elementoLista } from "@/lib/animacion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
 import { Presupuesto } from "@/lib/reparacion-detalle";
@@ -69,19 +70,21 @@ export function PresupuestoCard({
 }) {
   const [motivoAbierto, setMotivoAbierto] = useState<"rechazar" | "anular" | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [aceptarAbierto, setAceptarAbierto] = useState(false);
+  const [hayMas, setHayMas] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [editarAbierto, setEditarAbierto] = useState(false);
   const [detallesAbiertos, setDetallesAbiertos] = useState(false);
   const confirmar = useConfirm();
   const editable = p.estado === "borrador" || p.estado === "enviado";
 
-  async function ejecutar(accion: AccionCambioEstadoPresupuesto, motivoTexto?: string) {
+  async function ejecutar(accion: AccionCambioEstadoPresupuesto, motivoTexto?: string, hayMasVal?: boolean) {
     setEnviando(true);
     try {
       const res = await fetch("/api/presupuestos/cambiar-estado", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presupuestoId: p.presupuestoId, accion, motivo: motivoTexto }),
+        body: JSON.stringify({ presupuestoId: p.presupuestoId, accion, motivo: motivoTexto, hayMas: hayMasVal }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -90,6 +93,8 @@ export function PresupuestoCard({
       );
       setMotivoAbierto(null);
       setMotivo("");
+      setAceptarAbierto(false);
+      setHayMas(false);
       onActualizado();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
@@ -126,7 +131,7 @@ export function PresupuestoCard({
   const acciones = reparacionCerrada ? null :
     p.estado === "enviado" ? (
       <>
-        <Button size="sm" variant="outline" className="h-7 gap-1 text-emerald-600" disabled={enviando} onClick={() => ejecutar("aceptar")}>
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-emerald-600" disabled={enviando} onClick={() => setAceptarAbierto(true)}>
           <TickCircle className="size-3.5" /> Aceptar
         </Button>
         <Button size="sm" variant="outline" className="h-7 gap-1 text-destructive" disabled={enviando} onClick={() => setMotivoAbierto("rechazar")}>
@@ -268,6 +273,40 @@ export function PresupuestoCard({
         onOpenChange={setEditarAbierto}
         onGuardado={onActualizado}
       />
+
+      {/* Reproduce mostrarConfirmacionAceptacion() (Index.html) — antes de
+          aceptar, pregunta si habrá más presupuestos por aceptar en esta
+          reparación. Si la respuesta es "Sí", el backend NO rechaza a los
+          demás ni cierra el estado todavía (ver el banner "No hay más —
+          Continuar" en GestionPresupuestosDialog para retomarlo después). */}
+      <Dialog open={aceptarAbierto} onOpenChange={(o) => { if (!enviando) { setAceptarAbierto(o); if (!o) setHayMas(false); } }}>
+        <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>
+          <DialogHeader>
+            <DialogTitle>¿El cliente aceptó el presupuesto v{p.version}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm font-semibold">¿Habrá más presupuestos a aceptar en esta reparación?</p>
+            <RadioGroup value={hayMas ? "si" : "no"} onValueChange={(v) => setHayMas(v === "si")} className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="no" />
+                <TickCircle className="size-4 text-emerald-600" /> No, es el único o último
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="si" />
+                <AddCircle className="size-4 text-primary" /> Sí, se aceptarán más presupuestos
+              </label>
+            </RadioGroup>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAceptarAbierto(false)} disabled={enviando}>
+              Cancelar
+            </Button>
+            <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => ejecutar("aceptar", undefined, hayMas)} disabled={enviando}>
+              {enviando ? "Guardando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={motivoAbierto !== null} onOpenChange={(o) => !enviando && !o && setMotivoAbierto(null)}>
         <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>

@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Receipt, Add, CloseCircle } from "@/lib/icons";
+import { Receipt, Add, CloseCircle, Warning2, ArrowRight2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { m, lista as listaAnim, ProveedorAnimacion } from "@/lib/animacion";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { PresupuestoCard } from "./presupuesto-card";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 import { PresupuestosEnvioBar } from "./presupuestos-envio-bar";
+
+const ESTADOS_BLOQUEADOS_ACEPTACION = new Set(["Presupuesto Pendiente", "Presupuesto Enviado"]);
 
 /**
  * Reproduce el modal #modalGestionPresupuestos del original
@@ -31,6 +34,25 @@ export function GestionPresupuestosDialog({
   onActualizado: () => void;
 }) {
   const [nuevoAbierto, setNuevoAbierto] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
+
+  const hayAceptados = detalle.presupuestos.some((p) => p.estado === "aceptado");
+  const estadoBloqueado = ESTADOS_BLOQUEADOS_ACEPTACION.has(detalle.estado);
+
+  async function finalizarAceptacion() {
+    setFinalizando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/finalizar-aceptacion`, { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`Estado actualizado a "${data.reparacion?.estado || ""}"`);
+      onActualizado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setFinalizando(false);
+    }
+  }
 
   return (
     <>
@@ -71,6 +93,18 @@ export function GestionPresupuestosDialog({
                     <PresupuestoCard key={p.presupuestoId} resguardo={detalle.resguardo} presupuesto={p} revisionPagada={detalle.revisionPagada === "SI"} onActualizado={onActualizado} />
                   ))}
                 </m.div>
+              )}
+              {hayAceptados && estadoBloqueado && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                  <Warning2 className="size-4.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-semibold">Hay presupuestos aceptados pero la reparación no avanzó.</p>
+                    <p className="text-xs">Se marcó que habría más presupuestos por aceptar. Si ya no hay más, confirma para continuar.</p>
+                  </div>
+                  <Button size="sm" className="gap-1.5 bg-amber-600 text-white hover:bg-amber-700" onClick={finalizarAceptacion} disabled={finalizando}>
+                    <ArrowRight2 className="size-3.5" /> {finalizando ? "Actualizando..." : "No hay más — Continuar"}
+                  </Button>
+                </div>
               )}
               <PresupuestosEnvioBar
                 resguardo={detalle.resguardo}

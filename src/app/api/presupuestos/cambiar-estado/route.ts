@@ -15,10 +15,15 @@ export async function POST(req: Request) {
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
-  const { presupuestoId, accion, motivo } = (await req.json()) as {
+  const { presupuestoId, accion, motivo, hayMas } = (await req.json()) as {
     presupuestoId: string;
     accion: AccionCambioEstadoPresupuesto;
     motivo?: string;
+    /** Solo aplica a accion:"aceptar" — reproduce mostrarConfirmacionAceptacion()
+        del original: si hay más presupuestos por aceptar, no se rechaza al
+        resto ni se cierra el estado todavía (ver GestionPresupuestosDialog,
+        que ofrece "No hay más — Continuar" para ese caso). */
+    hayMas?: boolean;
   };
 
   if (!presupuestoId) return NextResponse.json({ ok: false, error: "presupuestoId es obligatorio" }, { status: 400 });
@@ -36,7 +41,10 @@ export async function POST(req: Request) {
       accion,
       presupuestoId,
       usuario,
-      datos: motivo ? { motivo: motivo.trim() } : {},
+      datos: {
+        ...(motivo ? { motivo: motivo.trim() } : {}),
+        ...(accion === "aceptar" && hayMas === true ? { hayMas: true } : {}),
+      },
     });
 
     return NextResponse.json({ ok: true, presupuesto: resultado.presupuesto, reparacion: resultado.reparacion });

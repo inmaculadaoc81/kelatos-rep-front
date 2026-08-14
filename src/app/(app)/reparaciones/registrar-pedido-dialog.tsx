@@ -13,6 +13,7 @@ import type { Empleado } from "@/app/api/empleados/route";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { esUrlValida } from "@/lib/validacion";
+import { usuarioIdentificado } from "@/lib/usuario-identificado";
 
 function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -120,6 +121,10 @@ export function RegistrarPedidoDialog({
       setCompradoPor("");
       setFechaPedido(hoyISO());
       setPiezas(piezasIniciales(detalle));
+      // Reproduce _nombreUsuarioIdentificado() (Index.html): precarga el
+      // responsable de compra con el usuario logueado, si este es a su vez
+      // un empleado — el operador puede seguir cambiándolo.
+      usuarioIdentificado().then((nombre) => { if (nombre) setCompradoPor(nombre); });
     }
     // Solo se recarga al abrir, no en cada cambio de "detalle" — evita
     // perder lo que el usuario ya haya editado si el detalle se refresca

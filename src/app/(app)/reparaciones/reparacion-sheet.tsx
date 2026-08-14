@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Reparacion } from "@/lib/reparaciones";
 import { normalizarNumeroLocal } from "@/lib/telefono";
@@ -33,6 +33,7 @@ import { Empleado } from "@/app/api/empleados/route";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { esEmailValido, esUrlValida } from "@/lib/validacion";
 import { FacturaRevisionDialog } from "./factura-revision-dialog";
+import { METODOS_PAGO, BANCOS } from "./factura-acciones-tabs";
 import {
   DatosReparacionSheet,
   TipoRecepcion,
@@ -40,7 +41,48 @@ import {
   datosSheetVacios,
 } from "@/lib/reparacion-sheet";
 
-const PREFIJOS_TELEFONO = ["+34", "+33", "+351", "+44", "+49", "+39", "+1", "+54", "+52", "+57"];
+/** Reproduce el desplegable de prefijo telefónico de Index.html:3722-3755 (mismos grupos, mismos países, mismas banderas). */
+const GRUPOS_PREFIJO_TELEFONO: { grupo: string; opciones: { value: string; label: string }[] }[] = [
+  { grupo: "España", opciones: [{ value: "+34", label: "🇪🇸 +34" }] },
+  {
+    grupo: "Europa",
+    opciones: [
+      { value: "+49", label: "🇩🇪 +49 Alemania" },
+      { value: "+43", label: "🇦🇹 +43 Austria" },
+      { value: "+32", label: "🇧🇪 +32 Bélgica" },
+      { value: "+33", label: "🇫🇷 +33 Francia" },
+      { value: "+39", label: "🇮🇹 +39 Italia" },
+      { value: "+31", label: "🇳🇱 +31 Países Bajos" },
+      { value: "+351", label: "🇵🇹 +351 Portugal" },
+      { value: "+44", label: "🇬🇧 +44 Reino Unido" },
+      { value: "+40", label: "🇷🇴 +40 Rumanía" },
+      { value: "+41", label: "🇨🇭 +41 Suiza" },
+      { value: "+380", label: "🇺🇦 +380 Ucrania" },
+    ],
+  },
+  {
+    grupo: "América Latina",
+    opciones: [
+      { value: "+54", label: "🇦🇷 +54 Argentina" },
+      { value: "+591", label: "🇧🇴 +591 Bolivia" },
+      { value: "+55", label: "🇧🇷 +55 Brasil" },
+      { value: "+56", label: "🇨🇱 +56 Chile" },
+      { value: "+57", label: "🇨🇴 +57 Colombia" },
+      { value: "+593", label: "🇪🇨 +593 Ecuador" },
+      { value: "+52", label: "🇲🇽 +52 México" },
+      { value: "+51", label: "🇵🇪 +51 Perú" },
+      { value: "+598", label: "🇺🇾 +598 Uruguay" },
+      { value: "+58", label: "🇻🇪 +58 Venezuela" },
+    ],
+  },
+  {
+    grupo: "Otros",
+    opciones: [
+      { value: "+1", label: "🇺🇸 +1 EE.UU." },
+      { value: "+212", label: "🇲🇦 +212 Marruecos" },
+    ],
+  },
+];
 
 /** Reproduce el parseo de teléfono de abrirModalConfirmarFormulario (Index.html): separa prefijo + número tanto si vienen con espacio como pegados. */
 function separarTelefono(tel: string): { prefijo: string; numero: string } {
@@ -160,6 +202,8 @@ export function ReparacionSheet({
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [detalleParaRevision, setDetalleParaRevision] = useState<ReparacionDetalle | null>(null);
+  const [metodoPagoRevisionPrecarga, setMetodoPagoRevisionPrecarga] = useState("");
+  const [bancoRevisionPrecarga, setBancoRevisionPrecarga] = useState("");
 
   const esConfirmar = modo === "confirmar";
   const esAceptarAhora = datos.estado === "aceptar_ahora";
@@ -273,6 +317,8 @@ export function ReparacionSheet({
       // modal de factura de revisión justo después de confirmar/registrar.
       const resguardoFinal = esConfirmar ? reparacionPendiente!.resguardo : data.resguardo;
       if (!datos.esCintas && datos.revisionPagada === "corresponde" && !datos.noTieneEmail && datos.clienteEmail.trim()) {
+        setMetodoPagoRevisionPrecarga(datos.metodoPagoRevision);
+        setBancoRevisionPrecarga(datos.bancoRevision);
         fetch(`/api/reparaciones/${resguardoFinal}`)
           .then((r) => r.json())
           .then((d) => { if (d.ok) setDetalleParaRevision(d.detalle as ReparacionDetalle); })
@@ -347,9 +393,16 @@ export function ReparacionSheet({
                 <Label>Teléfono *</Label>
                 <div className="flex gap-1.5">
                   <Select value={datos.telPrefijo} onValueChange={(v) => actualizar("telPrefijo", v || "+34")}>
-                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-32">
+                      <SelectValue>{(v: string) => v}</SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
-                      {PREFIJOS_TELEFONO.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                      {GRUPOS_PREFIJO_TELEFONO.map(({ grupo, opciones }) => (
+                        <SelectGroup key={grupo}>
+                          <SelectLabel>{grupo}</SelectLabel>
+                          {opciones.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectGroup>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Input
@@ -598,13 +651,43 @@ export function ReparacionSheet({
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Revisión pagada (20€) *</Label>
-                  <Select value={datos.revisionPagada} onValueChange={(v) => actualizar("revisionPagada", v as DatosReparacionSheet["revisionPagada"])}>
+                  <Select
+                    value={datos.revisionPagada}
+                    onValueChange={(v) => {
+                      actualizar("revisionPagada", v as DatosReparacionSheet["revisionPagada"]);
+                      if (v !== "corresponde") { actualizar("metodoPagoRevision", ""); actualizar("bancoRevision", ""); }
+                    }}
+                  >
                     <SelectTrigger className="w-full"><SelectValue placeholder="— Seleccionar —" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="corresponde">Corresponde</SelectItem>
                       <SelectItem value="no_corresponde">No corresponde</SelectItem>
                     </SelectContent>
                   </Select>
+                  {datos.revisionPagada === "corresponde" && (
+                    <div className="space-y-1.5 pt-1">
+                      <Select
+                        value={datos.metodoPagoRevision}
+                        onValueChange={(v) => {
+                          actualizar("metodoPagoRevision", v || "");
+                          if (v !== "tarjeta") actualizar("bancoRevision", "");
+                        }}
+                      >
+                        <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona forma de pago —" /></SelectTrigger>
+                        <SelectContent>
+                          {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {datos.metodoPagoRevision === "tarjeta" && (
+                        <Select value={datos.bancoRevision} onValueChange={(v) => actualizar("bancoRevision", v || "")}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                          <SelectContent>
+                            {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Deja el cargador *</Label>
@@ -638,6 +721,8 @@ export function ReparacionSheet({
         open={!!detalleParaRevision}
         onOpenChange={(o) => !o && setDetalleParaRevision(null)}
         onGenerada={() => { setDetalleParaRevision(null); onGuardado(); }}
+        metodoPagoInicial={metodoPagoRevisionPrecarga}
+        bancoInicial={bancoRevisionPrecarga}
       />
     )}
     </>

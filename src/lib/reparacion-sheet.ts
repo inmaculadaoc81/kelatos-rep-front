@@ -51,6 +51,13 @@ export interface DatosReparacionSheet {
   necesitaPieza: boolean;
   presupuestoInmediato: DatosPresupuestoInmediato;
   revisionPagada: "" | "corresponde" | "no_corresponde";
+  /** Solo se piden cuando revisionPagada === "corresponde" — precargan la
+      forma de pago/banco en el modal de Factura de Revisión que se abre
+      justo después de guardar (Index.html:9628-9631 + :17366-17377,
+      _solicitarValidacionClienteRevision), en vez de dejarlos siempre en
+      blanco para que el operador los repita. */
+  metodoPagoRevision: string;
+  bancoRevision: string;
   dejaCargador: "" | "si" | "no";
 }
 
@@ -76,6 +83,8 @@ export function datosSheetVacios(): DatosReparacionSheet {
     necesitaPieza: false,
     presupuestoInmediato: presupuestoInmediatoVacio(),
     revisionPagada: "",
+    metodoPagoRevision: "",
+    bancoRevision: "",
     dejaCargador: "",
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Setting2, CloseCircle, Play } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { usuarioIdentificadoComoTecnico } from "@/lib/usuario-identificado";
 
 // Misma lista fija que TECNICOS_FINALIZAR (finalizar-dialog.tsx) — el
 // original la hardcodea en el <select> del modal, no la saca de la lista
@@ -36,6 +37,11 @@ export function IniciarReparacionDialog({
   const [tecnico, setTecnico] = useState("");
   const [observacion, setObservacion] = useState("");
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    usuarioIdentificadoComoTecnico(TECNICOS).then((nombre) => { if (nombre) setTecnico(nombre); });
+  }, [open]);
 
   function cerrar(o: boolean) {
     if (enviando) return;

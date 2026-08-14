@@ -34,16 +34,33 @@ export function FacturaRevisionDialog({
   open,
   onOpenChange,
   onGenerada,
+  metodoPagoInicial,
+  bancoInicial,
 }: {
   detalle: ReparacionDetalle;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGenerada: () => void;
+  /** Precarga desde el alta (checkRevisionPagada corresponde) — reproduce
+      _solicitarValidacionClienteRevision(rep, metodoPagoRevision,
+      bancoRevision) del original, que abre este mismo modal justo después
+      de guardar con la forma de pago ya elegida ahí en vez de en blanco. */
+  metodoPagoInicial?: string;
+  bancoInicial?: string;
 }) {
   const yaGenerada = !!(detalle.numeroFacturaRevision || detalle.urlFacturaRevision);
 
   if (yaGenerada) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
-  return <VistaGenerar detalle={detalle} open={open} onOpenChange={onOpenChange} onGenerada={onGenerada} />;
+  return (
+    <VistaGenerar
+      detalle={detalle}
+      open={open}
+      onOpenChange={onOpenChange}
+      onGenerada={onGenerada}
+      metodoPagoInicial={metodoPagoInicial}
+      bancoInicial={bancoInicial}
+    />
+  );
 }
 
 function CabeceraVerde({ titulo, onClose }: { titulo: string; onClose: () => void }) {
@@ -77,11 +94,15 @@ function VistaGenerar({
   open,
   onOpenChange,
   onGenerada,
+  metodoPagoInicial,
+  bancoInicial,
 }: {
   detalle: ReparacionDetalle;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGenerada: () => void;
+  metodoPagoInicial?: string;
+  bancoInicial?: string;
 }) {
   const [nombre, setNombre] = useState(detalle.cliente.nombre || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
@@ -90,8 +111,8 @@ function VistaGenerar({
   // El importe de la revisión es fijo (20€ s/IVA) — no editable, coincide
   // con el precio de tienda anunciado al cliente.
   const importe = "20";
-  const [metodo, setMetodo] = useState("");
-  const [banco, setBanco] = useState("");
+  const [metodo, setMetodo] = useState(metodoPagoInicial || "");
+  const [banco, setBanco] = useState(bancoInicial || "");
   const [enviando, setEnviando] = useState(false);
   // Se conserva el mismo requestId entre reintentos — un fallo de red no
   // debe reservar un segundo número fiscal para la misma operación.

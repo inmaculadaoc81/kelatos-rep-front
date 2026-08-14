@@ -51,6 +51,7 @@ import { MarcarGarantiaBoton, ENTREGA_CERRADA } from "./marcar-garantia-boton";
 import { FacturaRevisionBoton } from "./factura-revision-boton";
 import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
 import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
+import { ReportarProblemaPiezaDialog } from "./reportar-problema-pieza-dialog";
 import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
@@ -272,6 +273,7 @@ export function DetalleReparacionDialog({
   const [entregaAbierta, setEntregaAbierta] = useState(false);
   const [entregaLocalAbierta, setEntregaLocalAbierta] = useState(false);
   const [marcarEnviadoAbierta, setMarcarEnviadoAbierta] = useState(false);
+  const [problemaPiezaAbierto, setProblemaPiezaAbierto] = useState(false);
   const [nuevoPresupuestoAbierto, setNuevoPresupuestoAbierto] = useState(false);
   const [qrAbierto, setQrAbierto] = useState(false);
   const [iniciarReparacionAbierto, setIniciarReparacionAbierto] = useState(false);
@@ -618,6 +620,7 @@ export function DetalleReparacionDialog({
                   onEnviarPuntoLimpio: enviarPuntoLimpio,
                   onFacturacion: () => setFacturaAbierta(true),
                   onMarcarEnviadoRapido: () => setMarcarEnviadoAbierta(true),
+                  onReportarProblemaPieza: () => setProblemaPiezaAbierto(true),
                   }}
                 />
               </m.div>
@@ -916,6 +919,12 @@ export function DetalleReparacionDialog({
             open={editarPedidoAbierto}
             onOpenChange={setEditarPedidoAbierto}
             onRegistrado={actualizarTodo}
+          />
+          <ReportarProblemaPiezaDialog
+            pedidosRecibidos={detalle.pedidos.filter((p) => p.estado === "Recibido")}
+            open={problemaPiezaAbierto}
+            onOpenChange={setProblemaPiezaAbierto}
+            onReportado={actualizarTodo}
           />
           <RecepcionPedidosDialog
             pendientes={detalle.pedidos.filter((p) => p.estado === "Pedido" || p.estado === "En Tránsito")}

@@ -22,6 +22,7 @@ import {
   Shop,
   Video,
   Profile,
+  Danger,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ export interface CallbacksAccion {
   onEnviarPuntoLimpio: () => void;
   onFacturacion: () => void;
   onMarcarEnviadoRapido: () => void;
+  onReportarProblemaPieza: () => void;
 }
 
 const ESTADOS_LISTO_ENTREGA = ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"];
@@ -377,6 +379,18 @@ export function AccionRequerida({
         <Box1 className="size-3.5" /> Pedir pieza adicional
       </Button>
     );
+    // Reproduce tienePieza de renderizarAccion() (Index.html:13069-13070):
+    // el presupuesto aceptado (o el primero, si ninguno lo está) llevaba
+    // costoPiezas, o ya existe algún pedido registrado.
+    const pptoAceptadoRep = detalle.presupuestos.find((p) => p.estado === "aceptado") || detalle.presupuestos[0];
+    const tienePieza = (pptoAceptadoRep?.costoPiezas ?? 0) > 0 || detalle.pedidos.length > 0;
+    if (tienePieza) {
+      botones.push(
+        <Button key="problema-pieza" size="sm" variant="outline" className="gap-1.5 text-amber-700 dark:text-amber-400" onClick={callbacks.onReportarProblemaPieza}>
+          <Danger className="size-3.5" /> Problema con Pieza
+        </Button>
+      );
+    }
   }
   // Facturación: solo reparaciones normales (no garantía) que quedaron
   // "Reparado" — igual que el original, el botón se muestra siempre en esa

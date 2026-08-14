@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BoxRemove, ArrowRotateLeft, RotateLeft, Warning2, CloseCircle, TickCircle } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,14 @@ import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { DatosSinReparacionPieza } from "@/lib/reparacion-estados-especiales";
-import { Empleado } from "@/app/api/empleados/route";
 
 const ESTADOS_ORIGEN_SIN_PIEZA = ["Presupuesto Pendiente", "Presupuesto Enviado"];
+
+// Misma lista fija que TECNICOS_FINALIZAR (finalizar-dialog.tsx) —
+// Index.html:17814-17821 hardcodea estos mismos 4 nombres para
+// "Técnico Responsable" en el modal "Sin Pieza Disponible", nunca la lista
+// completa de empleados activos.
+const TECNICOS = ["Iván", "Romer", "Daniela", "Repuesto"];
 
 const VACIO: DatosSinReparacionPieza = {
   tecnico: "",
@@ -34,19 +39,11 @@ export function EstadosEspecialesPanel({
   const [sinPiezaAbierto, setSinPiezaAbierto] = useState(false);
   const [datos, setDatos] = useState(VACIO);
   const [enviando, setEnviando] = useState(false);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const confirmar = useConfirm();
 
   const puedeSinPieza = ESTADOS_ORIGEN_SIN_PIEZA.includes(detalle.estado);
   const puedeDeshacer = detalle.estado === "No tiene Reparación" && detalle.motivoSinReparacion.startsWith("NO_HAY_PIEZA");
   const puedeRevertirAbandono = detalle.estado === "Abandonado";
-
-  useEffect(() => {
-    if (!sinPiezaAbierto) return;
-    fetch("/api/empleados")
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setEmpleados(d.empleados); });
-  }, [sinPiezaAbierto]);
 
   if (!puedeSinPieza && !puedeDeshacer && !puedeRevertirAbandono) return null;
 
@@ -164,7 +161,7 @@ export function EstadosEspecialesPanel({
                 <Select value={datos.tecnico} onValueChange={(v) => setDatos((p) => ({ ...p, tecnico: v || "" }))}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                   <SelectContent>
-                    {empleados.map((e) => <SelectItem key={e.empleadoId} value={e.nombre}>{e.nombre}</SelectItem>)}
+                    {TECNICOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
