@@ -201,6 +201,7 @@ interface FilaReparacionFacturadaSql {
   numero_factura_mensajeria: string | null;
   url_factura_mensajeria: string | null;
   total_factura_mensajeria: string | number | null;
+  fecha_factura_mensajeria: string | null;
 
   numero_factura_anticipo: string | null;
   url_factura_anticipo: string | null;
@@ -294,7 +295,12 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       numero: numMens3,
       url: urlValida(texto(row.url_factura_mensajeria)),
       total: num(row.total_factura_mensajeria),
-      fecha: row.fecha_factura || null,
+      // fecha_factura_mensajeria (migración 030): una mensajería SIN
+      // factura de reparación (Presupuesto Rechazado/Reciclaje) no tenía
+      // ninguna fecha propia — usaba fecha_factura, que aquí siempre es
+      // NULL, y la fila quedaba invisible en cualquier filtro por fecha
+      // (bug real: factura generada con PDF real, pero "desaparecida").
+      fecha: row.fecha_factura_mensajeria || row.fecha_factura || null,
       formaPago: texto(row.forma_pago),
       banco: "",
       estadoFactura: "",
