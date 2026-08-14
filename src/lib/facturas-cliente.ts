@@ -74,8 +74,9 @@ export interface FacturaCliente {
   esManual?: boolean;
   /** true = este número fiscal fue real y se generó, pero quedó sustituido
       por un ciclo posterior de rectificativa/corregida (columna de un solo
-      slot en reparaciones) — el total ya no se conoce (solo se conserva en
-      el PDF), así que `total` viene en 0 y se muestra "—". */
+      slot en reparaciones). Desde la migración 029 el total se conserva en
+      factura_operaciones; para ciclos anteriores a esa fecha `total` viene
+      en 0 y se muestra "—" (esa cifra ya no existe salvo en el PDF). */
   historica?: boolean;
 }
 
@@ -401,8 +402,10 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
 // ── Reparaciones: rectificativas/corregidas históricas (sustituidas) ────
 // GET /v1/lecturas/reparaciones-facturas-historicas — ciclos intermedios
 // de rectificar→corregir que ya no ocupan la columna vigente de
-// reparaciones (ver comentario en esa ruta, server.js). El total no se
-// conserva fuera del PDF, así que aquí siempre es 0 (se muestra "—").
+// reparaciones (ver comentario en esa ruta, server.js). El total se
+// guarda en factura_operaciones.total_factura desde la migración 029 —
+// para ciclos generados ANTES de esa migración, total_factura es NULL y
+// se muestra "—" (esa cifra ya no existe en ningún sitio salvo el PDF).
 
 interface FilaFacturaHistoricaSql {
   resguardo: string;
@@ -410,6 +413,7 @@ interface FilaFacturaHistoricaSql {
   numero_factura: string;
   url_pdf: string | null;
   confirmado_en: string | null;
+  total_factura: string | number | null;
   cliente_nombre: string | null;
   cliente_telefono: string | null;
   cliente_email: string | null;
@@ -434,7 +438,7 @@ export function expandirFacturaHistorica(row: FilaFacturaHistoricaSql): FacturaC
     equipo: texto(row.equipo_modelo),
     estadoEntrega: texto(row.estado_entrega),
     fecha: row.confirmado_en,
-    total: 0,
+    total: num(row.total_factura),
     formaPago: texto(row.forma_pago),
     banco: texto(row.banco),
     estadoFactura: esCorregida ? "" : "Devolución",
