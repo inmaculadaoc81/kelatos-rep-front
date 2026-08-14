@@ -256,6 +256,7 @@ export function DetalleReparacionDialog({
   const [imprimiendoResguardo, setImprimiendoResguardo] = useState(false);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [clienteSeLoLlevoAbierto, setClienteSeLoLlevoAbierto] = useState(false);
+  const [puntoLimpioAbierto, setPuntoLimpioAbierto] = useState(false);
   const esSuperadmin = useEsSuperadmin();
 
   async function imprimirResguardo() {
@@ -325,10 +326,17 @@ export function DetalleReparacionDialog({
     }
   }
 
-  // Reproduce enviarAPuntoLimpio() — sin datos propios, a diferencia de
-  // marcar_entregado, así que no necesita un diálogo con formulario.
+  // Reproduce enviarAPuntoLimpio(): si el equipo se recibió por mensajería
+  // hay que poder facturar la recogida, así que pasa por el mismo modal
+  // completo que "Entregado en Local" (tipoEntrega RECICLAJE) — solo el
+  // caso recibido en LOCAL se resuelve con la confirmación rápida de un
+  // clic, sin datos propios.
   async function enviarPuntoLimpio() {
     if (!resguardo) return;
+    if (detalle && (detalle.tipoRecepcion || "LOCAL") === "ENVIO") {
+      setPuntoLimpioAbierto(true);
+      return;
+    }
     const ok = await confirmar("¿Confirma que desea enviar este equipo a punto limpio (reciclaje)?");
     if (!ok) return;
     try {
@@ -799,6 +807,13 @@ export function DetalleReparacionDialog({
             tipoEntrega="ENVIO"
             open={facturarMensajeriaAbierto}
             onOpenChange={setFacturarMensajeriaAbierto}
+            onCompletado={actualizarTodo}
+          />
+          <EntregarConFacturaDialog
+            detalle={detalle}
+            tipoEntrega="RECICLAJE"
+            open={puntoLimpioAbierto}
+            onOpenChange={setPuntoLimpioAbierto}
             onCompletado={actualizarTodo}
           />
           <ConfirmarEntregaLocalDialog
