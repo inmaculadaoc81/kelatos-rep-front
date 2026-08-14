@@ -158,7 +158,7 @@ function SeccionEntrega({
         <Textarea id="entObservaciones" rows={2} placeholder="Ej: Cliente satisfecho" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
       </div>
       <div className="space-y-1.5">
-        <Label>Reseña</Label>
+        <Label>Reseña *</Label>
         <div className="flex gap-1.5">
           <Button type="button" size="sm" variant={resena === "SI" ? "default" : "outline"} className={resena === "SI" ? "bg-emerald-600 hover:bg-emerald-700" : ""} onClick={() => setResena("SI")}>
             Sí
