@@ -19,9 +19,12 @@ import {
   Clock,
   SearchNormal1,
   Gallery,
+  ExportSquare,
+  CloseCircle,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ArchivoFormulario } from "@/app/api/formulario-cliente/archivos/route";
@@ -40,6 +43,7 @@ export default function FormularioWebPage() {
   const [archivos, setArchivos] = useState<ArchivoFormulario[] | null>(null);
   const [cargandoArchivos, setCargandoArchivos] = useState(false);
   const [errorArchivos, setErrorArchivos] = useState<string | null>(null);
+  const [imagenAmpliada, setImagenAmpliada] = useState<{ src: string; alt: string } | null>(null);
   // Date.now() no puede llamarse en el cuerpo del render (regla de pureza
   // de React) — el backend ya filtra los caducados al leer el código
   // activo, así que esto solo importa si la pestaña se queda abierta más
@@ -333,18 +337,23 @@ export default function FormularioWebPage() {
                 <div className="flex flex-wrap gap-2">
                   {a.fotos.map((nombre, i) => {
                     const src = `/api/formulario-cliente/archivo/${encodeURIComponent(nombre)}`;
+                    const alt = `Foto ${i + 1} de #${a.resguardo}`;
                     return (
-                      <a key={nombre} href={src} target="_blank" rel="noopener noreferrer" title={`Foto ${i + 1}`}>
+                      <button key={nombre} type="button" onClick={() => setImagenAmpliada({ src, alt })} title={`Foto ${i + 1}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={src} alt={`Foto ${i + 1} de #${a.resguardo}`} className="size-16 rounded-md border object-cover" />
-                      </a>
+                        <img src={src} alt={alt} className="size-16 rounded-md border object-cover" />
+                      </button>
                     );
                   })}
                   {a.firmaNombre && (
-                    <a
-                      href={`/api/formulario-cliente/archivo/${encodeURIComponent(a.firmaNombre)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setImagenAmpliada({
+                          src: `/api/formulario-cliente/archivo/${encodeURIComponent(a.firmaNombre)}`,
+                          alt: `Firma de #${a.resguardo}`,
+                        })
+                      }
                       title="Firma"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -353,7 +362,7 @@ export default function FormularioWebPage() {
                         alt={`Firma de #${a.resguardo}`}
                         className="size-16 rounded-md border bg-white object-contain p-1"
                       />
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>
@@ -363,6 +372,45 @@ export default function FormularioWebPage() {
       </div>
       </div>
       </div>
+
+      {/* Visor de foto/firma: antes cada miniatura abría el archivo en una
+          pestaña nueva; ahora se ve dentro de la misma pantalla, con un
+          botón aparte (arriba a la derecha) para quien sí quiera el enlace
+          directo en una pestaña nueva. */}
+      <Dialog open={imagenAmpliada !== null} onOpenChange={(o) => !o && setImagenAmpliada(null)}>
+        <DialogContent className="max-w-2xl gap-0 bg-transparent p-0 shadow-none ring-0 sm:max-w-2xl" showCloseButton={false}>
+          {imagenAmpliada && (
+            <div className="relative overflow-hidden rounded-xl bg-card shadow-lg ring-1 ring-foreground/10">
+              <div className="absolute top-2 right-2 flex gap-1.5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon-sm"
+                  title="Abrir en pestaña nueva"
+                  onClick={() => window.open(imagenAmpliada.src, "_blank", "noopener,noreferrer")}
+                >
+                  <ExportSquare className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon-sm"
+                  title="Cerrar"
+                  onClick={() => setImagenAmpliada(null)}
+                >
+                  <CloseCircle className="size-4" />
+                </Button>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imagenAmpliada.src}
+                alt={imagenAmpliada.alt}
+                className="max-h-[80vh] w-full bg-white object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
