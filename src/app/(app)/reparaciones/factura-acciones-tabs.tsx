@@ -532,6 +532,11 @@ export function TabDevolucionRectificativo({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Factura rectificativa ${data.numeroFactura} generada`);
+      // Igual que el resto de flujos de factura (normal/anticipo/manual): sin
+      // esto, el usuario no veía ningún PDF y asumía que había fallado —
+      // llegó a repetir la generación completa, quemando números fiscales
+      // reales de más (bug real detectado en producción).
+      if (data.url) window.open(data.url, "_blank");
       setRequestId(null);
       onGenerada();
     } catch (e) {
@@ -818,6 +823,10 @@ function FaseCorregida({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Factura corregida ${data.numeroFactura} generada`);
+      // Igual que el resto de flujos de factura: el diálogo se cerraba sin
+      // mostrar nunca el PDF generado (data.url se descartaba), así que el
+      // usuario no tenía forma de comprobar que sí se había generado.
+      if (data.url) window.open(data.url, "_blank");
       setRequestId(null);
       onOpenChange(false);
       onGenerada();
