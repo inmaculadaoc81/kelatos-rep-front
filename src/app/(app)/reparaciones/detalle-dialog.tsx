@@ -528,6 +528,7 @@ export function DetalleReparacionDialog({
                   onActualizado={actualizarTodo}
                   onClienteSeLleva={() => setAnticipoAbierto(true)}
                   onClienteLoTrajo={marcarEquipoRecibido}
+                  bloqueado={clienteEquipoBloqueado}
                 />
               </m.div>
 

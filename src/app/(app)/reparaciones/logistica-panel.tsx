@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Truck, Shop, Home } from "@/lib/icons";
+import { Truck, Shop, Home, Lock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ export function LogisticaPanel({
   onActualizado,
   onClienteSeLleva,
   onClienteLoTrajo,
+  bloqueado = false,
 }: {
   detalle: ReparacionDetalle;
   onActualizado: () => void;
@@ -25,6 +26,10 @@ export function LogisticaPanel({
   onClienteSeLleva: () => void;
   /** Dirección inversa: confirmación simple + toggle directo (marcarEquipoRecibido). */
   onClienteLoTrajo: () => void;
+  /** Reparación entregada y facturada: cambiar la entrega por mensajería o
+      si el equipo está en local ya no debería alterar lo que la factura
+      emitida refleja (mismo criterio que ClienteEditable/EquipoEditable). */
+  bloqueado?: boolean;
 }) {
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
   const [enviando, setEnviando] = useState(false);
@@ -69,7 +74,11 @@ export function LogisticaPanel({
               : "Actívala si el cliente solicita envío a domicilio"}
           </p>
         </div>
-        {mensajeriaActiva ? (
+        {bloqueado ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Reparación entregada y facturada: no se puede cambiar la entrega por mensajería">
+            <Lock className="size-3.5" />
+          </span>
+        ) : mensajeriaActiva ? (
           <Button
             size="sm"
             variant="outline"
@@ -98,7 +107,7 @@ export function LogisticaPanel({
         )}
       </div>
 
-      {mostrarToggleEquipo && (
+      {mostrarToggleEquipo && !bloqueado && (
         <div
           className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
             equipoEnLocal ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10"
