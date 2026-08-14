@@ -112,21 +112,44 @@ function FilaDato({ etiqueta, valor }: { etiqueta: string; valor: ReactNode }) {
  * al PDF si lo hay), "Pendiente" cuando se espera una y raya cuando no
  * corresponde. Las reparaciones en garantía nunca la requieren.
  */
+function BadgeFactura({ numero, url, etiqueta }: { numero: string; url: string; etiqueta?: string }) {
+  const contenido = (
+    <>
+      <Receipt className="size-3.5" /> {numero}
+      {etiqueta && <span className="opacity-80">· {etiqueta}</span>}
+    </>
+  );
+  const clase = "inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white";
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer" className={`${clase} hover:bg-emerald-700`}>
+      {contenido}
+    </a>
+  ) : (
+    <span className={clase}>{contenido}</span>
+  );
+}
+
+/**
+ * Número de la factura principal de reparación, más — el original nunca lo
+ * hacía (`Index.html:13273-13294` solo mostraba rep.numeroFactura) — el
+ * anticipo y la de mensajería si existen, ya que quedaban sin ninguna
+ * referencia visible en esta ficha una vez generadas.
+ */
 function EstadoFactura({ detalle }: { detalle: ReparacionDetalle }) {
+  const extras: ReactNode[] = [];
+  if (detalle.numeroFacturaAnticipo) {
+    extras.push(<BadgeFactura key="anticipo" numero={detalle.numeroFacturaAnticipo} url={detalle.urlFacturaAnticipo} etiqueta="Anticipo" />);
+  }
+  if (detalle.numeroFacturaMensajeria) {
+    extras.push(<BadgeFactura key="mensajeria" numero={detalle.numeroFacturaMensajeria} url={detalle.urlFacturaMensajeria} etiqueta="Mensajería" />);
+  }
+
   if (detalle.numeroFactura) {
-    const contenido = (
-      <>
-        <Receipt className="size-3.5" /> {detalle.numeroFactura}
-      </>
-    );
-    const clase =
-      "inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white";
-    return detalle.urlFactura ? (
-      <a href={detalle.urlFactura} target="_blank" rel="noopener noreferrer" className={`${clase} hover:bg-emerald-700`}>
-        {contenido}
-      </a>
-    ) : (
-      <span className={clase}>{contenido}</span>
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <BadgeFactura numero={detalle.numeroFactura} url={detalle.urlFactura} />
+        {extras}
+      </div>
     );
   }
 
@@ -134,12 +157,17 @@ function EstadoFactura({ detalle }: { detalle: ReparacionDetalle }) {
     detalle.tipoIngreso !== "GARANTIA" &&
     (detalle.estado === "Reparado" || detalle.estado === "Presupuesto Aceptado");
 
-  if (!requiereFactura) return <span className="text-muted-foreground">—</span>;
+  if (!requiereFactura && extras.length === 0) return <span className="text-muted-foreground">—</span>;
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-amber-400 px-2 py-0.5 text-xs font-medium text-amber-950">
-      <Warning2 className="size-3.5" /> Pendiente
-    </span>
+    <div className="flex flex-wrap items-center gap-1.5">
+      {requiereFactura && (
+        <span className="inline-flex items-center gap-1 rounded-md bg-amber-400 px-2 py-0.5 text-xs font-medium text-amber-950">
+          <Warning2 className="size-3.5" /> Pendiente
+        </span>
+      )}
+      {extras}
+    </div>
   );
 }
 
