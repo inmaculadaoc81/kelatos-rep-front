@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText } from "@/lib/icons";
+import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { Cliente } from "@/lib/clientes";
+import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 
 export type TipoEntregaModal = "ENTREGADO" | "ENVIO" | "RECICLAJE";
 
@@ -122,10 +124,10 @@ export function EntregarConFacturaDialog({
 
 function Cabecera({ titulo, icono: Icono, onClose }: { titulo: string; icono: typeof BoxTick; onClose: () => void }) {
   return (
-    <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-3 text-white">
+    <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
       <Icono className="size-4.5 shrink-0" />
-      <DialogTitle className="text-sm font-semibold text-white">{titulo}</DialogTitle>
-      <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={onClose}>
+      <DialogTitle className="text-sm font-semibold text-primary-foreground">{titulo}</DialogTitle>
+      <Button variant="ghost" size="icon-sm" className="ml-auto text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={onClose}>
         <CloseCircle className="size-4" />
       </Button>
     </header>
@@ -242,7 +244,7 @@ function VistaSinFactura({
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
-          <Button className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
+          <Button className="gap-1.5" onClick={confirmar} disabled={enviando}>
             <TickCircle className="size-3.5" /> {enviando ? "Guardando…" : textoBoton(tipoEntrega, true)}
           </Button>
         </footer>
@@ -279,11 +281,21 @@ function VistaConFactura({
   const [resena, setResena] = useState<"SI" | "NO">("NO");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
   const { titulo, icono } = tituloEIcono(tipoEntrega);
 
   const gastosEnvioNum = info.mostrarEnvio ? parseFloat(gastosEnvio) || 0 : 0;
   const totalSinIva = esEnvio ? gastosEnvioNum : info.totalBase + gastosEnvioNum;
   const totalConIva = totalSinIva * 1.21;
+
+  function seleccionarCliente(c: Cliente) {
+    setNombre(c.nombre || "");
+    setDireccion(c.direccion || "");
+    setDni(c.dniCif || "");
+    setTelefono(c.telefono || "");
+    setEmail(c.email || "");
+    toast.success("Cliente cargado");
+  }
 
   function cerrar(o: boolean) {
     if (enviando) return;
@@ -400,7 +412,10 @@ function VistaConFactura({
 
             <div className="space-y-2 rounded-md border bg-muted/30 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">Cliente en la factura</p>
+                <p className="flex items-center gap-1.5 text-sm font-semibold"><Profile className="size-4 text-muted-foreground" /> Cliente en la factura</p>
+                <Button type="button" size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setBuscarClienteAbierto(true)}>
+                  <SearchNormal1 className="size-3" /> Buscar
+                </Button>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="efNombre">Nombre *</Label>
@@ -429,11 +444,12 @@ function VistaConFactura({
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
-          <Button className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
+          <Button className="gap-1.5" onClick={confirmar} disabled={enviando}>
             <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : textoBoton(tipoEntrega, false)}
           </Button>
         </footer>
       </DialogContent>
+      <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
     </Dialog>
   );
 }
