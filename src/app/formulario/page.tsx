@@ -7,6 +7,8 @@ import {
   datosVacios,
   FotoFormulario,
   OPCIONES_TIPO_PRODUCTO,
+  PREFIJOS_TELEFONO_FORMULARIO,
+  PREFIJOS_TELEFONO_VALIDOS,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
 import { normalizarNumeroLocal } from "@/lib/telefono";
@@ -234,12 +236,11 @@ export default function FormularioClientePage() {
         // /api/formulario-cliente route.ts) — solo se separa el prefijo si
         // coincide con uno de los soportados, para no volver a prependerlo
         // sobre el número guardado en el siguiente envío.
-        const PREFIJOS = ["+34", "+33", "+351", "+44", "+1"];
         let telPrefijo = datos.telPrefijo;
         let telefonoLocal = datos.telefono;
         if (c.telefono) {
           const partes = c.telefono.trim().split(/\s+/);
-          if (partes.length > 1 && PREFIJOS.includes(partes[0])) {
+          if (partes.length > 1 && PREFIJOS_TELEFONO_VALIDOS.includes(partes[0])) {
             telPrefijo = partes[0];
             telefonoLocal = partes.slice(1).join("").replace(/[^\d]/g, "");
           } else {
@@ -455,11 +456,16 @@ export default function FormularioClientePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="+34">🇪🇸 +34</SelectItem>
-                    <SelectItem value="+33">🇫🇷 +33</SelectItem>
-                    <SelectItem value="+351">🇵🇹 +351</SelectItem>
-                    <SelectItem value="+44">🇬🇧 +44</SelectItem>
-                    <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                    {PREFIJOS_TELEFONO_FORMULARIO.map((g) => (
+                      <SelectGroup key={g.grupo}>
+                        <SelectLabel>{g.grupo}</SelectLabel>
+                        {g.opciones.map((o) => (
+                          <SelectItem key={`${g.grupo}-${o.value}-${o.label}`} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Input
