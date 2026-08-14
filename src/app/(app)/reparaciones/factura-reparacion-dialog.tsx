@@ -43,11 +43,20 @@ function lineaVacia(): LineaEditable {
 }
 
 /**
- * Reproduce _vfRellenarLineas() del original: piezas + mano de obra del
+ * Basado en _vfRellenarLineas() del original: piezas + mano de obra del
  * presupuesto aceptado (o el último si ninguno está aceptado), aplicando
  * el factor restante si ya se cobró un anticipo, la línea de descuento de
  * revisión pagada, y los portes de mensajería (solo mientras no exista ya
  * una factura, igual que el original).
+ *
+ * Diferencia deliberada frente al original: ahí "% restante" se calculaba
+ * sobre piezas+mano de obra SIN descontar la revisión, y el descuento se
+ * aplicaba entero (no prorrateado) en la factura final — eso hacía que un
+ * anticipo del 50% (que sí llevaba su mitad del descuento, ver
+ * anticipo-dialog.tsx) diera un "% restante" no redondo (p.ej. 58%) y el
+ * descuento pareciera aplicarse dos veces. Aquí baseRem ya resta el
+ * descuento, y este también se escala por remFactor — así el anticipo y el
+ * remanente son siempre porcentajes limpios y complementarios.
  */
 function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
   const lineas: LineaEditable[] = [];
@@ -64,6 +73,12 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
   const NOMBRES_TIPO: Record<string, string> = {
     vhs: "VHS", vhsc: "VHS-C", beta: "Betamax", minidv: "MiniDV", "8mm": "8mm / Hi8", cassette: "Cassette audio", bobina: "Bobina",
   };
+
+  // Factor por el que se escala también el descuento de revisión pagada:
+  // 1 salvo que ya se cobrara un anticipo (rama no-cintas de abajo), caso en
+  // el que el descuento se reparte proporcionalmente entre el anticipo y
+  // esta factura final, igual que las piezas y la mano de obra.
+  let remFactorDescuento = 1;
 
   if (datosCintas?.tipos) {
     // precioPorCinta/precioBobina: precio real de cada tipo (tarifa
@@ -91,10 +106,18 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
       }
     }
 
+    // baseRem es el presupuesto NETO (con el descuento de revisión ya
+    // restado, igual que anticipo-dialog.tsx lo calcula sobre ese mismo
+    // neto) — así el anticipo y el remanente de esta factura son siempre
+    // porcentajes limpios y complementarios (p.ej. 50%/50%), en vez de
+    // comparar un anticipo ya neto contra un total bruto.
+    const descuentoRevision = detalle.revisionPagada === "SI" ? 20 : 0;
     const anticipo = !detalle.urlFactura && pres ? detalle.anticipoImporte || 0 : 0;
-    const baseRem = sumItems > 0 ? sumItems : pres ? pres.total || 0 : 0;
+    const baseBruta = sumItems > 0 ? sumItems : pres ? pres.total || 0 : 0;
+    const baseRem = Math.max(0, baseBruta - descuentoRevision);
     let remFactor = 1;
     if (anticipo > 0 && baseRem > 0) remFactor = Math.max(0, 1 - anticipo / baseRem);
+    remFactorDescuento = remFactor;
     const sufijo = remFactor < 1 ? ` (${Math.round(remFactor * 100)}% restante)` : "";
 
     if (pres) {
@@ -116,7 +139,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
     }
   }
 
-  if (detalle.revisionPagada === "SI") add("Descuento revisión pagada", 1, -20);
+  if (detalle.revisionPagada === "SI") add("Descuento revisión pagada", 1, -20 * remFactorDescuento);
 
   if (!detalle.urlFactura) {
     if ((detalle.tipoRecepcion || "LOCAL") === "ENVIO") add("Recogida por mensajería", 1, 12.4);
