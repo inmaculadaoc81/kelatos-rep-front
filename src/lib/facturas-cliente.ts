@@ -561,16 +561,16 @@ interface FilaAlquilerSql {
   numero_factura_inicial: string | null;
   url_factura_inicial: string | null;
   total_factura_inicial: string | number | null;
+
+  cliente_factura: ClienteFacturaJson | string | null;
 }
 
 export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
   const { nombre, telefono } = repararNombreTelefono(texto(row.cliente_nombre), texto(row.cliente_telefono));
   const base = {
     resguardo: texto(row.alquiler_id),
-    cliente: nombre,
-    telefono,
+    ...aplicarClienteFactura({ cliente: nombre, telefono, dniCif: texto(row.cliente_dni) }, row.cliente_factura),
     email: texto(row.cliente_email),
-    dniCif: texto(row.cliente_dni),
     equipo: "",
     estadoEntrega: "",
     fecha: row.fecha_inicio,

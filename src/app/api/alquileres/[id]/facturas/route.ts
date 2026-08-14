@@ -150,7 +150,11 @@ export async function POST(
         dryRun: false,
         urlPdf: doc.url,
         alquilerId: id,
-        columnas: { numero_factura: doc.numero, url_factura: doc.url, total_cobrado: doc.total, estado_factura: solicitud.estadoFactura || "Pendiente" },
+        columnas: {
+          numero_factura: doc.numero, url_factura: doc.url, total_cobrado: doc.total,
+          estado_factura: solicitud.estadoFactura || "Pendiente",
+          cliente_factura: JSON.stringify(solicitud.cliente),
+        },
       });
 
       const resultado: ResultadoFacturaAlquiler = { numeroFactura: doc.numero, url: doc.url };
@@ -178,7 +182,10 @@ export async function POST(
         dryRun: false,
         urlPdf: doc.url,
         alquilerId: id,
-        columnas: { numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: -fianza },
+        columnas: {
+          numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: -fianza,
+          cliente_factura: JSON.stringify(solicitud.cliente),
+        },
       });
 
       const resultado: ResultadoFacturaAlquiler = { numeroFactura: doc.numero, url: doc.url };
@@ -214,7 +221,10 @@ export async function POST(
         dryRun: false,
         urlPdf: doc.url,
         alquilerId: id,
-        columnas: { numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: doc.total },
+        columnas: {
+          numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: doc.total,
+          cliente_factura: JSON.stringify(solicitud.cliente),
+        },
       });
 
       const resultado: ResultadoFacturaAlquiler = { numeroFactura: doc.numero, url: doc.url };
@@ -276,6 +286,7 @@ export async function POST(
         meses: mesesReal,
         semanas: semanasReal,
         dias: diasReal,
+        cliente_factura: JSON.stringify(solicitud.cliente),
         ...(!yaTieneInicialORectificativa
           ? { numero_factura_inicial: numOriginal, url_factura_inicial: a.url_factura || "", total_factura_inicial: totalInicialPrevio }
           : {}),
