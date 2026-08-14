@@ -123,6 +123,48 @@ function repararNombreTelefono(nombre: string, telefono: string): { nombre: stri
   return { nombre, telefono };
 }
 
+interface ClienteFacturaJson {
+  nombre?: string | null;
+  dni?: string | null;
+  direccion?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+}
+
+/**
+ * Poner otro nombre en "Cliente en la factura" al generarla (Buscar
+ * cliente, o simplemente editar el campo) no cambia el cliente registrado
+ * de la reparación — significa que ESA factura concreta se le cobra a otra
+ * persona. cliente_factura(_revision/_mensajeria/_anticipo/_corregida)
+ * guarda ese dato por factura desde que se generó (backend), pero esta
+ * lista siempre mostraba el cliente registrado de la reparación sin mirar
+ * esas columnas — factura tras factura, aunque cada una se hubiera cobrado
+ * a alguien distinto. Solo se sobreescribe cuando el JSON trae un nombre no
+ * vacío; si no, se conserva el cliente registrado (comportamiento actual).
+ */
+function aplicarClienteFactura(
+  base: { cliente: string; telefono: string; dniCif: string },
+  override: ClienteFacturaJson | string | null | undefined
+): { cliente: string; telefono: string; dniCif: string } {
+  // cliente_factura es jsonb (llega ya parseado como objeto), pero
+  // cliente_factura_revision/_mensajeria/_corregida son columnas `text` que
+  // guardan el mismo JSON como string — node-postgres no las auto-parsea.
+  let o: ClienteFacturaJson | null = null;
+  if (override && typeof override === "object") {
+    o = override;
+  } else if (typeof override === "string" && override.trim()) {
+    try {
+      const parsed = JSON.parse(override);
+      if (parsed && typeof parsed === "object") o = parsed;
+    } catch {
+      o = null;
+    }
+  }
+  const nombre = texto(o?.nombre);
+  if (!nombre) return base;
+  return { cliente: nombre, telefono: texto(o?.telefono) || base.telefono, dniCif: texto(o?.dni) || base.dniCif };
+}
+
 export function serieFactura(numeroFactura: string): string {
   const m = /^(\d+)-/.exec(numeroFactura || "");
   return m ? m[1] : "";
@@ -189,6 +231,7 @@ interface FilaReparacionFacturadaSql {
   banco: string | null;
   estado_factura: string | null;
   factura_borrador: boolean | null;
+  cliente_factura: ClienteFacturaJson | string | null;
 
   numero_factura_revision: string | null;
   url_factura_revision: string | null;
@@ -197,11 +240,13 @@ interface FilaReparacionFacturadaSql {
   forma_pago_revision: string | null;
   banco_revision: string | null;
   estado_factura_revision: string | null;
+  cliente_factura_revision: ClienteFacturaJson | string | null;
 
   numero_factura_mensajeria: string | null;
   url_factura_mensajeria: string | null;
   total_factura_mensajeria: string | number | null;
   fecha_factura_mensajeria: string | null;
+  cliente_factura_mensajeria: ClienteFacturaJson | string | null;
 
   numero_factura_anticipo: string | null;
   url_factura_anticipo: string | null;
@@ -209,6 +254,7 @@ interface FilaReparacionFacturadaSql {
   estado_factura_anticipo: string | null;
   fecha_factura_anticipo: string | null;
   forma_pago_anticipo: string | null;
+  cliente_factura_anticipo: ClienteFacturaJson | string | null;
 
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -230,6 +276,8 @@ interface FilaReparacionFacturadaSql {
   url_factura_corregida_revision: string | null;
   total_factura_corregida_revision: string | number | null;
   fecha_factura_corregida_revision: string | null;
+
+  cliente_factura_corregida: ClienteFacturaJson | string | null;
 }
 
 export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaCliente[] {
@@ -262,6 +310,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
     }
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(base, tipo === "mensajeria" ? row.cliente_factura_mensajeria : row.cliente_factura),
       numero: numFact,
       url,
       total,
@@ -278,6 +327,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
   if (numRev && numeroValido(numRev)) {
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(base, row.cliente_factura_revision),
       numero: numRev,
       url: urlValida(texto(row.url_factura_revision)),
       total: num(row.total_factura_revision),
@@ -294,6 +344,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
   if (numMens3 && numeroValido(numMens3) && numMens3 !== numFact) {
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(base, row.cliente_factura_mensajeria),
       numero: numMens3,
       url: urlValida(texto(row.url_factura_mensajeria)),
       total: num(row.total_factura_mensajeria),
@@ -316,6 +367,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
   if (numAntic && numeroValido(numAntic)) {
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(base, row.cliente_factura_anticipo),
       numero: numAntic,
       url: urlValida(texto(row.url_factura_anticipo)),
       total: num(row.anticipo_importe),
@@ -342,6 +394,10 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
     }
     facturas.push({
       ...base,
+      // Una rectificativa anula la factura original para el MISMO cliente
+      // al que se le cobró (cliente_factura) — no tiene su propio campo de
+      // cliente en el backend porque siempre reutiliza ese.
+      ...aplicarClienteFactura(base, row.cliente_factura),
       numero: numRect,
       url: urlValida(texto(row.url_factura_rectificativa)),
       total,
@@ -362,6 +418,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
     }
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(base, row.cliente_factura_revision),
       numero: numRectRev,
       url: urlValida(texto(row.url_factura_rectificativa_revision)),
       total,
@@ -381,6 +438,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
   if (numCorrRev && numeroValido(numCorrRev)) {
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(base, row.cliente_factura_corregida),
       numero: numCorrRev,
       url: urlValida(texto(row.url_factura_corregida_revision)),
       total: num(row.total_factura_corregida_revision),
@@ -396,6 +454,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
   if (numCorr && numeroValido(numCorr)) {
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(base, row.cliente_factura_corregida),
       numero: numCorr,
       url: urlValida(texto(row.url_factura_corregida)),
       total: num(row.total_factura_corregida),
