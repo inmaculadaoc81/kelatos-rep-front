@@ -199,6 +199,7 @@ interface FilaReparacionFacturadaSql {
   numero_factura_anticipo: string | null;
   url_factura_anticipo: string | null;
   anticipo_importe: string | number | null;
+  estado_factura_anticipo: string | null;
 
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -307,7 +308,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_factura || null,
       formaPago: texto(row.forma_pago),
       banco: "",
-      estadoFactura: "",
+      estadoFactura: texto(row.estado_factura_anticipo),
       tipo: "anticipo",
     });
   }

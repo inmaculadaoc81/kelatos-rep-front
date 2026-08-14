@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Wallet, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2 } from "@/lib/icons";
+import { Wallet, CloseCircle, Building, Profile, SearchNormal1, ArrowRight2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,11 @@ import { METODOS_PAGO, BANCOS, euros } from "./factura-acciones-tabs";
 
 const IVA_PCT = 0.21;
 const PORCENTAJE = 50;
+// Mismo importe fijo que el descuento de revisión pagada en presupuestos
+// (ver src/lib/reportes.ts) — al 50% porque el anticipo es la mitad de
+// TODO el presupuesto aceptado, descuento incluido, no solo de piezas y
+// mano de obra por separado.
+const PRECIO_REVISION = 20;
 
 function CampoLecturaAnticipo({ label, valor }: { label: string; valor: string }) {
   return (
@@ -47,6 +52,14 @@ function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
   if (ppto.manoObra > 0) {
     lineas.push({ descripcion: `Mano de obra (${PORCENTAJE}%)`, cantidad: 1, precio: ppto.manoObra * factor });
   }
+  // El 50% es sobre el TOTAL del presupuesto aceptado, no solo sobre
+  // piezas+mano de obra por separado — si la revisión pagada ya se
+  // descontó de ese total, el anticipo también se lleva su mitad del
+  // descuento (si no, 65€ de anticipo de un presupuesto de 110€ netos no
+  // cuadra con "el 50%").
+  if (detalle.revisionPagada === "SI") {
+    lineas.push({ descripcion: `Descuento revisión pagada (${PORCENTAJE}%)`, cantidad: 1, precio: -PRECIO_REVISION * factor });
+  }
   return lineas.length > 0 ? lineas : [{ descripcion: "", cantidad: 1, precio: 0 }];
 }
 
@@ -61,9 +74,11 @@ function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
  * una lista de solo lectura.
  *
  * A diferencia de una factura manual nueva: sin selector de "Tipo de
- * factura" (siempre serie 1, ligada a esta reparación) ni de "Estado" (no
- * existe estado_factura_anticipo — el estado se deriva de si hay forma de
- * pago, igual que el resto de tipos, ver estadoFacturaDerivado()).
+ * factura" (siempre serie 1, ligada a esta reparación) — sí tiene "Estado"
+ * (Cobrada/Pendiente, columna estado_factura_anticipo, migración 028).
+ * La tabla de Conceptos aquí es de solo lectura (a diferencia de una
+ * factura manual): son líneas calculadas automáticamente al 50% del
+ * presupuesto aceptado, no texto libre.
  */
 export function AnticipoDialog({
   detalle,
@@ -83,6 +98,7 @@ export function AnticipoDialog({
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
+  const [estadoFactura, setEstadoFactura] = useState("Cobrada");
   const [lineas, setLineas] = useState<LineaFactura[]>(() => construirLineas(detalle));
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -91,10 +107,6 @@ export function AnticipoDialog({
   const base = lineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
   const iva = base * IVA_PCT;
   const totalConIva = base + iva;
-
-  function actualizarLinea(i: number, campo: keyof LineaFactura, valor: string | number) {
-    setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, [campo]: valor } : l)));
-  }
 
   function seleccionarCliente(c: Cliente) {
     setNombre(c.nombre || "");
@@ -109,7 +121,7 @@ export function AnticipoDialog({
     setDireccion(detalle.cliente.direccion || "");
     setDni(detalle.dniCif || "");
     setTelefono(detalle.cliente.telefono || "");
-    setMetodo(""); setBanco("");
+    setMetodo(""); setBanco(""); setEstadoFactura("Cobrada");
     setLineas(construirLineas(detalle));
     setRequestId(null); setResultado(null);
   }
@@ -140,6 +152,7 @@ export function AnticipoDialog({
           datos: {
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: detalle.cliente.email },
             formaPago: metodo === "tarjeta" && banco ? `${banco} · tarjeta bancaria` : metodo,
+            estadoFactura,
             lineas: validas,
           },
         }),
@@ -184,7 +197,7 @@ export function AnticipoDialog({
               El cliente se lleva el equipo mientras llega la pieza, dejando un anticipo del {PORCENTAJE}% del presupuesto aceptado.
             </p>
 
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-5">
               <CampoLecturaAnticipo label="N.º Factura" valor={resultado?.numeroFactura || "Se asignará al generar"} />
               <CampoLecturaAnticipo label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
               <div className="space-y-1">
@@ -203,6 +216,16 @@ export function AnticipoDialog({
                     </SelectContent>
                   </Select>
                 )}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Estado</Label>
+                <Select value={estadoFactura} onValueChange={(v) => setEstadoFactura(v || "Cobrada")} disabled={!!resultado}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Cobrada">Cobrada</SelectItem>
+                    <SelectItem value="Pendiente">Pendiente</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex flex-col justify-end">
                 <p className="text-xs text-muted-foreground">Total anticipo</p>
@@ -259,55 +282,39 @@ export function AnticipoDialog({
                 <div className="rounded-lg border bg-card shadow-sm">
                   <div className="flex items-center justify-between rounded-t-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white">
                     <span>Conceptos</span>
-                    {!resultado && (
-                      <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((prev) => [...prev, { descripcion: "", cantidad: 1, precio: 0 }])}>
-                        <Add className="size-3" /> Añadir línea
-                      </Button>
-                    )}
+                    <span className="text-[10px] font-normal text-white/80">Calculado automáticamente — no editable</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 text-xs text-muted-foreground">
                         <tr>
-                          <th className="w-20 px-2 py-1.5 text-left font-medium">Ref.</th>
                           <th className="px-2 py-1.5 text-left font-medium">Descripción</th>
                           <th className="w-14 px-2 py-1.5 text-center font-medium">Cant.</th>
-                          <th className="w-16 px-2 py-1.5 text-center font-medium">Dto. %</th>
                           <th className="w-24 px-2 py-1.5 text-right font-medium">P. unit.</th>
-                          <th className="w-7 px-1 py-1.5"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {lineas.map((l, i) => (
                           <tr key={i} className="border-t">
-                            <td className="p-1"><Input className="h-8 text-sm" value={l.referencia || ""} onChange={(e) => actualizarLinea(i, "referencia", e.target.value)} disabled={!!resultado} /></td>
-                            <td className="p-1"><Input className="h-8 text-sm" placeholder="Descripción" value={l.descripcion} onChange={(e) => actualizarLinea(i, "descripcion", e.target.value)} disabled={!!resultado} /></td>
-                            <td className="p-1"><Input type="number" className="h-8 text-center text-sm" value={l.cantidad} onChange={(e) => actualizarLinea(i, "cantidad", parseFloat(e.target.value) || 0)} disabled={!!resultado} /></td>
-                            <td className="p-1"><Input type="number" className="h-8 text-center text-sm" value={l.descuento || 0} onChange={(e) => actualizarLinea(i, "descuento", parseFloat(e.target.value) || 0)} disabled={!!resultado} /></td>
-                            <td className="p-1"><Input type="number" step="0.01" className="h-8 text-right text-sm" value={l.precio} onChange={(e) => actualizarLinea(i, "precio", parseFloat(e.target.value) || 0)} disabled={!!resultado} /></td>
-                            <td className="p-1">
-                              {!resultado && (
-                                <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => setLineas((prev) => prev.filter((_, idx) => idx !== i))}>
-                                  <Trash className="size-3.5" />
-                                </Button>
-                              )}
-                            </td>
+                            <td className="px-2 py-1.5">{l.descripcion || "—"}</td>
+                            <td className="px-2 py-1.5 text-center tabular-nums">{l.cantidad}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">{euros(l.precio)}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot className="text-sm">
                         <tr className="border-t bg-muted/30">
-                          <td colSpan={4}></td>
+                          <td colSpan={1}></td>
                           <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base</td>
                           <td className="px-2 py-1 text-right font-medium">{euros(base)}</td>
                         </tr>
                         <tr className="bg-muted/30">
-                          <td colSpan={4}></td>
+                          <td colSpan={1}></td>
                           <td className="px-2 py-1 text-right text-xs text-muted-foreground">IVA (21%)</td>
                           <td className="px-2 py-1 text-right font-medium">{euros(iva)}</td>
                         </tr>
                         <tr className="border-t bg-primary/5">
-                          <td colSpan={4}></td>
+                          <td colSpan={1}></td>
                           <td className="px-2 py-1.5 text-right text-xs font-semibold">TOTAL</td>
                           <td className="px-2 py-1.5 text-right text-base font-bold">{euros(totalConIva)}</td>
                         </tr>
