@@ -18,11 +18,6 @@ import { METODOS_PAGO, BANCOS, euros } from "./factura-acciones-tabs";
 
 const IVA_PCT = 0.21;
 const PORCENTAJE = 50;
-// Mismo importe fijo que el descuento de revisión pagada en presupuestos
-// (ver src/lib/reportes.ts) — al 50% porque el anticipo es la mitad de
-// TODO el presupuesto aceptado, descuento incluido, no solo de piezas y
-// mano de obra por separado.
-const PRECIO_REVISION = 20;
 
 function CampoLecturaAnticipo({ label, valor }: { label: string; valor: string }) {
   return (
@@ -52,14 +47,11 @@ function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
   if (ppto.manoObra > 0) {
     lineas.push({ descripcion: `Mano de obra (${PORCENTAJE}%)`, cantidad: 1, precio: ppto.manoObra * factor });
   }
-  // El 50% es sobre el TOTAL del presupuesto aceptado, no solo sobre
-  // piezas+mano de obra por separado — si la revisión pagada ya se
-  // descontó de ese total, el anticipo también se lleva su mitad del
-  // descuento (si no, 65€ de anticipo de un presupuesto de 110€ netos no
-  // cuadra con "el 50%").
-  if (detalle.revisionPagada === "SI") {
-    lineas.push({ descripcion: `Descuento revisión pagada (${PORCENTAJE}%)`, cantidad: 1, precio: -PRECIO_REVISION * factor });
-  }
+  // El descuento de revisión pagada NO se prorratea aquí: se aplica entero
+  // una sola vez, en la factura final (construirLineasIniciales en
+  // factura-reparacion-dialog.tsx). Si se descontara también aquí, el "%
+  // restante" de la factura final dejaría de ser un 50% limpio (p.ej. 58%)
+  // porque el remanente se calcula sobre piezas+mano de obra sin descuento.
   return lineas.length > 0 ? lineas : [{ descripcion: "", cantidad: 1, precio: 0 }];
 }
 
