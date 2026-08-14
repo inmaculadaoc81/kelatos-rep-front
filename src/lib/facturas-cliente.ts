@@ -207,6 +207,8 @@ interface FilaReparacionFacturadaSql {
   url_factura_anticipo: string | null;
   anticipo_importe: string | number | null;
   estado_factura_anticipo: string | null;
+  fecha_factura_anticipo: string | null;
+  forma_pago_anticipo: string | null;
 
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -317,8 +319,12 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       numero: numAntic,
       url: urlValida(texto(row.url_factura_anticipo)),
       total: num(row.anticipo_importe),
-      fecha: row.fecha_factura || null,
-      formaPago: texto(row.forma_pago),
+      // fecha_factura_anticipo/forma_pago_anticipo: el anticipo casi
+      // siempre se cobra ANTES de que exista la factura de reparación
+      // (fecha_factura/forma_pago), así que esas dos quedaban vacías y la
+      // fila salía sin fecha ni forma de pago (bug real detectado).
+      fecha: row.fecha_factura_anticipo || row.fecha_factura || null,
+      formaPago: texto(row.forma_pago_anticipo) || texto(row.forma_pago),
       banco: "",
       estadoFactura: texto(row.estado_factura_anticipo),
       tipo: "anticipo",
