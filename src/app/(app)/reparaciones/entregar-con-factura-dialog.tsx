@@ -228,7 +228,7 @@ function VistaSinFactura({
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-xl" showCloseButton={false}>
         <Cabecera titulo={titulo} icono={icono} onClose={() => cerrar(false)} />
         <div className="space-y-4 p-4">
           <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
@@ -354,7 +354,7 @@ function VistaConFactura({
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-md" showCloseButton={false}>
+      <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-2xl" showCloseButton={false}>
         <Cabecera titulo={titulo} icono={icono} onClose={() => cerrar(false)} />
         <div className="space-y-4 p-4">
           <div className="space-y-3">
