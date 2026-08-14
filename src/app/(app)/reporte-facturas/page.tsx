@@ -21,14 +21,20 @@ import { FacturaConDesglose, RF_TIPOS_FILTRABLES, RF_TIPO_ESTILO, generarCsvRepo
 import { ColumnaFiltro } from "../facturas-clientes/columna-filtro";
 import { ColumnaFiltroRango, RangoFiltro } from "./columna-filtro-rango";
 import { HistorialExportacionesDialog } from "./historial-exportaciones-dialog";
+import { fechaMadrid } from "@/lib/reportes";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
+// fecha_factura/etc. son timestamptz (ISO en UTC) — truncar con slice(0,10)
+// se queda con el día UTC, no el de Madrid (una factura de las 00:21 del
+// día 15 llega como "...T22:21...Z" del día 14 y se mostraba como 14, no
+// 15). fechaMadrid() convierte primero al día calendario correcto.
 function fechaCorta(iso: string | null): string {
-  if (!iso) return "—";
-  const p = iso.slice(0, 10).split("-");
+  const dia = fechaMadrid(iso);
+  if (!dia) return "—";
+  const p = dia.split("-");
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(-2)}` : "—";
 }
 

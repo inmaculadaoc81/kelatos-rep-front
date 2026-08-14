@@ -33,6 +33,7 @@ import { useConfirm } from "@/components/confirm-provider";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatearFecha } from "@/lib/dias-entrega";
+import { fechaMadrid } from "@/lib/reportes";
 import {
   FacturaCliente,
   TipoFactura,
@@ -84,14 +85,27 @@ function valorColumna(f: FacturaCliente, columna: ColumnaFiltrable): string {
 
 type FiltroFecha = "todas" | "hoy" | "semana" | "mes" | `mes${number}` | `trim${number}`;
 
-/** Reproduce _fcDentroRango() del original. */
+/**
+ * Reproduce _fcDentroRango() del original, con un ajuste: el original
+ * truncaba fechaStr.substring(0,10) porque ahí las fechas ya llegaban
+ * pre-formateadas en Europe/Madrid (Utilities.formatDate(...)) — aquí
+ * fecha_factura/etc. son timestamptz y llegan como ISO en UTC
+ * (p.ej. "2026-08-14T22:21:00.000Z" para una factura generada a las 00:21
+ * del día 15 en Madrid). Truncar esa cadena directamente se queda con el
+ * día UTC, no el de Madrid: una factura generada justo pasada la
+ * medianoche española caía en el filtro "Hoy" del día anterior (bug real
+ * reportado: factura de las 00:21 del 15 invisible al filtrar por hoy).
+ * fechaMadrid() convierte primero al día calendario correcto.
+ */
 function dentroDeRango(fecha: string | null, filtro: FiltroFecha): boolean {
   if (!fecha) return filtro === "todas";
-  const iso = fecha.length > 10 ? fecha.substring(0, 10) : fecha;
+  const iso = fechaMadrid(fecha);
+  if (!iso) return filtro === "todas";
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return filtro === "todas";
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoyIso = fechaMadrid(new Date());
+  const hoy = hoyIso ? new Date(`${hoyIso}T00:00:00`) : new Date();
+  if (!hoyIso) hoy.setHours(0, 0, 0, 0);
 
   if (filtro === "todas") return true;
   if (filtro === "hoy") return d.getTime() === hoy.getTime();

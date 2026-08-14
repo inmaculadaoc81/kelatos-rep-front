@@ -3,6 +3,7 @@ import { kelatosApiGet } from "@/lib/kelatos-api";
 import { expandirVenta } from "@/lib/facturas-cliente";
 import { obtenerTodasLasFacturas, lookupCodigoCliente } from "@/lib/obtener-facturas";
 import { calcularDesglose } from "@/lib/reporte-facturas";
+import { fechaMadrid } from "@/lib/reportes";
 
 interface RespuestaTabla<T> {
   ok: boolean;
@@ -30,7 +31,16 @@ export async function GET(request: NextRequest) {
     const ventasFacturas = ventas.rows.flatMap(expandirVenta).map((f) => ({ ...f, codigoCliente: lookupCodigo(f.dniCif, f.telefono) }));
     const todas = [...base, ...ventasFacturas];
 
-    const enRango = todas.filter((f) => !!f.fecha && f.fecha.slice(0, 10) >= fechaDesde && f.fecha.slice(0, 10) <= fechaHasta);
+    // f.fecha es timestamptz (ISO en UTC) para reparación/revisión/etc. —
+    // truncar con slice(0,10) se queda con el día UTC, no el de Madrid, y
+    // una factura generada pasada la medianoche española (p.ej. 00:21 del
+    // día 15 == 22:21 UTC del día 14) quedaba fuera del rango o contada en
+    // el día equivocado (mismo bug real que en Facturas de Clientes).
+    const enRango = todas.filter((f) => {
+      if (!f.fecha) return false;
+      const dia = fechaMadrid(f.fecha);
+      return !!dia && dia >= fechaDesde && dia <= fechaHasta;
+    });
     enRango.sort((a, b) => (a.fecha! < b.fecha! ? -1 : a.fecha! > b.fecha! ? 1 : 0));
 
     const facturas = enRango.map(calcularDesglose);

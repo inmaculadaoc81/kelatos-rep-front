@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ExportacionReporteFacturas } from "@/lib/reporte-facturas-exportaciones";
+import { fechaMadrid } from "@/lib/reportes";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -17,8 +18,13 @@ function fechaHoraCorta(iso: string): string {
   return d.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+// Mismo ajuste que en reporte-facturas/page.tsx: truncar el ISO en UTC
+// directamente se queda con el día equivocado cerca de la medianoche
+// española.
 function fechaCorta(iso: string): string {
-  const p = (iso || "").slice(0, 10).split("-");
+  const dia = fechaMadrid(iso);
+  if (!dia) return "—";
+  const p = dia.split("-");
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(-2)}` : "—";
 }
 
