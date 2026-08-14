@@ -66,6 +66,7 @@ export interface CallbacksAccion {
   onMarcarEquipoRecibido: () => void;
   onEnviarPuntoLimpio: () => void;
   onFacturacion: () => void;
+  onMarcarEnviadoRapido: () => void;
 }
 
 const ESTADOS_LISTO_ENTREGA = ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"];
@@ -388,39 +389,56 @@ export function AccionRequerida({
     );
   }
   if (ESTADOS_LISTO_ENTREGA.includes(estado) && entregaAbierta) {
-    // Reproduce la rama de renderizarAccion() (Index.html): "Reparado" ya
-    // está facturado, así que "Entregado en Local" abre la confirmación
-    // rápida de un clic (abrirConfirmarEntrega); en el resto de estados
-    // ("No tiene Reparación"/"Presupuesto Rechazado") abre el formulario
-    // completo (abrirModalEntregarEquipo), porque ahí puede faltar todavía
-    // registrar cómo se cierra la salida — mismo texto de botón en ambas
-    // ramas, solo cambia a qué modal apunta. Excepción dentro de "Reparado":
-    // garantía recibida por mensajería que se recoge en local también va al
-    // formulario completo, porque ahí se cobra el trayecto (_garantiaConRecojo
-    // en el original) — y en ese caso concreto no se ofrece QR Recogida.
+    // Reproduce la rama de renderizarAccion() (Index.html) exactamente:
+    // - "Reparado" (no garantía) con devolución por mensajería: la factura
+    //   ya se generó en el flujo normal de Facturación (incluye ahí la
+    //   línea de mensajería), así que solo hace falta el atajo de un clic
+    //   "Marcar como enviado" (marcarEnviadoRapido, sin factura nueva).
+    // - Cualquier caso SIN mensajería: "Entregado en Local" (confirmación
+    //   rápida si "Reparado" ya facturado, formulario completo en el resto)
+    //   + "QR Recogida", salvo garantía recibida por mensajería que se
+    //   recoge en local (_garantiaConRecojo), donde se cobra el trayecto y
+    //   no se ofrece QR.
+    // - "Facturar y Enviar por Mensajería" solo en "No tiene Reparación" /
+    //   "Presupuesto Rechazado" / "Reparado"+Garantía — nunca en un
+    //   "Reparado" normal, porque ahí la mensajería no tiene factura propia
+    //   por separado.
     const garantiaConRecojo = estado === "Reparado" && detalle.tipoIngreso === "GARANTIA" && detalle.tipoRecepcion === "ENVIO";
-    botones.push(
-      <Button
-        key="entrega"
-        size="sm"
-        className="gap-1.5"
-        onClick={estado === "Reparado" && !garantiaConRecojo ? callbacks.onEntregadoLocal : callbacks.onMarcarEntregado}
-      >
-        <BoxTick className="size-3.5" /> Entregado en Local
-      </Button>
-    );
-    if (!garantiaConRecojo) {
+    const mensajeriaPendiente = detalle.entregaMensajeria === "SI";
+
+    if (estado === "Reparado" && detalle.tipoIngreso !== "GARANTIA" && mensajeriaPendiente) {
       botones.push(
-        <Button key="qr" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onVerQr}>
-          <ScanBarcode className="size-3.5" /> Ver QR de recogida
+        <Button key="marcar-enviado" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onMarcarEnviadoRapido}>
+          <TickCircle className="size-3.5" /> Marcar como enviado
         </Button>
       );
     }
-    // Reproduce el botón "Facturar y Enviar por Mensajería" — mismas tres
-    // ramas que ofrecen "Entregado en Local" (Reparado con garantía incluido),
-    // cuando el cliente pidió devolución por mensajería y esa mensajería
-    // todavía no tiene factura propia.
-    if (detalle.entregaMensajeria === "SI" && !detalle.numeroFacturaMensajeria) {
+
+    if (!mensajeriaPendiente) {
+      botones.push(
+        <Button
+          key="entrega"
+          size="sm"
+          className="gap-1.5"
+          onClick={estado === "Reparado" && !garantiaConRecojo ? callbacks.onEntregadoLocal : callbacks.onMarcarEntregado}
+        >
+          <BoxTick className="size-3.5" /> Entregado en Local
+        </Button>
+      );
+      if (!garantiaConRecojo) {
+        botones.push(
+          <Button key="qr" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onVerQr}>
+            <ScanBarcode className="size-3.5" /> Ver QR de recogida
+          </Button>
+        );
+      }
+    }
+
+    if (
+      (estado === "No tiene Reparación" || estado === "Presupuesto Rechazado" || (estado === "Reparado" && detalle.tipoIngreso === "GARANTIA")) &&
+      mensajeriaPendiente &&
+      !detalle.numeroFacturaMensajeria
+    ) {
       botones.push(
         <Button key="facturar-mensajeria" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onFacturarMensajeria}>
           <Truck className="size-3.5" /> Facturar y Enviar por Mensajería

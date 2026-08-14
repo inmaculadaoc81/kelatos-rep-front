@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TickCircle, CloseCircle, BoxTick, Cd, Notification } from "@/lib/icons";
+import { TickCircle, CloseCircle, BoxTick, Cd, Notification, Truck } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -382,6 +382,87 @@ export function ConfirmarEntregaLocalDialog({
         </header>
 
         <p className="px-4 py-6 text-center text-sm">¿Confirmas que el equipo ha sido entregado al cliente en local?</p>
+
+        <footer className="flex justify-center gap-2 rounded-b-xl border-t bg-muted/50 px-4 py-2.5">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={enviando}>
+            Cancelar
+          </Button>
+          <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
+            <TickCircle className="size-3.5" /> {enviando ? "Marcando..." : "Confirmar"}
+          </Button>
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Reproduce marcarEnviadoRapido() (Index.html) — atajo de un solo clic para
+ * cuando la reparación "Reparado" (no garantía) ya está facturada por el
+ * flujo normal de Facturación, que ya incluye la línea de mensajería: aquí
+ * solo queda registrar la salida como ENVIO, sin generar ninguna factura
+ * nueva (numeroFactura vacío → el backend conserva la ya existente).
+ */
+export function MarcarEnviadoDialog({
+  resguardo,
+  open,
+  onOpenChange,
+  onEnviado,
+}: {
+  resguardo: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEnviado: () => void;
+}) {
+  const [enviando, setEnviando] = useState(false);
+
+  async function confirmar() {
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/salidas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fechaRecogida: new Date().toISOString().slice(0, 10),
+          tipoEntrega: "ENVIO",
+          numeroFactura: "",
+          resena: "NO",
+          observaciones: "",
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Envío registrado");
+      onOpenChange(false);
+      onEnviado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
+      <DialogContent className="max-w-sm gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
+        <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-2.5 text-white">
+          <Truck className="size-4.5 shrink-0" />
+          <DialogTitle className="text-sm font-semibold text-white">Marcar como enviado</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto text-white hover:bg-white/15 hover:text-white"
+            onClick={() => !enviando && onOpenChange(false)}
+          >
+            <CloseCircle className="size-4" />
+          </Button>
+        </header>
+
+        <p className="px-4 py-6 text-center text-sm">
+          ¿Marcar el equipo como enviado por mensajería?
+          <br />
+          <span className="text-muted-foreground">No se generará ninguna factura.</span>
+        </p>
 
         <footer className="flex justify-center gap-2 rounded-b-xl border-t bg-muted/50 px-4 py-2.5">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={enviando}>

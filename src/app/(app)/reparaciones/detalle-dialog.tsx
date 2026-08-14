@@ -34,7 +34,7 @@ import { separarSintoma } from "@/lib/progreso-reparacion";
 import { ReparacionDetalle, type Pedido } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
-import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog } from "./finalizar-dialog";
+import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog, MarcarEnviadoDialog } from "./finalizar-dialog";
 import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
 import { AnticipoDialog } from "./anticipo-dialog";
 import { FacturaReparacionDialog, TarjetaResena } from "./factura-reparacion-dialog";
@@ -271,6 +271,7 @@ export function DetalleReparacionDialog({
   const [finalizarAbierto, setFinalizarAbierto] = useState(false);
   const [entregaAbierta, setEntregaAbierta] = useState(false);
   const [entregaLocalAbierta, setEntregaLocalAbierta] = useState(false);
+  const [marcarEnviadoAbierta, setMarcarEnviadoAbierta] = useState(false);
   const [nuevoPresupuestoAbierto, setNuevoPresupuestoAbierto] = useState(false);
   const [qrAbierto, setQrAbierto] = useState(false);
   const [iniciarReparacionAbierto, setIniciarReparacionAbierto] = useState(false);
@@ -616,6 +617,7 @@ export function DetalleReparacionDialog({
                   onMarcarEquipoRecibido: marcarEquipoRecibido,
                   onEnviarPuntoLimpio: enviarPuntoLimpio,
                   onFacturacion: () => setFacturaAbierta(true),
+                  onMarcarEnviadoRapido: () => setMarcarEnviadoAbierta(true),
                   }}
                 />
               </m.div>
@@ -862,6 +864,12 @@ export function DetalleReparacionDialog({
             open={entregaLocalAbierta}
             onOpenChange={setEntregaLocalAbierta}
             onEntregado={actualizarTodo}
+          />
+          <MarcarEnviadoDialog
+            resguardo={detalle.resguardo}
+            open={marcarEnviadoAbierta}
+            onOpenChange={setMarcarEnviadoAbierta}
+            onEnviado={actualizarTodo}
           />
           <AnticipoDialog
             detalle={detalle}
