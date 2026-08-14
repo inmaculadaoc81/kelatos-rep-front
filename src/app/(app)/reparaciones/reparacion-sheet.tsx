@@ -387,7 +387,17 @@ export function ReparacionSheet({
           <div className="rounded-xl border bg-card p-4">
             <SeccionTitulo icono={Monitor}>Datos del equipo</SeccionTitulo>
             <label className="mt-3 flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-400">
-              <Switch checked={datos.esCintas} onCheckedChange={(v) => actualizar("esCintas", v)} />
+              <Switch
+                checked={datos.esCintas}
+                onCheckedChange={(v) => {
+                  actualizar("esCintas", v);
+                  // Para cintas, "Presupuesto Pendiente" no es un estado real:
+                  // el backend lo colapsa a "En Reparación" en silencio (misma
+                  // regla que el original) — dejarlo seleccionado contradice
+                  // el aviso de "se generará y aceptará automáticamente".
+                  if (v && datos.estado === "Presupuesto Pendiente") actualizar("estado", "aceptar_ahora");
+                }}
+              />
               <Video className="size-4" /> Equipo usa cintas (VHS, MiniDV, 8mm, etc.)
             </label>
 
@@ -475,9 +485,15 @@ export function ReparacionSheet({
 
             <SeccionTitulo icono={ShieldTick}>Estado inicial</SeccionTitulo>
             <div className="mt-3 flex flex-wrap gap-2">
-              <BotonSegmento activo={datos.estado === "Presupuesto Pendiente"} color="primary" icono={Receipt} onClick={() => actualizar("estado", "Presupuesto Pendiente")}>
-                Presupuesto Pendiente
-              </BotonSegmento>
+              {/* Para cintas "Presupuesto Pendiente" no es un estado real: el
+                  backend lo colapsa en silencio a "En Reparación" (misma
+                  regla que el original), así que dejarlo elegible sería
+                  engañoso — el aviso de arriba ya avisa que se acepta solo. */}
+              {!datos.esCintas && (
+                <BotonSegmento activo={datos.estado === "Presupuesto Pendiente"} color="primary" icono={Receipt} onClick={() => actualizar("estado", "Presupuesto Pendiente")}>
+                  Presupuesto Pendiente
+                </BotonSegmento>
+              )}
               <BotonSegmento activo={datos.estado === "Garantía"} color="success" icono={ShieldTick} onClick={() => actualizar("estado", "Garantía")}>
                 Garantía
               </BotonSegmento>
