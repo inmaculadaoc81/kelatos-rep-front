@@ -313,7 +313,17 @@ function VistaConFactura({
       lineas.push({ descripcion: "Reparación", cantidad: 1, precio: info.totalBase });
     }
     if (info.mostrarEnvio) {
-      lineas.push({ descripcion: esEnvio ? "Gastos de envío" : "Gastos de envío/recogida", cantidad: 1, precio: gastosEnvioNum });
+      // Reproduce _apiEntregarConFacturaSql (Code.js): descripción según
+      // qué trayecto se factura de verdad — evita que "Gastos de envío"
+      // genérico esconda que se están cobrando los DOS trayectos (24,80€
+      // en vez de los 12,40€ habituales, confuso sin esta aclaración).
+      const recibidoMensajeria = (detalle.tipoRecepcion || "LOCAL") === "ENVIO";
+      const descripcionEnvio = recibidoMensajeria && esEnvio
+        ? "Servicio de mensajería (recogida y envío)"
+        : recibidoMensajeria
+          ? "Servicio de mensajería (recogida)"
+          : "Servicio de envío a domicilio";
+      lineas.push({ descripcion: descripcionEnvio, cantidad: 1, precio: gastosEnvioNum });
     }
     if (lineas.length === 0) return toast.error("No hay ningún importe que facturar");
 
@@ -333,6 +343,11 @@ function VistaConFactura({
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email },
             formaPago,
             lineas,
+            // El cliente paga en el momento de confirmar este modal (misma
+            // razón que "revision": la forma de pago se elige aquí mismo) —
+            // sin esto, generarFacturaPdfDesdeSheet caía al valor por
+            // defecto "Pendiente" aunque ya se hubiera cobrado en efectivo.
+            estadoFactura: "Cobrada",
           },
           incluirEntrega: true,
           entregaDatos: { fecha: hoyIso(), tipoEntrega, resena, observaciones },
