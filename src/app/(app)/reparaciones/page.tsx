@@ -31,6 +31,7 @@ import { ReparacionSheet } from "./reparacion-sheet";
 import { RechazarFormularioDialog } from "./formulario-pendiente-dialog";
 import { DashboardMetricas } from "./dashboard-metricas";
 import { NuevaFacturaManualDialog } from "./nueva-factura-manual-dialog";
+import { FormulariosRechazadosDialog } from "./formularios-rechazados-dialog";
 
 type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | null };
 
@@ -178,6 +179,7 @@ export default function ReparacionesPage() {
   const [formularioPendiente, setFormularioPendiente] = useState<{ rep: Reparacion; modo: "confirmar" | "rechazar" } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [nuevaFacturaAbierta, setNuevaFacturaAbierta] = useState(false);
+  const [formulariosRechazadosAbierto, setFormulariosRechazadosAbierto] = useState(false);
   const [eliminarResguardo, setEliminarResguardo] = useState<string | null>(null);
   const esSuperadmin = useEsSuperadmin();
 
@@ -387,6 +389,14 @@ export default function ReparacionesPage() {
             title="Nueva Factura Manual"
           >
             <Receipt className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 gap-1.5 text-destructive"
+            onClick={() => setFormulariosRechazadosAbierto(true)}
+            title="Formularios Rechazados"
+          >
+            <CloseCircle className="size-4" /> Formularios Rechazados
           </Button>
         </div>
       </div>
@@ -645,6 +655,8 @@ export default function ReparacionesPage() {
           cargarMetricas();
         }}
       />
+
+      <FormulariosRechazadosDialog open={formulariosRechazadosAbierto} onOpenChange={setFormulariosRechazadosAbierto} />
 
       <RechazarFormularioDialog
         reparacion={formularioPendiente?.modo === "rechazar" ? formularioPendiente.rep : null}
