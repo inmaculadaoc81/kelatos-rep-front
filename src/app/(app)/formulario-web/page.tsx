@@ -115,8 +115,15 @@ export default function FormularioWebPage() {
       </div>
 
 
+      {/* A la izquierda todos los contenedores de configuración (código/QR,
+          URL de la tablet, info de campos y flujo); a la derecha, aparte,
+          "Fotos y firmas recibidas" — esa lista puede crecer mucho y antes
+          empujaba todo lo demás hacia abajo. En pantallas pequeñas se
+          apilan en una sola columna, igual que antes. */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="@container space-y-4">
       {/* Código de acceso + QR */}
-      <div className="mb-4 overflow-hidden rounded-xl border-2 border-primary shadow-sm">
+      <div className="overflow-hidden rounded-xl border-2 border-primary shadow-sm">
         <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
           <span className="flex items-center gap-2 font-semibold">
             <ScanBarcode className="size-5" /> Código de acceso al formulario
@@ -197,7 +204,7 @@ export default function FormularioWebPage() {
       </div>
 
       {/* URL de la tablet */}
-      <div className="mb-4 rounded-xl border bg-card p-4 shadow-sm">
+      <div className="rounded-xl border bg-card p-4 shadow-sm">
         <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
           <Monitor className="size-4 text-primary" /> URL del formulario para la tablet
         </h2>
@@ -216,8 +223,53 @@ export default function FormularioWebPage() {
         </p>
       </div>
 
-      {/* Galería de fotos y firmas recibidas */}
-      <div className="mb-4 rounded-xl border bg-card p-4 shadow-sm">
+      {/* Info: campos y flujo */}
+      <div className="grid gap-4 @lg:grid-cols-2">
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+            <DocumentText className="size-4 text-sky-600 dark:text-sky-400" /> El cliente rellena
+          </h3>
+          <ul className="space-y-1.5 text-sm">
+            <CampoFormulario icono={Personalcard} label="Nombre completo" obligatorio />
+            <CampoFormulario icono={Sms} label="Email" />
+            <CampoFormulario icono={Call} label="Teléfono" obligatorio />
+            <CampoFormulario icono={Monitor} label="Modelo del equipo" obligatorio />
+            <CampoFormulario icono={Hashtag} label="Número de serie" />
+            <CampoFormulario icono={DocumentText} label="Descripción de la avería" obligatorio />
+            <CampoFormulario icono={ShieldTick} label="¿Quiere presupuesto previo?" obligatorio />
+          </ul>
+        </div>
+
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+            <TickCircle className="size-4 text-emerald-600 dark:text-emerald-400" /> Qué ocurre al pulsar &quot;Registrar&quot;
+          </h3>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <AddCircle className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              Se crea la reparación en el sistema con número de resguardo
+            </li>
+            <li className="flex items-start gap-2">
+              <ShieldTick className="mt-0.5 size-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
+              Estado: <strong className="text-foreground">Presupuesto Pendiente</strong>
+            </li>
+            <li className="flex items-start gap-2">
+              <Send2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
+              Si dio email: recibe confirmación con su número de referencia
+            </li>
+            <li className="flex items-start gap-2">
+              <Clock className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              El formulario se resetea en unos segundos, listo para el siguiente cliente
+            </li>
+          </ul>
+        </div>
+      </div>
+      </div>
+
+      {/* Fotos y firmas recibidas — columna propia: es una lista que puede
+          crecer mucho y no debe empujar hacia abajo el resto de bloques. */}
+      <div className="space-y-4">
+      <div className="rounded-xl border bg-card p-4 shadow-sm">
         <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
           <Gallery className="size-4 text-primary" /> Fotos y firmas recibidas
         </h2>
@@ -309,47 +361,7 @@ export default function FormularioWebPage() {
           </div>
         )}
       </div>
-
-      {/* Info: campos y flujo */}
-      <div className="mb-4 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-            <DocumentText className="size-4 text-sky-600 dark:text-sky-400" /> El cliente rellena
-          </h3>
-          <ul className="space-y-1.5 text-sm">
-            <CampoFormulario icono={Personalcard} label="Nombre completo" obligatorio />
-            <CampoFormulario icono={Sms} label="Email" />
-            <CampoFormulario icono={Call} label="Teléfono" obligatorio />
-            <CampoFormulario icono={Monitor} label="Modelo del equipo" obligatorio />
-            <CampoFormulario icono={Hashtag} label="Número de serie" />
-            <CampoFormulario icono={DocumentText} label="Descripción de la avería" obligatorio />
-            <CampoFormulario icono={ShieldTick} label="¿Quiere presupuesto previo?" obligatorio />
-          </ul>
-        </div>
-
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-            <TickCircle className="size-4 text-emerald-600 dark:text-emerald-400" /> Qué ocurre al pulsar &quot;Registrar&quot;
-          </h3>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <AddCircle className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              Se crea la reparación en el sistema con número de resguardo
-            </li>
-            <li className="flex items-start gap-2">
-              <ShieldTick className="mt-0.5 size-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
-              Estado: <strong className="text-foreground">Presupuesto Pendiente</strong>
-            </li>
-            <li className="flex items-start gap-2">
-              <Send2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
-              Si dio email: recibe confirmación con su número de referencia
-            </li>
-            <li className="flex items-start gap-2">
-              <Clock className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-              El formulario se resetea en unos segundos, listo para el siguiente cliente
-            </li>
-          </ul>
-        </div>
+      </div>
       </div>
     </div>
   );
