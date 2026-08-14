@@ -75,7 +75,14 @@ export async function POST(
   };
   if (datos.esCintas) {
     const calculo = calcularTotalCintas(datos.cintas, datos.precioPorCintaPersonalizado);
-    datosConfirmar.datosCintas = { tipos: datos.cintas, total: calculo.total, precioUnitario: calculo.precioUnitarioEquivalente };
+    // precioPorCinta/precioBobina aparte del promedio "equivalente" — ver
+    // altas/route.ts para el porqué (desglose real por línea de factura).
+    datosConfirmar.datosCintas = {
+      tipos: datos.cintas, total: calculo.total,
+      precioUnitario: calculo.precioUnitarioEquivalente,
+      precioPorCinta: calculo.precioPorCinta,
+      precioBobina: calculo.precioBobina,
+    };
   }
 
   const body: Record<string, unknown> = {

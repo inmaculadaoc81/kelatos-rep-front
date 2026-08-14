@@ -54,7 +54,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
   const add = (descripcion: string, cantidad: number, precioUnitario: number) =>
     lineas.push({ referencia: "", descripcion, cantidad, descuentoPct: 0, precioUnitario });
 
-  let datosCintas: { tipos?: Record<string, number>; precioUnitario?: number } | null = null;
+  let datosCintas: { tipos?: Record<string, number>; precioUnitario?: number; precioPorCinta?: number; precioBobina?: number } | null = null;
   try {
     datosCintas = detalle.datosCintas ? JSON.parse(detalle.datosCintas) : null;
   } catch {
@@ -66,9 +66,17 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
   };
 
   if (datosCintas?.tipos) {
+    // precioPorCinta/precioBobina: precio real de cada tipo (tarifa
+    // escalonada normal / 20€ fijo de bobina) — precioUnitario es solo el
+    // promedio usado internamente para el total (ver calcularTotalCintas),
+    // nunca el precio real de ninguna línea. Con registros antiguos que no
+    // tengan aún estos dos campos, cae al promedio como único dato disponible.
     for (const [tipo, qty] of Object.entries(datosCintas.tipos)) {
       if (!qty || qty <= 0) continue;
-      add(`Conversión ${NOMBRES_TIPO[tipo] || tipo}`, qty, datosCintas.precioUnitario || 0);
+      const precioReal = tipo === "bobina"
+        ? (datosCintas.precioBobina ?? datosCintas.precioUnitario ?? 0)
+        : (datosCintas.precioPorCinta ?? datosCintas.precioUnitario ?? 0);
+      add(`Conversión ${NOMBRES_TIPO[tipo] || tipo}`, qty, precioReal);
     }
   } else {
     const pres = detalle.presupuestos.find((p) => p.estado === "aceptado") || detalle.presupuestos[detalle.presupuestos.length - 1] || null;

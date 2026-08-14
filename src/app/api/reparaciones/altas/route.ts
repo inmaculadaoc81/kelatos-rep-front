@@ -129,7 +129,20 @@ export async function POST(req: Request) {
 
       if (datos.esCintas) {
         const calculo = calcularTotalCintas(datos.cintas, datos.precioPorCintaPersonalizado);
-        reparacionPayload.datosCintas = { tipos: datos.cintas, total: calculo.total, precioUnitario: calculo.precioUnitarioEquivalente };
+        reparacionPayload.datosCintas = {
+          tipos: datos.cintas, total: calculo.total,
+          // precioUnitario: promedio "equivalente" — el backend solo suma
+          // qty*precioUnitario para el total (ver server.js), así que
+          // debe seguir siendo ese promedio para que el importe cobrado no
+          // cambie. precioPorCinta/precioBobina se guardan APARTE para que
+          // el desglose por línea de la factura (construirLineasIniciales)
+          // pueda mostrar el precio real de cada tipo en vez de ese
+          // promedio en todas las líneas (bug real detectado: una bobina
+          // a 20€ fijo salía impresa al mismo precio "medio" que el resto).
+          precioUnitario: calculo.precioUnitarioEquivalente,
+          precioPorCinta: calculo.precioPorCinta,
+          precioBobina: calculo.precioBobina,
+        };
       }
       if (tipoAlta === "cintas" || tipoAlta === "con_presupuesto") {
         body.presupuesto = construirPresupuestoInmediato(datos);
