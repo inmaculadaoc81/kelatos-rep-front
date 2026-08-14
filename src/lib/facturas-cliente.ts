@@ -72,6 +72,11 @@ export interface FacturaCliente {
   tipoOriginal?: "reparacion" | "revision";
   esAlquiler?: boolean;
   esManual?: boolean;
+  /** true = este número fiscal fue real y se generó, pero quedó sustituido
+      por un ciclo posterior de rectificativa/corregida (columna de un solo
+      slot en reparaciones) — el total ya no se conoce (solo se conserva en
+      el PDF), así que `total` viene en 0 y se muestra "—". */
+  historica?: boolean;
 }
 
 function num(v: unknown): number {
@@ -391,6 +396,54 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
   }
 
   return facturas;
+}
+
+// ── Reparaciones: rectificativas/corregidas históricas (sustituidas) ────
+// GET /v1/lecturas/reparaciones-facturas-historicas — ciclos intermedios
+// de rectificar→corregir que ya no ocupan la columna vigente de
+// reparaciones (ver comentario en esa ruta, server.js). El total no se
+// conserva fuera del PDF, así que aquí siempre es 0 (se muestra "—").
+
+interface FilaFacturaHistoricaSql {
+  resguardo: string;
+  tipo: "rectificativa" | "rectificativa_revision" | "corregida" | "corregida_revision";
+  numero_factura: string;
+  url_pdf: string | null;
+  confirmado_en: string | null;
+  cliente_nombre: string | null;
+  cliente_telefono: string | null;
+  cliente_email: string | null;
+  dni_cif: string | null;
+  equipo_modelo: string | null;
+  estado_entrega: string | null;
+  forma_pago: string | null;
+  banco: string | null;
+}
+
+export function expandirFacturaHistorica(row: FilaFacturaHistoricaSql): FacturaCliente | null {
+  const numero = texto(row.numero_factura);
+  if (!numero || !numeroValido(numero)) return null;
+  const esCorregida = row.tipo === "corregida" || row.tipo === "corregida_revision";
+  const esRevision = row.tipo === "rectificativa_revision" || row.tipo === "corregida_revision";
+  return {
+    resguardo: texto(row.resguardo),
+    cliente: texto(row.cliente_nombre),
+    telefono: texto(row.cliente_telefono),
+    email: texto(row.cliente_email),
+    dniCif: texto(row.dni_cif),
+    equipo: texto(row.equipo_modelo),
+    estadoEntrega: texto(row.estado_entrega),
+    fecha: row.confirmado_en,
+    total: 0,
+    formaPago: texto(row.forma_pago),
+    banco: texto(row.banco),
+    estadoFactura: esCorregida ? "" : "Devolución",
+    numero,
+    url: urlValida(texto(row.url_pdf)),
+    tipo: esCorregida ? "corregida" : "rectificativa",
+    tipoOriginal: esRevision ? "revision" : "reparacion",
+    historica: true,
+  };
 }
 
 // ── Alquileres (pasadas 7-10 del original) ──────────────────────────────

@@ -652,7 +652,17 @@ export default function FacturasClientesPage() {
                             <ResguardoCell f={f} />
                           </TableCell>
                           <TableCell>
-                            <FacturaBadge f={f} />
+                            <div className="flex items-center gap-1.5">
+                              <FacturaBadge f={f} />
+                              {f.historica && (
+                                <span
+                                  className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                                  title="Este número se generó de verdad, pero quedó sustituido por un ciclo de rectificativa/corregida posterior. El importe solo consta en el PDF."
+                                >
+                                  Sustituida
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <SerieBadge numero={f.numero} />
@@ -672,9 +682,11 @@ export default function FacturasClientesPage() {
                           <TableCell className="text-sm text-muted-foreground">{formaPagoLabel(f)}</TableCell>
                           <TableCell className="text-nowrap">
                             <VerBoton f={f} />
-                            <Button variant="outline" size="icon-sm" title="Detalle de factura" onClick={() => setFacturaAcciones(f)}>
-                              <DocumentText className="size-3.5" />
-                            </Button>
+                            {!f.historica && (
+                              <Button variant="outline" size="icon-sm" title="Detalle de factura" onClick={() => setFacturaAcciones(f)}>
+                                <DocumentText className="size-3.5" />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
