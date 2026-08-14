@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { DatosReparacionSheet, calcularTotalCintas } from "@/lib/reparacion-sheet";
+import { normalizarNumeroLocal } from "@/lib/telefono";
 
 interface RespuestaConfirmarFormulario {
   ok: boolean;
@@ -52,7 +53,8 @@ export async function POST(
   if (!datos.clienteNombre?.trim()) return NextResponse.json({ ok: false, error: "El nombre del cliente es obligatorio" }, { status: 400 });
   if (!datos.esCintas && !datos.equipoModelo?.trim()) return NextResponse.json({ ok: false, error: "El modelo del equipo es obligatorio" }, { status: 400 });
 
-  const clienteTelefono = datos.noTieneTelefono ? "No tiene" : `${datos.telPrefijo} ${datos.clienteTelefono.trim()}`.trim();
+  const clienteTelefonoLocal = normalizarNumeroLocal(datos.telPrefijo, datos.clienteTelefono.trim().replace(/[^\d]/g, ""));
+  const clienteTelefono = datos.noTieneTelefono ? "No tiene" : `${datos.telPrefijo} ${clienteTelefonoLocal}`.trim();
   const clienteEmail = datos.noTieneEmail ? "No tiene" : datos.clienteEmail.trim();
   const esAceptarAhora = datos.estado === "aceptar_ahora";
   const equipoModelo = datos.esCintas ? "CONVERSION DE CINTAS" : datos.equipoModelo.trim();

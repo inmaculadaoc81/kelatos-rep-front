@@ -9,6 +9,7 @@ import {
   OPCIONES_TIPO_PRODUCTO,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
+import { normalizarNumeroLocal } from "@/lib/telefono";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,6 +245,7 @@ export default function FormularioClientePage() {
           } else {
             telefonoLocal = c.telefono.replace(/[^\d]/g, "");
           }
+          telefonoLocal = normalizarNumeroLocal(telPrefijo, telefonoLocal);
         }
         // c.direccion es la dirección COMPLETA ya compuesta por route.ts:
         // "{viaTipo}, {viaNombre}, {viaNumero}, {cp}, {localidad}, {provincia}"
@@ -462,8 +464,11 @@ export default function FormularioClientePage() {
                 </Select>
                 <Input
                   className="h-11 flex-1 text-base"
+                  placeholder="612345678"
                   value={datos.telefono}
-                  onChange={(e) => actualizar("telefono", e.target.value.replace(/[^\d]/g, ""))}
+                  onChange={(e) =>
+                    actualizar("telefono", normalizarNumeroLocal(datos.telPrefijo, e.target.value.replace(/[^\d]/g, "")))
+                  }
                 />
               </div>
             </Campo>

@@ -27,6 +27,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Reparacion } from "@/lib/reparaciones";
+import { normalizarNumeroLocal } from "@/lib/telefono";
 import { PiezaForm, TipoLineaPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
@@ -44,12 +45,18 @@ const PREFIJOS_TELEFONO = ["+34", "+33", "+351", "+44", "+49", "+39", "+1", "+54
 /** Reproduce el parseo de teléfono de abrirModalConfirmarFormulario (Index.html): separa prefijo + número tanto si vienen con espacio como pegados. */
 function separarTelefono(tel: string): { prefijo: string; numero: string } {
   if (!tel || tel === "No tiene") return { prefijo: "+34", numero: "" };
+  let resultado: { prefijo: string; numero: string };
   const m = tel.match(/^(\+\d{1,4})\s*(\d+)$/);
-  if (m) return { prefijo: m[1], numero: m[2] };
-  const limpio = tel.replace(/[^\d+]/g, "");
-  const m2 = limpio.match(/(\+\d{2,4})(\d{6,12})$/);
-  if (m2) return { prefijo: m2[1], numero: m2[2] };
-  return { prefijo: "+34", numero: tel };
+  if (m) {
+    resultado = { prefijo: m[1], numero: m[2] };
+  } else {
+    const limpio = tel.replace(/[^\d+]/g, "");
+    const m2 = limpio.match(/(\+\d{2,4})(\d{6,12})$/);
+    resultado = m2 ? { prefijo: m2[1], numero: m2[2] } : { prefijo: "+34", numero: tel };
+  }
+  // Autocura de teléfonos ya corrompidos por el bug de acumulación de "34"
+  // (ver src/lib/telefono.ts): un móvil/fijo español real son 9 dígitos.
+  return { ...resultado, numero: normalizarNumeroLocal(resultado.prefijo, resultado.numero.replace(/[^\d]/g, "")) };
 }
 
 function datosDesdeReparacion(rep: Reparacion): DatosReparacionSheet {
@@ -348,7 +355,10 @@ export function ReparacionSheet({
                   <Input
                     value={datos.clienteTelefono}
                     disabled={datos.noTieneTelefono}
-                    onChange={(e) => actualizar("clienteTelefono", e.target.value.replace(/[^\d]/g, ""))}
+                    placeholder="612345678"
+                    onChange={(e) =>
+                      actualizar("clienteTelefono", normalizarNumeroLocal(datos.telPrefijo, e.target.value.replace(/[^\d]/g, "")))
+                    }
                   />
                 </div>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
