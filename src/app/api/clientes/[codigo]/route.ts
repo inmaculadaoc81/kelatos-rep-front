@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearCliente, ClienteFormData } from "@/lib/clientes";
+import { esSuperadmin } from "@/lib/superadmin";
 
 interface RespuestaGenericaCliente {
   ok: boolean;
   row: Parameters<typeof mapearCliente>[0];
 }
 
-const SUPERADMIN_EMAIL = "kelatoscielo@gmail.com";
 
 export async function PATCH(
   req: Request,
@@ -52,7 +52,7 @@ export async function DELETE(
 ) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (email !== SUPERADMIN_EMAIL) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!esSuperadmin(email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { codigo } = await params;
   const body = (await req.json().catch(() => ({}))) as { motivo?: string };

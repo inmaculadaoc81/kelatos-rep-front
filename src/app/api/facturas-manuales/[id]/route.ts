@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { mapFacturaManualDetalle } from "@/lib/factura-manual";
-
-const SUPERADMIN_EMAIL = "kelatoscielo@gmail.com";
+import { esSuperadmin } from "@/lib/superadmin";
 
 /**
  * Proxy de GET /v1/facturas-manuales/:id (kelatos-rep-back), ya existente
@@ -36,7 +35,7 @@ export async function DELETE(
 ) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (email !== SUPERADMIN_EMAIL) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!esSuperadmin(email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as { motivo?: string };

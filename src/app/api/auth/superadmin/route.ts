@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-
-const SUPERADMIN_EMAIL = "kelatoscielo@gmail.com";
+import { esSuperadmin } from "@/lib/superadmin";
 
 /**
- * Indica si la sesión actual es la única cuenta con permiso para borrar
+ * Indica si la sesión actual es una de las cuentas con permiso para borrar
  * registros desde el dashboard (reemplaza el borrado manual que antes se
  * hacía en Sheets). Solo lectura — la comprobación real de permiso vive en
  * cada ruta DELETE, esta ruta es únicamente para decidir si mostrar el
@@ -12,6 +11,5 @@ const SUPERADMIN_EMAIL = "kelatoscielo@gmail.com";
  */
 export async function GET() {
   const session = await auth();
-  const email = session?.user?.email?.toLowerCase() || "";
-  return NextResponse.json({ ok: true, esSuperadmin: email === SUPERADMIN_EMAIL });
+  return NextResponse.json({ ok: true, esSuperadmin: esSuperadmin(session?.user?.email) });
 }
