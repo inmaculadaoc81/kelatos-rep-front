@@ -24,20 +24,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { CodigoAcceso } from "@/lib/formulario-acceso";
 import { ArchivoFormulario } from "@/app/api/formulario-cliente/archivos/route";
+import { useCodigoAcceso } from "../codigo-acceso-context";
 
 function formatearExpiracion(iso: string): string {
   return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export default function FormularioWebPage() {
-  const [codigo, setCodigo] = useState<CodigoAcceso | null>(null);
+  const { codigo, cargando, generando, generarNuevo } = useCodigoAcceso();
   const [qr, setQr] = useState<string | null>(null);
   const [url, setUrl] = useState("");
-  const [cargando, setCargando] = useState(true);
-  const [generando, setGenerando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [busquedaArchivos, setBusquedaArchivos] = useState("");
   const [archivos, setArchivos] = useState<ArchivoFormulario[] | null>(null);
@@ -62,25 +59,10 @@ export default function FormularioWebPage() {
     }
   }
 
-  async function cargarCodigo() {
-    setCargando(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/formulario-cliente/codigo-acceso");
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setCodigo(data.activo as CodigoAcceso | null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setCargando(false);
-    }
-  }
-
   useEffect(() => {
     cargarQr();
-    cargarCodigo();
     buscarArchivos("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -88,17 +70,11 @@ export default function FormularioWebPage() {
   }, [codigo]);
 
   async function generarNuevoCodigo() {
-    setGenerando(true);
     try {
-      const res = await fetch("/api/formulario-cliente/codigo-acceso", { method: "POST" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setCodigo(data.codigo as CodigoAcceso);
+      await generarNuevo();
       toast.success("Código nuevo generado");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setGenerando(false);
     }
   }
 
@@ -138,11 +114,6 @@ export default function FormularioWebPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Error al cargar: {error}
-        </div>
-      )}
 
       {/* Código de acceso + QR */}
       <div className="mb-4 overflow-hidden rounded-xl border-2 border-primary shadow-sm">

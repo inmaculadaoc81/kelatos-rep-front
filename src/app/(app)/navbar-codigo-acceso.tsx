@@ -1,51 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Refresh2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { CodigoAcceso } from "@/lib/formulario-acceso";
+import { useCodigoAcceso } from "./codigo-acceso-context";
 
 /**
  * Reproduce el bloque "Código acceso" del navbar original (navbarCodigoWrap
  * / navCodigoDisplay / navbarNuevoCodigo en Index.html): el código de 6
  * dígitos vigente del formulario en tablet, visible desde cualquier
  * pantalla sin tener que entrar en Formulario Web, con botón para
- * regenerarlo. Mismas rutas que ya usa formulario-web/page.tsx.
+ * regenerarlo. Comparte estado con formulario-web/page.tsx vía
+ * CodigoAccesoProvider — ver ese archivo para el porqué.
  */
 export function NavbarCodigoAcceso() {
-  const [codigo, setCodigo] = useState<CodigoAcceso | null>(null);
-  const [generando, setGenerando] = useState(false);
-  const [cargando, setCargando] = useState(true);
-
-  async function cargar() {
-    try {
-      const res = await fetch("/api/formulario-cliente/codigo-acceso");
-      const data = await res.json();
-      if (data.ok) setCodigo(data.activo as CodigoAcceso | null);
-    } catch {
-      /* silencioso: es solo un acceso rápido, la fuente real está en Formulario Web */
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => {
-    cargar();
-  }, []);
+  const { codigo, cargando, generando, generarNuevo } = useCodigoAcceso();
 
   async function nuevoCodigo() {
-    setGenerando(true);
     try {
-      const res = await fetch("/api/formulario-cliente/codigo-acceso", { method: "POST" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setCodigo(data.codigo as CodigoAcceso);
+      await generarNuevo();
       toast.success("Código nuevo generado");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setGenerando(false);
     }
   }
 
