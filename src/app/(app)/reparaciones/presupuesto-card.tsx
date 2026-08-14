@@ -100,7 +100,9 @@ export function PresupuestoCard({
 
   function confirmarConMotivo() {
     if (!motivoAbierto) return;
-    if (motivoAbierto === "rechazar" && !motivo.trim()) return toast.error("El motivo del rechazo es obligatorio");
+    if (!motivo.trim()) {
+      return toast.error(motivoAbierto === "rechazar" ? "El motivo del rechazo es obligatorio" : "El motivo de la anulación es obligatorio");
+    }
     ejecutar(motivoAbierto, motivo);
   }
 
