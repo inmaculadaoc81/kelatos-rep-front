@@ -554,6 +554,19 @@ interface FilaAlquilerSql {
   url_factura_rectificativa: string | null;
   total_factura_rectificativa: string | number | null;
 
+  /** Foto de la rectificativa vigente justo antes de generar una corregida
+      (migración 039) — numero_factura_rectificativa se limpia al confirmar
+      la corregida (deja de ser "la corrección activa"), así que sin esto
+      esa rectificativa desaparecía por completo del listado en cuanto se
+      corregía, aunque siguiera siendo un documento fiscal real y
+      confirmado (bug real reportado con PDF real: factura rectificativa
+      generada y confirmada, invisible en el listado tras la corregida).
+      null en ciclos sustituidos antes de la migración — ese dato ya se
+      perdió, no se puede reconstruir retroactivamente. */
+  numero_factura_rectificativa_anterior: string | null;
+  url_factura_rectificativa_anterior: string | null;
+  total_factura_rectificativa_anterior: string | number | null;
+
   numero_factura_corregida: string | null;
   url_factura_corregida: string | null;
   total_factura_corregida: string | number | null;
@@ -664,6 +677,24 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
       banco: "",
       estadoFactura: texto(row.estado_factura),
       tipo: "alquiler",
+    });
+  }
+
+  // Pasada 8-quater: rectificativa que quedó sustituida por una corregida
+  // posterior (migración 039) — sin esto, la rectificativa desaparecía del
+  // listado en cuanto se generaba la corregida, pese a seguir siendo un
+  // documento fiscal real y confirmado.
+  const numRectAnt = texto(row.numero_factura_rectificativa_anterior);
+  if (numRectAnt && numeroValido(numRectAnt)) {
+    facturas.push({
+      ...base,
+      numero: numRectAnt,
+      url: urlValida(texto(row.url_factura_rectificativa_anterior)),
+      total: num(row.total_factura_rectificativa_anterior),
+      formaPago: texto(row.metodo_pago),
+      banco: "",
+      estadoFactura: "",
+      tipo: "rectificativa",
     });
   }
 

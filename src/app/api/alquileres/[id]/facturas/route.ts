@@ -22,6 +22,8 @@ interface FilaAlquilerSql {
   precio_mes: string | number | null;
   fecha_inicio: string | null;
   numero_factura_rectificativa: string | null;
+  url_factura_rectificativa: string | null;
+  total_factura_rectificativa: string | number | null;
   numero_factura_inicial: string | null;
   numero_factura_corregida: string | null;
   estado_factura: string | null;
@@ -325,6 +327,17 @@ export async function POST(
       // NUEVO en cuanto se corregía de nuevo, en vez del que realmente
       // tenía esa factura sustituida (bug real reportado con PDF real).
       const prevClienteFactura = a.cliente_factura ?? null;
+      // Foto de la rectificativa vigente ANTES de limpiarla más abajo — sin
+      // esto, numero_factura_rectificativa/url/total se ponían a "" al
+      // confirmar la corregida sin dejar rastro en ningún otro sitio: la
+      // rectificativa seguía existiendo como documento fiscal real y
+      // confirmado (factura_operaciones la registra), pero desaparecía por
+      // completo del listado de Facturas de Clientes (bug real reportado:
+      // rectificativa generada y confirmada, invisible en el listado en
+      // cuanto se generó la corregida minutos después).
+      const prevRectNum = (a.numero_factura_rectificativa || "").trim();
+      const prevRectUrl = a.url_factura_rectificativa || "";
+      const prevRectTotal = num(a.total_factura_rectificativa);
 
       const doc = await generarUnDocumento({
         tipo: "alquiler_corregida",
@@ -346,6 +359,7 @@ export async function POST(
           numero_factura_rectificativa: "", url_factura_rectificativa: "", total_factura_rectificativa: null,
           numero_factura_corregida: "", url_factura_corregida: "", total_factura_corregida: null,
           ...(prevNum ? { numero_factura_anterior: prevNum, url_factura_anterior: prevUrl, total_factura_anterior: prevTotal, cliente_factura_anterior: JSON.stringify(prevClienteFactura) } : {}),
+          ...(prevRectNum ? { numero_factura_rectificativa_anterior: prevRectNum, url_factura_rectificativa_anterior: prevRectUrl, total_factura_rectificativa_anterior: prevRectTotal } : {}),
           ...(mesesCorr > 0 || semanasCorr > 0 || diasCorr > 0 ? { meses: mesesCorr, semanas: semanasCorr, dias: diasCorr } : {}),
           ...(solicitud.estadoFactura ? { estado_factura: solicitud.estadoFactura } : {}),
           cliente_factura: JSON.stringify(solicitud.cliente),
