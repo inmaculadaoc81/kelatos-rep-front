@@ -405,6 +405,7 @@ export function TabDevolucionRectificativo({
   corregida,
   modoDevolucion,
   permiteCorregida = true,
+  duracionAlquiler,
   onGenerada,
 }: {
   resguardo: string;
@@ -426,6 +427,8 @@ export function TabDevolucionRectificativo({
       todavía (alquiler: es un flujo de corrección de datos más complejo,
       fuera de alcance de esta pasada). */
   permiteCorregida?: boolean;
+  /** Solo alquiler — ver FaseCorregida. */
+  duracionAlquiler?: { inicial: { meses: number; semanas: number; dias: number }; tarifas: { precioDia: number; precioSemana: number; precioMes: number } };
   onGenerada: () => void;
 }) {
   const [motivo, setMotivo] = useState("");
@@ -490,6 +493,7 @@ export function TabDevolucionRectificativo({
           lineasOriginales={lineasOriginales}
           clienteOriginal={clienteOriginal}
           formaPagoOriginal={formaPagoOriginal}
+          duracionAlquiler={duracionAlquiler}
           onGenerada={onGenerada}
         />}
       </div>
@@ -740,6 +744,7 @@ function FaseCorregida({
   lineasOriginales,
   clienteOriginal,
   formaPagoOriginal,
+  duracionAlquiler,
   onGenerada,
 }: {
   open: boolean;
@@ -752,6 +757,13 @@ function FaseCorregida({
   lineasOriginales: LineaFactura[];
   clienteOriginal: { nombre: string; direccion: string; dni: string; telefono: string };
   formaPagoOriginal: string;
+  /** Solo alquiler: en vez de escribir a mano "Alquiler (2 semanas)" en una
+      línea de texto libre (propenso a error, y el backend detecta la
+      duración corregida buscando "mes/semana/día" en la descripción para
+      resincronizar meses/semanas/dias del alquiler), se ofrecen los mismos
+      campos Meses/Semanas/Días que "Nuevo Alquiler", que generan esa línea
+      automáticamente con el importe ya calculado. */
+  duracionAlquiler?: { inicial: { meses: number; semanas: number; dias: number }; tarifas: { precioDia: number; precioSemana: number; precioMes: number } };
   onGenerada: () => void;
 }) {
   const [nombre, setNombre] = useState(clienteOriginal.nombre);
@@ -772,10 +784,24 @@ function FaseCorregida({
   // no enviar estadoFactura), así que ninguna factura corregida podía
   // marcarse cobrada al generarla.
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
-  const [lineas, setLineas] = useState<LineaFactura[]>(lineasOriginales.length > 0 ? lineasOriginales : [{ descripcion: "", cantidad: 1, precio: 0 }]);
+  const [lineas, setLineas] = useState<LineaFactura[]>(lineasOriginales.length > 0 ? lineasOriginales : duracionAlquiler ? [] : [{ descripcion: "", cantidad: 1, precio: 0 }]);
+  const [duracion, setDuracion] = useState(duracionAlquiler?.inicial ?? { meses: 0, semanas: 0, dias: 0 });
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const confirmar = useConfirm();
+
+  // Recalculada en cada render a partir de Meses/Semanas/Días — nunca se
+  // edita a mano, así que no puede quedar desincronizada con lo que
+  // realmente se factura ni con lo que el backend detecta para
+  // resincronizar el alquiler.
+  const lineasDuracion: LineaFactura[] = duracionAlquiler
+    ? [
+        ...(duracion.meses > 0 ? [{ descripcion: `Alquiler (${duracion.meses} ${duracion.meses > 1 ? "meses" : "mes"})`, cantidad: duracion.meses, precio: duracionAlquiler.tarifas.precioMes }] : []),
+        ...(duracion.semanas > 0 ? [{ descripcion: `Alquiler (${duracion.semanas} ${duracion.semanas > 1 ? "semanas" : "semana"})`, cantidad: duracion.semanas, precio: duracionAlquiler.tarifas.precioSemana }] : []),
+        ...(duracion.dias > 0 ? [{ descripcion: `Alquiler (${duracion.dias} ${duracion.dias > 1 ? "días" : "día"})`, cantidad: duracion.dias, precio: duracionAlquiler.tarifas.precioDia }] : []),
+      ]
+    : [];
+  const todasLasLineas = [...lineasDuracion, ...lineas];
 
   async function quitarClienteCorregida() {
     const ok = await confirmar("¿Cambiar el cliente de la factura corregida?\n\nSe borrará el cliente precargado y podrás buscar otro.");
@@ -792,7 +818,7 @@ function FaseCorregida({
     toast.success("Cliente cargado");
   }
 
-  const base = lineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
+  const base = todasLasLineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
   const iva = base * IVA_PCT;
   const totalConIva = base + iva;
 
@@ -801,8 +827,8 @@ function FaseCorregida({
   }
 
   async function generar() {
-    const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
-    if (validas.length === 0) return toast.error("Añade al menos un concepto");
+    const validas = todasLasLineas.filter((l) => l.descripcion.trim() || l.precio);
+    if (validas.length === 0) return toast.error(duracionAlquiler ? "Indica la duración del alquiler" : "Añade al menos un concepto");
     if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
     // _vfValidarFormaPago() (Index.html): #modalVistaFactura exige forma de
     // pago en TODOS los flujos que lo generan (normal/anticipo/manual/
@@ -965,9 +991,30 @@ function FaseCorregida({
                   <div className="flex items-center gap-1.5 rounded-t-lg bg-sky-500 px-3 py-2 text-xs font-semibold text-white">
                     Equipo / Servicio
                   </div>
-                  <div className="p-3 text-xs">
-                    <span className="text-muted-foreground">Referencia:</span>{" "}
-                    <strong>Corrige: {numeroFacturaOriginal} · Rectificativa: {numeroFacturaRectificativa}</strong>
+                  <div className="space-y-3 p-3 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Referencia:</span>{" "}
+                      <strong>Corrige: {numeroFacturaOriginal} · Rectificativa: {numeroFacturaRectificativa}</strong>
+                    </div>
+                    {duracionAlquiler && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Duración corregida</Label>
+                        <div className="mt-1 grid grid-cols-3 gap-2">
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">Meses</Label>
+                            <Input type="number" min={0} className="h-8 text-sm" value={duracion.meses} onChange={(e) => setDuracion((prev) => ({ ...prev, meses: Math.max(0, parseInt(e.target.value) || 0) }))} />
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">Semanas</Label>
+                            <Input type="number" min={0} className="h-8 text-sm" value={duracion.semanas} onChange={(e) => setDuracion((prev) => ({ ...prev, semanas: Math.max(0, parseInt(e.target.value) || 0) }))} />
+                          </div>
+                          <div className="space-y-0.5">
+                            <Label className="text-[10px] text-muted-foreground">Días</Label>
+                            <Input type="number" min={0} className="h-8 text-sm" value={duracion.dias} onChange={(e) => setDuracion((prev) => ({ ...prev, dias: Math.max(0, parseInt(e.target.value) || 0) }))} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -991,6 +1038,16 @@ function FaseCorregida({
                         </tr>
                       </thead>
                       <tbody>
+                        {lineasDuracion.map((l, i) => (
+                          <tr key={`dur-${i}`} className="border-t bg-muted/30">
+                            <td className="p-1"></td>
+                            <td className="p-2 text-sm text-muted-foreground">{l.descripcion}</td>
+                            <td className="p-2 text-center text-sm text-muted-foreground">{l.cantidad}</td>
+                            <td className="p-2 text-center text-sm text-muted-foreground">—</td>
+                            <td className="p-2 text-right text-sm text-muted-foreground">{euros(l.precio)}</td>
+                            <td className="p-1"></td>
+                          </tr>
+                        ))}
                         {lineas.map((l, i) => (
                           <tr key={i} className="border-t">
                             <td className="p-1"><Input className="h-8 text-sm" value={l.referencia || ""} onChange={(e) => actualizarLinea(i, "referencia", e.target.value)} /></td>
