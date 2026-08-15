@@ -282,7 +282,7 @@ export async function POST(
         total_cobrado: totalNuevo,
         total_factura_rectificativa: docRect.total,
         fianza_devuelta: fianzaDevuelta,
-        estado_factura: (a.estado_factura || "").trim() || "Pendiente",
+        estado_factura: solicitud.estadoFactura || (a.estado_factura || "").trim() || "Pendiente",
         meses: mesesReal,
         semanas: semanasReal,
         dias: diasReal,

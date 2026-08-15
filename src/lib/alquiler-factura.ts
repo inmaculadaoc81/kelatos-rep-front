@@ -167,6 +167,9 @@ export type SolicitudFacturaAlquiler =
       banco?: string;
       equipoNombre: string;
       duracionReal: DuracionReal;
+      /** Estado de la nueva factura (Cobrada/Pendiente) — si no se manda,
+          cae al estado_factura ya guardado en el alquiler. */
+      estadoFactura?: string;
     }
   | {
       tipo: "alquiler";

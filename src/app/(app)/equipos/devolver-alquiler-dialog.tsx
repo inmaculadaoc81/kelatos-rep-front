@@ -191,6 +191,11 @@ export function DevolverAlquilerDialog({
   const [email, setEmail] = useState("");
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
+  // Igual que en "Nuevo Alquiler": el cobro de la nueva factura (ajuste de
+  // duración) se hace en el momento de registrarla, así que por defecto
+  // "Cobrada" — antes no había forma de elegirlo aquí y siempre quedaba en
+  // "Pendiente" sin ningún selector para cambiarlo (bug real reportado).
+  const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [chkFianza, setChkFianza] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -356,17 +361,22 @@ export function DevolverAlquilerDialog({
           banco: metodo === "tarjeta" ? banco : "",
           equipoNombre,
           duracionReal,
+          estadoFactura: estado,
         }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
 
+      // totalCobrado: 0 (bug real reportado) pisaba justo después el total
+      // real que /api/alquileres/[id]/facturas ya había guardado en
+      // total_cobrado al confirmar la nueva factura — "Facturas de
+      // Clientes" mostraba un importe distinto al del PDF generado.
       await registrarDevolucion({
         fechaDevolucion: fechaAjuste,
         estadoDevolucion: "BUENO",
         descuentoDanos: 0,
         fianzaDevuelta: data.fianzaDevuelta || 0,
-        totalCobrado: 0,
+        totalCobrado: data.totalNuevo || 0,
         diasDiferencia: 0,
       });
 
@@ -598,6 +608,16 @@ export function DevolverAlquilerDialog({
                     </Select>
                   </div>
                 )}
+                <div className="space-y-1.5">
+                  <Label>Estado factura *</Label>
+                  <Select value={estado} onValueChange={(v) => setEstado((v || "Cobrada") as "Cobrada" | "Pendiente")}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cobrada">Cobrada</SelectItem>
+                      <SelectItem value="Pendiente">Pendiente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}
