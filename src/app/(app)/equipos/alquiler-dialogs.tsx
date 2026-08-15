@@ -61,7 +61,7 @@ interface FacturacionForm {
 }
 
 function duracionVacia(): DuracionForm {
-  return { meses: 0, semanas: 0, dias: 1, fechaInicio: hoyISO() };
+  return { meses: 0, semanas: 0, dias: 0, fechaInicio: hoyISO() };
 }
 
 function facturacionVacia(): FacturacionForm {
