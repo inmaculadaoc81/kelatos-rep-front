@@ -15,6 +15,8 @@ import {
   ArrowLeft3,
   ArrowRight2,
   ArrowRight3,
+  DocumentDownload,
+  Copy,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useConfirm } from "@/components/confirm-provider";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -195,6 +198,13 @@ function EstadoBadge({ f, onClick }: { f: FacturaCliente; onClick?: () => void }
   );
 }
 
+/**
+ * El número de factura es un badge clicable con dos acciones — antes era
+ * un enlace directo que abría el PDF de Drive en pestaña nueva (en la
+ * práctica, como esa URL fuerza la descarga, terminaba descargándolo sin
+ * más contexto). Ahora ofrece "Descargar" (mismo comportamiento de
+ * siempre) y "Copiar enlace" por separado, en vez de un único clic ambiguo.
+ */
 function FacturaBadge({ f }: { f: FacturaCliente }) {
   const contenido = (
     <>
@@ -202,17 +212,34 @@ function FacturaBadge({ f }: { f: FacturaCliente }) {
     </>
   );
   const clase = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white";
-  if (f.url) {
+
+  if (!f.url) {
     return (
-      <a href={f.url} target="_blank" rel="noopener noreferrer" className={cn(clase, "hover:opacity-90")} style={{ backgroundColor: "#198754" }}>
+      <span className={clase} style={{ backgroundColor: "#198754" }}>
         {contenido}
-      </a>
+      </span>
     );
   }
+
+  function copiarEnlace() {
+    navigator.clipboard.writeText(f.url);
+    toast.success("Enlace copiado");
+  }
+
   return (
-    <span className={clase} style={{ backgroundColor: "#198754" }}>
-      {contenido}
-    </span>
+    <DropdownMenu>
+      <DropdownMenuTrigger className={cn(clase, "cursor-pointer hover:opacity-90")} style={{ backgroundColor: "#198754" }}>
+        {contenido}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuItem render={<a href={f.url} target="_blank" rel="noopener noreferrer" />}>
+          <DocumentDownload className="size-4" /> Descargar
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={copiarEnlace}>
+          <Copy className="size-4" /> Copiar enlace
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
