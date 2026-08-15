@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, Presupuesto } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
@@ -140,6 +140,13 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
     const sufijo = remFactor < 1 ? ` (${Math.round(remFactor * 100)}% restante)` : "";
 
     if (hayPres) {
+      // Con más de un presupuesto aceptado, cada uno mantiene su propia
+      // línea (etiquetada con su versión) en vez de fundirse en una sola
+      // cifra — así la factura sigue mostrando de qué presupuesto viene
+      // cada importe, igual que ya se ve en la lista de Presupuestos.
+      const multiples = pressBase.length > 1;
+      const etiqueta = (base: string, p: Presupuesto) => (multiples ? `${base} (v${p.version})` : base) + sufijo;
+
       let hayPiezas = false;
       for (const p of pressBase) {
         if (p.piezas.length > 0) {
@@ -148,16 +155,22 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
             const desc = (pieza.descripcion || "").toLowerCase();
             if (desc.includes("descuento") && desc.includes("revis")) continue;
             const precio = (pieza.precio || pieza.costo || 0) * remFactor;
-            add((pieza.descripcion || "Pieza") + sufijo, 1, precio);
+            add(etiqueta(pieza.descripcion || "Pieza", p), 1, precio);
           }
         } else if ((p.precioPiezas || 0) > 0) {
           hayPiezas = true;
-          add("Material / Piezas" + sufijo, 1, p.precioPiezas * remFactor);
+          add(etiqueta("Material / Piezas", p), 1, p.precioPiezas * remFactor);
         }
       }
-      const moTotal = pressBase.reduce((s, p) => s + (p.manoObra || 0), 0) * remFactor;
-      if (moTotal > 0) add("Mano de obra" + sufijo, 1, moTotal);
-      if (moTotal <= 0 && !hayPiezas) add("Mano de obra", 1, 0);
+      let hayManoObra = false;
+      for (const p of pressBase) {
+        const mo = (p.manoObra || 0) * remFactor;
+        if (mo > 0) {
+          hayManoObra = true;
+          add(etiqueta("Mano de obra", p), 1, mo);
+        }
+      }
+      if (!hayManoObra && !hayPiezas) add("Mano de obra", 1, 0);
     } else {
       add("Mano de obra", 1, 0);
     }
