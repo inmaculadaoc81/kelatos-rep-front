@@ -43,6 +43,7 @@ interface FilaAlquilerRaw {
   total_factura_anterior: string | number | null;
   envio_activado: boolean | string | null;
   recogida_activada: boolean | string | null;
+  cliente_factura: unknown;
 }
 
 export interface AlquilerFacturaDetalle {
@@ -81,17 +82,47 @@ function activo(v: boolean | string | null): boolean {
   return v === true || String(v || "").toUpperCase() === "SI";
 }
 
+/** cliente_factura (override "Cliente en la factura", jsonb) pisa el
+    cliente registrado del resguardo campo a campo cuando trae un nombre no
+    vacío — sin esto, detalle.cliente era SIEMPRE el registrado, ignorando
+    cualquier corrección de cliente ya vigente. Eso no era solo cosmético:
+    AlquilerModalShell reutiliza este mismo campo como "cliente actual" al
+    generar una NUEVA rectificativa, así que cada rectificativa nueva
+    pisaba en silencio el override anterior con el cliente del resguardo
+    (bug real reportado: tras corregir el cliente dos veces, la foto
+    histórica de la primera corrección salió con el cliente del resguardo,
+    no con el que realmente tenía esa factura). */
+function conOverride(
+  base: { nombre: string; dni: string; telefono: string; email: string; direccion: string },
+  override: unknown
+): { nombre: string; dni: string; telefono: string; email: string; direccion: string } {
+  if (!override || typeof override !== "object") return base;
+  const o = override as Record<string, unknown>;
+  const nombre = typeof o.nombre === "string" ? o.nombre.trim() : "";
+  if (!nombre) return base;
+  return {
+    nombre,
+    dni: typeof o.dni === "string" && o.dni.trim() ? o.dni.trim() : base.dni,
+    telefono: typeof o.telefono === "string" && o.telefono.trim() ? o.telefono.trim() : base.telefono,
+    email: base.email,
+    direccion: typeof o.direccion === "string" && o.direccion.trim() ? o.direccion.trim() : base.direccion,
+  };
+}
+
 export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFacturaDetalle {
   return {
     resguardo: row.alquiler_id,
     equipoId: row.equipo_id,
-    cliente: {
-      nombre: row.cliente_nombre || "",
-      dni: row.cliente_dni || "",
-      telefono: row.cliente_telefono || "",
-      email: row.cliente_email || "",
-      direccion: row.cliente_direccion || "",
-    },
+    cliente: conOverride(
+      {
+        nombre: row.cliente_nombre || "",
+        dni: row.cliente_dni || "",
+        telefono: row.cliente_telefono || "",
+        email: row.cliente_email || "",
+        direccion: row.cliente_direccion || "",
+      },
+      row.cliente_factura
+    ),
     fechaInicio: row.fecha_inicio,
     fechaFinPrevista: row.fecha_fin_prevista,
     duracion: { meses: row.meses || 0, semanas: row.semanas || 0, dias: row.dias || 0 },

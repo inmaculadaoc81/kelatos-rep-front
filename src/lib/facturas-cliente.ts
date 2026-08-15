@@ -571,13 +571,23 @@ interface FilaAlquilerSql {
   total_factura_inicial: string | number | null;
 
   cliente_factura: ClienteFacturaJson | string | null;
+  /** Foto del cliente vigente cuando la factura "anterior"/"inicial"
+      quedó sustituida (migración 036) — numero_factura_anterior/_inicial
+      comparten fila con la factura VIGENTE, así que sin esto esas dos
+      filas históricas mostraban el cliente de la corrección más reciente
+      en vez del que realmente tenían (bug real reportado con PDF real).
+      null en ciclos sustituidos antes de la migración — ese dato ya se
+      perdió, no se puede reconstruir retroactivamente. */
+  cliente_factura_anterior: ClienteFacturaJson | string | null;
+  cliente_factura_inicial: ClienteFacturaJson | string | null;
 }
 
 export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
   const { nombre, telefono } = repararNombreTelefono(texto(row.cliente_nombre), texto(row.cliente_telefono));
+  const clienteRegistrado = { cliente: nombre, telefono, dniCif: texto(row.cliente_dni) };
   const base = {
     resguardo: texto(row.alquiler_id),
-    ...aplicarClienteFactura({ cliente: nombre, telefono, dniCif: texto(row.cliente_dni) }, row.cliente_factura),
+    ...aplicarClienteFactura(clienteRegistrado, row.cliente_factura),
     email: texto(row.cliente_email),
     equipo: "",
     estadoEntrega: "",
@@ -646,6 +656,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
   if (numAnt && numeroValido(numAnt)) {
     facturas.push({
       ...base,
+      ...aplicarClienteFactura(clienteRegistrado, row.cliente_factura_anterior),
       numero: numAnt,
       url: urlValida(texto(row.url_factura_anterior)),
       total: num(row.total_factura_anterior),
@@ -678,6 +689,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
       const totalInicial = num(row.total_factura_inicial);
       facturas.push({
         ...base,
+        ...aplicarClienteFactura(clienteRegistrado, row.cliente_factura_inicial),
         numero,
         url: urlValida(url),
         total: totalInicial > 0 ? totalInicial : Math.round((previsto + fianza + envio) * 100) / 100,

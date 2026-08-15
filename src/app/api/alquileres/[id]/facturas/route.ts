@@ -25,6 +25,7 @@ interface FilaAlquilerSql {
   numero_factura_inicial: string | null;
   numero_factura_corregida: string | null;
   estado_factura: string | null;
+  cliente_factura: unknown;
 }
 
 function derivarUuidHijo(uuidPadre: string, sufijo: string): string {
@@ -318,6 +319,12 @@ export async function POST(
       const prevNum = (a.numero_factura || "").trim();
       const prevUrl = a.url_factura || "";
       const prevTotal = num(a.total_cobrado);
+      // Foto del cliente vigente ANTES de sobrescribirlo con el de esta
+      // corregida — sin esto, la fila "anterior" en Facturas de Clientes
+      // (que comparte columna con la vigente) pasaba a mostrar el cliente
+      // NUEVO en cuanto se corregía de nuevo, en vez del que realmente
+      // tenía esa factura sustituida (bug real reportado con PDF real).
+      const prevClienteFactura = a.cliente_factura ?? null;
 
       const doc = await generarUnDocumento({
         tipo: "alquiler_corregida",
@@ -338,7 +345,7 @@ export async function POST(
           numero_factura: doc.numero, url_factura: doc.url, total_cobrado: doc.total,
           numero_factura_rectificativa: "", url_factura_rectificativa: "", total_factura_rectificativa: null,
           numero_factura_corregida: "", url_factura_corregida: "", total_factura_corregida: null,
-          ...(prevNum ? { numero_factura_anterior: prevNum, url_factura_anterior: prevUrl, total_factura_anterior: prevTotal } : {}),
+          ...(prevNum ? { numero_factura_anterior: prevNum, url_factura_anterior: prevUrl, total_factura_anterior: prevTotal, cliente_factura_anterior: JSON.stringify(prevClienteFactura) } : {}),
           ...(mesesCorr > 0 || semanasCorr > 0 || diasCorr > 0 ? { meses: mesesCorr, semanas: semanasCorr, dias: diasCorr } : {}),
           ...(solicitud.estadoFactura ? { estado_factura: solicitud.estadoFactura } : {}),
           cliente_factura: JSON.stringify(solicitud.cliente),
@@ -409,8 +416,12 @@ export async function POST(
         semanas: semanasReal,
         dias: diasReal,
         cliente_factura: JSON.stringify(solicitud.cliente),
+        // Mismo motivo que cliente_factura_anterior en alquiler_corregida:
+        // foto del cliente vigente en ESTE momento (antes de sobrescribirlo
+        // arriba), para que la fila "inicial" en Facturas de Clientes no
+        // adopte silenciosamente el cliente de una corrección posterior.
         ...(!yaTieneInicialORectificativa
-          ? { numero_factura_inicial: numOriginal, url_factura_inicial: a.url_factura || "", total_factura_inicial: totalInicialPrevio }
+          ? { numero_factura_inicial: numOriginal, url_factura_inicial: a.url_factura || "", total_factura_inicial: totalInicialPrevio, cliente_factura_inicial: JSON.stringify(a.cliente_factura ?? null) }
           : {}),
       },
     });
