@@ -156,8 +156,28 @@ export type SolicitudFacturaAlquiler =
       cliente: ClienteFacturaAlquiler;
       formaPago: string;
       banco?: string;
-      equipoNombre: string;
+      /** El modal genérico de Facturas de Clientes (TabDevolucionRectificativo,
+          compartido con reparaciones) nunca lo manda — el backend lo deriva de
+          equipo_id si falta. */
+      equipoNombre?: string;
       motivo?: string;
+    }
+  | {
+      /** Reproduce _apiGenerarFacturaCorregidaAlquiler() del original —
+          "¿Generaste la rectificativa por error?" tras alquiler_rectificativa,
+          igual que FaseCorregida en reparaciones. Requiere que ya exista una
+          rectificativa vigente (numero_factura_rectificativa); el backend
+          reescribe meses/semanas/dias del alquiler a partir de las líneas de
+          esta corregida, para que un ajuste de duración posterior parta ya
+          de los datos corregidos, no de los originales erróneos. */
+      tipo: "alquiler_corregida";
+      requestId: string;
+      cliente: ClienteFacturaAlquiler;
+      formaPago: string;
+      banco?: string;
+      lineas: LineaFacturaAlquiler[];
+      estadoFactura?: string;
+      equipoNombre?: string;
     }
   | {
       tipo: "ajuste_duracion";

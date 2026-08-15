@@ -13,16 +13,20 @@ import { TabPdfEnviar, TabDevolucionRectificativo, euros } from "../reparaciones
 /**
  * Reproduce _mfaRenderResumen()/mfaGenerarRectificativa() en su rama
  * _isAlq (Index.html) para la propia fila de un alquiler en Facturas de
- * Clientes — a diferencia de reparación/manual, el original SOLO muestra
- * "PDF / Enviar" y "Devolución" aquí (nunca "Rectificativo": _esAlq
- * excluye ese tab salvo que el documento ya sea una corregida, que aquí
- * no se ha implementado — es un flujo de corrección de datos más
- * complejo, poco usado, y fuera de alcance de esta pasada).
+ * Clientes — a diferencia de reparación/manual, el original solo muestra
+ * "PDF / Enviar" y "Devolución" como pestañas propias; el ciclo de
+ * corrección (_apiGenerarFacturaCorregidaAlquiler) se ofrece DESPUÉS de
+ * generar la rectificativa, igual que en reparaciones ("¿Generaste la
+ * rectificativa por error?" dentro de TabDevolucionRectificativo).
  *
  * "Devolución" aquí es DISTINTA del flujo "Devolver equipo": anula la
  * factura completa (líneas negativas por meses/semanas/días), sin tocar
  * el estado físico del equipo ni la fianza — para cuando algo salió mal
- * con la factura en sí, no con la devolución del equipo.
+ * con la factura en sí, no con la devolución del equipo. Si tras anularla
+ * se genera la corregida, el backend reescribe meses/semanas/dias del
+ * alquiler con los datos ya corregidos, para que una devolución física
+ * posterior (ajuste de duración) parta de esos datos, no de los erróneos
+ * originales.
  */
 export function AlquilerModalShell({
   detalle,
@@ -118,7 +122,7 @@ export function AlquilerModalShell({
                   resguardo={detalle.resguardo}
                   apiBase={apiBase}
                   tipoDestino="alquiler_rectificativa"
-                  tipoCorr=""
+                  tipoCorr="alquiler_corregida"
                   numeroFacturaOriginal={detalle.numeroFactura}
                   lineasOriginales={lineasOriginales}
                   clienteOriginal={clienteOriginal}
@@ -127,7 +131,6 @@ export function AlquilerModalShell({
                   yaGenerada={detalle.rectificativa}
                   corregida={detalle.corregida}
                   modoDevolucion
-                  permiteCorregida={false}
                   onGenerada={onActualizado}
                 />
               </TabsContent>

@@ -5,6 +5,7 @@ import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import type { SolicitudFacturaAlquiler, ResultadoFacturaAlquiler, LineaFacturaAlquiler } from "@/lib/alquiler-factura";
 
 interface FilaAlquilerSql {
+  equipo_id: string | null;
   numero_factura: string | null;
   url_factura: string | null;
   total_cobrado: string | number | null;
@@ -64,7 +65,16 @@ export async function POST(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { id } = await params;
-  const solicitud = (await req.json()) as SolicitudFacturaAlquiler;
+  // TabDevolucionRectificativo/FaseCorregida (factura-acciones-tabs.tsx,
+  // compartidos con reparaciones) mandan {requestId, tipo, datos:{...}} —
+  // esta ruta históricamente leía los campos en plano (solicitud.cliente,
+  // solicitud.formaPago...), así que alquiler_rectificativa (el tab
+  // "Devolución" del modal de Facturas de Clientes) llegaba con cliente/
+  // forma de pago/líneas vacíos sin que nada lo detectara (bug real: el PDF
+  // de la rectificativa salía con el cliente en blanco). Se aceptan ambas
+  // formas fusionando datos.* sobre el nivel superior.
+  const raw = (await req.json()) as Record<string, unknown> & { datos?: Record<string, unknown> };
+  const solicitud = { ...raw, ...(raw.datos && typeof raw.datos === "object" ? raw.datos : {}) } as SolicitudFacturaAlquiler & { requestId: string };
   if (!solicitud?.requestId || !/^[0-9a-f-]{36}$/i.test(solicitud.requestId)) {
     return NextResponse.json({ ok: false, error: "requestId inválido" }, { status: 400 });
   }
@@ -75,6 +85,20 @@ export async function POST(
     const tarifas = { precioDia: num(a.precio_dia), precioSemana: num(a.precio_semana), precioMes: num(a.precio_mes) };
     const numOriginal = (a.numero_factura || "").trim();
     const fechaHoy = fechaHoyEs();
+
+    // El modal genérico de Facturas de Clientes nunca conoce el nombre del
+    // equipo (AlquilerFacturaDetalle no lo trae) — se resuelve aquí por
+    // equipo_id solo cuando el llamador no lo manda ya (alquiler/
+    // ajuste_duracion sí lo mandan desde sus propios diálogos).
+    async function obtenerEquipoNombre(): Promise<string> {
+      if (!a.equipo_id) return "Equipo";
+      try {
+        const { row } = await kelatosApiGet<{ ok: boolean; row: { marca?: string; modelo?: string } }>(`/v1/equipos/${encodeURIComponent(a.equipo_id)}`);
+        return `${row.marca || ""} ${row.modelo || ""}`.trim() || "Equipo";
+      } catch {
+        return "Equipo";
+      }
+    }
 
     async function generarUnDocumento(opts: {
       tipo: string;
@@ -204,7 +228,8 @@ export async function POST(
         return NextResponse.json({ ok: false, error: `Ya existe una rectificativa para este alquiler: ${rectExistente}` }, { status: 409 });
       }
 
-      const lineasRect = lineasAlquiler(solicitud.equipoNombre, a.meses || 0, a.semanas || 0, a.dias || 0, -1, tarifas);
+      const equipoNombreRect = solicitud.equipoNombre || (await obtenerEquipoNombre());
+      const lineasRect = lineasAlquiler(equipoNombreRect, a.meses || 0, a.semanas || 0, a.dias || 0, -1, tarifas);
       const fechaOrig = a.fecha_inicio ? new Date(a.fecha_inicio).toLocaleDateString("es-ES") : "";
       const doc = await generarUnDocumento({
         tipo: "alquiler_rectificativa",
@@ -223,6 +248,68 @@ export async function POST(
         alquilerId: id,
         columnas: {
           numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: doc.total,
+          cliente_factura: JSON.stringify(solicitud.cliente),
+        },
+      });
+
+      const resultado: ResultadoFacturaAlquiler = { numeroFactura: doc.numero, url: doc.url };
+      return NextResponse.json({ ok: true, ...resultado });
+    }
+
+    if (solicitud.tipo === "alquiler_corregida") {
+      // _apiGenerarFacturaCorregidaAlquiler() (Code.js:9739): exige que ya
+      // exista una rectificativa vigente antes de poder corregir.
+      const rectExistente = (a.numero_factura_rectificativa || "").trim();
+      if (!rectExistente) {
+        return NextResponse.json({ ok: false, error: "Primero genera la factura rectificativa" }, { status: 409 });
+      }
+      const lineasCorr: LineaFacturaAlquiler[] = Array.isArray(solicitud.lineas) ? solicitud.lineas : [];
+      if (!lineasCorr.length) {
+        return NextResponse.json({ ok: false, error: "Añade al menos un concepto" }, { status: 400 });
+      }
+
+      // Detecta meses/semanas/días corregidos a partir de las líneas de la
+      // corregida (Code.js:9807-9817) — "garantiza que la siguiente
+      // rectificativa use los datos correctos de la corregida": si más
+      // adelante se devuelve el equipo (ajuste de duración), ese flujo lee
+      // estas mismas columnas, así que deben quedar ya corregidas aquí.
+      let mesesCorr = 0, semanasCorr = 0, diasCorr = 0;
+      for (const l of lineasCorr) {
+        const desc = (l.descripcion || "").toLowerCase();
+        const cant = Math.abs(Number(l.cantidad) || 0);
+        if (/\bmes(es)?\b/.test(desc)) mesesCorr = cant;
+        else if (/\bsemana(s)?\b/.test(desc)) semanasCorr = cant;
+        else if (/\bd[ií]a(s)?\b/.test(desc)) diasCorr = cant;
+      }
+
+      const corrLegacy = (a.numero_factura_corregida || "").trim();
+      const numOrigFact = corrLegacy || numOriginal;
+      const prevNum = (a.numero_factura || "").trim();
+      const prevUrl = a.url_factura || "";
+      const prevTotal = num(a.total_cobrado);
+
+      const doc = await generarUnDocumento({
+        tipo: "alquiler_corregida",
+        requestId: solicitud.requestId,
+        lineasParaReserva: lineasCorr,
+        lineasParaPdf: lineasCorr,
+        rectificaDe: `Factura corregida. Sustituye a: ${numOrigFact}`,
+        estadoFactura: solicitud.estadoFactura || "",
+      });
+
+      await kelatosApiPost(`/v1/alquileres/facturas/confirmar`, {
+        requestId: solicitud.requestId,
+        usuario,
+        dryRun: false,
+        urlPdf: doc.url,
+        alquilerId: id,
+        columnas: {
+          numero_factura: doc.numero, url_factura: doc.url, total_cobrado: doc.total,
+          numero_factura_rectificativa: "", url_factura_rectificativa: "", total_factura_rectificativa: null,
+          numero_factura_corregida: "", url_factura_corregida: "", total_factura_corregida: null,
+          ...(prevNum ? { numero_factura_anterior: prevNum, url_factura_anterior: prevUrl, total_factura_anterior: prevTotal } : {}),
+          ...(mesesCorr > 0 || semanasCorr > 0 || diasCorr > 0 ? { meses: mesesCorr, semanas: semanasCorr, dias: diasCorr } : {}),
+          ...(solicitud.estadoFactura ? { estado_factura: solicitud.estadoFactura } : {}),
           cliente_factura: JSON.stringify(solicitud.cliente),
         },
       });
