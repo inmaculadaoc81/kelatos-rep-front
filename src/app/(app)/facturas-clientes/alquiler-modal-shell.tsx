@@ -63,6 +63,11 @@ export function AlquilerModalShell({
     ...(detalle.duracion.meses > 0 ? [{ descripcion: `Alquiler (${detalle.duracion.meses} ${detalle.duracion.meses > 1 ? "meses" : "mes"})`, cantidad: detalle.duracion.meses, precio: detalle.tarifas.precioMes }] : []),
     ...(detalle.duracion.semanas > 0 ? [{ descripcion: `Alquiler (${detalle.duracion.semanas} ${detalle.duracion.semanas > 1 ? "semanas" : "semana"})`, cantidad: detalle.duracion.semanas, precio: detalle.tarifas.precioSemana }] : []),
     ...(detalle.duracion.dias > 0 ? [{ descripcion: `Alquiler (${detalle.duracion.dias} ${detalle.duracion.dias > 1 ? "días" : "día"})`, cantidad: detalle.duracion.dias, precio: detalle.tarifas.precioDia }] : []),
+    // Informativas a 0 € — el envío/recogida ya se cobró (o fue gratis) una
+    // sola vez y no se debe recobrar al corregir, pero debe seguir
+    // apareciendo para que los reportes de envíos facturados no lo pierdan.
+    ...(detalle.envioActivado ? [{ descripcion: "Envío a domicilio", cantidad: 1, precio: 0 }] : []),
+    ...(detalle.recogidaActivada ? [{ descripcion: "Recogida a domicilio", cantidad: 1, precio: 0 }] : []),
   ];
 
   return (

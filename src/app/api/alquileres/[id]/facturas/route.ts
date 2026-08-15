@@ -6,6 +6,8 @@ import type { SolicitudFacturaAlquiler, ResultadoFacturaAlquiler, LineaFacturaAl
 
 interface FilaAlquilerSql {
   equipo_id: string | null;
+  envio_activado: boolean | string | null;
+  recogida_activada: boolean | string | null;
   numero_factura: string | null;
   url_factura: string | null;
   total_cobrado: string | number | null;
@@ -45,6 +47,23 @@ function lineasAlquiler(equipoNombre: string, meses: number, semanas: number, di
   if (semanas > 0) lineas.push({ descripcion: `Alquiler ${equipoNombre} (${semanas} ${semanas > 1 ? "semanas" : "semana"})`, cantidad: signo * semanas, precio: tarifas.precioSemana });
   if (dias > 0) lineas.push({ descripcion: `Alquiler ${equipoNombre} (${dias} ${dias > 1 ? "días" : "día"})`, cantidad: signo * dias, precio: tarifas.precioDia });
   if (!lineas.length) lineas.push({ descripcion: `Alquiler ${equipoNombre}`, cantidad: signo, precio: 0 });
+  return lineas;
+}
+
+/** El envío/recogida ya se cobró (o fue gratuito) una sola vez en la
+    factura inicial y nunca se cancela ni se vuelve a cobrar al rectificar
+    o generar la nueva factura (tiene un coste real para la empresa aunque
+    sea gratis para el cliente, y el servicio ya se prestó). Se añaden aquí
+    como líneas informativas a 0 € — no cambian ningún total, pero dejan el
+    caso visible en cualquier reporte que cuente envíos/recogidas
+    facturados a partir de las líneas de las facturas válidas (petición
+    real: sin esto, un alquiler con envío desaparecía de ese conteo en
+    cuanto se rectificaba). */
+function lineasLogisticaInformativas(a: Pick<FilaAlquilerSql, "envio_activado" | "recogida_activada">): LineaFacturaAlquiler[] {
+  const lineas: LineaFacturaAlquiler[] = [];
+  const activo = (v: boolean | string | null) => v === true || String(v || "").toUpperCase() === "SI";
+  if (activo(a.envio_activado)) lineas.push({ descripcion: "Envío a domicilio", cantidad: 1, precio: 0 });
+  if (activo(a.recogida_activada)) lineas.push({ descripcion: "Recogida a domicilio", cantidad: 1, precio: 0 });
   return lineas;
 }
 
@@ -234,7 +253,7 @@ export async function POST(
       }
 
       const equipoNombreRect = solicitud.equipoNombre || (await obtenerEquipoNombre());
-      const lineasRect = lineasAlquiler(equipoNombreRect, a.meses || 0, a.semanas || 0, a.dias || 0, -1, tarifas);
+      const lineasRect = [...lineasAlquiler(equipoNombreRect, a.meses || 0, a.semanas || 0, a.dias || 0, -1, tarifas), ...lineasLogisticaInformativas(a)];
       const fechaOrig = a.fecha_inicio ? new Date(a.fecha_inicio).toLocaleDateString("es-ES") : "";
       const doc = await generarUnDocumento({
         tipo: "alquiler_rectificativa",
@@ -332,7 +351,7 @@ export async function POST(
     const requestIdNueva = derivarUuidHijo(solicitud.requestId, "ajuste_nueva");
     const fechaOrig = a.fecha_inicio ? new Date(a.fecha_inicio).toLocaleDateString("es-ES") : "";
 
-    const lineasRect = lineasAlquiler(solicitud.equipoNombre, mesesOrig, semanasOrig, diasOrig, -1, tarifas);
+    const lineasRect = [...lineasAlquiler(solicitud.equipoNombre, mesesOrig, semanasOrig, diasOrig, -1, tarifas), ...lineasLogisticaInformativas(a)];
     const docRect = await generarUnDocumento({
       tipo: "alquiler_ajuste_rectificativa",
       requestId: requestIdRect,
@@ -347,7 +366,7 @@ export async function POST(
     });
 
     const { meses: mesesReal, semanas: semanasReal, dias: diasReal } = solicitud.duracionReal;
-    const lineasNueva = lineasAlquiler(solicitud.equipoNombre, mesesReal, semanasReal, diasReal, 1, tarifas);
+    const lineasNueva = [...lineasAlquiler(solicitud.equipoNombre, mesesReal, semanasReal, diasReal, 1, tarifas), ...lineasLogisticaInformativas(a)];
     const docNueva = await generarUnDocumento({
       tipo: "alquiler_ajuste_nueva",
       requestId: requestIdNueva,

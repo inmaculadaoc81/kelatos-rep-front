@@ -41,6 +41,8 @@ interface FilaAlquilerRaw {
   numero_factura_anterior: string | null;
   url_factura_anterior: string | null;
   total_factura_anterior: string | number | null;
+  envio_activado: boolean | string | null;
+  recogida_activada: boolean | string | null;
 }
 
 export interface AlquilerFacturaDetalle {
@@ -65,11 +67,17 @@ export interface AlquilerFacturaDetalle {
   /** Versión activa justo antes de la corrección MÁS RECIENTE (distinta de
       "inicial" si ha habido más de un ciclo). */
   anterior: { numeroFactura: string; urlFactura: string; totalFactura: number } | null;
+  envioActivado: boolean;
+  recogidaActivada: boolean;
 }
 
 function numero(v: unknown): number {
   const n = typeof v === "string" ? parseFloat(v) : typeof v === "number" ? v : 0;
   return Number.isFinite(n) ? n : 0;
+}
+
+function activo(v: boolean | string | null): boolean {
+  return v === true || String(v || "").toUpperCase() === "SI";
 }
 
 export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFacturaDetalle {
@@ -104,5 +112,7 @@ export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFactura
     anterior: row.numero_factura_anterior
       ? { numeroFactura: row.numero_factura_anterior, urlFactura: row.url_factura_anterior || "", totalFactura: numero(row.total_factura_anterior) }
       : null,
+    envioActivado: activo(row.envio_activado),
+    recogidaActivada: activo(row.recogida_activada),
   };
 }
