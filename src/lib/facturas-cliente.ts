@@ -485,6 +485,12 @@ interface FilaFacturaHistoricaSql {
   url_pdf: string | null;
   confirmado_en: string | null;
   total_factura: string | number | null;
+  /** Foto del cliente en el momento de confirmar ESTA rectificativa/
+      corregida (migración 035) — null en ciclos sustituidos antes de esa
+      migración, o en cualquiera que nunca tuvo cliente distinto al del
+      resguardo. Sin esto, un ciclo ya sustituido no tenía forma de saber
+      a nombre de quién se emitió de verdad (bug real reportado). */
+  cliente_snapshot: ClienteFacturaJson | string | null;
   cliente_nombre: string | null;
   cliente_telefono: string | null;
   cliente_email: string | null;
@@ -500,12 +506,14 @@ export function expandirFacturaHistorica(row: FilaFacturaHistoricaSql): FacturaC
   if (!numero || !numeroValido(numero)) return null;
   const esCorregida = row.tipo === "corregida" || row.tipo === "corregida_revision";
   const esRevision = row.tipo === "rectificativa_revision" || row.tipo === "corregida_revision";
+  const base = { cliente: texto(row.cliente_nombre), telefono: texto(row.cliente_telefono), dniCif: texto(row.dni_cif) };
+  const conCliente = aplicarClienteFactura(base, row.cliente_snapshot);
   return {
     resguardo: texto(row.resguardo),
-    cliente: texto(row.cliente_nombre),
-    telefono: texto(row.cliente_telefono),
+    cliente: conCliente.cliente,
+    telefono: conCliente.telefono,
     email: texto(row.cliente_email),
-    dniCif: texto(row.dni_cif),
+    dniCif: conCliente.dniCif,
     equipo: texto(row.equipo_modelo),
     estadoEntrega: texto(row.estado_entrega),
     fecha: row.confirmado_en,
