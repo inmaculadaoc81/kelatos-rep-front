@@ -19,6 +19,48 @@ function json(v: unknown): string {
   return v !== null && v !== undefined ? JSON.stringify(v) : "";
 }
 
+interface ClienteFacturaObj {
+  nombre: string;
+  direccion: string;
+  dni: string;
+  telefono: string;
+  email: string;
+  codigo?: string;
+}
+
+/** cliente_factura (reparación) es jsonb y llega ya parseado como objeto,
+    pero cliente_factura_revision/_mensajeria/_corregida son columnas
+    `text` que guardan el mismo JSON como string sin parsear — node-postgres
+    no las convierte solas. Comprobar `typeof === "object"` (como se hacía
+    antes) descarta siempre esas tres, así que una factura de revisión,
+    mensajería o corregida con "Cliente en la factura" distinto al del
+    resguardo generaba su devolución/rectificativa a nombre y con el código
+    de cliente del resguardo, no de la persona real de esa factura (bug real
+    reportado). Mismo parseo que aplicarClienteFactura() en facturas-cliente.ts. */
+function clienteFacturaObj(v: unknown): ClienteFacturaObj | null {
+  let o: Record<string, unknown> | null = null;
+  if (v && typeof v === "object") {
+    o = v as Record<string, unknown>;
+  } else if (typeof v === "string" && v.trim()) {
+    try {
+      const parsed = JSON.parse(v);
+      if (parsed && typeof parsed === "object") o = parsed;
+    } catch {
+      o = null;
+    }
+  }
+  const nombre = o?.nombre != null ? String(o.nombre).trim() : "";
+  if (!nombre) return null;
+  return {
+    nombre,
+    direccion: o?.direccion != null ? String(o.direccion).trim() : "",
+    dni: o?.dni != null ? String(o.dni).trim() : "",
+    telefono: o?.telefono != null ? String(o.telefono).trim() : "",
+    email: o?.email != null ? String(o.email).trim() : "",
+    ...(o?.codigo ? { codigo: String(o.codigo).trim() } : {}),
+  };
+}
+
 // -- Filas crudas (snake_case) tal como las devuelven las rutas genéricas
 // GET /v1/:table y GET /v1/:table/:id del API real. --
 
@@ -427,10 +469,7 @@ export function mapearReparacionDetalle(
     revisionPagada: row.revision_pagada ? "SI" : "NO",
     numeroFacturaRevision: row.numero_factura_revision || "",
     urlFacturaRevision: row.url_factura_revision || "",
-    clienteFacturaRevision:
-      row.cliente_factura_revision && typeof row.cliente_factura_revision === "object"
-        ? (row.cliente_factura_revision as ReparacionDetalle["clienteFacturaRevision"])
-        : null,
+    clienteFacturaRevision: clienteFacturaObj(row.cliente_factura_revision),
     ultimoUsuario: row.ultimo_usuario || "",
     presupuestosModo: row.presupuestos_modo || "",
     datosCintas: json(row.datos_cintas),
@@ -442,10 +481,7 @@ export function mapearReparacionDetalle(
     banco: row.banco || "",
     estadoFactura: row.estado_factura || "",
     facturaBorrador: !!row.factura_borrador,
-    clienteFactura:
-      row.cliente_factura && typeof row.cliente_factura === "object"
-        ? (row.cliente_factura as ReparacionDetalle["clienteFactura"])
-        : null,
+    clienteFactura: clienteFacturaObj(row.cliente_factura),
     codigoCliente: row.codigo_cliente || "",
     anticipoImporte: numero(row.anticipo_importe),
     numeroFacturaAnticipo: row.numero_factura_anticipo || "",
@@ -453,10 +489,7 @@ export function mapearReparacionDetalle(
     numeroFacturaMensajeria: row.numero_factura_mensajeria || "",
     urlFacturaMensajeria: row.url_factura_mensajeria || "",
     totalFacturaMensajeria: numero(row.total_factura_mensajeria),
-    clienteFacturaMensajeria:
-      row.cliente_factura_mensajeria && typeof row.cliente_factura_mensajeria === "object"
-        ? (row.cliente_factura_mensajeria as ReparacionDetalle["clienteFacturaMensajeria"])
-        : null,
+    clienteFacturaMensajeria: clienteFacturaObj(row.cliente_factura_mensajeria),
     lineasFactura: Array.isArray(row.lineas_factura)
       ? (row.lineas_factura as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
           referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
@@ -476,10 +509,7 @@ export function mapearReparacionDetalle(
     corregidaRevision: row.numero_factura_corregida_revision
       ? { numeroFactura: row.numero_factura_corregida_revision, urlFactura: row.url_factura_corregida_revision || "", totalFactura: numero(row.total_factura_corregida_revision), fechaFactura: fecha(row.fecha_factura_corregida_revision) }
       : null,
-    clienteFacturaCorregida:
-      row.cliente_factura_corregida && typeof row.cliente_factura_corregida === "object"
-        ? (row.cliente_factura_corregida as ReparacionDetalle["clienteFacturaCorregida"])
-        : null,
+    clienteFacturaCorregida: clienteFacturaObj(row.cliente_factura_corregida),
     lineasFacturaCorregida: Array.isArray(row.lineas_factura_corregida)
       ? (row.lineas_factura_corregida as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
           referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
