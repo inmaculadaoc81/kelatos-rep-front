@@ -43,11 +43,11 @@ function lineaVacia(): LineaEditable {
 }
 
 /**
- * Basado en _vfRellenarLineas() del original: piezas + mano de obra del
- * presupuesto aceptado (o el último si ninguno está aceptado), aplicando
- * el factor restante si ya se cobró un anticipo, la línea de descuento de
- * revisión pagada, y los portes de mensajería (solo mientras no exista ya
- * una factura, igual que el original).
+ * Basado en _vfRellenarLineas() del original: piezas + mano de obra de
+ * los presupuestos aceptados (o el último si ninguno está aceptado),
+ * aplicando el factor restante si ya se cobró un anticipo, la línea de
+ * descuento de revisión pagada, y los portes de mensajería (solo mientras
+ * no exista ya una factura, igual que el original).
  *
  * Diferencia deliberada frente al original: ahí "% restante" se calculaba
  * sobre piezas+mano de obra SIN descontar la revisión, y el descuento se
@@ -57,6 +57,13 @@ function lineaVacia(): LineaEditable {
  * descuento pareciera aplicarse dos veces. Aquí baseRem ya resta el
  * descuento, y este también se escala por remFactor — así el anticipo y el
  * remanente son siempre porcentajes limpios y complementarios.
+ *
+ * Segunda diferencia deliberada: el original solo tomaba el PRIMER
+ * presupuesto en estado "aceptado" (rep.presupuestos.find(...), Index.html
+ * :12537) e ignoraba cualquier otro también aceptado — con el flujo
+ * "hayMas" (aceptar más de un presupuesto sin rechazar los demás) eso
+ * dejaba fuera de la factura mano de obra/piezas ya aceptadas por el
+ * cliente. Aquí se suman TODOS los presupuestos "aceptado" existentes.
  */
 function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
   const lineas: LineaEditable[] = [];
@@ -94,15 +101,26 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
       add(`Conversión ${NOMBRES_TIPO[tipo] || tipo}`, qty, precioReal);
     }
   } else {
-    const pres = detalle.presupuestos.find((p) => p.estado === "aceptado") || detalle.presupuestos[detalle.presupuestos.length - 1] || null;
+    // Decisión explícita del usuario (distinta del original, que solo
+    // tomaba el primer presupuesto "aceptado" vía .find() e ignoraba el
+    // resto): cuando el flujo "hayMas" deja más de un presupuesto en
+    // estado "aceptado" para la misma reparación, la factura debe sumar
+    // mano de obra y piezas de TODOS ellos, no solo del primero.
+    const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
+    const pressBase = aceptados.length > 0
+      ? aceptados
+      : detalle.presupuestos.length > 0
+        ? [detalle.presupuestos[detalle.presupuestos.length - 1]]
+        : [];
+    const hayPres = pressBase.length > 0;
 
     let sumItems = 0;
-    if (pres) {
-      sumItems += pres.manoObra || 0;
-      if (pres.piezas.length > 0) {
-        sumItems += pres.piezas.reduce((s, p) => s + (p.precio || p.costo || 0), 0);
+    for (const p of pressBase) {
+      sumItems += p.manoObra || 0;
+      if (p.piezas.length > 0) {
+        sumItems += p.piezas.reduce((s, pz) => s + (pz.precio || pz.costo || 0), 0);
       } else {
-        sumItems += pres.precioPiezas || 0;
+        sumItems += p.precioPiezas || 0;
       }
     }
 
@@ -112,28 +130,34 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
     // porcentajes limpios y complementarios (p.ej. 50%/50%), en vez de
     // comparar un anticipo ya neto contra un total bruto.
     const descuentoRevision = detalle.revisionPagada === "SI" ? 20 : 0;
-    const anticipo = !detalle.urlFactura && pres ? detalle.anticipoImporte || 0 : 0;
-    const baseBruta = sumItems > 0 ? sumItems : pres ? pres.total || 0 : 0;
+    const anticipo = !detalle.urlFactura && hayPres ? detalle.anticipoImporte || 0 : 0;
+    const totalPresBruto = pressBase.reduce((s, p) => s + (p.total || 0), 0);
+    const baseBruta = sumItems > 0 ? sumItems : totalPresBruto;
     const baseRem = Math.max(0, baseBruta - descuentoRevision);
     let remFactor = 1;
     if (anticipo > 0 && baseRem > 0) remFactor = Math.max(0, 1 - anticipo / baseRem);
     remFactorDescuento = remFactor;
     const sufijo = remFactor < 1 ? ` (${Math.round(remFactor * 100)}% restante)` : "";
 
-    if (pres) {
-      if (pres.piezas.length > 0) {
-        for (const pieza of pres.piezas) {
-          const desc = (pieza.descripcion || "").toLowerCase();
-          if (desc.includes("descuento") && desc.includes("revis")) continue;
-          const precio = (pieza.precio || pieza.costo || 0) * remFactor;
-          add((pieza.descripcion || "Pieza") + sufijo, 1, precio);
+    if (hayPres) {
+      let hayPiezas = false;
+      for (const p of pressBase) {
+        if (p.piezas.length > 0) {
+          hayPiezas = true;
+          for (const pieza of p.piezas) {
+            const desc = (pieza.descripcion || "").toLowerCase();
+            if (desc.includes("descuento") && desc.includes("revis")) continue;
+            const precio = (pieza.precio || pieza.costo || 0) * remFactor;
+            add((pieza.descripcion || "Pieza") + sufijo, 1, precio);
+          }
+        } else if ((p.precioPiezas || 0) > 0) {
+          hayPiezas = true;
+          add("Material / Piezas" + sufijo, 1, p.precioPiezas * remFactor);
         }
-      } else if ((pres.precioPiezas || 0) > 0) {
-        add("Material / Piezas" + sufijo, 1, pres.precioPiezas * remFactor);
       }
-      const mo = (pres.manoObra || 0) * remFactor;
-      if (mo > 0) add("Mano de obra" + sufijo, 1, mo);
-      if (mo <= 0 && pres.piezas.length === 0 && (pres.precioPiezas || 0) <= 0) add("Mano de obra", 1, 0);
+      const moTotal = pressBase.reduce((s, p) => s + (p.manoObra || 0), 0) * remFactor;
+      if (moTotal > 0) add("Mano de obra" + sufijo, 1, moTotal);
+      if (moTotal <= 0 && !hayPiezas) add("Mano de obra", 1, 0);
     } else {
       add("Mano de obra", 1, 0);
     }
