@@ -26,7 +26,7 @@ import {
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, Pedido } from "@/lib/reparacion-detalle";
 
 type Tono = "danger" | "warning" | "info" | "success" | "neutral";
 
@@ -73,6 +73,24 @@ export interface CallbacksAccion {
 
 const ESTADOS_LISTO_ENTREGA = ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"];
 const ENTREGA_CERRADA = ["ENTREGADO", "ENVIO", "RECICLAJE"];
+
+// FASE 4 "Pieza Pendiente" (renderizarAccion(), Index.html:12965-12971): una
+// reparación puede acumular varios pedidos para la misma pieza (pedido
+// original + reemplazo tras "Problema con Pieza", o "Pedir pieza adicional"
+// mientras ya había uno "Recibido") — detalle.pedidos[0] cogía siempre el
+// PRIMERO sin mirar su estado, así que un pedido antiguo ya Recibido/con
+// Problema tapaba al nuevo pedido activo: ni la tarjeta ni los botones
+// ("Marcar En Tránsito"/"Marcar como Recibida") volvían a aparecer (bug real
+// reportado, resguardo 18500). El original filtra los inactivos primero.
+const ESTADOS_PEDIDO_INACTIVOS = ["Cancelado", "Recibido", "Problema", "Pieza Rota", "Pieza Defectuosa"];
+
+function pedidoActivoDePiezaPendiente(detalle: ReparacionDetalle): { estado: "Pedido" | "En Tránsito" | ""; pedido: Pedido | undefined } {
+  const activos = detalle.pedidos.filter((p) => !ESTADOS_PEDIDO_INACTIVOS.includes(p.estado));
+  const hayPedido = activos.some((p) => p.estado === "Pedido");
+  const hayTransito = activos.some((p) => p.estado === "En Tránsito");
+  const estado = hayPedido ? "Pedido" : hayTransito ? "En Tránsito" : "";
+  return { estado, pedido: estado ? activos.find((p) => p.estado === estado) : undefined };
+}
 
 function describir(detalle: ReparacionDetalle): Accion | null {
   const estado = detalle.estado;
@@ -160,8 +178,8 @@ function describir(detalle: ReparacionDetalle): Accion | null {
   }
 
   if (estado === "Pieza Pendiente") {
-    const pedido = detalle.pedidos[0];
-    const enTransito = pedido?.estado === "En Tránsito";
+    const { estado: estadoPedido, pedido } = pedidoActivoDePiezaPendiente(detalle);
+    const enTransito = estadoPedido === "En Tránsito";
     return {
       tono: enTransito ? "warning" : "info",
       icono: Truck,
@@ -319,8 +337,8 @@ export function AccionRequerida({
   // (estadoPedido 'Pedido' vs 'En Tránsito' en renderizarAccion()) — mismos
   // tres botones en ambas, solo cambia el primero.
   if (estado === "Pieza Pendiente") {
-    const pedido = detalle.pedidos[0];
-    if (pedido?.estado === "En Tránsito") {
+    const { estado: estadoPedido } = pedidoActivoDePiezaPendiente(detalle);
+    if (estadoPedido === "En Tránsito") {
       botones.push(
         <Button key="recibida" size="sm" className="gap-1.5 bg-amber-500 text-white hover:bg-amber-600" onClick={callbacks.onMarcarPiezaRecibida}>
           <TickCircle className="size-3.5" /> Marcar como Recibida
@@ -332,7 +350,7 @@ export function AccionRequerida({
           <DocumentText className="size-3.5" /> Presupuesto
         </Button>
       );
-    } else if (pedido?.estado === "Pedido") {
+    } else if (estadoPedido === "Pedido") {
       botones.push(
         <Button key="transito" size="sm" className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700" onClick={callbacks.onMarcarEnTransito}>
           <Truck className="size-3.5" /> Marcar En Tránsito
