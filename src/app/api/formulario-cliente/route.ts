@@ -30,7 +30,30 @@ function construirObservaciones(datos: DatosFormularioCliente, esCintas: boolean
 }
 
 export async function POST(req: Request) {
-  const datos = (await req.json()) as DatosFormularioCliente;
+  const datos = (await req.json()) as DatosFormularioCliente & { codigoAcceso?: string };
+
+  // Consumo atómico del código de acceso ANTES de crear nada — reemplaza
+  // la rotación "fire-and-forget" posterior al envío (no garantizada: un
+  // fallo ahí dejaba el mismo código válido indefinidamente, bug real
+  // reportado con 3 formularios registrados con un solo código). Si el
+  // código ya se usó, caducó, o no es el activo, la solicitud se rechaza
+  // aquí mismo — nunca se llega a crear la reparación.
+  const codigoAcceso = typeof datos.codigoAcceso === "string" ? datos.codigoAcceso.trim() : "";
+  if (!codigoAcceso) {
+    return NextResponse.json({ ok: false, error: "Falta el código de acceso" }, { status: 400 });
+  }
+  try {
+    const consumo = await kelatosApiPost<{ ok: boolean; consumido: boolean; error?: string }>(
+      "/v1/formulario/codigo-acceso/consumir",
+      { codigo: codigoAcceso }
+    );
+    if (!consumo.consumido) {
+      return NextResponse.json({ ok: false, error: consumo.error || "El código de acceso ya no es válido." }, { status: 409 });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ ok: false, error: `No se pudo validar el código de acceso: ${message}` }, { status: 502 });
+  }
 
   const esCintas = datos.tipoProducto === "Conversión de cintas";
   const tipoVal = datos.tipoProducto === "Otro" ? datos.tipoOtro.trim() || "Otro" : datos.tipoProducto;
@@ -145,19 +168,14 @@ export async function POST(req: Request) {
         historial: { tipo: "entrada", descripcion: "Solicitud registrada desde el formulario público (web)" },
       });
 
-      // Rota el código de acceso activo tras cada envío exitoso — reproduce
-      // generarCodigoPublicoNuevaSolicitud() (FormularioCliente.js:1466),
-      // que en el original nunca llegó a invocarse desde ningún sitio real
-      // (función "muerta": definida y expuesta como apiGenerarCodigoPublico
-      // NuevaSolicitud, pero sin ningún llamador en FormularioCliente.html
-      // ni en el resto del código). Sin esto, el mismo código de acceso
-      // (pensado como un solo uso: un cliente, una visita) se puede reutilizar
-      // indefinidamente hasta que caduque (24h) o el personal genere otro a
-      // mano — cualquiera que lo capture puede registrar solicitudes
-      // ilimitadas con él. Best-effort: un fallo aquí no debe impedir que el
-      // cliente reciba su resguardo ya confirmado.
+      // El código ya quedó invalidado de verdad arriba (/consumir, atómico
+      // y anterior a la creación de la reparación) — esto solo genera uno
+      // NUEVO para que el panel del personal tenga QR listo para el
+      // siguiente cliente sin esperar a que alguien pulse "Nuevo código" a
+      // mano. Puramente cosmético: un fallo aquí no reabre el código
+      // anterior (sigue consumido) ni afecta al resguardo ya confirmado.
       kelatosApiPost("/v1/formulario/codigo-acceso", { usuario: "Formulario Web (auto tras envío)" }).catch((e) => {
-        console.error("Error rotando código de acceso tras envío del formulario:", e);
+        console.error("Error generando el siguiente código de acceso tras envío del formulario:", e);
       });
 
       return NextResponse.json({ ok: true, resguardo: confirmado.resguardo });

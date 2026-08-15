@@ -190,12 +190,15 @@ function CampoOpciones<T extends string>({
 }
 
 export default function FormularioClientePage() {
-  // El código de acceso es solo una puerta de entrada (evita que alguien
-  // ajeno a la tienda rellene el formulario sin más que la URL) — el
-  // envío en sí ya es idempotente por requestId/UUID, así que el
-  // visitaId no viaja en el payload, es puramente informativo para el
-  // personal (ver formulario-web/page.tsx).
+  // El código de acceso viaja hasta el envío final (no se descarta tras
+  // la pantalla de entrada): /api/formulario-cliente lo consume de forma
+  // atómica justo antes de crear la reparación, así el código deja de
+  // servir en el mismo momento en que se usa — no depende de una
+  // rotación posterior que podía fallar en silencio y dejar el mismo
+  // código válido para envíos ilimitados (bug real reportado: 3
+  // formularios distintos registrados con el mismo código).
   const [accesoConcedido, setAccesoConcedido] = useState(false);
+  const [codigoAcceso, setCodigoAcceso] = useState("");
 
   const [paso, setPaso] = useState(1);
   const [datos, setDatos] = useState<DatosFormularioCliente>(datosVacios());
@@ -208,7 +211,14 @@ export default function FormularioClientePage() {
   const dniBuscadoRef = useRef("");
 
   if (!accesoConcedido) {
-    return <PantallaCodigoAcceso onAcceso={() => setAccesoConcedido(true)} />;
+    return (
+      <PantallaCodigoAcceso
+        onAcceso={(codigo) => {
+          setCodigoAcceso(codigo);
+          setAccesoConcedido(true);
+        }}
+      />
+    );
   }
 
   function actualizar<K extends keyof DatosFormularioCliente>(campo: K, valor: DatosFormularioCliente[K]) {
@@ -367,7 +377,7 @@ export default function FormularioClientePage() {
       const res = await fetch("/api/formulario-cliente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos),
+        body: JSON.stringify({ ...datos, codigoAcceso }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo registrar la solicitud.");
@@ -887,7 +897,7 @@ function CanvasFirma({ value, onChange }: { value: string; onChange: (base64: st
   );
 }
 
-function PantallaCodigoAcceso({ onAcceso }: { onAcceso: () => void }) {
+function PantallaCodigoAcceso({ onAcceso }: { onAcceso: (codigo: string) => void }) {
   const [codigo, setCodigo] = useState("");
   const [validando, setValidando] = useState(false);
   const [error, setError] = useState("");
@@ -905,7 +915,7 @@ function PantallaCodigoAcceso({ onAcceso }: { onAcceso: () => void }) {
       });
       const data = await res.json();
       if (!data.ok || !data.valido) throw new Error(data.error || "Código incorrecto.");
-      onAcceso();
+      onAcceso(codigo.trim());
     } catch (e2) {
       setError(e2 instanceof Error ? e2.message : "Error desconocido");
     } finally {
