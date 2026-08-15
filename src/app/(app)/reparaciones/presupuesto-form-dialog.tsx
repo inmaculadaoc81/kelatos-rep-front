@@ -104,6 +104,19 @@ export function PresupuestoFormDialog({
     fetch("/api/proveedores").then((r) => r.json()).then((d) => { if (d.ok) setProveedores(d.proveedores); });
   }, [open]);
 
+  // mostrarFormularioNuevoPresupuesto() (Index.html): el original resetea
+  // el formulario en cada apertura, no solo al cerrar. Este diálogo se
+  // monta una sola vez dentro de GestionPresupuestosDialog y nunca se
+  // desmonta, así que `datos` sobrevivía entre aperturas — guardar un
+  // presupuesto y luego pulsar "+ Nuevo Presupuesto" otra vez reabría el
+  // formulario con los datos del presupuesto recién creado en vez de en
+  // blanco (bug real reportado; solo se veía en blanco tras cerrar con la
+  // X/Escape, que sí pasaba por reiniciar() — nunca al reabrir).
+  useEffect(() => {
+    if (open) reiniciar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   function reiniciar() {
     setDatos(presupuestoExistente ? desdeExistente(presupuestoExistente) : vacio());
   }
