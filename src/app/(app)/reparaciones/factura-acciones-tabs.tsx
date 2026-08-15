@@ -765,6 +765,13 @@ function FaseCorregida({
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
   const [metodo, setMetodo] = useState(formaPagoOriginal);
   const [banco, setBanco] = useState("");
+  // _mfaAbrirFacturaCorregidaModal (Index.html) reutiliza el mismo select
+  // #vfEstadoFactura del resto de facturas — "Cobrada" viene seleccionado
+  // por defecto en el HTML original (option value="Cobrada" selected). El
+  // puerto no tenía este campo en absoluto (siempre mandaba "Pendiente" por
+  // no enviar estadoFactura), así que ninguna factura corregida podía
+  // marcarse cobrada al generarla.
+  const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [lineas, setLineas] = useState<LineaFactura[]>(lineasOriginales.length > 0 ? lineasOriginales : [{ descripcion: "", cantidad: 1, precio: 0 }]);
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -817,6 +824,7 @@ function FaseCorregida({
             lineas: validas,
             tipoDocumento: "FACTURA CORREGIDA",
             rectificaDe: `Corrige: ${numeroFacturaOriginal} · Rectificativa: ${numeroFacturaRectificativa}`,
+            estadoFactura: estado,
           },
         }),
       });
@@ -849,7 +857,7 @@ function FaseCorregida({
               Rectificativa generada: <strong>{numeroFacturaRectificativa}</strong> — corrige: <strong>{numeroFacturaOriginal}</strong>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-5">
               <CampoLecturaCorr label="Tipo de factura" valor="Serie 1 — Cobros" />
               <CampoLecturaCorr label="N.º Factura" valor="Se asignará al generar" />
               <CampoLecturaCorr label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
@@ -869,6 +877,16 @@ function FaseCorregida({
                     </SelectContent>
                   </Select>
                 )}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Estado</Label>
+                <Select value={estado} onValueChange={(v) => setEstado((v || "Cobrada") as "Cobrada" | "Pendiente")}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Cobrada">Cobrada</SelectItem>
+                    <SelectItem value="Pendiente">Pendiente</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
