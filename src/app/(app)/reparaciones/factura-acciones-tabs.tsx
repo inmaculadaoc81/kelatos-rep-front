@@ -719,6 +719,18 @@ function CampoLecturaCorr({ label, valor }: { label: string; valor: string }) {
   );
 }
 
+/** Detecta una línea "Descuento global (X%)" (formato usado por
+    nueva-factura-manual-dialog.tsx/factura-reparacion-dialog.tsx al
+    materializar el descuento global como línea) y la separa del resto,
+    para poder recalcularla en vivo en vez de dejarla como texto fijo. */
+function extraerDescuentoGlobal(lineas: LineaFactura[]): { pct: number; resto: LineaFactura[] } {
+  const RE = /^Descuento global \((\d+(?:\.\d+)?)%\)$/i;
+  const idx = lineas.findIndex((l) => RE.test(l.descripcion.trim()));
+  if (idx === -1) return { pct: 0, resto: lineas };
+  const m = RE.exec(lineas[idx].descripcion.trim());
+  return { pct: m ? parseFloat(m[1]) : 0, resto: lineas.filter((_, i) => i !== idx) };
+}
+
 /**
  * Reproduce _mfaAbrirFacturaCorregidaModal() → #modalVistaFactura en modo
  * "corregida": modal propio (no un formulario inline en el tab), con la
@@ -729,9 +741,8 @@ function CampoLecturaCorr({ label, valor }: { label: string; valor: string }) {
  * por defecto se muestra el cliente de la factura original en una tarjeta
  * de solo lectura con un botón "×"; al pulsarlo (con confirmación) se vacía
  * y se cambia a modo edición con el mismo buscador de clientes que el resto
- * del puerto. No hay "Buscar artículo en stock" ni descuento global —
- * ninguno de los dos existe tampoco en el resto de formularios de factura
- * ya migrados.
+ * del puerto. No hay "Buscar artículo en stock" — sí descuento global,
+ * igual que el resto de formularios de factura ya migrados.
  */
 function FaseCorregida({
   open,
@@ -784,7 +795,17 @@ function FaseCorregida({
   // no enviar estadoFactura), así que ninguna factura corregida podía
   // marcarse cobrada al generarla.
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
-  const [lineas, setLineas] = useState<LineaFactura[]>(lineasOriginales.length > 0 ? lineasOriginales : duracionAlquiler ? [] : [{ descripcion: "", cantidad: 1, precio: 0 }]);
+  // El descuento global de la factura original se guarda como una línea más
+  // ("Descuento global (X%)", precio negativo — ver nueva-factura-manual-
+  // dialog.tsx/factura-reparacion-dialog.tsx), pero aquí llegaba tal cual,
+  // congelada: si se cambiaba el importe de otra línea, el descuento NO se
+  // recalculaba (bug real reportado con PDF real: al subir una línea de
+  // 250€ a 450€, el "Descuento global (50%)" se quedó en -125€ en vez de
+  // pasar a -225€). Se extrae de lineasOriginales al abrir y se recalcula
+  // en vivo como en los otros dos formularios, en vez de quedar fija.
+  const { pct: descuentoGlobalInicial, resto: lineasOriginalesSinDescuento } = extraerDescuentoGlobal(lineasOriginales);
+  const [descuentoGlobalPct, setDescuentoGlobalPct] = useState(descuentoGlobalInicial);
+  const [lineas, setLineas] = useState<LineaFactura[]>(lineasOriginalesSinDescuento.length > 0 ? lineasOriginalesSinDescuento : duracionAlquiler ? [] : [{ descripcion: "", cantidad: 1, precio: 0 }]);
   const [duracion, setDuracion] = useState(duracionAlquiler?.inicial ?? { meses: 0, semanas: 0, dias: 0 });
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -818,7 +839,10 @@ function FaseCorregida({
     toast.success("Cliente cargado");
   }
 
-  const base = todasLasLineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
+  const subtotal = todasLasLineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
+  const pctGlobal = Math.min(100, Math.max(0, descuentoGlobalPct || 0));
+  const descuentoGlobalAmt = (subtotal * pctGlobal) / 100;
+  const base = subtotal - descuentoGlobalAmt;
   const iva = base * IVA_PCT;
   const totalConIva = base + iva;
 
@@ -841,6 +865,10 @@ function FaseCorregida({
     const rid = requestId || crypto.randomUUID();
     setRequestId(rid);
     try {
+      const importeGlobal = Math.round(descuentoGlobalAmt * 100) / 100;
+      const lineasConDescuento = pctGlobal > 0 && importeGlobal > 0
+        ? [...validas, { descripcion: `Descuento global (${pctGlobal}%)`, cantidad: 1, precio: -importeGlobal }]
+        : validas;
       const res = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -852,7 +880,7 @@ function FaseCorregida({
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim() },
             formaPago: metodo,
             banco: metodo === "tarjeta" ? banco : "",
-            lineas: validas,
+            lineas: lineasConDescuento,
             tipoDocumento: "FACTURA CORREGIDA",
             rectificaDe: `Corrige: ${numeroFacturaOriginal} · Rectificativa: ${numeroFacturaRectificativa}`,
             estadoFactura: estado,
@@ -1066,8 +1094,27 @@ function FaseCorregida({
                       <tfoot className="text-sm">
                         <tr className="border-t bg-muted/30">
                           <td colSpan={4}></td>
-                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base</td>
-                          <td className="px-2 py-1 text-right font-medium">{euros(base)}</td>
+                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base imponible</td>
+                          <td className="px-2 py-1 text-right font-medium">{euros(subtotal)}</td>
+                        </tr>
+                        <tr className="bg-muted/30">
+                          <td colSpan={3}></td>
+                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">Descuento global</td>
+                          <td className="p-1">
+                            <div className="flex items-center justify-end gap-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.5}
+                                className="h-7 w-14 border-0 bg-transparent text-right text-xs"
+                                value={descuentoGlobalPct}
+                                onChange={(e) => setDescuentoGlobalPct(parseFloat(e.target.value) || 0)}
+                              />
+                              <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                          </td>
+                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">{euros(descuentoGlobalAmt)}</td>
                         </tr>
                         <tr className="bg-muted/30">
                           <td colSpan={4}></td>
