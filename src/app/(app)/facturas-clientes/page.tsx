@@ -17,6 +17,7 @@ import {
   ArrowRight3,
   DocumentDownload,
   Copy,
+  CloseCircle,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/confirm-provider";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -198,14 +199,25 @@ function EstadoBadge({ f, onClick }: { f: FacturaCliente; onClick?: () => void }
   );
 }
 
+/** https://drive.google.com/uc?export=download&id=X (el formato que genera
+    el backend, forzado a descarga) → formato de previsualización embebible
+    de Drive. Si no coincide el patrón esperado, se deja igual — el iframe
+    simplemente no cargará nada útil y queda el botón "Descargar" real. */
+function urlPreviewDrive(url: string): string {
+  const m = /[?&]id=([a-zA-Z0-9_-]+)/.exec(url);
+  return m ? `https://drive.google.com/file/d/${m[1]}/preview` : url;
+}
+
 /**
- * El número de factura es un badge clicable con dos acciones — antes era
- * un enlace directo que abría el PDF de Drive en pestaña nueva (en la
- * práctica, como esa URL fuerza la descarga, terminaba descargándolo sin
- * más contexto). Ahora ofrece "Descargar" (mismo comportamiento de
- * siempre) y "Copiar enlace" por separado, en vez de un único clic ambiguo.
+ * El número de factura es un badge clicable que abre la factura en un
+ * visor dentro de la misma pantalla (mismo patrón que el visor de fotos/
+ * firmas de Formulario Web) — antes era un enlace directo que abría el PDF
+ * de Drive en pestaña nueva y, como esa URL fuerza la descarga, terminaba
+ * descargándolo sin más contexto. "Descargar" y "Copiar enlace" quedan
+ * arriba, en la cabecera del propio visor.
  */
 function FacturaBadge({ f }: { f: FacturaCliente }) {
+  const [abierta, setAbierta] = useState(false);
   const contenido = (
     <>
       <Receipt className="size-3.5" /> {f.numero} {f.url && <ExportSquare className="size-2.5" />}
@@ -227,19 +239,34 @@ function FacturaBadge({ f }: { f: FacturaCliente }) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className={cn(clase, "cursor-pointer hover:opacity-90")} style={{ backgroundColor: "#198754" }}>
+    <>
+      <button type="button" className={cn(clase, "cursor-pointer hover:opacity-90")} style={{ backgroundColor: "#198754" }} onClick={() => setAbierta(true)}>
         {contenido}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44">
-        <DropdownMenuItem render={<a href={f.url} target="_blank" rel="noopener noreferrer" />}>
-          <DocumentDownload className="size-4" /> Descargar
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={copiarEnlace}>
-          <Copy className="size-4" /> Copiar enlace
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </button>
+
+      <Dialog open={abierta} onOpenChange={setAbierta}>
+        <DialogContent className="flex h-[85vh] max-w-4xl flex-col gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
+          <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
+            <Receipt className="size-4.5 shrink-0" />
+            <DialogTitle className="text-sm font-semibold text-primary-foreground">Factura {f.numero}</DialogTitle>
+            <div className="ml-auto flex items-center gap-1.5">
+              <Button size="sm" variant="secondary" className="gap-1.5" nativeButton={false} render={<a href={f.url} target="_blank" rel="noopener noreferrer" />}>
+                <DocumentDownload className="size-3.5" /> Descargar
+              </Button>
+              <Button size="sm" variant="secondary" className="gap-1.5" onClick={copiarEnlace}>
+                <Copy className="size-3.5" /> Copiar enlace
+              </Button>
+              <Button variant="ghost" size="icon-sm" className="text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={() => setAbierta(false)}>
+                <CloseCircle className="size-4" />
+              </Button>
+            </div>
+          </header>
+          {abierta && (
+            <iframe src={urlPreviewDrive(f.url)} title={`Factura ${f.numero}`} className="w-full flex-1 rounded-b-xl" />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
