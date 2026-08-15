@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Wallet, CloseCircle, Building, Profile, SearchNormal1, ArrowRight2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,6 @@ import { METODOS_PAGO, BANCOS, euros } from "./factura-acciones-tabs";
 
 const IVA_PCT = 0.21;
 const PORCENTAJE = 50;
-// El anticipo es el X% del presupuesto NETO (ya con el descuento de
-// revisión restado) — no solo de piezas+mano de obra por separado. Si el
-// descuento no se prorratea aquí, el "% restante" de la factura final deja
-// de ser un X% limpio, porque ese remanente se calcula sobre el mismo
-// total neto.
-const PRECIO_REVISION = 20;
 
 function CampoLecturaAnticipo({ label, valor }: { label: string; valor: string }) {
   return (
@@ -34,27 +28,45 @@ function CampoLecturaAnticipo({ label, valor }: { label: string; valor: string }
   );
 }
 
-/** Reproduce la construcción de líneas de _slAbrirVistaFactura() (Index.html): una línea al 50% por cada pieza con precio, otra de mano de obra al 50% — nunca un único importe global. */
+/**
+ * Reproduce la construcción de líneas de _slAbrirVistaFactura() (Index.html):
+ * una línea al 50% por cada pieza con precio, otra de mano de obra al 50% —
+ * nunca un único importe global.
+ *
+ * Decisión explícita del usuario (mismo criterio que ya aplica
+ * factura-reparacion-dialog.tsx vía commit 8c19469): cuando el flujo
+ * "hayMas" deja más de un presupuesto en estado "aceptado" para la misma
+ * reparación, el anticipo debe ser el 50% de la SUMA de todos ellos, no
+ * solo del primero (bug previo: solo tomaba uno vía .find()).
+ *
+ * Segunda decisión explícita: el descuento de revisión pagada ya NO se
+ * prorratea aquí — se deja íntegro para restarse una sola vez en la
+ * factura final (ver factura-reparacion-dialog.tsx), así que este anticipo
+ * es siempre el 50% limpio del bruto de piezas+mano de obra, sin tocar el
+ * descuento.
+ */
 function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
-  const ppto =
-    detalle.presupuestos.find((p) => p.estado.toLowerCase() === "aceptado") ||
-    detalle.presupuestos.filter((p) => p.estado.toLowerCase() !== "rechazado").slice(-1)[0];
-  if (!ppto) return [{ descripcion: "", cantidad: 1, precio: 0 }];
+  const aceptados = detalle.presupuestos.filter((p) => p.estado.toLowerCase() === "aceptado");
+  const pressBase = aceptados.length > 0
+    ? aceptados
+    : detalle.presupuestos.filter((p) => p.estado.toLowerCase() !== "rechazado").slice(-1);
+  if (pressBase.length === 0) return [{ descripcion: "", cantidad: 1, precio: 0 }];
 
   const factor = PORCENTAJE / 100;
+  const multiples = pressBase.length > 1;
+  const etiqueta = (base: string, p: (typeof pressBase)[number]) => (multiples ? `${base} (v${p.version})` : base) + ` (${PORCENTAJE}%)`;
   const lineas: LineaFactura[] = [];
-  if (ppto.piezas.length > 0) {
-    for (const pz of ppto.piezas) {
-      if (pz.precio > 0) lineas.push({ descripcion: `${pz.descripcion || "Pieza"} (${PORCENTAJE}%)`, cantidad: 1, precio: pz.precio * factor });
+  for (const ppto of pressBase) {
+    if (ppto.piezas.length > 0) {
+      for (const pz of ppto.piezas) {
+        if (pz.precio > 0) lineas.push({ descripcion: etiqueta(pz.descripcion || "Pieza", ppto), cantidad: 1, precio: pz.precio * factor });
+      }
+    } else if (ppto.precioPiezas > 0) {
+      lineas.push({ descripcion: etiqueta("Material / Piezas", ppto), cantidad: 1, precio: ppto.precioPiezas * factor });
     }
-  } else if (ppto.precioPiezas > 0) {
-    lineas.push({ descripcion: `Material / Piezas (${PORCENTAJE}%)`, cantidad: 1, precio: ppto.precioPiezas * factor });
-  }
-  if (ppto.manoObra > 0) {
-    lineas.push({ descripcion: `Mano de obra (${PORCENTAJE}%)`, cantidad: 1, precio: ppto.manoObra * factor });
-  }
-  if (detalle.revisionPagada === "SI") {
-    lineas.push({ descripcion: `Descuento revisión pagada (${PORCENTAJE}%)`, cantidad: 1, precio: -PRECIO_REVISION * factor });
+    if (ppto.manoObra > 0) {
+      lineas.push({ descripcion: etiqueta("Mano de obra", ppto), cantidad: 1, precio: ppto.manoObra * factor });
+    }
   }
   return lineas.length > 0 ? lineas : [{ descripcion: "", cantidad: 1, precio: 0 }];
 }
@@ -121,6 +133,19 @@ export function AnticipoDialog({
     setLineas(construirLineas(detalle));
     setRequestId(null); setResultado(null);
   }
+
+  // DetalleDialog renderiza <AnticipoDialog> sin desmontarlo entre
+  // reparaciones (sin key={resguardo}) — mismo patrón ya corregido en
+  // PresupuestoFormDialog. Sin este efecto, `lineas`/`nombre`/etc.
+  // conservarían el estado calculado la primera vez que el diálogo se
+  // montó (con el presupuesto de la PRIMERA reparación abierta en la
+  // sesión) en cualquier apertura posterior para otra reparación distinta,
+  // ya que el useState(() => construirLineas(detalle)) inicial solo se
+  // ejecuta una vez.
+  useEffect(() => {
+    if (open) reiniciar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function cerrar(o: boolean) {
     if (enviando) return;

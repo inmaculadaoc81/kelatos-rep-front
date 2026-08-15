@@ -49,14 +49,14 @@ function lineaVacia(): LineaEditable {
  * descuento de revisión pagada, y los portes de mensajería (solo mientras
  * no exista ya una factura, igual que el original).
  *
- * Diferencia deliberada frente al original: ahí "% restante" se calculaba
- * sobre piezas+mano de obra SIN descontar la revisión, y el descuento se
- * aplicaba entero (no prorrateado) en la factura final — eso hacía que un
- * anticipo del 50% (que sí llevaba su mitad del descuento, ver
- * anticipo-dialog.tsx) diera un "% restante" no redondo (p.ej. 58%) y el
- * descuento pareciera aplicarse dos veces. Aquí baseRem ya resta el
- * descuento, y este también se escala por remFactor — así el anticipo y el
- * remanente son siempre porcentajes limpios y complementarios.
+ * Decisión explícita del usuario sobre el descuento de revisión pagada: el
+ * anticipo (ver anticipo-dialog.tsx) se calcula ahora sobre el bruto de los
+ * presupuestos, SIN restar ni prorratear el descuento — el descuento de 20€
+ * se aplica entero, una sola vez, aquí en la factura final. Por eso baseRem
+ * ya no resta descuentoRevision: el "% restante" (remFactor) se calcula
+ * sobre el mismo bruto que usó el anticipo para su 50%, así ambos siguen
+ * siendo porcentajes limpios y complementarios (p.ej. 50%/50%) sin que el
+ * descuento entre en esa proporción.
  *
  * Segunda diferencia deliberada: el original solo tomaba el PRIMER
  * presupuesto en estado "aceptado" (rep.presupuestos.find(...), Index.html
@@ -80,12 +80,6 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
   const NOMBRES_TIPO: Record<string, string> = {
     vhs: "VHS", vhsc: "VHS-C", beta: "Betamax", minidv: "MiniDV", "8mm": "8mm / Hi8", cassette: "Cassette audio", bobina: "Bobina",
   };
-
-  // Factor por el que se escala también el descuento de revisión pagada:
-  // 1 salvo que ya se cobrara un anticipo (rama no-cintas de abajo), caso en
-  // el que el descuento se reparte proporcionalmente entre el anticipo y
-  // esta factura final, igual que las piezas y la mano de obra.
-  let remFactorDescuento = 1;
 
   if (datosCintas?.tipos) {
     // precioPorCinta/precioBobina: precio real de cada tipo (tarifa
@@ -124,19 +118,17 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
       }
     }
 
-    // baseRem es el presupuesto NETO (con el descuento de revisión ya
-    // restado, igual que anticipo-dialog.tsx lo calcula sobre ese mismo
-    // neto) — así el anticipo y el remanente de esta factura son siempre
-    // porcentajes limpios y complementarios (p.ej. 50%/50%), en vez de
-    // comparar un anticipo ya neto contra un total bruto.
-    const descuentoRevision = detalle.revisionPagada === "SI" ? 20 : 0;
+    // baseRem es el presupuesto BRUTO (sin restar el descuento de revisión
+    // — ese descuento ya no se prorratea, se aplica entero más abajo) —
+    // igual que anticipo-dialog.tsx calcula su 50% sobre ese mismo bruto,
+    // así el anticipo y el remanente de esta factura son siempre
+    // porcentajes limpios y complementarios (p.ej. 50%/50%).
     const anticipo = !detalle.urlFactura && hayPres ? detalle.anticipoImporte || 0 : 0;
     const totalPresBruto = pressBase.reduce((s, p) => s + (p.total || 0), 0);
     const baseBruta = sumItems > 0 ? sumItems : totalPresBruto;
-    const baseRem = Math.max(0, baseBruta - descuentoRevision);
+    const baseRem = baseBruta;
     let remFactor = 1;
     if (anticipo > 0 && baseRem > 0) remFactor = Math.max(0, 1 - anticipo / baseRem);
-    remFactorDescuento = remFactor;
     const sufijo = remFactor < 1 ? ` (${Math.round(remFactor * 100)}% restante)` : "";
 
     if (hayPres) {
@@ -176,7 +168,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
     }
   }
 
-  if (detalle.revisionPagada === "SI") add("Descuento revisión pagada", 1, -20 * remFactorDescuento);
+  if (detalle.revisionPagada === "SI") add("Descuento revisión pagada", 1, -20);
 
   if (!detalle.urlFactura) {
     if ((detalle.tipoRecepcion || "LOCAL") === "ENVIO") add("Recogida por mensajería", 1, 12.4);
