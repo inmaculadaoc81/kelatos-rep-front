@@ -15,6 +15,7 @@ export function LogisticaPanel({
   detalle,
   onActualizado,
   onClienteSeLleva,
+  onClienteSeLlevaDirecto,
   onClienteLoTrajo,
   bloqueado = false,
 }: {
@@ -24,6 +25,10 @@ export function LogisticaPanel({
    * estado directamente — abre la factura de anticipo (50%) antes, y es
    * esa confirmación la que deja el equipo en 'NO'. */
   onClienteSeLleva: () => void;
+  /** Sin presupuesto de por medio (Garantía: reparación gratuita) no hay
+      nada sobre lo que calcular un anticipo del 50% — confirmación simple
+      + toggle directo, igual que onClienteLoTrajo. */
+  onClienteSeLlevaDirecto: () => void;
   /** Dirección inversa: confirmación simple + toggle directo (marcarEquipoRecibido). */
   onClienteLoTrajo: () => void;
   /** Reparación entregada y facturada: cambiar la entrega por mensajería o
@@ -36,6 +41,10 @@ export function LogisticaPanel({
   const mensajeriaActiva = detalle.entregaMensajeria === "SI";
   const equipoEnLocal = detalle.equipoEnLocal !== "NO";
   const mostrarToggleEquipo = ESTADOS_CON_TOGGLE_EQUIPO.includes(detalle.estado);
+  // Típico de Garantía: reparación gratuita, sin presupuesto que aceptar —
+  // exigir un anticipo del 50% de "nada" solo bloqueaba el toggle sin
+  // dejar ninguna forma de marcar "Cliente se lleva" (bug real reportado).
+  const sinPresupuesto = detalle.presupuestos.length === 0;
 
   async function ejecutar(accion: string, datos: Record<string, unknown>) {
     setEnviando(true);
@@ -130,7 +139,7 @@ export function LogisticaPanel({
             size="sm"
             variant={equipoEnLocal ? "outline" : "default"}
             disabled={enviando}
-            onClick={equipoEnLocal ? onClienteSeLleva : onClienteLoTrajo}
+            onClick={equipoEnLocal ? (sinPresupuesto ? onClienteSeLlevaDirecto : onClienteSeLleva) : onClienteLoTrajo}
           >
             {equipoEnLocal ? "Cliente se lleva" : "Cliente lo trajo"}
           </Button>

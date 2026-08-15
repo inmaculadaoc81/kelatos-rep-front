@@ -454,6 +454,32 @@ export function DetalleReparacionDialog({
     }
   }
 
+  // Sin presupuesto de por medio (típico de Garantía: reparación gratuita,
+  // sin nada que cobrar) no tiene sentido exigir un anticipo del 50% de
+  // "nada" — el flujo normal (onClienteSeLleva → AnticipoDialog) bloqueaba
+  // con "No hay presupuesto aceptado con importe para calcular el
+  // anticipo" y no dejaba marcar "Cliente se lleva" de ningún modo (bug
+  // real reportado). Aquí se hace lo mismo que marcarEquipoRecibido():
+  // confirmación simple + toggle directo, sin pasar por facturación.
+  async function marcarClienteSeLlevaDirecto() {
+    if (!resguardo) return;
+    const ok = await confirmar("¿El cliente se lleva el equipo mientras se resuelve la garantía?");
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/logistica`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "equipo_en_local", datos: { estado: "NO" } }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Cliente se llevó el equipo");
+      actualizarTodo();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
   // Reproduce marcarEquipoRecibido() — el cliente trajo de vuelta el
   // equipo que se había llevado mientras llegaba la pieza.
   async function marcarEquipoRecibido() {
@@ -558,6 +584,7 @@ export function DetalleReparacionDialog({
                   detalle={detalle}
                   onActualizado={actualizarTodo}
                   onClienteSeLleva={() => setAnticipoAbierto(true)}
+                  onClienteSeLlevaDirecto={marcarClienteSeLlevaDirecto}
                   onClienteLoTrajo={marcarEquipoRecibido}
                   bloqueado={clienteEquipoBloqueado}
                 />
