@@ -67,11 +67,19 @@ export function NuevaFacturaManualDialog({
   const [banco, setBanco] = useState("");
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
   const [lineas, setLineas] = useState<LineaFactura[]>([{ descripcion: "", cantidad: 1, precio: 0 }]);
+  // Igual que factura-reparacion-dialog.tsx: solo afecta a la vista previa
+  // en pantalla, se materializa como una línea negativa propia al generar
+  // (ver generar()) para que quede reflejado en el PDF y en el total real,
+  // en vez de perderse silenciosamente.
+  const [descuentoGlobalPct, setDescuentoGlobalPct] = useState(0);
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [resultado, setResultado] = useState<{ numeroFactura: string; urlPdf: string } | null>(null);
 
-  const base = lineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
+  const subtotal = lineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
+  const pctGlobal = Math.min(100, Math.max(0, descuentoGlobalPct || 0));
+  const descuentoAmt = (subtotal * pctGlobal) / 100;
+  const base = subtotal - descuentoAmt;
   const iva = base * IVA_PCT;
   const totalConIva = base + iva;
 
@@ -91,6 +99,7 @@ export function NuevaFacturaManualDialog({
     setSerie("1"); setNombre(""); setDireccion(""); setDni(""); setTelefono("");
     setMetodo(""); setBanco(""); setEstadoFactura("Cobrada");
     setLineas([{ descripcion: "", cantidad: 1, precio: 0 }]);
+    setDescuentoGlobalPct(0);
     setRequestId(null); setResultado(null);
   }
 
@@ -111,6 +120,10 @@ export function NuevaFacturaManualDialog({
     const rid = requestId || crypto.randomUUID();
     setRequestId(rid);
     try {
+      const importeGlobal = Math.round(descuentoAmt * 100) / 100;
+      const lineasConDescuento = pctGlobal > 0 && importeGlobal > 0
+        ? [...validas, { descripcion: `Descuento global (${pctGlobal}%)`, cantidad: 1, precio: -importeGlobal }]
+        : validas;
       const res = await fetch("/api/facturas-manuales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,7 +134,7 @@ export function NuevaFacturaManualDialog({
           formaPago: metodo,
           banco: metodo === "tarjeta" ? banco : "",
           estadoFactura,
-          lineas: validas,
+          lineas: lineasConDescuento,
         }),
       });
       const data = await res.json();
@@ -284,8 +297,28 @@ export function NuevaFacturaManualDialog({
                       <tfoot className="text-sm">
                         <tr className="border-t bg-muted/30">
                           <td colSpan={4}></td>
-                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base</td>
-                          <td className="px-2 py-1 text-right font-medium">{euros(base)}</td>
+                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base imponible</td>
+                          <td className="px-2 py-1 text-right font-medium">{euros(subtotal)}</td>
+                        </tr>
+                        <tr className="bg-muted/30">
+                          <td colSpan={3}></td>
+                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">Descuento global</td>
+                          <td className="p-1">
+                            <div className="flex items-center justify-end gap-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.5}
+                                className="h-7 w-14 border-0 bg-transparent text-right text-xs"
+                                value={descuentoGlobalPct}
+                                onChange={(e) => setDescuentoGlobalPct(parseFloat(e.target.value) || 0)}
+                                disabled={!!resultado}
+                              />
+                              <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                          </td>
+                          <td className="px-2 py-1 text-right text-xs text-muted-foreground">{euros(descuentoAmt)}</td>
                         </tr>
                         <tr className="bg-muted/30">
                           <td colSpan={4}></td>
