@@ -67,7 +67,11 @@ function duracionVacia(): DuracionForm {
 function facturacionVacia(): FacturacionForm {
   return {
     clienteNombre: "", clienteTelefono: "", clienteDNI: "", clienteEmail: "", clienteDireccion: "", codigoCliente: "",
-    metodoPago: "", banco: "", numeroOperacion: "", estadoFactura: "Pendiente", observaciones: "",
+    // Decisión explícita del usuario: en un alquiler nuevo el cobro se hace
+    // en el momento de registrarlo (a diferencia de una reparación, donde
+    // puede quedar pendiente), así que el estado por defecto es "Cobrada" —
+    // se puede cambiar a "Pendiente" a mano si hiciera falta.
+    metodoPago: "", banco: "", numeroOperacion: "", estadoFactura: "Cobrada", observaciones: "",
     envioActivado: false, recogidaActivada: false,
   };
 }
