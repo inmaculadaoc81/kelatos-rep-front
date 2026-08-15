@@ -69,6 +69,7 @@ export interface AlquilerFacturaDetalle {
   anterior: { numeroFactura: string; urlFactura: string; totalFactura: number } | null;
   envioActivado: boolean;
   recogidaActivada: boolean;
+  fianzaCobrada: number;
 }
 
 function numero(v: unknown): number {
@@ -114,5 +115,6 @@ export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFactura
       : null,
     envioActivado: activo(row.envio_activado),
     recogidaActivada: activo(row.recogida_activada),
+    fianzaCobrada: numero(row.fianza_cobrada),
   };
 }

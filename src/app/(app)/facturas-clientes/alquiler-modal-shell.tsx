@@ -65,6 +65,12 @@ export function AlquilerModalShell({
   // haya que escribir a mano "Alquiler (2 semanas)" para que el backend la
   // detecte al resincronizar el alquiler.
   const lineasOriginales = [
+    // La fianza sí se precarga editable (a diferencia de envío/recogida): la
+    // factura original la incluía como parte de lo cobrado, así que la
+    // corregida —que sustituye a esa factura por completo— debe seguir
+    // reflejándola salvo que el usuario la borre a propósito (p.ej. si ya se
+    // devolvió antes de corregir).
+    ...(detalle.fianzaCobrada > 0 ? [{ descripcion: "Fianza", cantidad: 1, precio: detalle.fianzaCobrada }] : []),
     // Informativas a 0 € — el envío/recogida ya se cobró (o fue gratis) una
     // sola vez y no se debe recobrar al corregir, pero debe seguir
     // apareciendo para que los reportes de envíos facturados no lo pierdan.
