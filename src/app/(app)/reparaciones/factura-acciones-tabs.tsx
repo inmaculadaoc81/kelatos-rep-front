@@ -804,6 +804,11 @@ function FaseCorregida({
     const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
     if (validas.length === 0) return toast.error("Añade al menos un concepto");
     if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    // _vfValidarFormaPago() (Index.html): #modalVistaFactura exige forma de
+    // pago en TODOS los flujos que lo generan (normal/anticipo/manual/
+    // corregida) — este faltaba aquí, así que se podía generar la factura
+    // corregida sin forma de pago seleccionada (bug real reportado).
+    if (!metodo) return toast.error("Selecciona una forma de pago");
     if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para tarjeta bancaria");
 
     setEnviando(true);
@@ -862,7 +867,7 @@ function FaseCorregida({
               <CampoLecturaCorr label="N.º Factura" valor="Se asignará al generar" />
               <CampoLecturaCorr label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Forma de pago</Label>
+                <Label className="text-xs text-muted-foreground">Forma de pago *</Label>
                 <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
                   <SelectContent>
