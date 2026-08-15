@@ -255,11 +255,18 @@ export async function POST(
       const equipoNombreRect = solicitud.equipoNombre || (await obtenerEquipoNombre());
       const lineasRect = [...lineasAlquiler(equipoNombreRect, a.meses || 0, a.semanas || 0, a.dias || 0, -1, tarifas), ...lineasLogisticaInformativas(a)];
       const fechaOrig = a.fecha_inicio ? new Date(a.fecha_inicio).toLocaleDateString("es-ES") : "";
+      // La UI de este tab promete "anulando la factura original" — sin
+      // esto, la rectificativa cancelaba solo el alquiler por tiempo y
+      // dejaba la fianza cobrada sin ningún apunte que la anule (bug real
+      // reportado: fianza de 165,29€ en la factura original, ausente en su
+      // rectificativa). Mismo patrón que alquiler_ajuste_rectificativa.
+      const fianzaRect = num(a.fianza_cobrada);
       const doc = await generarUnDocumento({
         tipo: "alquiler_rectificativa",
         requestId: solicitud.requestId,
         lineasParaReserva: lineasRect,
         lineasParaPdf: lineasRect,
+        fianza: fianzaRect > 0 ? -fianzaRect : 0,
         rectificaDe: `Rectifica La factura ${numOriginal}${fechaOrig ? ` emitida el ${fechaOrig}` : ""}`,
         estadoFactura: "Devolución",
       });
