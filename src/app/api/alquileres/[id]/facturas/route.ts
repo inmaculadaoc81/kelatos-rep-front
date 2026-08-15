@@ -166,6 +166,11 @@ export async function POST(
         requestId: solicitud.requestId,
         lineasParaReserva: lineas,
         lineasParaPdf: lineas,
+        // Sin esto el PDF caía siempre al "Pendiente" por defecto de
+        // generarFacturaPdfDesdeSheet() aunque se eligiera "Cobrada" en el
+        // paso 2 de "Nuevo Alquiler" — solo se guardaba bien en BD (columnas
+        // más abajo), nunca se imprimía en el documento real.
+        estadoFactura: solicitud.estadoFactura || "Pendiente",
       });
 
       await kelatosApiPost(`/v1/alquileres/facturas/confirmar`, {
@@ -348,6 +353,10 @@ export async function POST(
       requestId: requestIdNueva,
       lineasParaReserva: lineasNueva,
       lineasParaPdf: lineasNueva,
+      // Mismo bug que en "alquiler": el estado elegido en el paso de ajuste
+      // (devolver-alquiler-dialog.tsx) solo llegaba a la columna estado_factura
+      // (columnas más abajo), nunca al PDF impreso.
+      estadoFactura: solicitud.estadoFactura || (a.estado_factura || "").trim() || "Pendiente",
     });
 
     const totalNuevo = docNueva.total;

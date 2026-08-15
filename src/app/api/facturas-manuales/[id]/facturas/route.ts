@@ -91,6 +91,10 @@ export async function POST(
           lineas: datos.lineas,
           tipoDocumento: datos.tipoDocumento || "",
           rectificaDe: datos.rectificaDe || "",
+          // Mismo bug que en la factura manual normal: sin esto el PDF
+          // siempre caía al estado por defecto de generarFacturaPdfDesdeSheet()
+          // en vez del elegido en el modal.
+          estadoFactura: datos.estadoFactura || "",
         },
       });
     } catch (errorPdf) {

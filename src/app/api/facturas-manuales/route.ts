@@ -68,6 +68,13 @@ export async function POST(req: Request) {
           formaPago,
           banco: formaPago === "tarjeta" ? banco : "",
           lineas,
+          // Sin esto, generarFacturaPdfDesdeSheet() (server.js) nunca recibe
+          // datos.estadoFactura y cae a su propio valor por defecto (serie
+          // "1" → "Pendiente") — el PDF salía siempre "Pendiente" aunque se
+          // eligiera "Cobrada" en el modal (bug real reportado; el estado sí
+          // se guardaba bien en BD vía /confirmar más abajo, solo el PDF
+          // impreso quedaba mal).
+          estadoFactura,
         },
       });
     } catch (errorPdf) {
