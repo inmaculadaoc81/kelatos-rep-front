@@ -49,6 +49,10 @@ interface FilaAlquilerRaw {
 export interface AlquilerFacturaDetalle {
   resguardo: string;
   equipoId: string;
+  /** Resuelto aparte por la ruta (no viene en FilaAlquilerRaw, requiere un
+      join con /v1/equipos) — igual que obtenerEquipoNombre() en
+      facturas/route.ts. "" hasta que la ruta lo rellena. */
+  equipoNombre: string;
   cliente: { nombre: string; dni: string; telefono: string; email: string; direccion: string };
   fechaInicio: string | null;
   fechaFinPrevista: string | null;
@@ -113,6 +117,7 @@ export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFactura
   return {
     resguardo: row.alquiler_id,
     equipoId: row.equipo_id,
+    equipoNombre: "",
     cliente: conOverride(
       {
         nombre: row.cliente_nombre || "",

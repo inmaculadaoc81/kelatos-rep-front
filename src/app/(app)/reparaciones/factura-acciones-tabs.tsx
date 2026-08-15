@@ -428,7 +428,7 @@ export function TabDevolucionRectificativo({
       fuera de alcance de esta pasada). */
   permiteCorregida?: boolean;
   /** Solo alquiler — ver FaseCorregida. */
-  duracionAlquiler?: { inicial: { meses: number; semanas: number; dias: number }; tarifas: { precioDia: number; precioSemana: number; precioMes: number } };
+  duracionAlquiler?: { inicial: { meses: number; semanas: number; dias: number }; tarifas: { precioDia: number; precioSemana: number; precioMes: number }; equipoNombre: string };
   onGenerada: () => void;
 }) {
   const [motivo, setMotivo] = useState("");
@@ -774,7 +774,7 @@ function FaseCorregida({
       resincronizar meses/semanas/dias del alquiler), se ofrecen los mismos
       campos Meses/Semanas/Días que "Nuevo Alquiler", que generan esa línea
       automáticamente con el importe ya calculado. */
-  duracionAlquiler?: { inicial: { meses: number; semanas: number; dias: number }; tarifas: { precioDia: number; precioSemana: number; precioMes: number } };
+  duracionAlquiler?: { inicial: { meses: number; semanas: number; dias: number }; tarifas: { precioDia: number; precioSemana: number; precioMes: number }; equipoNombre: string };
   onGenerada: () => void;
 }) {
   const [nombre, setNombre] = useState(clienteOriginal.nombre);
@@ -817,9 +817,9 @@ function FaseCorregida({
   // resincronizar el alquiler.
   const lineasDuracion: LineaFactura[] = duracionAlquiler
     ? [
-        ...(duracion.meses > 0 ? [{ descripcion: `Alquiler (${duracion.meses} ${duracion.meses > 1 ? "meses" : "mes"})`, cantidad: duracion.meses, precio: duracionAlquiler.tarifas.precioMes }] : []),
-        ...(duracion.semanas > 0 ? [{ descripcion: `Alquiler (${duracion.semanas} ${duracion.semanas > 1 ? "semanas" : "semana"})`, cantidad: duracion.semanas, precio: duracionAlquiler.tarifas.precioSemana }] : []),
-        ...(duracion.dias > 0 ? [{ descripcion: `Alquiler (${duracion.dias} ${duracion.dias > 1 ? "días" : "día"})`, cantidad: duracion.dias, precio: duracionAlquiler.tarifas.precioDia }] : []),
+        ...(duracion.meses > 0 ? [{ descripcion: `Alquiler ${duracionAlquiler.equipoNombre} (${duracion.meses} ${duracion.meses > 1 ? "meses" : "mes"})`, cantidad: duracion.meses, precio: duracionAlquiler.tarifas.precioMes }] : []),
+        ...(duracion.semanas > 0 ? [{ descripcion: `Alquiler ${duracionAlquiler.equipoNombre} (${duracion.semanas} ${duracion.semanas > 1 ? "semanas" : "semana"})`, cantidad: duracion.semanas, precio: duracionAlquiler.tarifas.precioSemana }] : []),
+        ...(duracion.dias > 0 ? [{ descripcion: `Alquiler ${duracionAlquiler.equipoNombre} (${duracion.dias} ${duracion.dias > 1 ? "días" : "día"})`, cantidad: duracion.dias, precio: duracionAlquiler.tarifas.precioDia }] : []),
       ]
     : [];
   const todasLasLineas = [...lineasDuracion, ...lineas];

@@ -77,7 +77,7 @@ export function AlquilerModalShell({
     ...(detalle.envioActivado ? [{ descripcion: "Envío a domicilio", cantidad: 1, precio: 0 }] : []),
     ...(detalle.recogidaActivada ? [{ descripcion: "Recogida a domicilio", cantidad: 1, precio: 0 }] : []),
   ];
-  const duracionAlquiler = { inicial: detalle.duracion, tarifas: detalle.tarifas };
+  const duracionAlquiler = { inicial: detalle.duracion, tarifas: detalle.tarifas, equipoNombre: detalle.equipoNombre || "Equipo" };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

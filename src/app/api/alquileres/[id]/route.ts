@@ -22,7 +22,24 @@ export async function GET(
     const data = await kelatosApiGet<{ ok: boolean; alquiler: Parameters<typeof mapAlquilerFacturaDetalle>[0] }>(
       `/v1/alquileres/${encodeURIComponent(id)}`
     );
-    return NextResponse.json({ ok: true, detalle: mapAlquilerFacturaDetalle(data.alquiler) });
+    const detalle = mapAlquilerFacturaDetalle(data.alquiler);
+    // Mismo motivo que obtenerEquipoNombre() en facturas/route.ts: el
+    // nombre del equipo no vive en kelatos_app.alquileres, requiere este
+    // segundo GET — sin él, "Duración corregida" (factura-acciones-tabs.tsx)
+    // no tenía forma de escribir "Alquiler {equipo} (N meses)" en la línea
+    // de la corregida y la generaba sin el nombre del equipo (bug real
+    // reportado con PDF real: la corregida salió con solo "Alquiler (1 mes)").
+    if (detalle.equipoId) {
+      try {
+        const { row } = await kelatosApiGet<{ ok: boolean; row: { marca?: string; modelo?: string } }>(
+          `/v1/equipos/${encodeURIComponent(detalle.equipoId)}`
+        );
+        detalle.equipoNombre = `${row.marca || ""} ${row.modelo || ""}`.trim() || "Equipo";
+      } catch {
+        detalle.equipoNombre = "Equipo";
+      }
+    }
+    return NextResponse.json({ ok: true, detalle });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
