@@ -57,7 +57,15 @@ export const CARD_FILTRO_ESTADOS: Record<CardFiltroId, string[] | null> = {
   listos: ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"],
   pptoEnviado: ["Presupuesto Enviado"],
   piezaEntregada: ["Pieza Entregada"],
-  garantia: ["Garantía"],
+  // Deliberadamente sin filtro de estado (a diferencia del resto de
+  // cards): un caso de garantía que requiere pieza pasa a "Pieza
+  // Pendiente" y dejaba de contar/aparecer como Garantía en cuanto salía
+  // de ese estado — el dashboard perdía el rastro justo en el caso más
+  // habitual (pieza pendiente de garantía). Se filtra por tipoIngreso más
+  // abajo (page.tsx), no por estado, así una misma reparación puede
+  // aparecer con dos etiquetas a la vez (p.ej. "Pieza Pendiente" y
+  // "Garantía") en vez de tener que elegir solo una.
+  garantia: null,
   pptoRetrasado: ["Presupuesto Pendiente"],
   entregaRetrasada: ["En Reparación", "Pieza Pendiente", "En Tránsito", "Pieza Entregada"],
 };
