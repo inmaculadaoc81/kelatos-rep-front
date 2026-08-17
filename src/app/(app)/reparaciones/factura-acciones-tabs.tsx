@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   DocumentDownload, DocumentText, Send2, Refresh2, ArrowRight2, TickCircle, InfoCircle, Add, Trash,
-  Building, Profile, Receipt, CloseCircle, SearchNormal1,
+  Building, Profile, Receipt, CloseCircle, SearchNormal1, Box1,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ import type { LineaFactura } from "@/lib/factura";
 import { esEmailValido } from "@/lib/validacion";
 import type { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
+import type { StockPieza } from "@/lib/stock-piezas";
 import { useConfirm } from "@/components/confirm-provider";
 
 export type TipoFacturaBase =
@@ -786,6 +788,7 @@ function FaseCorregida({
   // formulario editable (mismo fallback que "if (!cf || !cf.nombre)").
   const [clienteBloqueado, setClienteBloqueado] = useState(!!clienteOriginal.nombre);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+  const [buscarStockAbierto, setBuscarStockAbierto] = useState(false);
   const [metodo, setMetodo] = useState(formaPagoOriginal);
   const [banco, setBanco] = useState("");
   // _mfaAbrirFacturaCorregidaModal (Index.html) reutiliza el mismo select
@@ -848,6 +851,18 @@ function FaseCorregida({
 
   function actualizarLinea(i: number, campo: keyof LineaFactura, valor: string | number) {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, [campo]: valor } : l)));
+  }
+
+  /** Reproduce _vfSeleccionarArticulo() (Index.html): añade una línea nueva
+      precargada con los datos del artículo elegido en el catálogo de Stock
+      de Piezas, en vez de tener que escribirlos a mano. Solo tiene sentido
+      fuera de alquiler (piezas de reparación, no equipos en alquiler). */
+  function agregarLineaDesdeStock(p: StockPieza) {
+    setLineas((prev) => [
+      ...prev,
+      { referencia: p.referencia, descripcion: p.descripcion || p.nombre, cantidad: 1, precio: p.precioCliente },
+    ]);
+    setBuscarStockAbierto(false);
   }
 
   async function generar() {
@@ -1049,9 +1064,17 @@ function FaseCorregida({
                 <div className="rounded-lg border bg-card shadow-sm">
                   <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
                     <span>Conceptos</span>
-                    <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((prev) => [...prev, { descripcion: "", cantidad: 1, precio: 0 }])}>
-                      <Add className="size-3" /> Añadir línea
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {/* Piezas de repuesto, no aplica a equipos en alquiler. */}
+                      {!duracionAlquiler && (
+                        <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setBuscarStockAbierto(true)}>
+                          <Box1 className="size-3" /> Stock
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((prev) => [...prev, { descripcion: "", cantidad: 1, precio: 0 }])}>
+                        <Add className="size-3" /> Añadir línea
+                      </Button>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -1144,6 +1167,7 @@ function FaseCorregida({
       </DialogContent>
 
       <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
+      {!duracionAlquiler && <BuscarPiezaStockDialog open={buscarStockAbierto} onOpenChange={setBuscarStockAbierto} onSeleccionar={agregarLineaDesdeStock} />}
     </Dialog>
   );
 }

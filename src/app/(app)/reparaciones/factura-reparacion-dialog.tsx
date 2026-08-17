@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1, Star, Send2, TickCircle, DocumentDownload } from "@/lib/icons";
+import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1, Star, Send2, TickCircle, DocumentDownload, Box1 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { ReparacionDetalle, Presupuesto } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
+import type { StockPieza } from "@/lib/stock-piezas";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -551,6 +553,7 @@ function VistaGenerar({
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+  const [buscarStockAbierto, setBuscarStockAbierto] = useState(false);
 
   function seleccionarCliente(c: Cliente) {
     setCodigo(c.codigo || "");
@@ -591,6 +594,17 @@ function VistaGenerar({
 
   function actualizarLinea(i: number, campo: keyof LineaEditable, valor: string | number) {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, [campo]: valor } : l)));
+  }
+
+  /** Reproduce _vfSeleccionarArticulo() (Index.html): añade una línea nueva
+      precargada con los datos del artículo elegido en el catálogo de Stock
+      de Piezas, en vez de tener que escribirlos a mano. */
+  function agregarLineaDesdeStock(p: StockPieza) {
+    setLineas((prev) => [
+      ...prev,
+      { referencia: p.referencia, descripcion: p.descripcion || p.nombre, cantidad: 1, descuentoPct: 0, precioUnitario: p.precioCliente },
+    ]);
+    setBuscarStockAbierto(false);
   }
 
   const { base, descuentoAmt, iva, total } = useMemo(() => {
@@ -769,9 +783,14 @@ function VistaGenerar({
                 <div className="rounded-lg border bg-card shadow-sm">
                   <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
                     <span>Conceptos</span>
-                    <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setLineas((prev) => [...prev, lineaVacia()])}>
-                      <Add className="size-3" /> Añadir línea
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setBuscarStockAbierto(true)}>
+                        <Box1 className="size-3" /> Stock
+                      </Button>
+                      <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setLineas((prev) => [...prev, lineaVacia()])}>
+                        <Add className="size-3" /> Añadir línea
+                      </Button>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -868,6 +887,7 @@ function VistaGenerar({
       </DialogContent>
 
       <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
+      <BuscarPiezaStockDialog open={buscarStockAbierto} onOpenChange={setBuscarStockAbierto} onSeleccionar={agregarLineaDesdeStock} />
     </Dialog>
   );
 }

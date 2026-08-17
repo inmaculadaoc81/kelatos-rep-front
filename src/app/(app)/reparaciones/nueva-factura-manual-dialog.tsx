@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Receipt, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2 } from "@/lib/icons";
+import { Receipt, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Box1 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import type { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
+import type { StockPieza } from "@/lib/stock-piezas";
 import type { LineaFactura } from "@/lib/factura";
 import { METODOS_PAGO, BANCOS, euros } from "./factura-acciones-tabs";
 
@@ -63,6 +65,7 @@ export function NuevaFacturaManualDialog({
   const [dni, setDni] = useState("");
   const [telefono, setTelefono] = useState("");
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+  const [buscarStockAbierto, setBuscarStockAbierto] = useState(false);
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
@@ -85,6 +88,17 @@ export function NuevaFacturaManualDialog({
 
   function actualizarLinea(i: number, campo: keyof LineaFactura, valor: string | number) {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, [campo]: valor } : l)));
+  }
+
+  /** Reproduce _vfSeleccionarArticulo() (Index.html): añade una línea nueva
+      precargada con los datos del artículo elegido en el catálogo de Stock
+      de Piezas, en vez de tener que escribirlos a mano. */
+  function agregarLineaDesdeStock(p: StockPieza) {
+    setLineas((prev) => [
+      ...prev,
+      { referencia: p.referencia, descripcion: p.descripcion || p.nombre, cantidad: 1, precio: p.precioCliente },
+    ]);
+    setBuscarStockAbierto(false);
   }
 
   function seleccionarCliente(c: Cliente) {
@@ -259,9 +273,14 @@ export function NuevaFacturaManualDialog({
                   <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
                     <span>Conceptos</span>
                     {!resultado && (
-                      <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((prev) => [...prev, { descripcion: "", cantidad: 1, precio: 0 }])}>
-                        <Add className="size-3" /> Añadir línea
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setBuscarStockAbierto(true)}>
+                          <Box1 className="size-3" /> Stock
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((prev) => [...prev, { descripcion: "", cantidad: 1, precio: 0 }])}>
+                          <Add className="size-3" /> Añadir línea
+                        </Button>
+                      </div>
                     )}
                   </div>
                   <div className="overflow-x-auto">
@@ -352,6 +371,7 @@ export function NuevaFacturaManualDialog({
       </DialogContent>
 
       <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
+      <BuscarPiezaStockDialog open={buscarStockAbierto} onOpenChange={setBuscarStockAbierto} onSeleccionar={agregarLineaDesdeStock} />
     </Dialog>
   );
 }
