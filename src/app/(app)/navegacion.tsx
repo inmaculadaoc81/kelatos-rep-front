@@ -18,6 +18,7 @@ import {
   Hierarchy,
   Monitor,
   ScanBarcode,
+  Trash,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -87,3 +88,13 @@ export const GRUPOS: GrupoNavegacion[] = [
     ],
   },
 ];
+
+/** Solo se añade al menú para cuentas superadmin (ver sidebar.tsx) —
+    reemplaza el borrado manual que antes se hacía directamente en las
+    pestañas azules del Sheet original, solo accesible entonces a quien
+    tuviera acceso de administrador a ese Sheet. */
+export const GRUPO_ADMIN: GrupoNavegacion = {
+  titulo: "Admin",
+  icon: Trash,
+  items: [{ label: "Eliminar Registros", href: "/admin/registros", icon: Trash }],
+};

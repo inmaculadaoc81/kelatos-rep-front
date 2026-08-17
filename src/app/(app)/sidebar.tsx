@@ -21,8 +21,9 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowDown2 } from "@/lib/icons";
 import type { Session } from "next-auth";
-import { GRUPOS, type GrupoNavegacion, type ItemNavegacion } from "./navegacion";
+import { GRUPOS, GRUPO_ADMIN, type GrupoNavegacion, type ItemNavegacion } from "./navegacion";
 import { NavUser } from "./nav-user";
+import { esSuperadmin } from "@/lib/superadmin";
 
 function ItemDirecto({ item, pathname }: { item: ItemNavegacion; pathname: string }) {
   const Icon = item.icon;
@@ -105,6 +106,7 @@ function GrupoColapsable({ grupo, pathname }: { grupo: GrupoNavegacion; pathname
 
 export function AppSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
+  const grupos = esSuperadmin(session?.user?.email) ? [...GRUPOS, GRUPO_ADMIN] : GRUPOS;
 
   return (
     <Sidebar collapsible="icon">
@@ -150,7 +152,7 @@ export function AppSidebar({ session }: { session: Session | null }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
-              {GRUPOS.map((grupo) =>
+              {grupos.map((grupo) =>
                 grupo.items.length === 1 ? (
                   // Grupo de un solo item: enlace directo, sin desplegable.
                   // Un desplegable con un único hijo es un clic de más para
