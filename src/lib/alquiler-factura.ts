@@ -85,12 +85,19 @@ export interface DuracionReal {
 
 /** Reproduce devAjFechaChanged(): cuenta los días completos entre el
     inicio del alquiler y la fecha de devolución real, y los descompone
-    en meses/semanas/días para recalcular la factura desde cero. */
+    en meses/semanas/días para recalcular la factura desde cero.
+    Diferencia deliberada frente al original (que no tenía mínimo y daba
+    0 días/0€ en una devolución el mismo día): decisión explícita del
+    usuario — el coste mínimo es 1 día completo aunque el equipo se
+    devuelva el mismo día que se alquiló, aunque hayan sido solo minutos.
+    Solo se deja en 0 cuando la fecha de devolución es ANTERIOR al inicio
+    (dato inválido — confirmarAjuste() ya bloquea el envío en ese caso). */
 export function calcularDuracionDesdeFechas(fechaInicio: string, fechaDevolucion: string): DuracionReal {
   const inicio = fechaLocalDesdeIso(fechaInicio);
   const fin = fechaLocalDesdeIso(fechaDevolucion);
   if (!inicio || !fin) return { meses: 0, semanas: 0, dias: 0 };
-  const totalDias = Math.max(0, Math.round((fin.getTime() - inicio.getTime()) / 86400000));
+  const diffDias = Math.round((fin.getTime() - inicio.getTime()) / 86400000);
+  const totalDias = diffDias < 0 ? 0 : Math.max(1, diffDias);
   const { meses, semanas, dias } = calcularTarifario(totalDias, { precioDia: 0, precioSemana: 0, precioMes: 0 });
   return { meses, semanas, dias };
 }
