@@ -13,11 +13,35 @@ interface RespuestaConfirmarFormulario {
   duplicate?: boolean;
 }
 
-/** Mismo cálculo que /api/reparaciones/altas — ver ahí el porqué de cada rama (esCintasAceptarAhora sin mano de obra/piezas, etc.). */
+/**
+ * A diferencia de /api/reparaciones/altas (cuyo backend tiene una rama
+ * dedicada para tipoAlta "cintas" que calcula el importe por su cuenta a
+ * partir de datosCintas), /v1/reparaciones/:resguardo/formulario/confirmar
+ * reutiliza el mismo _crearYAceptarPresupuestoTx genérico que el resto de
+ * reparaciones — lee datosPpto.manoObra tal cual, sin ningún cálculo
+ * propio para cintas. Enviar solo {elaboradoPor, descripcion} (como aquí
+ * se hacía antes, asumiendo que el backend "ya sabía" calcularlo) dejaba
+ * manoObra en 0 siempre — el presupuesto se creaba YA ACEPTADO con
+ * importe 0€ (bug real reportado con captura real: 1 vhs + 1 beta + 1
+ * vhsc + 1 cassette + 1 bobina, presupuesto aceptado a 0,00€). Aquí sí se
+ * calcula, igual que ya hace la creación del borrador cuando NO se marca
+ * "Aceptar ahora" (ver /confirmar más abajo).
+ */
 function construirPresupuestoInmediato(datos: DatosReparacionSheet) {
   const inm = datos.presupuestoInmediato;
   if (datos.esCintas) {
-    return { elaboradoPor: inm.elaboradoPor, descripcion: inm.descripcion };
+    const calculo = calcularTotalCintas(datos.cintas, datos.precioPorCintaPersonalizado);
+    const bobinaTexto = datos.cintas.bobina > 0 ? ` + ${datos.cintas.bobina} bobina(s) a ${calculo.precioBobina}€` : "";
+    const descAuto = `Digitalización de ${calculo.total} cintas - ${calculo.precioPorCinta}€/cinta${bobinaTexto}`;
+    return {
+      elaboradoPor: inm.elaboradoPor,
+      descripcion: inm.descripcion.trim() ? `${descAuto} — ${inm.descripcion.trim()}` : descAuto,
+      manoObra: Math.round(calculo.totalConIva * 100) / 100,
+      tipoPieza: "no",
+      notas: inm.notas.trim(),
+      diasEntrega: 1,
+      piezas: [],
+    };
   }
   const piezas = datos.necesitaPieza
     ? inm.piezas.map((p) => ({ tipo: p.tipo, descripcion: p.descripcion.trim(), costo: Number(p.costo) || 0, precio: Number(p.precio) || 0, enlace: p.tipo === "pedido" ? p.enlace.trim() : "" }))
