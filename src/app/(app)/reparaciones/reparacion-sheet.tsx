@@ -315,6 +315,37 @@ export function ReparacionSheet({
       // revisión (20€) corresponde y hay email, se abre automáticamente el
       // modal de factura de revisión justo después de confirmar/registrar.
       const resguardoFinal = esConfirmar ? reparacionPendiente!.resguardo : data.resguardo;
+
+      // Digitalización de cintas confirmada desde el Formulario Web: a
+      // diferencia de "Nueva Reparación" (altas/route.ts ya crea y acepta
+      // el presupuesto automáticamente vía tipoAlta "cintas" cuando
+      // esCintas, con o sin "Aceptar ahora"), confirmar/route.ts solo
+      // manda el presupuesto inmediato al backend si esAceptarAhora — sin
+      // "Aceptar ahora" no se creaba nada, dejando toda recepción de
+      // cintas por Formulario Web en "Presupuesto Pendiente" obligando a
+      // crear el presupuesto desde cero en Gestionar Presupuestos (bug
+      // real reportado con captura real, resguardo 18515). El precio por
+      // cinta es una tarifa fija por tramos (calcularTotalCintas), no algo
+      // que el técnico tenga que presupuestar a mano — se crea como
+      // borrador listo para enviar (decisión explícita del usuario: no
+      // aceptado automáticamente, eso sigue siendo la vía "Aceptar ahora").
+      if (esConfirmar && datos.esCintas && !esAceptarAhora && calculoCintas.total > 0) {
+        const bobinaTexto = datos.cintas.bobina > 0 ? ` + ${datos.cintas.bobina} bobina(s) a ${calculoCintas.precioBobina}€` : "";
+        fetch(`/api/reparaciones/${resguardoFinal}/presupuestos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            elaboradoPor: "",
+            descripcion: `Digitalización de ${calculoCintas.total} cintas - ${calculoCintas.precioPorCinta}€/cinta${bobinaTexto}`,
+            notas: "",
+            manoObra: Math.round(calculoCintas.totalConIva * 100) / 100,
+            diasEntrega: 1,
+            tipoPieza: "no",
+            piezas: [],
+          }),
+        }).catch(() => {});
+      }
+
       if (!datos.esCintas && datos.revisionPagada === "corresponde" && !datos.noTieneEmail && datos.clienteEmail.trim()) {
         setMetodoPagoRevisionPrecarga(datos.metodoPagoRevision);
         setBancoRevisionPrecarga(datos.bancoRevision);
@@ -467,7 +498,9 @@ export function ReparacionSheet({
             ) : (
               <div className="mt-3 space-y-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
                 <p className="rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400">
-                  El presupuesto se generará y aceptará automáticamente al guardar.
+                  {esAceptarAhora
+                    ? "El presupuesto se generará y aceptará automáticamente al guardar."
+                    : "El presupuesto se generará automáticamente según las cintas indicadas, como borrador listo para enviar al cliente."}
                 </p>
                 <div className="space-y-1.5">
                   <Label>Precio por cinta (opcional)</Label>
