@@ -12,7 +12,6 @@ import type { DatosRegistrarPedido, PiezaPedidoForm } from "@/app/api/reparacion
 import type { Empleado } from "@/app/api/empleados/route";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
-import { esUrlValida } from "@/lib/validacion";
 import { usuarioIdentificado } from "@/lib/usuario-identificado";
 
 function hoyISO(): string {
@@ -149,7 +148,6 @@ export function RegistrarPedidoDialog({
       if (!p.descripcion.trim()) return `Pieza ${i + 1}: falta descripción`;
       if (!p.proveedor.trim()) return `Pieza ${i + 1}: falta proveedor`;
       if (!p.enlace.trim()) return `Pieza ${i + 1}: falta enlace`;
-      if (!esUrlValida(p.enlace)) return `Pieza ${i + 1}: el enlace debe ser una URL válida (https://...)`;
       if (!p.numeroPedido.trim()) return `Pieza ${i + 1}: falta número de pedido`;
       if (!p.fechaEstimada) return `Pieza ${i + 1}: falta fecha estimada`;
     }
@@ -263,7 +261,7 @@ export function RegistrarPedidoDialog({
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pedEnlace-${i}`}>Enlace de Compra</Label>
-                        <Input id={`pedEnlace-${i}`} type="url" placeholder="https://..." value={p.enlace} onChange={(e) => actualizarPieza(i, "enlace", e.target.value)} />
+                        <Input id={`pedEnlace-${i}`} placeholder="Enlace o referencia de compra" value={p.enlace} onChange={(e) => actualizarPieza(i, "enlace", e.target.value)} />
                       </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">

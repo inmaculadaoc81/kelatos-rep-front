@@ -31,7 +31,7 @@ import { normalizarNumeroLocal } from "@/lib/telefono";
 import { PiezaForm, TipoLineaPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
-import { esEmailValido, esUrlValida } from "@/lib/validacion";
+import { esEmailValido } from "@/lib/validacion";
 import { FacturaRevisionDialog } from "./factura-revision-dialog";
 import { METODOS_PAGO, BANCOS } from "./factura-acciones-tabs";
 import {
@@ -289,7 +289,6 @@ export function ReparacionSheet({
           if (datos.presupuestoInmediato.piezas.length === 0) return "Añade al menos una pieza";
           if (datos.presupuestoInmediato.piezas.some((p) => !p.descripcion.trim())) return "Todas las piezas deben tener descripción";
           if (datos.presupuestoInmediato.piezas.some((p) => p.tipo === "pedido" && !p.enlace.trim())) return 'Las piezas "Por pedido" deben tener enlace de compra';
-          if (datos.presupuestoInmediato.piezas.some((p) => p.tipo === "pedido" && !esUrlValida(p.enlace))) return 'Las piezas "Por pedido" deben tener un enlace de compra válido (https://...)';
           if (datos.presupuestoInmediato.piezas.some((p) => !(p.costo > 0))) return "Todas las piezas deben tener un costo mayor a 0";
           if (datos.presupuestoInmediato.piezas.some((p) => !(p.precio > 0))) return "Todas las piezas deben tener un precio de venta mayor a 0";
         }

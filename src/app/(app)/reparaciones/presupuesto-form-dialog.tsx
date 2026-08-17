@@ -22,7 +22,6 @@ import { DatosPresupuestoForm, PiezaForm, TipoPieza } from "@/lib/presupuesto-fo
 import { Empleado } from "@/app/api/empleados/route";
 import { Proveedor } from "@/app/api/proveedores/route";
 import { StockPieza } from "@/lib/stock-piezas";
-import { esUrlValida } from "@/lib/validacion";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 
 function vacio(): DatosPresupuestoForm {
@@ -238,7 +237,6 @@ export function PresupuestoFormDialog({
         if (!(p.costo > 0)) return toast.error(`Pieza pedido #${i + 1}: El costo debe ser mayor a 0`);
         if (!(p.precio > 0)) return toast.error(`Pieza pedido #${i + 1}: El precio de venta es obligatorio`);
         if (!p.enlace.trim()) return toast.error(`Pieza pedido #${i + 1}: El enlace de compra es obligatorio`);
-        if (!esUrlValida(p.enlace)) return toast.error(`Pieza pedido #${i + 1}: el enlace debe ser una URL válida (https://...)`);
       }
     }
 
