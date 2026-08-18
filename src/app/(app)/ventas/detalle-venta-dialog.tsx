@@ -308,7 +308,7 @@ export function DetalleVentaDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto gap-0 p-0 sm:max-w-3xl" showCloseButton={false}>
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto gap-0 p-0 sm:max-w-5xl" showCloseButton={false}>
         <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-3 text-white">
           <ShoppingCart className="size-4.5 shrink-0" />
           <DialogTitle className="text-sm font-semibold text-white">Pedido #{ventaId}</DialogTitle>
