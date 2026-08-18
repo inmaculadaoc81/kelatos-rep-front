@@ -25,6 +25,7 @@ import {
   mesActualKey,
 } from "@/lib/reportes";
 import { Barras, FilaBarra } from "./barras";
+import { GananciaMensualChart } from "./ganancia-chart";
 
 const MESES = [
   ["01", "Enero"], ["02", "Febrero"], ["03", "Marzo"], ["04", "Abril"],
@@ -413,7 +414,7 @@ export default function ReportesPage() {
               <Barras filas={barrasDia} color="count" anchoEtiqueta="w-12" anchoValor="w-8" vacio="Sin días en el rango" />
             </Tarjeta>
             <Tarjeta titulo="Ganancia neta por mes">
-              <Barras filas={barrasMes} color="money" anchoEtiqueta="w-20" anchoValor="w-24" vacio="Sin datos históricos" />
+              <GananciaMensualChart filas={barrasMes} />
             </Tarjeta>
           </div>
 
