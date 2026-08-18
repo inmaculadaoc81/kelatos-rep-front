@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, Warning2 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Warning2, Add, Edit2, Trash } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import { StockPieza } from "@/lib/stock-piezas";
+import { PiezaStockFormDialog } from "./pieza-stock-form-dialog";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -29,6 +31,8 @@ export default function StockPiezasPage() {
   const [busqueda, setBusqueda] = useState("");
   const [categoria, setCategoria] = useState("");
   const [soloBajo, setSoloBajo] = useState(false);
+  const [formAbierto, setFormAbierto] = useState(false);
+  const [editando, setEditando] = useState<StockPieza | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -73,6 +77,19 @@ export default function StockPiezasPage() {
 
   const bajoStockCount = useMemo(() => piezas.filter((p) => p.stockBajo).length, [piezas]);
 
+  async function eliminar(p: StockPieza) {
+    if (!window.confirm(`¿Eliminar la pieza "${p.nombre}" (${p.referencia})?\nEsta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(`/api/stock-piezas/${encodeURIComponent(p.referencia)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Pieza eliminada");
+      cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -80,9 +97,21 @@ export default function StockPiezasPage() {
           <h1 className="text-lg font-semibold">Stock de Piezas</h1>
           <p className="text-sm text-muted-foreground">Catálogo de piezas de repuesto para reparaciones</p>
         </div>
-        <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
-          <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
+            <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              setEditando(null);
+              setFormAbierto(true);
+            }}
+          >
+            <Add className="size-4" /> Nueva Pieza
+          </Button>
+        </div>
       </div>
 
       {bajoStockCount > 0 && (
@@ -138,13 +167,14 @@ export default function StockPiezasPage() {
               <TableHead className="text-right">Total cliente</TableHead>
               <TableHead className="text-right">Stock</TableHead>
               <TableHead>Proveedor</TableHead>
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 9 }).map((__, j) => (
+                  {Array.from({ length: 10 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -154,7 +184,7 @@ export default function StockPiezasPage() {
 
             {!cargando && filtradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                   Sin resultados
                 </TableCell>
               </TableRow>
@@ -183,11 +213,37 @@ export default function StockPiezasPage() {
                     {p.stockMinimo > 0 && <span className="text-xs text-muted-foreground"> / min {p.stockMinimo}</span>}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.proveedor || "-"}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1"
+                        onClick={() => {
+                          setEditando(p);
+                          setFormAbierto(true);
+                        }}
+                      >
+                        <Edit2 className="size-3.5" /> Editar
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" onClick={() => eliminar(p)}>
+                        <Trash className="size-3.5" /> Eliminar
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
           </TableBody>
         </Table>
       </div>
+
+      <PiezaStockFormDialog
+        piezaExistente={editando}
+        categorias={categorias}
+        open={formAbierto}
+        onOpenChange={setFormAbierto}
+        onGuardado={cargar}
+      />
     </div>
   );
 }

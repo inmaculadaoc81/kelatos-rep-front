@@ -35,6 +35,19 @@ export interface StockPieza {
   stockBajo: boolean;
 }
 
+export interface DatosStockPiezaForm {
+  referencia: string;
+  nombre: string;
+  descripcion: string;
+  categoria: string;
+  costeInterno: number;
+  precioCliente: number;
+  manoObra: number;
+  proveedor: string;
+  stockDisponible: number;
+  stockMinimo: number;
+}
+
 function numero(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
