@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Save2, Refresh2, DocumentDownload, TickCircle, CloseCircle, Warning2 } from "@/lib/icons";
+import { Save2, Refresh2, DocumentDownload, TickCircle, CloseCircle, Warning2, ArrowRotateLeft } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { RestaurarBackupDialog } from "./restaurar-backup-dialog";
 
 const DRIVE_FOLDER_URL = "https://drive.google.com/open?id=14yBWDL6RcHztQ5hitZ71cLB4eak-O8ge";
 
@@ -17,6 +18,17 @@ interface Backup {
   origen: "programado" | "manual";
   solicitado_por: string | null;
   estado: "ok" | "error";
+  error_detalle: string | null;
+}
+
+interface Restauracion {
+  id: string;
+  nombre_archivo: string;
+  iniciado_en: string;
+  finalizado_en: string | null;
+  solicitado_por: string;
+  backup_seguridad_previo: string | null;
+  estado: "en_progreso" | "ok" | "error";
   error_detalle: string | null;
 }
 
@@ -57,6 +69,9 @@ export function BackupsAdminContenido() {
   const [solicitando, setSolicitando] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [restauraciones, setRestauraciones] = useState<Restauracion[]>([]);
+  const [restaurarObjetivo, setRestaurarObjetivo] = useState<{ archivo: string; fecha: string } | null>(null);
+
   async function cargar() {
     setCargando(true);
     setError("");
@@ -72,8 +87,19 @@ export function BackupsAdminContenido() {
     }
   }
 
+  async function cargarRestauraciones() {
+    try {
+      const res = await fetch("/api/admin/restore");
+      const data = await res.json();
+      if (data.ok) setRestauraciones(data.restauraciones || []);
+    } catch {
+      // silencioso — no es crítico para la vista principal de backups
+    }
+  }
+
   useEffect(() => {
     cargar();
+    cargarRestauraciones();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
@@ -148,13 +174,14 @@ export function BackupsAdminContenido() {
               <th className="px-3 py-2 text-left font-medium">Origen</th>
               <th className="px-3 py-2 text-left font-medium">Estado</th>
               <th className="px-3 py-2 text-left font-medium">Solicitado por</th>
+              <th className="px-3 py-2 text-left font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {cargando && backups.length === 0 ? (
-              <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Cargando…</td></tr>
+              <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">Cargando…</td></tr>
             ) : backups.length === 0 ? (
-              <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Todavía no hay backups registrados.</td></tr>
+              <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">Todavía no hay backups registrados.</td></tr>
             ) : (
               backups.map((b) => (
                 <tr key={b.id} className="border-t">
@@ -176,6 +203,18 @@ export function BackupsAdminContenido() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{b.solicitado_por || "—"}</td>
+                  <td className="px-3 py-2">
+                    {b.estado === "ok" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-destructive hover:bg-destructive/10"
+                        onClick={() => setRestaurarObjetivo({ archivo: b.nombre_archivo, fecha: formatearFecha(b.creado_en) })}
+                      >
+                        <ArrowRotateLeft className="size-3.5" /> Restaurar
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
@@ -187,6 +226,58 @@ export function BackupsAdminContenido() {
         <Warning2 className="mt-0.5 size-3.5 shrink-0" />
         <span>Retención: copias locales en el VPS 7 días, en Drive 60 días — pasado ese tiempo se borran solas. &quot;Backup ahora&quot; encola la petición; un proceso del VPS la recoge en menos de un minuto.</span>
       </div>
+
+      {restauraciones.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold">Historial de restauraciones</h2>
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Iniciado</th>
+                  <th className="px-3 py-2 text-left font-medium">Archivo restaurado</th>
+                  <th className="px-3 py-2 text-left font-medium">Backup de seguridad previo</th>
+                  <th className="px-3 py-2 text-left font-medium">Estado</th>
+                  <th className="px-3 py-2 text-left font-medium">Solicitado por</th>
+                </tr>
+              </thead>
+              <tbody>
+                {restauraciones.map((r) => (
+                  <tr key={r.id} className="border-t">
+                    <td className="whitespace-nowrap px-3 py-2">{formatearFecha(r.iniciado_en)}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{r.nombre_archivo}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.backup_seguridad_previo || "—"}</td>
+                    <td className="px-3 py-2">
+                      {r.estado === "ok" ? (
+                        <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                          <TickCircle className="size-3.5" /> Completada
+                        </span>
+                      ) : r.estado === "error" ? (
+                        <span className="flex items-center gap-1 text-destructive" title={r.error_detalle || ""}>
+                          <CloseCircle className="size-3.5" /> Error
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-amber-600">
+                          <Refresh2 className="size-3.5 animate-spin" /> En progreso
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{r.solicitado_por}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <RestaurarBackupDialog
+        archivo={restaurarObjetivo?.archivo ?? null}
+        fecha={restaurarObjetivo?.fecha ?? null}
+        open={!!restaurarObjetivo}
+        onOpenChange={(o) => { if (!o) setRestaurarObjetivo(null); }}
+        onSolicitado={cargarRestauraciones}
+      />
     </div>
   );
 }
