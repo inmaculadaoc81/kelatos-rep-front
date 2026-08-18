@@ -176,6 +176,11 @@ export function PresupuestoFormDialog({
     setDatos((prev) => ({
       ...prev,
       tipoPieza: prev.tipoPieza === "pedido" ? "mixto" : "stock",
+      // La pieza del catálogo puede llevar su propia mano de obra asociada
+      // (p.ej. "cambiar batería" = 30€). Se suma a la casilla de arriba en
+      // vez de sustituirla, para que añadir varias piezas acumule la mano
+      // de obra de cada una.
+      manoObra: prev.manoObra + (pieza.manoObra > 0 ? pieza.manoObra : 0),
       piezas: [
         ...prev.piezas,
         { descripcion: pieza.nombre, tipo: "stock", costo: pieza.costeInterno, precio: pieza.precioCliente, enlace: "", proveedorId: "", referenciaStock: pieza.referencia, notas: "" },
