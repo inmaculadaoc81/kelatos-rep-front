@@ -86,6 +86,7 @@ export const Profile2User = withDefaults(Iconsax.Profile2User);
 export const Receipt = withDefaults(Iconsax.Receipt);
 export const Refresh2 = withDefaults(Iconsax.Refresh2);
 export const RotateLeft = withDefaults(Iconsax.RotateLeft);
+export const Save2 = withDefaults(Iconsax.Save2);
 export const ScanBarcode = withDefaults(Iconsax.ScanBarcode);
 export const SearchNormal1 = withDefaults(Iconsax.SearchNormal1);
 export const Send2 = withDefaults(Iconsax.Send2);

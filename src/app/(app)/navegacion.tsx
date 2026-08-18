@@ -19,6 +19,7 @@ import {
   Monitor,
   ScanBarcode,
   Trash,
+  Save2,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -96,5 +97,8 @@ export const GRUPOS: GrupoNavegacion[] = [
 export const GRUPO_ADMIN: GrupoNavegacion = {
   titulo: "Admin",
   icon: Trash,
-  items: [{ label: "Eliminar Registros", href: "/admin/registros", icon: Trash }],
+  items: [
+    { label: "Eliminar Registros", href: "/admin/registros", icon: Trash },
+    { label: "Backups", href: "/admin/backups", icon: Save2 },
+  ],
 };
