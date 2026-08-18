@@ -600,10 +600,17 @@ function VistaGenerar({
       precargada con los datos del artículo elegido en el catálogo de Stock
       de Piezas, en vez de tener que escribirlos a mano. */
   function agregarLineaDesdeStock(p: StockPieza) {
-    setLineas((prev) => [
-      ...prev,
-      { referencia: p.referencia, descripcion: p.descripcion || p.nombre, cantidad: 1, descuentoPct: 0, precioUnitario: p.precioCliente },
-    ]);
+    setLineas((prev) => {
+      const nuevas = [...prev, { referencia: p.referencia, descripcion: p.descripcion || p.nombre, cantidad: 1, descuentoPct: 0, precioUnitario: p.precioCliente }];
+      // La pieza puede llevar su propia mano de obra asociada — al no
+      // haber una casilla de "Mano de Obra" en la factura (a diferencia
+      // del presupuesto), se añade como línea propia para que quede
+      // reflejada en el total.
+      if (p.manoObra > 0) {
+        nuevas.push({ referencia: "", descripcion: `Mano de obra — ${p.descripcion || p.nombre}`, cantidad: 1, descuentoPct: 0, precioUnitario: p.manoObra });
+      }
+      return nuevas;
+    });
     setBuscarStockAbierto(false);
   }
 
