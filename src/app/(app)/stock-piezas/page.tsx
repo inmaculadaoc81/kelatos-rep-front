@@ -238,6 +238,7 @@ export default function StockPiezasPage() {
       </div>
 
       <PiezaStockFormDialog
+        key={editando?.referencia || "__nueva__"}
         piezaExistente={editando}
         categorias={categorias}
         open={formAbierto}
