@@ -52,7 +52,14 @@ export const CARD_FILTRO_ESTADOS: Record<CardFiltroId, string[] | null> = {
   pptoAceptado: ["Presupuesto Aceptado"],
   piezaPendiente: ["Pieza Pendiente"],
   enReparacion: ["En Reparación"],
-  cintasEnReparacion: ["En Reparación"],
+  // Deliberadamente sin filtro de estado (mismo motivo que garantia más
+  // abajo): una conversión de cintas puede estar en Garantía, Presupuesto
+  // Enviado, etc., no solo "En Reparación" — filtrar por estado aquí hacía
+  // que la card mostrara casos en "En Reparación" pero ocultara el resto
+  // en cuanto avanzaban (o si nunca pasaron por ese estado, p.ej. una
+  // conversión que entra directamente como garantía). Se filtra por
+  // datosCintas más abajo (page.tsx), no por estado.
+  cintasEnReparacion: null,
   mensajeriaActiva: null,
   listos: ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"],
   pptoEnviado: ["Presupuesto Enviado"],
