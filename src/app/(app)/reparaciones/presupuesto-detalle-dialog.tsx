@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DocumentText, Box, ShoppingCart, Calendar, Send2, InfoCircle, CloseCircle } from "@/lib/icons";
+import { DocumentText, Box, ShoppingCart, Calendar, Send2, InfoCircle, CloseCircle, Copy, TickCircle } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { Pedido, Presupuesto } from "@/lib/reparacion-detalle";
 import { Proveedor } from "@/app/api/proveedores/route";
 import { esUrlValida } from "@/lib/validacion";
@@ -30,9 +31,9 @@ function fechaHora(iso: string | null): string {
 
 function Campo({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode }) {
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <p className="text-[11px] font-normal text-muted-foreground">{etiqueta}</p>
-      <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">{valor || "—"}</div>
+      <div className="min-w-0 rounded-md border bg-muted/40 px-3 py-2 text-sm">{valor || "—"}</div>
     </div>
   );
 }
@@ -42,18 +43,37 @@ function Campo({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode }
  * URL — a veces se anotó ahí el código/número de pedido del proveedor. Se
  * muestra siempre el valor tal cual se guardó (no una etiqueta genérica
  * como "Ver enlace"), en azul; solo se convierte en <a> clicable cuando de
- * verdad tiene forma de URL, para no llevar a ningún sitio al pulsarlo.
+ * verdad tiene forma de URL, para no llevar a ningún sitio al pulsarlo. Los
+ * enlaces reales suelen ser larguísimos (parámetros de tracking de eBay,
+ * etc.) — se recorta con "…" y se ofrece un botón de copiar en vez de
+ * dejar que el valor entero rompa el layout en varias líneas.
  */
 function EnlaceOTexto({ valor }: { valor: string }) {
+  const [copiado, setCopiado] = useState(false);
   if (!valor) return <>—</>;
-  if (esUrlValida(valor)) {
-    return (
-      <a href={valor} target="_blank" rel="noreferrer" className="break-all text-primary underline">
-        {valor}
-      </a>
-    );
+
+  function copiar() {
+    navigator.clipboard.writeText(valor);
+    setCopiado(true);
+    toast.success("Copiado");
   }
-  return <span className="break-all text-primary">{valor}</span>;
+
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {esUrlValida(valor) ? (
+        <a href={valor} target="_blank" rel="noreferrer" title={valor} className="min-w-0 truncate text-primary underline">
+          {valor}
+        </a>
+      ) : (
+        <span title={valor} className="min-w-0 truncate text-primary">
+          {valor}
+        </span>
+      )}
+      <button type="button" onClick={copiar} title="Copiar" className="shrink-0 text-muted-foreground hover:text-foreground">
+        {copiado ? <TickCircle className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+      </button>
+    </span>
+  );
 }
 
 /**
