@@ -41,25 +41,21 @@ function Campo({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode }
 
 /**
  * Muchos "enlace de compra" guardados en producción no son en realidad una
- * URL — a veces se anotó ahí el código/número de pedido del proveedor. Un
- * <a href> con ese valor parece un enlace pero no lleva a ningún sitio al
- * pulsarlo, así que solo se renderiza como enlace clicable si tiene forma
- * de URL real; si no, se muestra como texto plano para no confundir.
+ * URL — a veces se anotó ahí el código/número de pedido del proveedor. Se
+ * muestra siempre el valor tal cual se guardó (no una etiqueta genérica
+ * como "Ver enlace"), en azul; solo se convierte en <a> clicable cuando de
+ * verdad tiene forma de URL, para no llevar a ningún sitio al pulsarlo.
  */
 function EnlaceOTexto({ valor }: { valor: string }) {
   if (!valor) return <>—</>;
   if (esUrlValida(valor)) {
     return (
-      <a href={valor} target="_blank" rel="noreferrer" className="text-primary underline">
-        Ver enlace
+      <a href={valor} target="_blank" rel="noreferrer" className="break-all text-primary underline">
+        {valor}
       </a>
     );
   }
-  return (
-    <span>
-      {valor} <span className="text-[11px] text-muted-foreground">(no es un enlace)</span>
-    </span>
-  );
+  return <span className="break-all text-primary">{valor}</span>;
 }
 
 /**
