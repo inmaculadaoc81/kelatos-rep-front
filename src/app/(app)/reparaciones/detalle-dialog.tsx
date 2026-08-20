@@ -720,6 +720,7 @@ export function DetalleReparacionDialog({
                                 key={p.presupuestoId}
                                 resguardo={detalle.resguardo}
                                 presupuesto={p}
+                                pedidos={detalle.pedidos}
                                 revisionPagada={detalle.revisionPagada === "SI"}
                                 reparacionCerrada={reparacionCerrada}
                                 onActualizado={actualizarTodo}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Eye, Calendar, Send2, InfoCircle, AddCircle } from "@/lib/icons";
+import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Eye, AddCircle } from "@/lib/icons";
 import { m, elementoLista } from "@/lib/animacion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
-import { Presupuesto } from "@/lib/reparacion-detalle";
+import { Pedido, Presupuesto } from "@/lib/reparacion-detalle";
 import { AccionCambioEstadoPresupuesto } from "@/lib/presupuesto-cambiar-estado";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
+import { PresupuestoDetalleDialog } from "./presupuesto-detalle-dialog";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -55,12 +56,17 @@ function fechaHora(iso: string | null): string {
 export function PresupuestoCard({
   resguardo,
   presupuesto: p,
+  pedidos = [],
   revisionPagada = false,
   reparacionCerrada = false,
   onActualizado,
 }: {
   resguardo: string;
   presupuesto: Presupuesto;
+  /** Pedidos de piezas de toda la reparación — se filtran aquí por piezaId
+      para mostrar, en "Ver detalles", el estado real de compra de las
+      piezas "por pedido" de este presupuesto concreto. */
+  pedidos?: Pedido[];
   revisionPagada?: boolean;
   /** El equipo ya salió del taller (entregado/enviado/reciclado) — no tiene
       sentido aceptar/rechazar/anular/editar un presupuesto de una
@@ -74,7 +80,7 @@ export function PresupuestoCard({
   const [hayMas, setHayMas] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [editarAbierto, setEditarAbierto] = useState(false);
-  const [detallesAbiertos, setDetallesAbiertos] = useState(false);
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
   const confirmar = useConfirm();
   const editable = p.estado === "borrador" || p.estado === "enviado";
 
@@ -193,77 +199,24 @@ export function PresupuestoCard({
         {acciones}
         {acciones && accionesEdicion && <span className="mx-0.5 h-4 w-px bg-border" />}
         {accionesEdicion}
-        <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => setDetallesAbiertos((v) => !v)}>
+        <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => setDetalleAbierto(true)}>
           <Eye className="size-3.5" /> Ver detalles
         </Button>
       </div>
 
-      {detallesAbiertos && (
-        <div className="space-y-2 border-t px-3 py-2.5 text-xs">
-          {p.descripcion && (
-            <div>
-              <p className="font-semibold text-muted-foreground">Diagnóstico:</p>
-              <p className="mt-0.5 whitespace-pre-wrap">{p.descripcion}</p>
-            </div>
-          )}
-
-          {p.piezas.length > 0 && (
-            <div>
-              <p className="font-semibold text-muted-foreground">Piezas:</p>
-              <div className="mt-1 space-y-1">
-                {p.piezas.map((pz) => (
-                  <div key={pz.piezaId} className="border-l-2 border-amber-400 pl-2">
-                    <span className="font-medium">{pz.descripcion || "—"}</span>{" "}
-                    <span className="text-muted-foreground">
-                      · Costo: {euros(pz.costo)} · Precio cliente: {euros(pz.precio)}
-                    </span>
-                    {pz.enlace && (
-                      <>
-                        {" "}
-                        <a href={pz.enlace} target="_blank" rel="noreferrer" className="text-primary underline">
-                          Enlace
-                        </a>
-                      </>
-                    )}
-                    {pz.notas && <p className="text-muted-foreground italic">{pz.notas}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {p.notas && (
-            <div>
-              <p className="font-semibold text-muted-foreground">Notas:</p>
-              <p className="mt-0.5 whitespace-pre-wrap text-muted-foreground">{p.notas}</p>
-            </div>
-          )}
-
-          <div className="space-y-0.5 text-muted-foreground">
-            {p.fechaElaboracion && (
-              <p className="flex items-center gap-1">
-                <Calendar className="size-3 shrink-0" /> Elaborado: {new Date(p.fechaElaboracion).toLocaleDateString("es-ES")} por {p.elaboradoPor || "—"}
-              </p>
-            )}
-            {p.fechaEnvio && (
-              <p className="flex items-center gap-1">
-                <Send2 className="size-3 shrink-0" /> Enviado: {fechaHora(p.fechaEnvio)}
-              </p>
-            )}
-            {p.fechaRespuesta && (
-              <p className="flex items-center gap-1">
-                <InfoCircle className="size-3 shrink-0" /> Respuesta: {new Date(p.fechaRespuesta).toLocaleDateString("es-ES")}
-              </p>
-            )}
-          </div>
-
-          {p.motivoRechazo && (
-            <div className="rounded-md bg-destructive/10 px-2 py-1.5 text-destructive">
-              <strong>Motivo:</strong> {p.motivoRechazo}
-            </div>
-          )}
+      {p.motivoRechazo && (
+        <div className="border-t bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+          <strong>Motivo:</strong> {p.motivoRechazo}
         </div>
       )}
+
+      <PresupuestoDetalleDialog
+        resguardo={resguardo}
+        presupuesto={p}
+        pedidos={pedidos}
+        open={detalleAbierto}
+        onOpenChange={setDetalleAbierto}
+      />
 
       <PresupuestoFormDialog
         resguardo={resguardo}
