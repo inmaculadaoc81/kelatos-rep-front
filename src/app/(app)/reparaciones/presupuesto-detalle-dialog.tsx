@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DocumentText, Box, ShoppingCart, Calendar, Send2, InfoCircle } from "@/lib/icons";
+import { DocumentText, Box, ShoppingCart, Calendar, Send2, InfoCircle, CloseCircle } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -98,15 +96,26 @@ export function PresupuestoDetalleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <DocumentText className="size-5" /> Presupuesto v{p.version} — #{resguardo}
-            <Badge variant="outline">{p.estado}</Badge>
+      <DialogContent className="gap-0 p-0 max-w-2xl sm:max-w-2xl" showCloseButton={false}>
+        <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
+          <DocumentText className="size-5 shrink-0" />
+          <DialogTitle className="text-sm font-semibold text-primary-foreground">
+            Presupuesto v{p.version} — #{resguardo}
           </DialogTitle>
-        </DialogHeader>
+          <Badge variant="outline" className="border-white/40 text-primary-foreground">
+            {p.estado}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
+            onClick={() => onOpenChange(false)}
+          >
+            <CloseCircle className="size-4" />
+          </Button>
+        </header>
 
-        <ScrollArea className="max-h-[65vh]">
+        <ScrollArea className="max-h-[65vh] p-4">
           <div className="space-y-4 pr-3">
             <div>
               <h3 className="mb-2 text-sm font-semibold text-primary">Responsable del Presupuesto</h3>
@@ -236,11 +245,11 @@ export function PresupuestoDetalleDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter>
+        <footer className="flex justify-end gap-2 rounded-b-xl border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
-        </DialogFooter>
+        </footer>
       </DialogContent>
     </Dialog>
   );
