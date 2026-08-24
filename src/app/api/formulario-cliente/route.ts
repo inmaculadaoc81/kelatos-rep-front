@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { DatosFormularioCliente } from "@/lib/formulario-cliente";
 import { normalizarNumeroLocal } from "@/lib/telefono";
+import { corregirTypoDominioEmail } from "@/lib/validacion";
 
 function hashCanonico(payload: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -58,7 +59,11 @@ export async function POST(req: Request) {
   const esCintas = datos.tipoProducto === "Conversión de cintas";
   const tipoVal = datos.tipoProducto === "Otro" ? datos.tipoOtro.trim() || "Otro" : datos.tipoProducto;
   const equipoModelo = esCintas ? "CONVERSION DE CINTAS" : [tipoVal, datos.marca.trim(), datos.modelo.trim()].filter(Boolean).join(" ");
-  const email = datos.noTieneEmail ? "" : datos.email.trim();
+  // Red de seguridad server-side (además del onBlur/envío del propio
+  // formulario) por si esta ruta llega a recibir el dato sin pasar por
+  // esas correcciones — nunca guardar/enviar a un ".con" cuando el resto
+  // del dominio ya delata el typo (gmail.con, hotmail.con...).
+  const email = datos.noTieneEmail ? "" : corregirTypoDominioEmail(datos.email.trim());
   const telefonoLocal = normalizarNumeroLocal(datos.telPrefijo, datos.telefono.trim().replace(/[^\d]/g, ""));
   const telefono = `${datos.telPrefijo} ${telefonoLocal}`.trim();
   const direccion = [datos.viaTipo, datos.viaNombre.trim(), datos.viaNumero.trim(), datos.cp.trim(), datos.localidad.trim(), datos.provincia.trim()]

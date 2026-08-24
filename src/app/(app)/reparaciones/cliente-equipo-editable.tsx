@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { formatearFecha } from "@/lib/dias-entrega";
-import { esEmailValido } from "@/lib/validacion";
+import { esEmailValido, corregirTypoDominioEmail } from "@/lib/validacion";
 
 function Linea({ icono: Icono, valor }: { icono: Icon; valor: string }) {
   if (!valor) return null;
@@ -62,13 +62,14 @@ export function ClienteEditable({
 
   async function guardar() {
     if (!nombre.trim()) return toast.error("El nombre es obligatorio");
-    if (!esEmailValido(email)) return toast.error("El email no es válido");
+    const emailCorregido = corregirTypoDominioEmail(email);
+    if (!esEmailValido(emailCorregido)) return toast.error("El email no es válido");
     setGuardando(true);
     try {
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/cliente`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, telefono, email, dniCif, direccionEnvio: direccion }),
+        body: JSON.stringify({ nombre, telefono, email: emailCorregido, dniCif, direccionEnvio: direccion }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");

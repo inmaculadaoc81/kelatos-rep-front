@@ -12,6 +12,7 @@ import {
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
 import { normalizarNumeroLocal } from "@/lib/telefono";
+import { corregirTypoDominioEmail } from "@/lib/validacion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -374,10 +375,13 @@ export default function FormularioClientePage() {
     setEnviando(true);
     setErrorEnvio("");
     try {
+      // Red de seguridad además del onBlur del campo — por si el email
+      // llega aquí sin pasar por ese blur (autocompletado del navegador,
+      // pegado justo antes de enviar, etc.).
       const res = await fetch("/api/formulario-cliente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...datos, codigoAcceso }),
+        body: JSON.stringify({ ...datos, email: corregirTypoDominioEmail(datos.email), codigoAcceso }),
       });
       // Un cuerpo de petición demasiado grande (fotos sin comprimir) lo
       // puede rechazar la propia plataforma antes de llegar al código de la
@@ -508,6 +512,7 @@ export default function FormularioClientePage() {
                 value={datos.email}
                 disabled={datos.noTieneEmail}
                 onChange={(e) => actualizar("email", e.target.value)}
+                onBlur={(e) => actualizar("email", corregirTypoDominioEmail(e.target.value))}
               />
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <Checkbox checked={datos.noTieneEmail} onCheckedChange={(v) => actualizar("noTieneEmail", v === true)} />
