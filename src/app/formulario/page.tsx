@@ -379,6 +379,19 @@ export default function FormularioClientePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...datos, codigoAcceso }),
       });
+      // Un cuerpo de petición demasiado grande (fotos sin comprimir) lo
+      // puede rechazar la propia plataforma antes de llegar al código de la
+      // API, con una respuesta que no es JSON — comprobar el content-type
+      // evita el error críptico "Unexpected token... is not valid JSON" y
+      // da una pista real de qué pasó.
+      const esJson = (res.headers.get("content-type") || "").includes("application/json");
+      if (!esJson) {
+        throw new Error(
+          res.status === 413
+            ? "Las fotos adjuntas pesan demasiado. Elimina alguna foto o vuelve a intentarlo con menos fotos."
+            : "No se pudo enviar la solicitud (error del servidor). Inténtalo de nuevo en unos minutos."
+        );
+      }
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo registrar la solicitud.");
       setResultado({ resguardo: data.resguardo });
@@ -726,6 +739,42 @@ export default function FormularioClientePage() {
   );
 }
 
+// Las fotos de cámara de móvil sin comprimir (a menudo 3-8 MB cada una) se
+// mandan como base64 dentro de un JSON — con 2-3 fotos eso supera de sobra
+// el límite de tamaño de petición de Vercel (~4.5 MB) y el envío falla con
+// un error de "Request Entity Too Large" que ni siquiera es JSON (bug real
+// reportado: "Unexpected token 'R'... is not valid JSON" al pulsar "Enviar
+// solicitud"). Se recomprime aquí antes de guardarla — 1600px de lado
+// mayor y calidad 0.72 deja fotos de sobra legibles para diagnóstico y
+// normalmente por debajo de 500 KB cada una.
+const FOTO_LADO_MAXIMO = 1600;
+const FOTO_CALIDAD_JPEG = 0.72;
+
+function comprimirImagen(file: File): Promise<{ base64: string; mime: string }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, FOTO_LADO_MAXIMO / Math.max(img.naturalWidth, img.naturalHeight));
+      const ancho = Math.max(1, Math.round(img.naturalWidth * escala));
+      const alto = Math.max(1, Math.round(img.naturalHeight * escala));
+      const canvas = document.createElement("canvas");
+      canvas.width = ancho;
+      canvas.height = alto;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("No se pudo procesar la imagen")); return; }
+      ctx.drawImage(img, 0, 0, ancho, alto);
+      const dataUrl = canvas.toDataURL("image/jpeg", FOTO_CALIDAD_JPEG);
+      const base64 = dataUrl.split(",")[1] || "";
+      if (!base64) { reject(new Error("No se pudo procesar la imagen")); return; }
+      resolve({ base64, mime: "image/jpeg" });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No se pudo leer la imagen")); };
+    img.src = url;
+  });
+}
+
 function PasoFotoFirma({
   fotos,
   firmaBase64,
@@ -742,21 +791,35 @@ function PasoFotoFirma({
   onFirmaChange: (firmaBase64: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [procesando, setProcesando] = useState(false);
+  const [errorProceso, setErrorProceso] = useState("");
 
-  function onSeleccionarFotos(e: React.ChangeEvent<HTMLInputElement>) {
-    const archivos = Array.from(e.target.files || []);
+  async function onSeleccionarFotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivos = Array.from(e.target.files || []).filter(
+      (file) => !fotos.some((f) => f.name === file.name && f.size === file.size)
+    );
     e.target.value = "";
-    archivos.forEach((file) => {
-      if (fotos.some((f) => f.name === file.name && f.size === file.size)) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = String(reader.result || "");
-        const base64 = dataUrl.split(",")[1] || "";
-        if (!base64) return;
-        onFotosChange([...fotos, { base64, mime: file.type || "image/jpeg", name: file.name, size: file.size }]);
-      };
-      reader.readAsDataURL(file);
-    });
+    if (archivos.length === 0) return;
+
+    setErrorProceso("");
+    setProcesando(true);
+    try {
+      // Secuencial (no Promise.all) para no procesar varias fotos grandes a
+      // la vez en un móvil modesto, y para poder ir acumulando sin condición
+      // de carrera sobre el array "fotos" del padre.
+      const nuevas: FotoFormulario[] = [];
+      for (const file of archivos) {
+        try {
+          const { base64, mime } = await comprimirImagen(file);
+          nuevas.push({ base64, mime, name: file.name, size: file.size });
+        } catch {
+          setErrorProceso(`No se pudo procesar "${file.name}" — prueba con otra foto.`);
+        }
+      }
+      if (nuevas.length > 0) onFotosChange([...fotos, ...nuevas]);
+    } finally {
+      setProcesando(false);
+    }
   }
 
   function eliminarFoto(i: number) {
@@ -769,14 +832,22 @@ function PasoFotoFirma({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-full rounded-lg border border-dashed border-input bg-muted/30 px-4 py-6 text-center transition-colors hover:bg-muted/50"
+          disabled={procesando}
+          className="w-full rounded-lg border border-dashed border-input bg-muted/30 px-4 py-6 text-center transition-colors hover:bg-muted/50 disabled:opacity-60"
         >
-          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} className="hidden" />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} className="hidden" disabled={procesando} />
           <Camera className="mx-auto mb-1.5 size-7 text-muted-foreground" />
           <div className="text-sm text-muted-foreground">
-            {fotos.length === 0 ? "Toca para hacer o seleccionar una foto" : fotos.length === 1 ? fotos[0].name : `${fotos.length} fotos seleccionadas`}
+            {procesando
+              ? "Procesando foto…"
+              : fotos.length === 0
+                ? "Toca para hacer o seleccionar una foto"
+                : fotos.length === 1
+                  ? fotos[0].name
+                  : `${fotos.length} fotos seleccionadas`}
           </div>
         </button>
+        {errorProceso && <p className="mt-1.5 text-xs text-destructive">{errorProceso}</p>}
         {fotos.length > 0 && (
           <div className="mt-2.5 grid grid-cols-4 gap-2">
             {fotos.map((f, i) => (
