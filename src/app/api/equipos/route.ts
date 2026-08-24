@@ -52,6 +52,7 @@ export async function POST(req: Request) {
       observaciones: datos.observaciones.trim(),
       enlaceRepuesto: datos.enlaceRepuesto.trim(),
       imagenUrl: datos.imagenUrl.trim(),
+      origenResguardo: datos.origenResguardo?.trim() || undefined,
     });
 
     return NextResponse.json({ ok: true, equipo: resultado.equipo });

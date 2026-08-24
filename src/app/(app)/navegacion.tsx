@@ -49,6 +49,7 @@ export const GRUPOS: GrupoNavegacion[] = [
       { label: "Todas las Reparaciones", href: "/reparaciones", icon: ClipboardTick },
       { label: "Presupuestos", href: "/presupuestos", icon: DocumentText },
       { label: "Recogidas", href: "/recogidas", icon: Truck },
+      { label: "Punto Limpio", href: "/punto-limpio", icon: Trash },
     ],
   },
   {

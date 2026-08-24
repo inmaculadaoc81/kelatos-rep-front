@@ -46,6 +46,8 @@ export interface DatosStockPiezaForm {
   proveedor: string;
   stockDisponible: number;
   stockMinimo: number;
+  /** Resguardo de origen cuando la pieza procede de un reciclaje interno de Punto Limpio. */
+  origenResguardo?: string;
 }
 
 function numero(v: unknown): number {

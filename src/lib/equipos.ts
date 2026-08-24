@@ -82,6 +82,8 @@ export interface DatosNuevoEquipo {
   observaciones: string;
   enlaceRepuesto: string;
   imagenUrl: string;
+  /** Resguardo de origen cuando el equipo procede de un reciclaje de Punto Limpio marcado "reparable". */
+  origenResguardo?: string;
 }
 
 export interface DatosNuevoAlquiler {

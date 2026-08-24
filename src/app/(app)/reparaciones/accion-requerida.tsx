@@ -477,15 +477,14 @@ export function AccionRequerida({
         </Button>
       );
     }
-    // Solo "No tiene Reparación"/"Presupuesto Rechazado" — el original no la
-    // ofrece cuando el equipo sí está "Reparado".
-    if (estado !== "Reparado") {
-      botones.push(
-        <Button key="punto-limpio" size="sm" variant="outline" className="gap-1.5 text-muted-foreground" onClick={callbacks.onEnviarPuntoLimpio}>
-          <Trash className="size-3.5" /> Enviar a punto limpio
-        </Button>
-      );
-    }
+    // A diferencia del original, ahora también se ofrece con el equipo
+    // "Reparado" — un equipo reparado que nunca se recoge también puede
+    // acabar en punto limpio (petición explícita del usuario, 2026-08-22).
+    botones.push(
+      <Button key="punto-limpio" size="sm" variant="outline" className="gap-1.5 text-muted-foreground" onClick={callbacks.onEnviarPuntoLimpio}>
+        <Trash className="size-3.5" /> Enviar a punto limpio
+      </Button>
+    );
   }
 
   return (

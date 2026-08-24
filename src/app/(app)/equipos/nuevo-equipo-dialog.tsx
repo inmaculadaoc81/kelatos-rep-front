@@ -65,9 +65,22 @@ function BotonTipo({
 }
 
 /** Reproduce #modalNuevoEquipo (abrirModalNuevoEquipo/guardarNuevoEquipo) del original. */
-export function NuevoEquipoDialog({ onCreado }: { onCreado: () => void }) {
+export function NuevoEquipoDialog({
+  onCreado,
+  valoresIniciales,
+  origenResguardo,
+  trigger,
+}: {
+  onCreado: () => void;
+  /** Precarga campos (p.ej. marca/modelo) al abrir — usado desde Punto Limpio al marcar un equipo "reparable". */
+  valoresIniciales?: Partial<DatosNuevoEquipo>;
+  /** Resguardo de origen cuando el equipo procede de un reciclaje de Punto Limpio. */
+  origenResguardo?: string;
+  /** Contenido del disparador; por defecto el botón "Nuevo Equipo" habitual. */
+  trigger?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
-  const [datos, setDatos] = useState<DatosNuevoEquipo>(VACIO);
+  const [datos, setDatos] = useState<DatosNuevoEquipo>({ ...VACIO, ...valoresIniciales });
   const [enviando, setEnviando] = useState(false);
 
   function actualizar<K extends keyof DatosNuevoEquipo>(campo: K, valor: DatosNuevoEquipo[K]) {
@@ -88,12 +101,12 @@ export function NuevoEquipoDialog({ onCreado }: { onCreado: () => void }) {
       const res = await fetch("/api/equipos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos),
+        body: JSON.stringify({ ...datos, origenResguardo }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Equipo ${data.equipo.id_equipo} creado`);
-      setDatos(VACIO);
+      setDatos({ ...VACIO, ...valoresIniciales });
       setOpen(false);
       onCreado();
     } catch (e) {
@@ -108,7 +121,11 @@ export function NuevoEquipoDialog({ onCreado }: { onCreado: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !enviando && setOpen(o)}>
       <DialogTrigger className={buttonVariants({ variant: "outline", size: "sm", className: "gap-1.5" })}>
-        <Monitor className="size-4" /> Nuevo Equipo
+        {trigger ?? (
+          <>
+            <Monitor className="size-4" /> Nuevo Equipo
+          </>
+        )}
       </DialogTrigger>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-lg" showCloseButton={!enviando}>
         <DialogHeader>

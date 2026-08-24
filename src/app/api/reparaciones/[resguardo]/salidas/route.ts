@@ -19,15 +19,30 @@ export async function POST(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { resguardo } = await params;
-  const body = (await req.json()) as DatosMarcarEntregado | { accion: "punto_limpio" } | { accion: "cliente_se_lleva"; observaciones: string };
+  const body = (await req.json()) as
+    | DatosMarcarEntregado
+    | { accion: "punto_limpio"; motivo: string; motivoDetalle?: string; destino?: string }
+    | { accion: "cliente_se_lleva"; observaciones: string };
 
   // Segunda acción del mismo endpoint del backend (enviarAPuntoLimpio del
-  // original) — sin datos propios, a diferencia de marcar_entregado.
+  // original) — ahora captura el motivo/destino para la vista "Punto Limpio".
   if ("accion" in body && body.accion === "punto_limpio") {
+    if (!body.motivo) {
+      return NextResponse.json({ ok: false, error: "El motivo es obligatorio" }, { status: 400 });
+    }
     try {
       const resultado = await kelatosApiPost<RespuestaSalidas>(
         `/v1/reparaciones/${encodeURIComponent(resguardo)}/salidas`,
-        { requestId: crypto.randomUUID(), usuario, accion: "punto_limpio" }
+        {
+          requestId: crypto.randomUUID(),
+          usuario,
+          accion: "punto_limpio",
+          datos: {
+            motivo: body.motivo,
+            motivoDetalle: (body.motivoDetalle || "").trim(),
+            destino: body.destino || "",
+          },
+        }
       );
       return NextResponse.json({ ok: true, reparacion: resultado.reparacion, diasTotales: resultado.diasTotales });
     } catch (error) {

@@ -38,16 +38,22 @@ function desdeExistente(p: Producto): DatosProductoForm {
 
 export function ProductoFormDialog({
   productoExistente,
+  valoresIniciales,
+  origenResguardo,
   open,
   onOpenChange,
   onGuardado,
 }: {
   productoExistente: Producto | null;
+  /** Precarga campos (p.ej. nombre) al abrir — usado desde Punto Limpio al marcar un producto "reparable". */
+  valoresIniciales?: Partial<DatosProductoForm>;
+  /** Resguardo de origen cuando el producto procede de un reciclaje de Punto Limpio. */
+  origenResguardo?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGuardado: () => void;
 }) {
-  const [datos, setDatos] = useState<DatosProductoForm>(() => (productoExistente ? desdeExistente(productoExistente) : vacio()));
+  const [datos, setDatos] = useState<DatosProductoForm>(() => (productoExistente ? desdeExistente(productoExistente) : { ...vacio(), ...valoresIniciales }));
   const [enviando, setEnviando] = useState(false);
   const esEdicion = productoExistente !== null;
 
@@ -64,7 +70,7 @@ export function ProductoFormDialog({
       const res = await fetch(url, {
         method: esEdicion ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos),
+        body: JSON.stringify({ ...datos, origenResguardo }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -83,7 +89,7 @@ export function ProductoFormDialog({
       open={open}
       onOpenChange={(o) => {
         if (enviando) return;
-        if (!o) setDatos(productoExistente ? desdeExistente(productoExistente) : vacio());
+        if (!o) setDatos(productoExistente ? desdeExistente(productoExistente) : { ...vacio(), ...valoresIniciales });
         onOpenChange(o);
       }}
     >

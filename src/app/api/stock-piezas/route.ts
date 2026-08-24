@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       activo: true,
       fecha_creacion: new Date().toISOString(),
       ultimo_usuario: usuario,
+      origen_resguardo: datos.origenResguardo?.trim() || undefined,
     });
     return NextResponse.json({ ok: true, pieza: mapearStockPieza(resultado.row) });
   } catch (error) {

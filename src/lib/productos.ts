@@ -130,6 +130,8 @@ export interface DatosProductoForm {
   proveedor: string;
   ubicacion: string;
   notas: string;
+  /** Resguardo de origen cuando el producto procede de un reciclaje de Punto Limpio marcado "reparable". */
+  origenResguardo?: string;
 }
 
 export interface DatosMovimiento {

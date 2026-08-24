@@ -39,17 +39,23 @@ function desdeExistente(p: StockPieza): DatosStockPiezaForm {
 export function PiezaStockFormDialog({
   piezaExistente,
   categorias,
+  valoresIniciales,
+  origenResguardo,
   open,
   onOpenChange,
   onGuardado,
 }: {
   piezaExistente: StockPieza | null;
   categorias: string[];
+  /** Precarga campos (p.ej. nombre) al abrir — usado desde Punto Limpio al registrar piezas de un reciclaje interno. */
+  valoresIniciales?: Partial<DatosStockPiezaForm>;
+  /** Resguardo de origen cuando la pieza procede de un reciclaje interno de Punto Limpio. */
+  origenResguardo?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGuardado: () => void;
 }) {
-  const [datos, setDatos] = useState<DatosStockPiezaForm>(() => (piezaExistente ? desdeExistente(piezaExistente) : vacio()));
+  const [datos, setDatos] = useState<DatosStockPiezaForm>(() => (piezaExistente ? desdeExistente(piezaExistente) : { ...vacio(), ...valoresIniciales }));
   const [enviando, setEnviando] = useState(false);
   const esEdicion = piezaExistente !== null;
 
@@ -67,7 +73,7 @@ export function PiezaStockFormDialog({
       const res = await fetch(url, {
         method: esEdicion ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...datos, referencia: datos.referencia.trim().toUpperCase() }),
+        body: JSON.stringify({ ...datos, referencia: datos.referencia.trim().toUpperCase(), origenResguardo }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -86,7 +92,7 @@ export function PiezaStockFormDialog({
       open={open}
       onOpenChange={(o) => {
         if (enviando) return;
-        if (!o) setDatos(piezaExistente ? desdeExistente(piezaExistente) : vacio());
+        if (!o) setDatos(piezaExistente ? desdeExistente(piezaExistente) : { ...vacio(), ...valoresIniciales });
         onOpenChange(o);
       }}
     >

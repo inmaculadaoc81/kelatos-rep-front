@@ -42,6 +42,7 @@ export async function POST(req: Request) {
       proveedor: datos.proveedor.trim(),
       ubicacion: datos.ubicacion.trim(),
       notas: datos.notas.trim(),
+      origenResguardo: datos.origenResguardo?.trim() || undefined,
     });
 
     return NextResponse.json({ ok: true, producto: mapearProducto(resultado.producto) });

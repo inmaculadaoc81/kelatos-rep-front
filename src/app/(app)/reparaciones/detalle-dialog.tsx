@@ -55,6 +55,7 @@ import { ReportarProblemaPiezaDialog } from "./reportar-problema-pieza-dialog";
 import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
+import { PuntoLimpioMotivoDialog } from "../punto-limpio/punto-limpio-motivo-dialog";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -288,6 +289,7 @@ export function DetalleReparacionDialog({
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [clienteSeLoLlevoAbierto, setClienteSeLoLlevoAbierto] = useState(false);
   const [puntoLimpioAbierto, setPuntoLimpioAbierto] = useState(false);
+  const [motivoPuntoLimpioAbierto, setMotivoPuntoLimpioAbierto] = useState(false);
   const esSuperadmin = useEsSuperadmin();
 
   async function imprimirResguardo() {
@@ -359,30 +361,16 @@ export function DetalleReparacionDialog({
 
   // Reproduce enviarAPuntoLimpio(): si el equipo se recibió por mensajería
   // hay que poder facturar la recogida, así que pasa por el mismo modal
-  // completo que "Entregado en Local" (tipoEntrega RECICLAJE) — solo el
-  // caso recibido en LOCAL se resuelve con la confirmación rápida de un
-  // clic, sin datos propios.
-  async function enviarPuntoLimpio() {
+  // completo que "Entregado en Local" (tipoEntrega RECICLAJE) — el caso
+  // recibido en LOCAL abre en su lugar el diálogo de motivo de Punto
+  // Limpio (marca RECICLAJE y captura por qué, en un solo paso).
+  function enviarPuntoLimpio() {
     if (!resguardo) return;
     if (detalle && (detalle.tipoRecepcion || "LOCAL") === "ENVIO") {
       setPuntoLimpioAbierto(true);
       return;
     }
-    const ok = await confirmar("¿Confirma que desea enviar este equipo a punto limpio (reciclaje)?");
-    if (!ok) return;
-    try {
-      const res = await fetch(`/api/reparaciones/${resguardo}/salidas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion: "punto_limpio" }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`Equipo enviado a punto limpio (${data.diasTotales} días)`);
-      actualizarTodo();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    }
+    setMotivoPuntoLimpioAbierto(true);
   }
 
   // Reproduce solicitarPresupuestoDesdeGarantia() — el escape del estado
@@ -890,6 +878,29 @@ export function DetalleReparacionDialog({
             onOpenChange={setPuntoLimpioAbierto}
             onCompletado={actualizarTodo}
           />
+          {motivoPuntoLimpioAbierto && (
+            <PuntoLimpioMotivoDialog
+              item={{
+                resguardo: detalle.resguardo,
+                clienteNombre: detalle.cliente.nombre,
+                clienteTelefono: detalle.cliente.telefono,
+                equipoModelo: detalle.equipo.modelo,
+                estado: detalle.estado,
+                fechaEntrega: null,
+                motivo: null,
+                motivoDetalle: "",
+                destino: null,
+                registradoEn: null,
+                registradoPor: "",
+              }}
+              open={motivoPuntoLimpioAbierto}
+              onOpenChange={setMotivoPuntoLimpioAbierto}
+              onGuardado={() => {
+                setMotivoPuntoLimpioAbierto(false);
+                actualizarTodo();
+              }}
+            />
+          )}
           <ConfirmarEntregaLocalDialog
             resguardo={detalle.resguardo}
             open={entregaLocalAbierta}
