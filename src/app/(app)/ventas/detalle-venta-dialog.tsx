@@ -32,6 +32,22 @@ function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
+// El campo "enlace" a veces guarda un código/referencia de pedido en vez de
+// una URL real — un <a href> con eso parece un enlace pero no lleva a
+// ningún sitio al pulsarlo, así que solo se muestra como link clicable
+// cuando de verdad tiene forma de URL.
+function EnlaceOTexto({ valor }: { valor: string }) {
+  if (!valor) return <>-</>;
+  if (esUrlValida(valor)) {
+    return (
+      <a href={valor} target="_blank" rel="noopener noreferrer" className="max-w-40 truncate text-primary hover:underline" title={valor}>
+        Ver Enlace
+      </a>
+    );
+  }
+  return <span className="inline-block max-w-40 truncate align-bottom" title={valor}>{valor}</span>;
+}
+
 function EstadoBadge({ estado, estilo }: { estado: string; estilo: { bg: string; color?: string } }) {
   return (
     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color || "#fff" }}>
@@ -178,7 +194,6 @@ export function DetalleVentaDialog({
     if (!pedNumero.trim()) return toast.error("El Nº de pedido es obligatorio");
     if (!pedFecha) return toast.error("La fecha estimada es obligatoria");
     if (!pedEnlace.trim()) return toast.error("El enlace es obligatorio");
-    if (!esUrlValida(pedEnlace)) return toast.error("El enlace debe ser una URL válida (https://...)");
     setEnviando(true);
     try {
       const res = await fetch(`/api/items-venta/${itemPidiendo}/registrar-pedido`, {
@@ -248,7 +263,6 @@ export function DetalleVentaDialog({
     if (nuevoPrecio <= 0) return toast.error("El precio es obligatorio");
     if (!nuevoProveedor) return toast.error("El proveedor es obligatorio");
     if (!nuevoEnlace.trim()) return toast.error("El enlace es obligatorio");
-    if (!esUrlValida(nuevoEnlace)) return toast.error("El enlace debe ser una URL válida (https://...)");
     setEnviando(true);
     try {
       const res = await fetch(`/api/ventas/${venta.ventaId}/items`, {
@@ -472,7 +486,7 @@ export function DetalleVentaDialog({
                           )}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {item.enlace ? <a href={item.enlace} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver Enlace</a> : "-"}
+                          <EnlaceOTexto valor={item.enlace} />
                         </TableCell>
                       </TableRow>
                     );
