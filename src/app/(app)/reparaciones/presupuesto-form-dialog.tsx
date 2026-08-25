@@ -12,6 +12,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -324,7 +325,7 @@ export function PresupuestoFormDialog({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="manoObra">Mano de Obra *</Label>
-                  <Input id="manoObra" type="number" min={0} step="0.01" value={datos.manoObra} onChange={(e) => actualizar("manoObra", parseFloat(e.target.value) || 0)} />
+                  <DecimalInput id="manoObra" value={datos.manoObra} onChange={(n) => actualizar("manoObra", n)} />
                   <p className="text-[11px] text-muted-foreground">
                     {noRequiere ? "Obligatoria (mayor a 0) al no requerir piezas" : "Poner 0 si no aplica"}
                   </p>
@@ -401,11 +402,11 @@ export function PresupuestoFormDialog({
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] font-normal text-muted-foreground">Coste (nuestro)</Label>
-                        <Input type="number" step="0.01" placeholder="Coste" value={p.costo} onChange={(e) => actualizarPieza("stock", i, "costo", parseFloat(e.target.value) || 0)} />
+                        <DecimalInput placeholder="Coste" value={p.costo} onChange={(n) => actualizarPieza("stock", i, "costo", n)} />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] font-normal text-muted-foreground">Precio cliente</Label>
-                        <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("stock", i, "precio", parseFloat(e.target.value) || 0)} />
+                        <DecimalInput placeholder="Precio cliente" value={p.precio} onChange={(n) => actualizarPieza("stock", i, "precio", n)} />
                       </div>
                       <Button size="icon" variant="ghost" className="text-destructive" onClick={() => quitarPieza("stock", i)}>
                         <Trash className="size-4" />
@@ -459,11 +460,11 @@ export function PresupuestoFormDialog({
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[11px] font-normal text-muted-foreground">Costo (nuestro)</Label>
-                          <Input type="number" step="0.01" placeholder="Costo" value={p.costo} onChange={(e) => actualizarPieza("pedido", i, "costo", parseFloat(e.target.value) || 0)} />
+                          <DecimalInput placeholder="Costo" value={p.costo} onChange={(n) => actualizarPieza("pedido", i, "costo", n)} />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[11px] font-normal text-muted-foreground">Precio cliente</Label>
-                          <Input type="number" step="0.01" placeholder="Precio cliente" value={p.precio} onChange={(e) => actualizarPieza("pedido", i, "precio", parseFloat(e.target.value) || 0)} />
+                          <DecimalInput placeholder="Precio cliente" value={p.precio} onChange={(n) => actualizarPieza("pedido", i, "precio", n)} />
                         </div>
                         <div className="col-span-2 sm:col-span-1 space-y-1">
                           <Label className="text-[11px] font-normal text-muted-foreground">Enlace de compra *</Label>
