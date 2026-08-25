@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { TickCircle, RotateLeft, ExportSquare, Refresh2, Clock, Money, Category2, SearchNormal1, CloseCircle, Link2, MinusCirlce, Building, Personalcard, DocumentText } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,6 +41,32 @@ function fmtMonto(m: string | null, moneda: string | null) {
   return `${Number(m).toFixed(2)} ${moneda || "EUR"}`;
 }
 
+/** Puerto fiel de "origenBadge" en renderTabla()/renderFilaConciliada() — mismo pill en Pendientes y Conciliadas. */
+function OrigenBadge({ origen }: { origen: string | null }) {
+  const esCliente = origen === "Cliente";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+        esCliente ? "bg-violet-500/10 text-violet-700 dark:text-violet-400" : "bg-sky-500/10 text-sky-700 dark:text-sky-400"
+      }`}
+    >
+      {esCliente ? <Personalcard className="size-3" /> : <Building className="size-3" />} {origen || "-"}
+    </span>
+  );
+}
+
+/** Puerto fiel de "montoDisplay" en renderTabla() — signo y color según Cliente (-, rojo) / Empresa (+, verde). */
+function MontoConSigno({ origen, monto }: { origen: string | null; monto: string | null }) {
+  const esCliente = origen === "Cliente";
+  const valor = monto ? Number(monto).toFixed(2) : "0.00";
+  return (
+    <span className={`font-medium ${esCliente ? "text-destructive" : "text-emerald-600"}`}>
+      {esCliente ? "-" : "+"}
+      {valor} €
+    </span>
+  );
+}
+
 /** Separador de grupo en la tabla de Conciliadas (colSpan=10, mismas 10 columnas de FilaConciliada). */
 function FragmentoGrupo({
   etiqueta,
@@ -77,24 +102,13 @@ function FragmentoGrupo({
  * queda bajo "Foto" — mismo desajuste visual que tiene el original.
  */
 function FilaConciliada({ m, enPar, onRevertir }: { m: Movimiento; enPar: boolean; onRevertir: (m: Movimiento) => void }) {
-  const esCliente = m.origen === "Cliente";
-  const monto = m.monto ? Number(m.monto).toFixed(2) : "0.00";
   return (
     <TableRow>
       <TableCell className={enPar ? "border-l-2 border-l-emerald-500" : ""}>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-            esCliente ? "bg-violet-500/10 text-violet-700 dark:text-violet-400" : "bg-sky-500/10 text-sky-700 dark:text-sky-400"
-          }`}
-        >
-          {esCliente ? <Personalcard className="size-3" /> : <Building className="size-3" />} {m.origen || "-"}
-        </span>
+        <OrigenBadge origen={m.origen} />
       </TableCell>
       <TableCell className="text-xs">{m.fecha_valor || "-"}</TableCell>
-      <TableCell className={`font-medium ${esCliente ? "text-destructive" : "text-emerald-600"}`}>
-        {esCliente ? "-" : "+"}
-        {monto} €
-      </TableCell>
+      <TableCell><MontoConSigno origen={m.origen} monto={m.monto} /></TableCell>
       <TableCell className="max-w-40 truncate text-sm" title={m.remitente || ""}>{m.remitente || "-"}</TableCell>
       <TableCell className="max-w-48 truncate text-sm" title={m.concepto || ""}>{m.concepto || "-"}</TableCell>
       <TableCell className="text-sm">{m.codigo_referencia_concepto || "-"}</TableCell>
@@ -174,11 +188,19 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
 
   const [parAConciliar, setParAConciliar] = useState<[Movimiento, Movimiento] | null>(null);
 
+  // Puerto fiel de actualizarSelectionBar(): no hay límite de cuántas filas se
+  // pueden marcar, pero "Conciliar par" solo se habilita con exactamente 1
+  // Cliente + 1 Empresa entre las seleccionadas.
+  const seleccionadosInfo = useMemo(() => {
+    const items_ = seleccionados.map((id) => items.find((i) => i.id === id)).filter((m): m is Movimiento => !!m);
+    const clientes = items_.filter((m) => m.origen === "Cliente");
+    const empresas = items_.filter((m) => m.origen === "Empresa");
+    return { clientes, empresas, puedeConciliar: clientes.length === 1 && empresas.length === 1 && items_.length === 2 };
+  }, [seleccionados, items]);
+
   function abrirComparacion() {
-    if (seleccionados.length !== 2) return;
-    const t1 = items.find((i) => i.id === seleccionados[0]);
-    const t2 = items.find((i) => i.id === seleccionados[1]);
-    if (t1 && t2) setParAConciliar([t1, t2]);
+    if (!seleccionadosInfo.puedeConciliar) return;
+    setParAConciliar([seleccionadosInfo.clientes[0], seleccionadosInfo.empresas[0]]);
   }
 
   const [aRevertir, setARevertir] = useState<Movimiento | null>(null);
@@ -298,11 +320,6 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
           <p className="text-sm text-muted-foreground">{subtitulo}</p>
         </div>
         <div className="flex items-center gap-2">
-          {estado === "Pendiente" && seleccionados.length === 2 && (
-            <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={abrirComparacion}>
-              <TickCircle className="size-4" /> Conciliar #{seleccionados[0]} + #{seleccionados[1]}
-            </Button>
-          )}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={cargar} disabled={cargando}>
             <Refresh2 className={`size-3.5 ${cargando ? "animate-spin" : ""}`} /> Actualizar
           </Button>
@@ -362,6 +379,37 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
         </div>
       )}
 
+      {estado === "Pendiente" && seleccionados.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
+            <TickCircle className="size-4" />
+            {seleccionados.length} seleccionado{seleccionados.length !== 1 ? "s" : ""}
+            {(seleccionadosInfo.clientes.length > 0 || seleccionadosInfo.empresas.length > 0) && (
+              <span className="font-normal text-primary/80">
+                (
+                {[
+                  seleccionadosInfo.clientes.length > 0 ? `${seleccionadosInfo.clientes.length} cliente` : null,
+                  seleccionadosInfo.empresas.length > 0 ? `${seleccionadosInfo.empresas.length} empresa` : null,
+                ].filter(Boolean).join(", ")}
+                )
+              </span>
+            )}
+          </span>
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => setSeleccionados([])}>
+            <CloseCircle className="size-3.5" /> Limpiar selección
+          </Button>
+          <Button
+            size="sm"
+            className="ml-auto gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+            disabled={!seleccionadosInfo.puedeConciliar}
+            title={seleccionadosInfo.puedeConciliar ? "Conciliar las 2 transferencias seleccionadas" : "Selecciona exactamente 1 Cliente + 1 Empresa"}
+            onClick={abrirComparacion}
+          >
+            <Link2 className="size-4" /> Conciliar par
+          </Button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border bg-card">
         {cargando ? (
           <div className="space-y-2 p-4">
@@ -402,9 +450,9 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                   <TableCell className="font-mono text-xs">#{m.id}</TableCell>
                   <TableCell className="text-xs">{new Date(m.fecha_registro).toLocaleDateString("es-ES")}</TableCell>
                   <TableCell>
-                    <Badge variant={m.origen === "Cliente" ? "secondary" : "default"}>{m.origen || "-"}</Badge>
+                    <OrigenBadge origen={m.origen} />
                   </TableCell>
-                  <TableCell className="font-medium">{fmtMonto(m.monto, m.moneda)}</TableCell>
+                  <TableCell><MontoConSigno origen={m.origen} monto={m.monto} /></TableCell>
                   <TableCell className="max-w-40 truncate text-sm" title={m.remitente || ""}>{m.remitente || "-"}</TableCell>
                   <TableCell className="max-w-40 truncate text-sm" title={m.beneficiario || ""}>{m.beneficiario || "-"}</TableCell>
                   <TableCell className="max-w-48 truncate text-sm" title={m.concepto || ""}>{m.concepto || "-"}</TableCell>
