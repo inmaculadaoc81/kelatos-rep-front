@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
@@ -35,11 +36,16 @@ function iniciales(nombre: string): string {
 export function NavUser({ session }: { session: Session | null }) {
   const { isMobile } = useSidebar();
   const [cerrando, startTransition] = useTransition();
+  const pathname = usePathname();
 
   const nombre = session?.user?.name || session?.user?.email || "Usuario";
   const email = session?.user?.email || "";
   const esAdmin = session?.user?.role === "admin";
   const puedeVerTransferencias = esSuperadmin(email);
+  // Este componente se reutiliza en el sidebar de Transferencias — el
+  // enlace de cambio de dashboard debe apuntar siempre al OTRO, no siempre
+  // a Transferencias.
+  const enTransferencias = pathname?.startsWith("/transferencias") ?? false;
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -98,8 +104,8 @@ export function NavUser({ session }: { session: Session | null }) {
                 </DropdownMenuItem>
               )}
               {puedeVerTransferencias && (
-                <DropdownMenuItem render={<Link href="/transferencias" />}>
-                  <ArrowSwapHorizontal /> Dashboard Transferencias Kelatos
+                <DropdownMenuItem render={<Link href={enTransferencias ? "/" : "/transferencias"} />}>
+                  <ArrowSwapHorizontal /> {enTransferencias ? "Dashboard Reparaciones Kelatos" : "Dashboard Transferencias Kelatos"}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
