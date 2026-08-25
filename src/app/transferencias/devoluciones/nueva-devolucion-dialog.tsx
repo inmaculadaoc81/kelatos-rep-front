@@ -129,7 +129,7 @@ export function NuevaDevolucionDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!enviando) { if (!o) reiniciar(); onOpenChange(o); } }}>
-      <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto" showCloseButton={!enviando}>
+      <DialogContent className="max-h-[85vh] sm:max-w-5xl overflow-y-auto" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600">
