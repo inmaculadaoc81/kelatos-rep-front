@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "../stat-card";
+import { ConfirmarDialog } from "../confirmar-dialog";
 import { NuevaDevolucionDialog } from "./nueva-devolucion-dialog";
 import { CompletarDevolucionDialog } from "./completar-devolucion-dialog";
 
@@ -67,15 +68,23 @@ export default function DevolucionesPage() {
     cargar();
   }, []);
 
-  async function revertir(id: number) {
+  const [aRevertir, setARevertir] = useState<Devolucion | null>(null);
+  const [revirtiendo, setRevirtiendo] = useState(false);
+
+  async function confirmarRevertir() {
+    if (!aRevertir) return;
+    setRevirtiendo(true);
     try {
-      const res = await fetch(`/api/devoluciones/${id}/revertir`, { method: "POST" });
+      const res = await fetch(`/api/devoluciones/${aRevertir.id}/revertir`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`Devolución #${id} revertida a Pendiente`);
+      toast.success(`Devolución #${aRevertir.id} revertida a Pendiente`);
+      setARevertir(null);
       cargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setRevirtiendo(false);
     }
   }
 
@@ -149,7 +158,7 @@ export default function DevolucionesPage() {
                         <TickCircle className="size-3.5" /> Completar
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => revertir(d.id)}>
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setARevertir(d)}>
                         <RotateLeft className="size-3.5" /> Revertir
                       </Button>
                     )}
@@ -163,6 +172,19 @@ export default function DevolucionesPage() {
 
       <NuevaDevolucionDialog open={nuevaAbierta} onOpenChange={setNuevaAbierta} onCreada={cargar} />
       <CompletarDevolucionDialog devolucion={completando} onOpenChange={(o) => !o && setCompletando(null)} onCompletada={cargar} />
+      <ConfirmarDialog
+        open={aRevertir !== null}
+        onOpenChange={(o) => !o && setARevertir(null)}
+        titulo="Revertir devolución"
+        detalles={aRevertir ? [
+          { label: "Cliente", value: aRevertir.nombre_cliente || "-" },
+          { label: "Importe", value: aRevertir.importe ? `${Number(aRevertir.importe).toFixed(2)} €` : "-" },
+        ] : []}
+        pregunta="Se borrarán la fecha de cierre, el comprobante de pago y quién la completó. ¿Devolver a Pendiente?"
+        textoConfirmar="Revertir"
+        onConfirmar={confirmarRevertir}
+        confirmando={revirtiendo}
+      />
     </div>
   );
 }

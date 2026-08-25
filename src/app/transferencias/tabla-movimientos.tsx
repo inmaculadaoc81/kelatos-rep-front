@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "./stat-card";
+import { ConfirmarDialog } from "./confirmar-dialog";
+import { ConciliarParDialog } from "./conciliar-par-dialog";
 
 export interface Movimiento {
   id: number;
@@ -20,6 +22,8 @@ export interface Movimiento {
   remitente: string | null;
   beneficiario: string | null;
   concepto: string | null;
+  codigo_referencia_concepto: string | null;
+  referencia: string | null;
   banco: string | null;
   confianza: string | null;
   origen: string | null;
@@ -82,33 +86,32 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
     }
   }
 
-  async function conciliarSeleccionadas() {
+  const [parAConciliar, setParAConciliar] = useState<[Movimiento, Movimiento] | null>(null);
+
+  function abrirComparacion() {
     if (seleccionados.length !== 2) return;
-    try {
-      const res = await fetch("/api/transferencias/conciliar-par", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id1: seleccionados[0], id2: seleccionados[1] }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`#${seleccionados[0]} y #${seleccionados[1]} conciliadas`);
-      setSeleccionados([]);
-      cargar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    }
+    const t1 = items.find((i) => i.id === seleccionados[0]);
+    const t2 = items.find((i) => i.id === seleccionados[1]);
+    if (t1 && t2) setParAConciliar([t1, t2]);
   }
 
-  async function revertir(id: number) {
+  const [aRevertir, setARevertir] = useState<Movimiento | null>(null);
+  const [revirtiendo, setRevirtiendo] = useState(false);
+
+  async function confirmarRevertir() {
+    if (!aRevertir) return;
+    setRevirtiendo(true);
     try {
-      const res = await fetch(`/api/transferencias/${id}/revertir`, { method: "POST" });
+      const res = await fetch(`/api/transferencias/${aRevertir.id}/revertir`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`#${id} revertida a Pendiente`);
+      toast.success(`#${aRevertir.id} revertida a Pendiente`);
+      setARevertir(null);
       cargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setRevirtiendo(false);
     }
   }
 
@@ -132,7 +135,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
         </div>
         <div className="flex items-center gap-2">
           {estado === "Pendiente" && seleccionados.length === 2 && (
-            <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={conciliarSeleccionadas}>
+            <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={abrirComparacion}>
               <TickCircle className="size-4" /> Conciliar #{seleccionados[0]} + #{seleccionados[1]}
             </Button>
           )}
@@ -214,7 +217,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                         <TickCircle className="size-3.5" /> Conciliar sola
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => revertir(m.id)}>
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setARevertir(m)}>
                         <RotateLeft className="size-3.5" /> Revertir
                       </Button>
                     )}
@@ -225,6 +228,27 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
           </Table>
         )}
       </div>
+
+      <ConciliarParDialog
+        t1={parAConciliar?.[0] || null}
+        t2={parAConciliar?.[1] || null}
+        onOpenChange={(o) => !o && setParAConciliar(null)}
+        onConciliado={() => { setParAConciliar(null); setSeleccionados([]); cargar(); }}
+      />
+
+      <ConfirmarDialog
+        open={aRevertir !== null}
+        onOpenChange={(o) => !o && setARevertir(null)}
+        titulo="Revertir conciliación"
+        detalles={aRevertir ? [
+          { label: "Remitente", value: aRevertir.remitente || "-" },
+          { label: "Monto", value: fmtMonto(aRevertir.monto, aRevertir.moneda) },
+        ] : []}
+        pregunta="¿Devolver esta transferencia a pendientes?"
+        textoConfirmar="Revertir"
+        onConfirmar={confirmarRevertir}
+        confirmando={revirtiendo}
+      />
     </div>
   );
 }
