@@ -94,7 +94,10 @@ export function FinalizarReparacionDialog({
   // Reproduce toggleOpcionesFinalizarReparacion(): al elegir un resultado se
   // marca por defecto la casilla de pieza correspondiente (el original la
   // pre-marca automáticamente, no arranca desmarcada) y se limpian los
-  // campos de la rama contraria.
+  // campos de la rama contraria. El retraso de notificación (delayHoras/
+  // delayMinutos) ya no se limpia al cambiar de rama — a diferencia del
+  // original, ahora también aplica a "No tiene Reparación" (petición
+  // explícita del usuario, 2026-08-25), así que es común a ambas.
   function elegirResultado(v: ResultadoReparacion) {
     setDatos((prev) => ({
       ...prev,
@@ -103,8 +106,6 @@ export function FinalizarReparacionDialog({
       piezaOk: v === "reparado" ? true : prev.piezaOk,
       piezaNoResuelve: v === "no_reparado" ? true : prev.piezaNoResuelve,
       codigoDevolucion: v === "no_reparado" ? prev.codigoDevolucion : "",
-      delayHoras: v === "reparado" ? prev.delayHoras : 0,
-      delayMinutos: v === "reparado" ? prev.delayMinutos : 0,
       pesoValor: v === "reparado" ? prev.pesoValor : "",
     }));
   }
@@ -132,7 +133,7 @@ export function FinalizarReparacionDialog({
       piezaOk: datos.piezaOk,
       piezaNoResuelve: datos.piezaNoResuelve,
       codigoDevolucion: datos.codigoDevolucion,
-      minutosNotificacion: esReparado ? datos.delayHoras * 60 + Math.min(datos.delayMinutos, 59) : 0,
+      minutosNotificacion: datos.delayHoras * 60 + Math.min(datos.delayMinutos, 59),
       pesoArchivo: esReparado && esCintas && datos.pesoValor ? `${datos.pesoValor} ${datos.pesoUnidad}` : "",
     };
 
@@ -218,7 +219,7 @@ export function FinalizarReparacionDialog({
             </div>
           )}
 
-          {esReparado && (
+          {(esReparado || esNoReparado) && (
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5">
                 <Notification className="size-4 text-primary" /> ¿Cuándo notificar al cliente?
@@ -250,7 +251,10 @@ export function FinalizarReparacionDialog({
                   {resumenDelay(datos.delayHoras, datos.delayMinutos)}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">Deja en 0 h 0 min para enviar en cuanto guardes. Se enviará un correo al cliente indicando que su equipo está listo para recoger.</p>
+              <p className="text-xs text-muted-foreground">
+                Deja en 0 h 0 min para enviar en cuanto guardes. Se enviará un correo al cliente
+                {esReparado ? " indicando que su equipo está listo para recoger." : " indicando que su equipo no tiene reparación."}
+              </p>
             </div>
           )}
 
