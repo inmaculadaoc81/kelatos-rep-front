@@ -174,18 +174,6 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
     setSeleccionados((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
-  async function conciliarIndividual(id: number) {
-    try {
-      const res = await fetch(`/api/transferencias/${id}/conciliar`, { method: "POST" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`#${id} conciliada`);
-      cargar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    }
-  }
-
   const [parAConciliar, setParAConciliar] = useState<[Movimiento, Movimiento] | null>(null);
 
   // Puerto fiel de actualizarSelectionBar(): no hay límite de cuántas filas se
@@ -438,7 +426,6 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                 <TableHead>Banco</TableHead>
                 <TableHead>Confianza</TableHead>
                 <TableHead>Foto</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -471,11 +458,6 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                     ) : (
                       "-"
                     )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="outline" className="gap-1" onClick={() => conciliarIndividual(m.id)}>
-                      <TickCircle className="size-3.5" /> Conciliar sola
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
