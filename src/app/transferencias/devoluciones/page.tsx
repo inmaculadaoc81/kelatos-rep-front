@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Wallet, AddCircle, TickCircle, RotateLeft, Refresh2 } from "@/lib/icons";
+import { Wallet, AddCircle, TickCircle, RotateLeft, Refresh2, Clock, Money, ArrowRotateLeft } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatCard } from "../stat-card";
 import { NuevaDevolucionDialog } from "./nueva-devolucion-dialog";
 import { CompletarDevolucionDialog } from "./completar-devolucion-dialog";
 
@@ -80,15 +81,19 @@ export default function DevolucionesPage() {
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard icon={Clock} value={resumen.pendientes} label="Pendientes" colorClase="bg-amber-500/10 text-amber-600" />
+        <StatCard icon={TickCircle} value={resumen.completadas} label="Completadas" colorClase="bg-emerald-500/10 text-emerald-600" />
+        <StatCard icon={Money} value={`${resumen.importePendiente.toFixed(2)} €`} label="Importe pendiente" colorClase="bg-destructive/10 text-destructive" />
+        <StatCard icon={ArrowRotateLeft} value={`${resumen.importeDevuelto.toFixed(2)} €`} label="Importe devuelto" colorClase="bg-primary/10 text-primary" />
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Wallet className="size-5" />
           </span>
-          <div>
-            <h1 className="text-lg font-semibold">Devoluciones</h1>
-            <p className="text-sm text-muted-foreground">Reembolsos a clientes — pendientes: {resumen.pendientes} ({resumen.importePendiente.toFixed(2)} €) · completadas: {resumen.completadas} ({resumen.importeDevuelto.toFixed(2)} €)</p>
-          </div>
+          <h1 className="text-lg font-semibold">Devoluciones</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={cargar} disabled={cargando}>

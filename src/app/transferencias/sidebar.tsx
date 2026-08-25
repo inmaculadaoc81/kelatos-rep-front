@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import type { Session } from "next-auth";
 import {
   Sidebar,
   SidebarContent,
@@ -17,12 +18,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ArrowLeft2, Clock, TickCircle, Wallet } from "@/lib/icons";
+import { NavUser } from "../(app)/nav-user";
 
 // Puerto del sidebar de "Transferencias-2" (index.html): 3 vistas —
 // Pendientes / Conciliadas / Devoluciones — cada una con un contador,
 // ahora con los componentes Sidebar de shadcn ya usados en el resto de
 // kelatos-rep en vez del sidebar Bootstrap original.
-export function TransferenciasSidebar() {
+export function TransferenciasSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
   const [pendientes, setPendientes] = useState(0);
   const [conciliadas, setConciliadas] = useState(0);
@@ -112,6 +114,7 @@ export function TransferenciasSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <NavUser session={session} />
     </Sidebar>
   );
 }

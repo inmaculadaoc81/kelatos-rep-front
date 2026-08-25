@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { TickCircle, RotateLeft, ExportSquare, Refresh2 } from "@/lib/icons";
+import { TickCircle, RotateLeft, ExportSquare, Refresh2, Clock, Money, Category2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatCard } from "./stat-card";
 
 export interface Movimiento {
   id: number;
@@ -39,15 +40,19 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
+  const [contador, setContador] = useState({ pendientes: 0, conciliadas: 0, montoPendiente: 0 });
 
   async function cargar() {
     setCargando(true);
     setError(null);
     try {
-      const res = await fetch(`/api/transferencias?estado=${estado}`);
-      const data = await res.json();
+      const [resItems, resContador] = await Promise.all([fetch(`/api/transferencias?estado=${estado}`), fetch("/api/transferencias/contador")]);
+      const data = await resItems.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       setItems(data.items as Movimiento[]);
+
+      const dataContador = await resContador.json();
+      if (dataContador.ok) setContador({ pendientes: dataContador.pendientes, conciliadas: dataContador.conciliadas, montoPendiente: dataContador.montoPendiente });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -107,8 +112,19 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
     }
   }
 
+  const total = contador.pendientes + contador.conciliadas;
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard icon={Clock} value={contador.pendientes} label="Pendientes" colorClase="bg-primary/10 text-primary" />
+        <StatCard icon={TickCircle} value={contador.conciliadas} label="Conciliadas" colorClase="bg-emerald-500/10 text-emerald-600" />
+        {estado === "Pendiente" && (
+          <StatCard icon={Money} value={`${contador.montoPendiente.toFixed(2)} €`} label="Monto pendiente" colorClase="bg-primary/10 text-primary" />
+        )}
+        <StatCard icon={Category2} value={total} label="Total registros" colorClase="bg-muted text-muted-foreground" />
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">{titulo}</h1>
