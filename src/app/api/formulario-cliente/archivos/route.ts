@@ -23,6 +23,12 @@ interface FilaArchivoSql {
   firma_url: string | null;
 }
 
+interface RespuestaArchivosSql {
+  ok: boolean;
+  items: FilaArchivoSql[];
+  carpetaDriveUrl: string | null;
+}
+
 /**
  * Extrae el ID de archivo de Drive tanto del formato nuevo (ID a secas)
  * como del legado (URL completa "https://drive.google.com/uc?export=
@@ -43,7 +49,7 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q") || "";
 
   try {
-    const data = await kelatosApiGet<{ ok: boolean; items: FilaArchivoSql[] }>("/v1/lecturas/formulario/archivos", { q });
+    const data = await kelatosApiGet<RespuestaArchivosSql>("/v1/lecturas/formulario/archivos", { q });
     const items: ArchivoFormulario[] = data.items.map((row) => ({
       resguardo: row.resguardo,
       fechaRecepcion: row.fecha_recepcion,
@@ -53,7 +59,7 @@ export async function GET(req: Request) {
       fotos: (row.foto_url || "").split(";").filter(Boolean).map(extraerIdDrive),
       firmaNombre: row.firma_url ? extraerIdDrive(row.firma_url) : "",
     }));
-    return NextResponse.json({ ok: true, items });
+    return NextResponse.json({ ok: true, items, carpetaDriveUrl: data.carpetaDriveUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });

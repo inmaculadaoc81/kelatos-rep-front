@@ -41,6 +41,7 @@ export default function FormularioWebPage() {
   const [copiado, setCopiado] = useState(false);
   const [busquedaArchivos, setBusquedaArchivos] = useState("");
   const [archivos, setArchivos] = useState<ArchivoFormulario[] | null>(null);
+  const [carpetaDriveUrl, setCarpetaDriveUrl] = useState<string | null>(null);
   const [cargandoArchivos, setCargandoArchivos] = useState(false);
   const [errorArchivos, setErrorArchivos] = useState<string | null>(null);
   const [imagenAmpliada, setImagenAmpliada] = useState<{ src: string; alt: string } | null>(null);
@@ -90,6 +91,7 @@ export default function FormularioWebPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       setArchivos(data.items as ArchivoFormulario[]);
+      setCarpetaDriveUrl(data.carpetaDriveUrl || null);
     } catch (e) {
       setErrorArchivos(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -274,9 +276,21 @@ export default function FormularioWebPage() {
           crecer mucho y no debe empujar hacia abajo el resto de bloques. */}
       <div className="space-y-4">
       <div className="rounded-xl border bg-card p-4 shadow-sm">
-        <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-          <Gallery className="size-4 text-primary" /> Fotos y firmas recibidas
-        </h2>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+            <Gallery className="size-4 text-primary" /> Fotos y firmas recibidas
+          </h2>
+          {carpetaDriveUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => window.open(carpetaDriveUrl, "_blank", "noopener,noreferrer")}
+            >
+              <ExportSquare className="size-3.5" /> Abrir carpeta en Drive
+            </Button>
+          )}
+        </div>
         <form
           className="mb-3 flex gap-2"
           onSubmit={(e) => {
