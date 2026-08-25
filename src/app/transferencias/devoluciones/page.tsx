@@ -6,6 +6,7 @@ import { Wallet, AddCircle, TickCircle, RotateLeft, Refresh2, Clock, Money, Arro
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -54,6 +55,8 @@ export default function DevolucionesPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroMotivo, setFiltroMotivo] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
 
   async function cargar() {
     setCargando(true);
@@ -114,13 +117,19 @@ export default function DevolucionesPage() {
         (d.banco || "").toLowerCase().includes(filtro);
       const estadoOk = !filtroEstado || d.estado === filtroEstado;
       const motivoOk = !filtroMotivo || d.motivo === filtroMotivo;
-      return textoOk && estadoOk && motivoOk;
+      let fechaOk = true;
+      if (fechaDesde || fechaHasta) {
+        const fn = d.fecha_registro.slice(0, 10);
+        if (fechaDesde && fn < fechaDesde) fechaOk = false;
+        if (fechaHasta && fn > fechaHasta) fechaOk = false;
+      }
+      return textoOk && estadoOk && motivoOk && fechaOk;
     });
-  }, [items, busqueda, filtroEstado, filtroMotivo]);
+  }, [items, busqueda, filtroEstado, filtroMotivo, fechaDesde, fechaHasta]);
 
-  const hayFiltrosActivos = !!(busqueda || filtroEstado || filtroMotivo);
+  const hayFiltrosActivos = !!(busqueda || filtroEstado || filtroMotivo || fechaDesde || fechaHasta);
   function limpiarFiltrosDev() {
-    setBusqueda(""); setFiltroEstado(""); setFiltroMotivo("");
+    setBusqueda(""); setFiltroEstado(""); setFiltroMotivo(""); setFechaDesde(""); setFechaHasta("");
   }
 
   return (
@@ -174,6 +183,14 @@ export default function DevolucionesPage() {
               {MOTIVOS_DEVOLUCION.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs whitespace-nowrap text-muted-foreground">Desde</Label>
+            <Input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="w-auto" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs whitespace-nowrap text-muted-foreground">Hasta</Label>
+            <Input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="w-auto" />
+          </div>
           {hayFiltrosActivos && (
             <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltrosDev}>
               <CloseCircle className="size-3.5" /> Limpiar
