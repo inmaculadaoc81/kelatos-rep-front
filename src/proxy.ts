@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import { esSuperadmin } from "@/lib/superadmin";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -16,6 +17,11 @@ export default auth((req) => {
   }
   // Configuración (lista de usuarios) es solo para el Administrador.
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+  // Dashboard de Transferencias — vista aparte, solo para superadmins
+  // (mismo conjunto que ya puede borrar registros en /admin/registros).
+  if (req.nextUrl.pathname.startsWith("/transferencias") && !esSuperadmin(req.auth?.user?.email)) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 });

@@ -3,7 +3,8 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import type { Session } from "next-auth";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal } from "@/lib/icons";
+import { esSuperadmin } from "@/lib/superadmin";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -38,6 +39,7 @@ export function NavUser({ session }: { session: Session | null }) {
   const nombre = session?.user?.name || session?.user?.email || "Usuario";
   const email = session?.user?.email || "";
   const esAdmin = session?.user?.role === "admin";
+  const puedeVerTransferencias = esSuperadmin(email);
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -93,6 +95,11 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem disabled>
                   <Setting2 /> Configuración
                   <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
+                </DropdownMenuItem>
+              )}
+              {puedeVerTransferencias && (
+                <DropdownMenuItem render={<Link href="/transferencias" />}>
+                  <ArrowSwapHorizontal /> Dashboard Transferencias Kelatos
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
