@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { TickCircle, RotateLeft, ExportSquare, Refresh2, Clock, Money, Category2, SearchNormal1, CloseCircle } from "@/lib/icons";
+import { TickCircle, RotateLeft, ExportSquare, Refresh2, Clock, Money, Category2, SearchNormal1, CloseCircle, Link2, MinusCirlce, Building, Personalcard, DocumentText } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -34,11 +34,94 @@ export interface Movimiento {
   estado: string;
   fecha_conciliacion: string | null;
   conciliado_por: string | null;
+  par_conciliado: number | null;
 }
 
 function fmtMonto(m: string | null, moneda: string | null) {
   if (!m) return "-";
   return `${Number(m).toFixed(2)} ${moneda || "EUR"}`;
+}
+
+/** Separador de grupo en la tabla de Conciliadas (colSpan=10, mismas 10 columnas de FilaConciliada). */
+function FragmentoGrupo({
+  etiqueta,
+  icono: Icono,
+  claseEtiqueta,
+  children,
+}: {
+  etiqueta: string;
+  icono: typeof Link2;
+  claseEtiqueta: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <TableRow className="hover:bg-transparent">
+        <TableCell colSpan={10} className="bg-muted/30 py-1.5">
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${claseEtiqueta}`}>
+            <Icono className="size-3.5" /> {etiqueta}
+          </span>
+        </TableCell>
+      </TableRow>
+      {children}
+    </>
+  );
+}
+
+/**
+ * Puerto fiel de renderFilaConciliada() del original: origen con color según
+ * Cliente/Empresa, monto con signo (- Cliente / + Empresa), columna "Par"
+ * mostrando la fecha de conciliación (no la del otro lado del par — así se
+ * llama en el original pese al nombre, verificado contra index.html), y la
+ * columna "Conciliado" con el comprobante mientras que el botón de revertir
+ * queda bajo "Foto" — mismo desajuste visual que tiene el original.
+ */
+function FilaConciliada({ m, enPar, onRevertir }: { m: Movimiento; enPar: boolean; onRevertir: (m: Movimiento) => void }) {
+  const esCliente = m.origen === "Cliente";
+  const monto = m.monto ? Number(m.monto).toFixed(2) : "0.00";
+  return (
+    <TableRow>
+      <TableCell className={enPar ? "border-l-2 border-l-emerald-500" : ""}>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+            esCliente ? "bg-violet-500/10 text-violet-700 dark:text-violet-400" : "bg-sky-500/10 text-sky-700 dark:text-sky-400"
+          }`}
+        >
+          {esCliente ? <Personalcard className="size-3" /> : <Building className="size-3" />} {m.origen || "-"}
+        </span>
+      </TableCell>
+      <TableCell className="text-xs">{m.fecha_valor || "-"}</TableCell>
+      <TableCell className={`font-medium ${esCliente ? "text-destructive" : "text-emerald-600"}`}>
+        {esCliente ? "-" : "+"}
+        {monto} €
+      </TableCell>
+      <TableCell className="max-w-40 truncate text-sm" title={m.remitente || ""}>{m.remitente || "-"}</TableCell>
+      <TableCell className="max-w-48 truncate text-sm" title={m.concepto || ""}>{m.concepto || "-"}</TableCell>
+      <TableCell className="text-sm">{m.codigo_referencia_concepto || "-"}</TableCell>
+      <TableCell className="text-sm">{m.banco || "-"}</TableCell>
+      <TableCell className="text-xs">{m.fecha_conciliacion ? new Date(m.fecha_conciliacion).toLocaleDateString("es-ES") : "-"}</TableCell>
+      <TableCell>
+        {m.link_foto ? (
+          <a
+            href={`https://drive.google.com/file/d/${m.link_foto}/view`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-primary hover:text-primary/80"
+            title="Ver comprobante"
+          >
+            <DocumentText className="size-4" />
+          </a>
+        ) : (
+          "-"
+        )}
+      </TableCell>
+      <TableCell>
+        <Button size="icon-sm" variant="ghost" onClick={() => onRevertir(m)} title="Devolver a pendientes">
+          <RotateLeft className="size-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 /** Tabla de movimientos, compartida entre /transferencias (Pendientes) y /transferencias/conciliadas. */
@@ -178,6 +261,26 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
 
   const total = contador.pendientes + contador.conciliadas;
 
+  // Puerto fiel de renderTabla()/renderFilaConciliada() del original para
+  // Conciliadas: agrupa por par_conciliado con un separador "Par conciliado"
+  // (y "Sin par" para las que quedaron sin pareja), en vez de la lista plana
+  // que usa Pendientes.
+  const gruposConciliados = useMemo(() => {
+    if (estado !== "Conciliada") return { pares: [] as Movimiento[][], sinPar: [] as Movimiento[] };
+    const pares = new Map<string, Movimiento[]>();
+    const sinPar: Movimiento[] = [];
+    for (const m of itemsFiltrados) {
+      if (m.par_conciliado) {
+        const key = [m.id, m.par_conciliado].sort((a, b) => a - b).join("_");
+        if (!pares.has(key)) pares.set(key, []);
+        pares.get(key)!.push(m);
+      } else {
+        sinPar.push(m);
+      }
+    }
+    return { pares: [...pares.values()], sinPar };
+  }, [estado, itemsFiltrados]);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -272,11 +375,11 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
               ? (estado === "Pendiente" ? "No hay transferencias pendientes." : "No hay transferencias conciliadas.")
               : "Ningún registro coincide con los filtros."}
           </p>
-        ) : (
+        ) : estado === "Pendiente" ? (
           <Table>
             <TableHeader>
               <TableRow>
-                {estado === "Pendiente" && <TableHead className="w-8" />}
+                <TableHead className="w-8" />
                 <TableHead>ID</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Origen</TableHead>
@@ -293,11 +396,9 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
             <TableBody>
               {itemsFiltrados.map((m) => (
                 <TableRow key={m.id}>
-                  {estado === "Pendiente" && (
-                    <TableCell>
-                      <Checkbox checked={seleccionados.includes(m.id)} onCheckedChange={() => toggleSeleccion(m.id)} />
-                    </TableCell>
-                  )}
+                  <TableCell>
+                    <Checkbox checked={seleccionados.includes(m.id)} onCheckedChange={() => toggleSeleccion(m.id)} />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">#{m.id}</TableCell>
                   <TableCell className="text-xs">{new Date(m.fecha_registro).toLocaleDateString("es-ES")}</TableCell>
                   <TableCell>
@@ -324,18 +425,45 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {estado === "Pendiente" ? (
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => conciliarIndividual(m.id)}>
-                        <TickCircle className="size-3.5" /> Conciliar sola
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setARevertir(m)}>
-                        <RotateLeft className="size-3.5" /> Revertir
-                      </Button>
-                    )}
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => conciliarIndividual(m.id)}>
+                      <TickCircle className="size-3.5" /> Conciliar sola
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
+            </TableBody>
+          </Table>
+        ) : (
+          // Puerto fiel de renderFilaConciliada() del original: agrupada por
+          // par (separador "🔗 Par conciliado" + borde verde), sin columnas
+          // ID/Beneficiario/Confianza/checkbox (esas no existían en la vista
+          // de Conciliadas del original).
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Origen</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Remitente</TableHead>
+                <TableHead>Concepto</TableHead>
+                <TableHead>Código</TableHead>
+                <TableHead>Banco</TableHead>
+                <TableHead>Par</TableHead>
+                <TableHead>Conciliado</TableHead>
+                <TableHead>Foto</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {gruposConciliados.pares.map((grupo, i) => (
+                <FragmentoGrupo key={`par-${i}`} etiqueta="Par conciliado" icono={Link2} claseEtiqueta="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                  {grupo.map((m) => <FilaConciliada key={m.id} m={m} enPar onRevertir={setARevertir} />)}
+                </FragmentoGrupo>
+              ))}
+              {gruposConciliados.sinPar.length > 0 && (
+                <FragmentoGrupo etiqueta="Sin par" icono={MinusCirlce} claseEtiqueta="bg-muted text-muted-foreground">
+                  {gruposConciliados.sinPar.map((m) => <FilaConciliada key={m.id} m={m} enPar={false} onRevertir={setARevertir} />)}
+                </FragmentoGrupo>
+              )}
             </TableBody>
           </Table>
         )}
