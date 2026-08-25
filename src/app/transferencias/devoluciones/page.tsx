@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Wallet, AddCircle, TickCircle, RotateLeft, Refresh2, Clock, Money, ArrowRotateLeft } from "@/lib/icons";
+import { Wallet, AddCircle, TickCircle, RotateLeft, Refresh2, Clock, Money, ArrowRotateLeft, SearchNormal1, CloseCircle, Edit2, Eye } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "../stat-card";
 import { ConfirmarDialog } from "../confirmar-dialog";
 import { NuevaDevolucionDialog } from "./nueva-devolucion-dialog";
 import { CompletarDevolucionDialog } from "./completar-devolucion-dialog";
+import { DetalleDevolucionDialog } from "./detalle-devolucion-dialog";
 
 export interface Devolucion {
   id: number;
@@ -28,7 +31,14 @@ export interface Devolucion {
   estado: string;
   enviado_por: string | null;
   pais: string | null;
+  fecha_cierre: string | null;
+  observaciones_cierre: string | null;
+  link_comprobante_pago: string | null;
+  cerrado_por: string | null;
+  comentarios: string | null;
 }
+
+const MOTIVOS_DEVOLUCION = ["Dev Fianza", "Dev Garantía", "Depósito Errado", "Exceso de Transferencia", "Otro"];
 
 /** Módulo de Devoluciones (reembolsos a clientes) — puerto del módulo de "Transferencias-2". */
 export default function DevolucionesPage() {
@@ -38,6 +48,12 @@ export default function DevolucionesPage() {
   const [resumen, setResumen] = useState({ pendientes: 0, completadas: 0, importePendiente: 0, importeDevuelto: 0 });
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [completando, setCompletando] = useState<Devolucion | null>(null);
+  const [editando, setEditando] = useState<Devolucion | null>(null);
+  const [detalleAbierto, setDetalleAbierto] = useState<Devolucion | null>(null);
+
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroMotivo, setFiltroMotivo] = useState("");
 
   async function cargar() {
     setCargando(true);
@@ -88,6 +104,25 @@ export default function DevolucionesPage() {
     }
   }
 
+  const itemsFiltrados = useMemo(() => {
+    const filtro = busqueda.toLowerCase().trim();
+    return items.filter((d) => {
+      const textoOk =
+        !filtro ||
+        (d.nombre_cliente || "").toLowerCase().includes(filtro) ||
+        (d.motivo || "").toLowerCase().includes(filtro) ||
+        (d.banco || "").toLowerCase().includes(filtro);
+      const estadoOk = !filtroEstado || d.estado === filtroEstado;
+      const motivoOk = !filtroMotivo || d.motivo === filtroMotivo;
+      return textoOk && estadoOk && motivoOk;
+    });
+  }, [items, busqueda, filtroEstado, filtroMotivo]);
+
+  const hayFiltrosActivos = !!(busqueda || filtroEstado || filtroMotivo);
+  function limpiarFiltrosDev() {
+    setBusqueda(""); setFiltroEstado(""); setFiltroMotivo("");
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -118,14 +153,46 @@ export default function DevolucionesPage() {
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">Error: {error}</div>
       )}
 
+      {items.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
+          <div className="relative min-w-48 flex-1">
+            <SearchNormal1 className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar cliente, motivo, banco..." className="pl-8" />
+          </div>
+          <Select value={filtroEstado || "todos"} onValueChange={(v) => v && setFiltroEstado(v === "todos" ? "" : v)}>
+            <SelectTrigger className="w-auto min-w-32"><SelectValue placeholder="Estado" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Estado: Todos</SelectItem>
+              <SelectItem value="Pendiente">Pendiente</SelectItem>
+              <SelectItem value="Completada">Completada</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filtroMotivo || "todos"} onValueChange={(v) => v && setFiltroMotivo(v === "todos" ? "" : v)}>
+            <SelectTrigger className="w-auto min-w-36"><SelectValue placeholder="Motivo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Motivo: Todos</SelectItem>
+              {MOTIVOS_DEVOLUCION.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {hayFiltrosActivos && (
+            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltrosDev}>
+              <CloseCircle className="size-3.5" /> Limpiar
+            </Button>
+          )}
+          <span className="ml-auto text-xs text-muted-foreground">{itemsFiltrados.length} de {items.length}</span>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border bg-card">
         {cargando ? (
           <div className="space-y-2 p-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : items.length === 0 ? (
-          <p className="p-8 text-center text-sm text-muted-foreground">No hay devoluciones registradas.</p>
+        ) : itemsFiltrados.length === 0 ? (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            {items.length === 0 ? "No hay devoluciones registradas." : "Ninguna devolución coincide con los filtros."}
+          </p>
         ) : (
           <Table>
             <TableHeader>
@@ -141,7 +208,7 @@ export default function DevolucionesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((d) => (
+              {itemsFiltrados.map((d) => (
                 <TableRow key={d.id}>
                   <TableCell className="font-mono text-xs">#{d.id}</TableCell>
                   <TableCell className="text-xs">{new Date(d.fecha_registro).toLocaleDateString("es-ES")}</TableCell>
@@ -153,15 +220,27 @@ export default function DevolucionesPage() {
                     <Badge variant={d.estado === "Completada" ? "default" : "secondary"}>{d.estado}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {d.estado !== "Completada" ? (
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setCompletando(d)}>
-                        <TickCircle className="size-3.5" /> Completar
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setARevertir(d)}>
-                        <RotateLeft className="size-3.5" /> Revertir
-                      </Button>
-                    )}
+                    <div className="flex justify-end gap-1.5">
+                      {d.estado !== "Completada" ? (
+                        <>
+                          <Button size="sm" variant="ghost" className="gap-1" onClick={() => setEditando(d)} title="Editar">
+                            <Edit2 className="size-3.5" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="gap-1" onClick={() => setCompletando(d)}>
+                            <TickCircle className="size-3.5" /> Completar
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="ghost" className="gap-1" onClick={() => setDetalleAbierto(d)} title="Ver detalle">
+                            <Eye className="size-3.5" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="gap-1" onClick={() => setARevertir(d)}>
+                            <RotateLeft className="size-3.5" /> Revertir
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -171,7 +250,14 @@ export default function DevolucionesPage() {
       </div>
 
       <NuevaDevolucionDialog open={nuevaAbierta} onOpenChange={setNuevaAbierta} onCreada={cargar} />
+      <NuevaDevolucionDialog
+        open={editando !== null}
+        onOpenChange={(o) => !o && setEditando(null)}
+        onCreada={cargar}
+        devolucionExistente={editando}
+      />
       <CompletarDevolucionDialog devolucion={completando} onOpenChange={(o) => !o && setCompletando(null)} onCompletada={cargar} />
+      <DetalleDevolucionDialog devolucion={detalleAbierto} onOpenChange={(o) => !o && setDetalleAbierto(null)} />
       <ConfirmarDialog
         open={aRevertir !== null}
         onOpenChange={(o) => !o && setARevertir(null)}

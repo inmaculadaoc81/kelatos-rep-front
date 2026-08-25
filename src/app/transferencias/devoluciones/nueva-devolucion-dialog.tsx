@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft2, Personalcard, Tag, Bank, Message, DocumentUpload, TickCircle } from "@/lib/icons";
+import type { Devolucion } from "./page";
 
 // Puerto fiel del modal "Nueva devolución" de Transferencias-2 (index.html):
 // mismas secciones, mismo motivo de radio de 5 opciones fijas + "Otro" con
@@ -59,11 +60,15 @@ export function NuevaDevolucionDialog({
   open,
   onOpenChange,
   onCreada,
+  devolucionExistente,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreada: () => void;
+  /** Si se pasa, el modal edita ese registro (PATCH) en vez de crear uno nuevo — mismo modal que "Nueva devolución", igual que el original. */
+  devolucionExistente?: Devolucion | null;
 }) {
+  const editando = !!devolucionExistente;
   const [nombreCliente, setNombreCliente] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -85,6 +90,37 @@ export function NuevaDevolucionDialog({
     setComentarios(""); setFotos([]);
   }
 
+  useEffect(() => {
+    if (!devolucionExistente) return;
+    const d = devolucionExistente;
+    setNombreCliente(d.nombre_cliente || "");
+    setEmail(d.email || "");
+    setTelefono(d.telefono || "");
+    setImporte(d.importe ? String(d.importe) : "");
+    setNumeroCuenta(d.numero_cuenta || "");
+    setBanco(d.banco || "");
+    setNombreBeneficiario(d.nombre_beneficiario || "");
+    setComentarios("");
+
+    const pais = d.pais || "España";
+    if (PAISES.some((p) => p.value === pais)) {
+      setPaisSelect(pais);
+      setPaisOtro("");
+    } else {
+      setPaisSelect("Otro");
+      setPaisOtro(pais);
+    }
+
+    const motivoGuardado = d.motivo || "";
+    if ((MOTIVOS as readonly string[]).includes(motivoGuardado)) {
+      setMotivo(motivoGuardado);
+      setMotivoDetalle(motivoGuardado === "Otro" ? d.motivo_detalle || "" : "");
+    } else if (motivoGuardado) {
+      setMotivo("Otro");
+      setMotivoDetalle(motivoGuardado);
+    }
+  }, [devolucionExistente]);
+
   async function onSeleccionarFotos(e: React.ChangeEvent<HTMLInputElement>) {
     const archivos = Array.from(e.target.files || []);
     e.target.value = "";
@@ -101,22 +137,28 @@ export function NuevaDevolucionDialog({
     if (!nombreBeneficiario.trim()) return toast.error("El nombre del beneficiario es obligatorio");
 
     const pais = paisSelect === "Otro" ? paisOtro.trim() || "Otro" : paisSelect;
+    const payload = {
+      nombreCliente, email, telefono, importe: Number(importe), motivo,
+      motivoDetalle: motivo === "Otro" ? motivoDetalle.trim() : "",
+      numeroCuenta, banco, nombreBeneficiario, pais, comentarios,
+      fotos: fotos.map(({ base64, mime }) => ({ base64, mime })),
+    };
 
     setEnviando(true);
     try {
-      const res = await fetch("/api/devoluciones", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombreCliente, email, telefono, importe: Number(importe), motivo,
-          motivoDetalle: motivo === "Otro" ? motivoDetalle.trim() : "",
-          numeroCuenta, banco, nombreBeneficiario, pais, comentarios,
-          fotos: fotos.map(({ base64, mime }) => ({ base64, mime })),
-        }),
-      });
-      const data = await res.json();
+      const data = editando
+        ? await fetch(`/api/devoluciones/${devolucionExistente!.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }).then((r) => r.json())
+        : await fetch("/api/devoluciones", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }).then((r) => r.json());
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`Devolución #${data.id} registrada`);
+      toast.success(editando ? `Devolución #${devolucionExistente!.id} actualizada` : `Devolución #${data.id} registrada`);
       reiniciar();
       onOpenChange(false);
       onCreada();
@@ -135,7 +177,7 @@ export function NuevaDevolucionDialog({
             <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600">
               <ArrowLeft2 className="size-4" />
             </span>
-            Nueva devolución
+            {editando ? `Editar devolución #${devolucionExistente!.id}` : "Nueva devolución"}
           </DialogTitle>
         </DialogHeader>
 
@@ -222,6 +264,11 @@ export function NuevaDevolucionDialog({
             <span className="text-[11px] text-muted-foreground/70">JPG, PNG, PDF — múltiples archivos permitidos</span>
             <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={onSeleccionarFotos} />
           </label>
+          {editando && devolucionExistente?.link_foto && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {devolucionExistente.link_foto.split(" | ").length} comprobante(s) ya guardado(s) — lo seleccionado aquí se añade, no los reemplaza.
+            </p>
+          )}
           {fotos.length > 0 && (
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
               {fotos.map((f, i) => <li key={i}>{f.nombre}</li>)}
@@ -232,7 +279,7 @@ export function NuevaDevolucionDialog({
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={enviando}>Cancelar</Button>
           <Button className="gap-1.5 bg-violet-600 text-white hover:bg-violet-700" onClick={guardar} disabled={enviando}>
-            <TickCircle className="size-4" /> {enviando ? "Guardando..." : "Guardar devolución"}
+            <TickCircle className="size-4" /> {enviando ? "Guardando..." : editando ? "Guardar cambios" : "Guardar devolución"}
           </Button>
         </DialogFooter>
       </DialogContent>
