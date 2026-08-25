@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ArrowLeft2, Clock, TickCircle, Wallet } from "@/lib/icons";
+import { Clock, TickCircle, Wallet } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 // Puerto del sidebar de "Transferencias-2" (index.html): 3 vistas —
@@ -104,12 +104,6 @@ export function TransferenciasSidebar({ session }: { session: Session | null }) 
                   </SidebarMenuItem>
                 );
               })}
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Volver a Reparaciones" render={<Link href="/" />}>
-                  <ArrowLeft2 />
-                  <span>Volver a Reparaciones</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
