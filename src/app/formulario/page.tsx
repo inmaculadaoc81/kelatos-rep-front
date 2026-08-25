@@ -755,7 +755,27 @@ export default function FormularioClientePage() {
 const FOTO_LADO_MAXIMO = 1600;
 const FOTO_CALIDAD_JPEG = 0.72;
 
-function comprimirImagen(file: File): Promise<{ base64: string; mime: string }> {
+const HEIC_RE = /\.(heic|heif)$/i;
+
+function esHeic(file: File): boolean {
+  return file.type === "image/heic" || file.type === "image/heif" || HEIC_RE.test(file.name);
+}
+
+// Chrome/Android (y la mayoría de navegadores fuera de Safari) no saben
+// decodificar HEIC en <img>/canvas — el formato por defecto de la cámara en
+// muchos iPhone y algunos Android. Sin esto, comprimirImagen() fallaba
+// siempre con ese tipo de foto y el cliente se quedaba bloqueado en el
+// paso 6 sin poder enviar el formulario (caso real, 2026-08-25). La
+// conversión es carga diferida (import dinámico): los formatos normales
+// (jpg/png/webp, la inmensa mayoría) nunca descargan esta librería.
+async function resolverBlobImagen(file: File): Promise<Blob> {
+  if (!esHeic(file)) return file;
+  const heic2any = (await import("heic2any")).default;
+  const resultado = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 });
+  return Array.isArray(resultado) ? resultado[0] : resultado;
+}
+
+function comprimirImagen(file: Blob): Promise<{ base64: string; mime: string }> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new window.Image();
@@ -815,7 +835,8 @@ function PasoFotoFirma({
       const nuevas: FotoFormulario[] = [];
       for (const file of archivos) {
         try {
-          const { base64, mime } = await comprimirImagen(file);
+          const blob = await resolverBlobImagen(file);
+          const { base64, mime } = await comprimirImagen(blob);
           nuevas.push({ base64, mime, name: file.name, size: file.size });
         } catch {
           setErrorProceso(`No se pudo procesar "${file.name}" — prueba con otra foto.`);
