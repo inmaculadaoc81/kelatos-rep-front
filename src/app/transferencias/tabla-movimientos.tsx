@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { TickCircle, RotateLeft, ExportSquare, Refresh2, Clock, Money, Category2 } from "@/lib/icons";
+import { TickCircle, RotateLeft, ExportSquare, Refresh2, Clock, Money, Category2, SearchNormal1, CloseCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -44,7 +47,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
-  const [contador, setContador] = useState({ pendientes: 0, conciliadas: 0, montoPendiente: 0 });
+  const [contador, setContador] = useState({ pendientes: 0, conciliadas: 0 });
 
   async function cargar() {
     setCargando(true);
@@ -56,7 +59,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
       setItems(data.items as Movimiento[]);
 
       const dataContador = await resContador.json();
-      if (dataContador.ok) setContador({ pendientes: dataContador.pendientes, conciliadas: dataContador.conciliadas, montoPendiente: dataContador.montoPendiente });
+      if (dataContador.ok) setContador({ pendientes: dataContador.pendientes, conciliadas: dataContador.conciliadas });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -115,6 +118,64 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
     }
   }
 
+  // ── Filtros — puerto fiel de filtrarTabla()/normalizarFecha() del original ──
+  const [busqueda, setBusqueda] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [filtroOrigen, setFiltroOrigen] = useState("");
+  const [filtroBanco, setFiltroBanco] = useState("");
+  const [filtroRemitente, setFiltroRemitente] = useState("");
+
+  function normalizarFecha(str: string | null): string {
+    if (!str) return "";
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10);
+    const p = str.split("/");
+    if (p.length === 3 && p[2].length === 4) return `${p[2]}-${p[1].padStart(2, "0")}-${p[0].padStart(2, "0")}`;
+    return str;
+  }
+
+  const bancos = useMemo(() => [...new Set(items.map((i) => i.banco).filter((b): b is string => !!b))].sort(), [items]);
+  const remitentes = useMemo(() => [...new Set(items.map((i) => i.remitente).filter((r): r is string => !!r))].sort(), [items]);
+
+  const itemsFiltrados = useMemo(() => {
+    const filtro = busqueda.toLowerCase().trim();
+    return items.filter((m) => {
+      const textoOk =
+        !filtro ||
+        (m.remitente || "").toLowerCase().includes(filtro) ||
+        (m.codigo_referencia_concepto || "").toLowerCase().includes(filtro) ||
+        (m.concepto || "").toLowerCase().includes(filtro) ||
+        (m.monto || "").toLowerCase().includes(filtro);
+
+      let fechaOk = true;
+      if (m.fecha_valor && (fechaDesde || fechaHasta)) {
+        const fn = normalizarFecha(m.fecha_valor);
+        if (fechaDesde && fn < fechaDesde) fechaOk = false;
+        if (fechaHasta && fn > fechaHasta) fechaOk = false;
+      }
+
+      const origenOk = !filtroOrigen || m.origen === filtroOrigen;
+      const bancoOk = !filtroBanco || m.banco === filtroBanco;
+      const remitenteOk = !filtroRemitente || m.remitente === filtroRemitente;
+
+      return textoOk && fechaOk && origenOk && bancoOk && remitenteOk;
+    });
+  }, [items, busqueda, fechaDesde, fechaHasta, filtroOrigen, filtroBanco, filtroRemitente]);
+
+  const hayFiltrosActivos = !!(busqueda || fechaDesde || fechaHasta || filtroOrigen || filtroBanco || filtroRemitente);
+
+  function limpiarFiltros() {
+    setBusqueda(""); setFechaDesde(""); setFechaHasta(""); setFiltroOrigen(""); setFiltroBanco(""); setFiltroRemitente("");
+  }
+
+  // El original recalcula el monto de la card sobre las filas FILTRADAS
+  // visibles en la tabla, no sobre el total global — solo tiene sentido en
+  // Pendientes (en Conciliadas esa card se oculta, igual que allí).
+  const montoFiltrado = useMemo(
+    () => itemsFiltrados.reduce((acc, m) => acc + (Number(m.monto) || 0), 0),
+    [itemsFiltrados]
+  );
+
   const total = contador.pendientes + contador.conciliadas;
 
   return (
@@ -123,7 +184,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
         <StatCard icon={Clock} value={contador.pendientes} label="Pendientes" colorClase="bg-primary/10 text-primary" />
         <StatCard icon={TickCircle} value={contador.conciliadas} label="Conciliadas" colorClase="bg-emerald-500/10 text-emerald-600" />
         {estado === "Pendiente" && (
-          <StatCard icon={Money} value={`${contador.montoPendiente.toFixed(2)} €`} label="Monto pendiente" colorClase="bg-primary/10 text-primary" />
+          <StatCard icon={Money} value={`${montoFiltrado.toFixed(2)} €`} label="Monto pendiente" colorClase="bg-primary/10 text-primary" />
         )}
         <StatCard icon={Category2} value={total} label="Total registros" colorClase="bg-muted text-muted-foreground" />
       </div>
@@ -149,6 +210,55 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">Error: {error}</div>
       )}
 
+      {items.length > 0 && (
+        <div className="space-y-2 rounded-xl border bg-card p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-48 flex-1">
+              <SearchNormal1 className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar remitente, concepto, código, monto..." className="pl-8" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs whitespace-nowrap text-muted-foreground">Desde</Label>
+              <Input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="w-auto" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs whitespace-nowrap text-muted-foreground">Hasta</Label>
+              <Input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="w-auto" />
+            </div>
+            {hayFiltrosActivos && (
+              <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltros}>
+                <CloseCircle className="size-3.5" /> Limpiar
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={filtroOrigen || "todos"} onValueChange={(v) => v && setFiltroOrigen(v === "todos" ? "" : v)}>
+              <SelectTrigger className="w-auto min-w-32"><SelectValue placeholder="Origen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Origen: Todos</SelectItem>
+                <SelectItem value="Cliente">Cliente</SelectItem>
+                <SelectItem value="Empresa">Empresa</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filtroBanco || "todos"} onValueChange={(v) => v && setFiltroBanco(v === "todos" ? "" : v)}>
+              <SelectTrigger className="w-auto min-w-32"><SelectValue placeholder="Banco" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Banco: Todos</SelectItem>
+                {bancos.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filtroRemitente || "todos"} onValueChange={(v) => v && setFiltroRemitente(v === "todos" ? "" : v)}>
+              <SelectTrigger className="w-auto min-w-32"><SelectValue placeholder="Remitente" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Remitente: Todos</SelectItem>
+                {remitentes.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <span className="ml-auto text-xs text-muted-foreground">{itemsFiltrados.length} de {items.length}</span>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border bg-card">
         {cargando ? (
           <div className="space-y-2 p-4">
@@ -156,9 +266,11 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : items.length === 0 ? (
+        ) : itemsFiltrados.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">
-            {estado === "Pendiente" ? "No hay transferencias pendientes." : "No hay transferencias conciliadas."}
+            {items.length === 0
+              ? (estado === "Pendiente" ? "No hay transferencias pendientes." : "No hay transferencias conciliadas.")
+              : "Ningún registro coincide con los filtros."}
           </p>
         ) : (
           <Table>
@@ -179,7 +291,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((m) => (
+              {itemsFiltrados.map((m) => (
                 <TableRow key={m.id}>
                   {estado === "Pendiente" && (
                     <TableCell>
