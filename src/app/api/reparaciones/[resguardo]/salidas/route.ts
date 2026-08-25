@@ -21,15 +21,13 @@ export async function POST(
   const { resguardo } = await params;
   const body = (await req.json()) as
     | DatosMarcarEntregado
-    | { accion: "punto_limpio"; motivo: string; motivoDetalle?: string; destino?: string }
+    | { accion: "punto_limpio"; motivo?: string; motivoDetalle?: string; destino?: string }
     | { accion: "cliente_se_lleva"; observaciones: string };
 
   // Segunda acción del mismo endpoint del backend (enviarAPuntoLimpio del
-  // original) — ahora captura el motivo/destino para la vista "Punto Limpio".
+  // original). El envío desde Reparaciones no manda motivo (se define
+  // después, desde la vista "Punto Limpio", que sí lo envía al editar).
   if ("accion" in body && body.accion === "punto_limpio") {
-    if (!body.motivo) {
-      return NextResponse.json({ ok: false, error: "El motivo es obligatorio" }, { status: 400 });
-    }
     try {
       const resultado = await kelatosApiPost<RespuestaSalidas>(
         `/v1/reparaciones/${encodeURIComponent(resguardo)}/salidas`,
@@ -38,7 +36,7 @@ export async function POST(
           usuario,
           accion: "punto_limpio",
           datos: {
-            motivo: body.motivo,
+            motivo: body.motivo || "",
             motivoDetalle: (body.motivoDetalle || "").trim(),
             destino: body.destino || "",
           },
