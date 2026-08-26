@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
@@ -97,12 +98,14 @@ export function TicketManualDialog({
 }) {
   const esReal = !!resguardo;
   const [lineas, setLineas] = useState<LineaTicket[]>([lineaVacia()]);
+  const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [generando, setGenerando] = useState(false);
   const [resultado, setResultado] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
 
   useEffect(() => {
     if (open) {
       setLineas(esReal && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]);
+      setEstado(detalle?.estadoTicket === "Pendiente" ? "Pendiente" : "Cobrada");
       // Si esta reparación ya tiene un ticket generado, se muestra tal
       // cual en vez de un formulario en blanco — sin esto, reabrir el
       // diálogo (p.ej. tras generar uno) ofrecía crear otro sin ningún
@@ -145,7 +148,7 @@ export function TicketManualDialog({
         const res = await fetch(`/api/reparaciones/${resguardo}/ticket-venta`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lineas: lineasValidas }),
+          body: JSON.stringify({ lineas: lineasValidas, estado }),
         });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -158,7 +161,7 @@ export function TicketManualDialog({
       const res = await fetch("/api/tickets/generar-prueba", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineas: lineasValidas }),
+        body: JSON.stringify({ lineas: lineasValidas, estado }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -203,9 +206,19 @@ export function TicketManualDialog({
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <CampoLectura label="Serie / Código" valor={resultado?.numeroTicket || (esReal ? "Se asignará al generar" : "Se asignará al generar")} />
               <CampoLectura label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Estado</Label>
+                <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={!!resultado}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Cobrada">Cobrada</SelectItem>
+                    <SelectItem value="Pendiente">Pendiente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="rounded-lg border bg-card shadow-sm">

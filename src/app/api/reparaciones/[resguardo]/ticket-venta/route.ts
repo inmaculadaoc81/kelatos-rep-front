@@ -19,10 +19,11 @@ interface RespuestaTicketVenta {
 /**
  * "Ticket Rápido" (accion-requerida.tsx, junto a "Facturación") —
  * numeración real desde kelatos_app.ticket_venta_seq, PDF guardado en
- * Drive, y marca el equipo como entregado en local (mismo comportamiento
- * que emitir una factura real). A diferencia de /api/tickets/generar-prueba
- * (que devuelve el PDF binario directo), este endpoint persiste y devuelve
- * JSON con el enlace, igual que el resto de endpoints de facturación.
+ * Drive. NO marca entrega — igual que emitir una factura real, eso sigue
+ * siendo un paso aparte ("Entregado en Local"/"Marcar como enviado").
+ * A diferencia de /api/tickets/generar-prueba (que devuelve el PDF binario
+ * directo), este endpoint persiste y devuelve JSON con el enlace, igual
+ * que el resto de endpoints de facturación.
  */
 export async function POST(
   req: Request,
@@ -36,11 +37,12 @@ export async function POST(
   const datos = await req.json();
   const lineas = Array.isArray(datos?.lineas) ? (datos.lineas as LineaTicket[]) : [];
   if (!lineas.length) return NextResponse.json({ ok: false, error: "Debe incluir al menos una línea" }, { status: 400 });
+  const estado = datos?.estado === "Pendiente" ? "Pendiente" : "Cobrada";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketVenta>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/ticket-venta`,
-      { requestId: crypto.randomUUID(), usuario, lineas }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, reparacion: resultado.reparacion });
   } catch (error) {

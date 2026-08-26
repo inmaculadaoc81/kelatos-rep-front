@@ -285,6 +285,7 @@ interface FilaReparacionFacturadaSql {
   url_ticket: string | null;
   fecha_ticket: string | null;
   total_ticket: string | number | null;
+  estado_ticket: string | null;
 }
 
 export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaCliente[] {
@@ -479,10 +480,9 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
   // serie-correlativo que Serie 1/Serie 3, aunque una factura simplificada
   // no exige legalmente una serie). Se trata como el mismo proceso de
   // facturación desde que existe: sale en Facturas de Clientes/Reporte de
-  // Facturas igual que cualquier otro tipo. Se considera Cobrada siempre —
-  // es un recibo de una venta ya cerrada en el momento de generarlo, no
-  // hay forma de pago ni estado pendiente que registrar (a diferencia de
-  // una factura real, "Ticket Rápido" no lo pide).
+  // Facturas igual que cualquier otro tipo, con el mismo Estado
+  // Cobrada/Pendiente que una factura real (antes se asumía Cobrada
+  // siempre; desde que el diálogo permite elegirlo, se refleja tal cual).
   const numTicket = texto(row.numero_ticket);
   if (numTicket && numeroValido(numTicket)) {
     facturas.push({
@@ -494,7 +494,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_ticket,
       formaPago: "",
       banco: "",
-      estadoFactura: "Cobrada",
+      estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
     });
   }

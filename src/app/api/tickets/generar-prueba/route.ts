@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   const datos = await req.json();
   const lineas = Array.isArray(datos?.lineas) ? datos.lineas : [];
   if (!lineas.length) return NextResponse.json({ ok: false, error: "Debe incluir al menos una línea" }, { status: 400 });
+  const estado = datos?.estado === "Pendiente" ? "Pendiente" : "Cobrada";
 
   try {
     const res = await fetch(`${process.env.KELATOS_API_BASE_URL}/v1/tickets/generar-prueba`, {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
         Authorization: `Bearer ${process.env.KELATOS_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ lineas }),
+      body: JSON.stringify({ lineas, estado }),
       cache: "no-store",
     });
 
