@@ -158,12 +158,13 @@ const TIPO_BADGE_ESTILO: Partial<Record<TipoFactura, { bg: string; color: string
 function TipoBadge({ f }: { f: FacturaCliente }) {
   // Una factura "corregida" reproduce el badge de su tipo de origen en vez
   // de tener uno propio — así se ve en el original (tipoBadge()).
-  const tipoEfectivo: TipoFactura = f.tipo === "corregida" ? (f.tipoOriginal === "revision" ? "revision" : "reparacion") : f.tipo;
+  const tipoEfectivo: TipoFactura =
+    f.tipo === "corregida" ? (f.tipoOriginal === "revision" ? "revision" : f.tipoOriginal === "ticket" ? "ticket" : "reparacion") : f.tipo;
   const estilo = TIPO_BADGE_ESTILO[tipoEfectivo] ?? { bg: "#e9ecef", color: "#6c757d" };
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
       {f.tipo === "recogida" && <Box className="size-3" />}
-      {f.tipo === "ticket" && <Ticket className="size-3" />}
+      {(f.tipo === "ticket" || (f.tipo === "corregida" && f.tipoOriginal === "ticket")) && <Ticket className="size-3" />}
       {ETIQUETA_TIPO_FACTURA[tipoEfectivo]}
     </span>
   );
@@ -172,7 +173,6 @@ function TipoBadge({ f }: { f: FacturaCliente }) {
 function SerieBadge({ numero }: { numero: string }) {
   const s = serieFactura(numero);
   if (s === "1") return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#0d6efd" }}>Serie 1</span>;
-  if (s === "2") return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#20c997" }}>Serie 2</span>;
   if (s === "3") return <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: "#ffc107", color: "#332701" }}>Serie 3</span>;
   return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#6c757d" }}>—</span>;
 }

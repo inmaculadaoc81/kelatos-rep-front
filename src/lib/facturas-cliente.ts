@@ -71,7 +71,7 @@ export interface FacturaCliente {
       viene (reparación o revisión), para resolver a qué documento
       (numero_factura_rectificativa vs. ..._revision, etc.) corresponde
       realmente esta fila. */
-  tipoOriginal?: "reparacion" | "revision";
+  tipoOriginal?: "reparacion" | "revision" | "ticket";
   esAlquiler?: boolean;
   esManual?: boolean;
   /** true = este número fiscal fue real y se generó, pero quedó sustituido
@@ -286,6 +286,18 @@ interface FilaReparacionFacturadaSql {
   fecha_ticket: string | null;
   total_ticket: string | number | null;
   estado_ticket: string | null;
+
+  numero_ticket_rectificativa: string | null;
+  url_ticket_rectificativa: string | null;
+  total_ticket_rectificativa: string | number | null;
+  fecha_ticket_rectificativa: string | null;
+  motivo_ticket_rectificativa: string | null;
+
+  numero_ticket_corregida: string | null;
+  url_ticket_corregida: string | null;
+  total_ticket_corregida: string | number | null;
+  fecha_ticket_corregida: string | null;
+  estado_ticket_corregida: string | null;
 }
 
 export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaCliente[] {
@@ -475,14 +487,14 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
     });
   }
 
-  // Pasada 7: "Ticket Rápido" — Serie 2 (numeración propia desde 1000,
-  // prefijo "2-" añadido el 2026-08-26 para encajar en el mismo formato
-  // serie-correlativo que Serie 1/Serie 3, aunque una factura simplificada
-  // no exige legalmente una serie). Se trata como el mismo proceso de
-  // facturación desde que existe: sale en Facturas de Clientes/Reporte de
-  // Facturas igual que cualquier otro tipo, con el mismo Estado
-  // Cobrada/Pendiente que una factura real (antes se asumía Cobrada
-  // siempre; desde que el diálogo permite elegirlo, se refleja tal cual).
+  // Pasada 7: "Ticket Rápido" — Serie 1 (numeración propia desde 1000,
+  // prefijo "1-" — decisión explícita del usuario, 2026-08-27: se agrupa
+  // bajo la misma serie que reparación/revisión a efectos de filtros e
+  // informes, aunque usa su propia secuencia — ticket_venta_seq, nunca
+  // factura_serie1_seq). Se trata como el mismo proceso de facturación
+  // desde que existe: sale en Facturas de Clientes/Reporte de Facturas
+  // igual que cualquier otro tipo, con el mismo Estado Cobrada/Pendiente
+  // que una factura real.
   const numTicket = texto(row.numero_ticket);
   if (numTicket && numeroValido(numTicket)) {
     facturas.push({
@@ -496,6 +508,44 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       banco: "",
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
+    });
+  }
+
+  // Pasada 8: rectificativa de ticket (Serie 3, secuencia propia
+  // ticket_rectificativa_seq) — mismo tipo "rectificativa" que ya usan
+  // reparación/revisión, distinguido por tipoOriginal: "ticket".
+  const numTicketRect = texto(row.numero_ticket_rectificativa);
+  if (numTicketRect && numeroValido(numTicketRect)) {
+    facturas.push({
+      ...base,
+      numero: numTicketRect,
+      url: urlValida(texto(row.url_ticket_rectificativa)),
+      total: num(row.total_ticket_rectificativa),
+      fecha: row.fecha_ticket_rectificativa,
+      formaPago: "",
+      banco: "",
+      estadoFactura: "Devolución",
+      tipo: "rectificativa",
+      tipoOriginal: "ticket",
+    });
+  }
+
+  // Pasada 9: corregida de ticket (Serie 1 de nuevo, misma ticket_venta_seq
+  // que el original — un ticket corregida es, igual que una factura
+  // corregida, un documento nuevo e independiente).
+  const numTicketCorr = texto(row.numero_ticket_corregida);
+  if (numTicketCorr && numeroValido(numTicketCorr)) {
+    facturas.push({
+      ...base,
+      numero: numTicketCorr,
+      url: urlValida(texto(row.url_ticket_corregida)),
+      total: num(row.total_ticket_corregida),
+      fecha: row.fecha_ticket_corregida,
+      formaPago: "",
+      banco: "",
+      estadoFactura: row.estado_ticket_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
+      tipo: "corregida",
+      tipoOriginal: "ticket",
     });
   }
 

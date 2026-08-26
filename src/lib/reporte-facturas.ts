@@ -5,7 +5,7 @@ function round2(n: number): number {
 }
 
 export interface FacturaConDesglose extends FacturaCliente {
-  serie: "1" | "2" | "3";
+  serie: "1" | "3";
   baseImponible: number;
   iva: number;
   /** Total CON IVA — sustituye a `total` (que en FacturaCliente es la base
@@ -21,11 +21,11 @@ export interface FacturaConDesglose extends FacturaCliente {
  * IVA; el resto (incluida "recogida", que en la lista de Facturas de
  * Clientes sí lo lleva ya incluido) se trata aquí como base sin IVA — es
  * una inconsistencia real del original, no un error de esta réplica.
- * Serie 2 (añadida 2026-08-26) es "Ticket Rápido" — igual que el resto de
- * tipos sin IVA incluido, salvo alquiler/venta.
+ * "Ticket Rápido" (Serie 1/Serie 3, desde 2026-08-27) usa el mismo criterio
+ * sin IVA incluido que el resto, salvo alquiler/venta.
  */
 export function calcularDesglose(f: FacturaCliente): FacturaConDesglose {
-  const serie: "1" | "2" | "3" = /^3-/.test(f.numero) ? "3" : /^2-/.test(f.numero) ? "2" : "1";
+  const serie: "1" | "3" = /^3-/.test(f.numero) ? "3" : "1";
   const totalNum = Number(f.total) || 0;
   let baseImponible: number;
   let iva: number;

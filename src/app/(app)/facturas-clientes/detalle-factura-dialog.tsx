@@ -42,8 +42,11 @@ function resolverTipoBase(factura: FacturaCliente): TipoFacturaBase | null {
     case "revision": return "revision";
     case "mensajeria": return "mensajeria";
     case "anticipo": return "anticipo";
-    case "rectificativa": return factura.tipoOriginal === "revision" ? "rectificativa_revision" : "rectificativa";
-    case "corregida": return factura.tipoOriginal === "revision" ? "corregida_revision" : "corregida";
+    case "ticket": return "ticket";
+    case "rectificativa":
+      return factura.tipoOriginal === "revision" ? "rectificativa_revision" : factura.tipoOriginal === "ticket" ? "rectificativa_ticket" : "rectificativa";
+    case "corregida":
+      return factura.tipoOriginal === "revision" ? "corregida_revision" : factura.tipoOriginal === "ticket" ? "corregida_ticket" : "corregida";
     default: return null;
   }
 }

@@ -85,9 +85,19 @@ interface FilaReparacionSqlDetalle {
   url_ticket: string | null;
   fecha_ticket: string | null;
   estado_ticket: string | null;
+  total_ticket: string | number | null;
   numero_ticket_revision: string | null;
   url_ticket_revision: string | null;
   estado_ticket_revision: string | null;
+  numero_ticket_rectificativa: string | null;
+  url_ticket_rectificativa: string | null;
+  total_ticket_rectificativa: string | number | null;
+  fecha_ticket_rectificativa: string | null;
+  motivo_ticket_rectificativa: string | null;
+  numero_ticket_corregida: string | null;
+  url_ticket_corregida: string | null;
+  total_ticket_corregida: string | number | null;
+  fecha_ticket_corregida: string | null;
   resena: string | null;
   fecha_entrega: string | null;
   estado_entrega: string | null;
@@ -293,8 +303,12 @@ export interface ReparacionDetalle {
   numeroTicket: string;
   urlTicket: string;
   estadoTicket: string;
+  totalTicket: number;
   numeroTicketRevision: string;
   urlTicketRevision: string;
+  ticketRectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
+  motivoTicketRectificativa: string;
+  ticketCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   urlFactura: string;
   fechaFactura: string | null;
   resena: string;
@@ -471,8 +485,16 @@ export function mapearReparacionDetalle(
     numeroTicket: row.numero_ticket || "",
     urlTicket: row.url_ticket || "",
     estadoTicket: row.estado_ticket || "",
+    totalTicket: numero(row.total_ticket),
     numeroTicketRevision: row.numero_ticket_revision || "",
     urlTicketRevision: row.url_ticket_revision || "",
+    ticketRectificativa: row.numero_ticket_rectificativa
+      ? { numeroFactura: row.numero_ticket_rectificativa, urlFactura: row.url_ticket_rectificativa || "", totalFactura: numero(row.total_ticket_rectificativa), fechaFactura: fecha(row.fecha_ticket_rectificativa) }
+      : null,
+    motivoTicketRectificativa: row.motivo_ticket_rectificativa || "",
+    ticketCorregida: row.numero_ticket_corregida
+      ? { numeroFactura: row.numero_ticket_corregida, urlFactura: row.url_ticket_corregida || "", totalFactura: numero(row.total_ticket_corregida), fechaFactura: fecha(row.fecha_ticket_corregida) }
+      : null,
     resena: row.resena || "NO",
     fechaEntrega: fecha(row.fecha_entrega),
     estadoEntrega: row.estado_entrega || "PENDIENTE",

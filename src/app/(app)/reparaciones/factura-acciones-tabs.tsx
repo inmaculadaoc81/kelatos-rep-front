@@ -26,7 +26,8 @@ import { useConfirm } from "@/components/confirm-provider";
 
 export type TipoFacturaBase =
   | "normal" | "revision" | "mensajeria" | "anticipo"
-  | "rectificativa" | "rectificativa_revision" | "corregida" | "corregida_revision";
+  | "rectificativa" | "rectificativa_revision" | "corregida" | "corregida_revision"
+  | "ticket" | "rectificativa_ticket" | "corregida_ticket";
 
 // vfPago (#modalVistaFactura, usado por FaseCorregida): 4 opciones, sin
 // Redsys. mfaRectFormaPago/mfaRtvFormaPago (tabs Devolución/Rectificativo):
@@ -53,6 +54,9 @@ export const TIPO_BADGE: Record<TipoFacturaBase, { label: string; className: str
   rectificativa_revision: { label: "Rectificativa", className: "bg-destructive text-white" },
   corregida: null,
   corregida_revision: null,
+  ticket: { label: "Ticket", className: "bg-[#20c997] text-white" },
+  rectificativa_ticket: { label: "Rectificativa", className: "bg-destructive text-white" },
+  corregida_ticket: null,
 };
 
 // Igual que _mfaRenderResumen(): el total de cabecera siempre se muestra CON
@@ -112,6 +116,59 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       permiteDevolucion: true,
       clienteOriginal: clienteOriginalDe(detalle.clienteFacturaMensajeria, detalle),
       formaPagoOriginal: detalle.formaPago,
+    };
+  }
+  if (tipoBase === "ticket") {
+    return {
+      numeroFactura: detalle.numeroTicket,
+      urlFactura: detalle.urlTicket,
+      totalConIva: detalle.totalTicket * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: detalle.ticketRectificativa
+        ? { numeroFactura: detalle.ticketRectificativa.numeroFactura, urlFactura: detalle.ticketRectificativa.urlFactura }
+        : null,
+      corregida: detalle.ticketCorregida
+        ? { numeroFactura: detalle.ticketCorregida.numeroFactura, urlFactura: detalle.ticketCorregida.urlFactura }
+        : null,
+      tipoRect: "rectificativa_ticket", tipoCorr: "corregida_ticket", tipoCombinado: "",
+      permiteDevolucion: true,
+      clienteOriginal: clienteOriginalDe(null, detalle),
+      formaPagoOriginal: "",
+    };
+  }
+  // Rectificativa/corregida de ticket vistas directamente desde su propia
+  // fila en la lista — igual que rectificativa/corregida reales, un
+  // documento que YA es una de estas no encadena su propia devolución.
+  if (tipoBase === "rectificativa_ticket") {
+    return {
+      numeroFactura: detalle.ticketRectificativa?.numeroFactura || "",
+      urlFactura: detalle.ticketRectificativa?.urlFactura || "",
+      totalConIva: (detalle.ticketRectificativa?.totalFactura || 0) * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: null, corregida: null,
+      tipoRect: "", tipoCorr: "", tipoCombinado: "",
+      permiteDevolucion: false,
+      clienteOriginal: clienteOriginalDe(null, detalle),
+      formaPagoOriginal: "",
+    };
+  }
+  if (tipoBase === "corregida_ticket") {
+    return {
+      numeroFactura: detalle.ticketCorregida?.numeroFactura || "",
+      urlFactura: detalle.ticketCorregida?.urlFactura || "",
+      totalConIva: (detalle.ticketCorregida?.totalFactura || 0) * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: null, corregida: null,
+      tipoRect: "", tipoCorr: "", tipoCombinado: "",
+      permiteDevolucion: false,
+      clienteOriginal: clienteOriginalDe(null, detalle),
+      formaPagoOriginal: "",
     };
   }
   if (tipoBase === "anticipo") {
@@ -237,7 +294,11 @@ export function FacturaAccionesTabs({
   onActualizado: () => void;
 }) {
   const d = derivarDatosFactura(detalle, tipoBase);
-  const apiBase = `/api/reparaciones/${detalle.resguardo}/facturas`;
+  const esTicket = tipoBase === "ticket" || tipoBase === "rectificativa_ticket" || tipoBase === "corregida_ticket";
+  // Los tickets no tienen ruta de envío por correo (nunca la tuvieron, ni
+  // el ticket original) ni pasan por el saga de /facturas (endpoints
+  // propios, ver ticket-venta/rectificativa y ticket-venta/corregida).
+  const apiBase = esTicket ? `/api/reparaciones/${detalle.resguardo}/ticket-venta` : `/api/reparaciones/${detalle.resguardo}/facturas`;
 
   return (
     <Tabs defaultValue="pdf" className="w-full">
@@ -249,17 +310,40 @@ export function FacturaAccionesTabs({
 
       <TabsContent value="pdf" className="p-4">
         <TabPdfEnviar
-          enviarUrl={`${apiBase}/enviar`}
+          enviarUrl={esTicket ? null : `${apiBase}/enviar`}
           tipo={tipoBase}
           numeroFactura={d.numeroFactura}
           urlFactura={d.urlFactura}
           totalFactura={d.totalConIva}
           clienteEmailDefault={d.clienteEmailDefault}
-          motivoRectificativa={tipoBase === "rectificativa" || tipoBase === "rectificativa_revision" ? detalle.motivoRectificativa : ""}
+          motivoRectificativa={tipoBase === "rectificativa" || tipoBase === "rectificativa_revision" ? detalle.motivoRectificativa : tipoBase === "rectificativa_ticket" ? detalle.motivoTicketRectificativa : ""}
         />
       </TabsContent>
 
-      {d.permiteDevolucion && (
+      {d.permiteDevolucion && esTicket && (
+        <>
+          <TabsContent value="devolucion" className="p-4">
+            <TabDevolucionTicket
+              resguardo={detalle.resguardo}
+              numeroTicketOriginal={d.numeroFactura}
+              yaGenerada={d.rectificativa}
+              corregida={d.corregida}
+              onGenerada={onActualizado}
+            />
+          </TabsContent>
+          <TabsContent value="rectificativo" className="p-4">
+            <TabRectificativoTicket
+              resguardo={detalle.resguardo}
+              numeroTicketOriginal={d.numeroFactura}
+              rectificativa={d.rectificativa}
+              corregida={d.corregida}
+              onActualizado={onActualizado}
+            />
+          </TabsContent>
+        </>
+      )}
+
+      {d.permiteDevolucion && !esTicket && (
         <>
           <TabsContent value="devolucion" className="p-4">
             <TabDevolucionRectificativo
@@ -692,6 +776,324 @@ export function TabRectificativo({
       urlFacturaCorregida={corregida.urlFactura}
       clienteEmailDefault={clienteEmailDefault}
     />
+  );
+}
+
+// ── Ticket Rápido: Devolución / Rectificativo / Corregida ───────────────
+// Mismo ciclo conceptual que reparación/revisión/mensajería (petición del
+// usuario, 2026-08-27), pero NO reutiliza TabDevolucionRectificativo/
+// TabRectificativo/FaseCorregida: esos tres están fuertemente acoplados al
+// saga real de facturación (/api/reparaciones/:resguardo/facturas, forma
+// de pago, banco, envío por email, campos propios de alquiler...) que no
+// aplica a un ticket (sin datos de cliente, sin forma de pago, sin envío
+// por correo). Se implementa aparte, más simple, contra los endpoints
+// propios de ticket-venta/rectificativa y ticket-venta/corregida.
+
+interface DocTicket {
+  numeroFactura: string;
+  urlFactura: string;
+}
+
+function TabDevolucionTicket({
+  resguardo,
+  numeroTicketOriginal,
+  yaGenerada,
+  corregida,
+  onGenerada,
+}: {
+  resguardo: string;
+  numeroTicketOriginal: string;
+  yaGenerada: DocTicket | null;
+  corregida: DocTicket | null;
+  onGenerada: () => void;
+}) {
+  const [motivo, setMotivo] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [abrirCorregida, setAbrirCorregida] = useState(false);
+
+  if (yaGenerada) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+          <TickCircle className="size-4 shrink-0" />
+          Ya existe una rectificativa para este ticket: <strong>{yaGenerada.numeroFactura}</strong>
+        </div>
+        {yaGenerada.urlFactura && (
+          <Button variant="outline" className="gap-1.5" nativeButton={false} render={<Link href={yaGenerada.urlFactura} target="_blank" rel="noreferrer" />}>
+            <DocumentText className="size-4" /> Ver PDF de la rectificativa
+          </Button>
+        )}
+        <hr />
+        {corregida ? (
+          <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+            <TickCircle className="size-4 shrink-0" />
+            Ticket corregido ya emitido: <strong>{corregida.numeroFactura}</strong>
+          </div>
+        ) : (
+          <Button variant="outline" className="w-full gap-1.5" onClick={() => setAbrirCorregida(true)}>
+            <ArrowRight2 className="size-4" /> Generar ticket corregido
+          </Button>
+        )}
+        <FaseCorregidaTicket
+          open={abrirCorregida}
+          onOpenChange={setAbrirCorregida}
+          resguardo={resguardo}
+          numeroTicketOriginal={numeroTicketOriginal}
+          numeroTicketRectificativa={yaGenerada.numeroFactura}
+          onGenerada={onGenerada}
+        />
+      </div>
+    );
+  }
+
+  async function generar() {
+    if (!motivo.trim()) return toast.error("El motivo es obligatorio");
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/ticket-venta/rectificativa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: motivo.trim() }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`Rectificativa ${data.numeroTicket} generada`);
+      if (data.urlTicket) window.open(data.urlTicket, "_blank");
+      onGenerada();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+        <InfoCircle className="size-4 shrink-0 translate-y-0.5" />
+        <span>Se generará un <strong>ticket rectificativo (Serie 3)</strong> por el importe total en negativo, anulando el ticket original.</span>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="motivoTicket">Motivo *</Label>
+        <Textarea id="motivoTicket" rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo interno — no aparece en el PDF…" />
+        <p className="text-xs text-muted-foreground">Registro interno. No se incluye en el PDF.</p>
+      </div>
+      <Button className="w-full gap-1.5" variant="destructive" onClick={generar} disabled={enviando}>
+        <Refresh2 className="size-4" /> {enviando ? "Generando…" : "Generar Rectificativa (Serie 3)"}
+      </Button>
+    </div>
+  );
+}
+
+function TabRectificativoTicket({
+  resguardo,
+  numeroTicketOriginal,
+  rectificativa,
+  corregida,
+  onActualizado,
+}: {
+  resguardo: string;
+  numeroTicketOriginal: string;
+  rectificativa: DocTicket | null;
+  corregida: DocTicket | null;
+  onActualizado: () => void;
+}) {
+  const [abrirCorregida, setAbrirCorregida] = useState(false);
+
+  if (!rectificativa) {
+    return (
+      <TabDevolucionTicket
+        resguardo={resguardo}
+        numeroTicketOriginal={numeroTicketOriginal}
+        yaGenerada={null}
+        corregida={null}
+        onGenerada={onActualizado}
+      />
+    );
+  }
+
+  if (!corregida) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+          <TickCircle className="size-4 shrink-0" />
+          Rectificativa generada. Ahora emite el ticket corregido.
+        </div>
+        <Button className="w-full gap-1.5" onClick={() => setAbrirCorregida(true)}>
+          <ArrowRight2 className="size-4" /> Generar ticket corregido
+        </Button>
+        <FaseCorregidaTicket
+          open={abrirCorregida}
+          onOpenChange={setAbrirCorregida}
+          resguardo={resguardo}
+          numeroTicketOriginal={numeroTicketOriginal}
+          numeroTicketRectificativa={rectificativa.numeroFactura}
+          onGenerada={onActualizado}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+        <TickCircle className="size-4 shrink-0" />
+        Ciclo completo: rectificativa <strong>{rectificativa.numeroFactura}</strong> → corregida <strong>{corregida.numeroFactura}</strong>
+      </div>
+      {corregida.urlFactura && (
+        <Button variant="outline" className="w-full gap-1.5" nativeButton={false} render={<Link href={corregida.urlFactura} target="_blank" rel="noreferrer" />}>
+          <DocumentText className="size-4" /> Ver PDF del ticket corregido
+        </Button>
+      )}
+    </div>
+  );
+}
+
+interface LineaTicketCorr {
+  descripcion: string;
+  cantidad: number;
+  precio: number;
+}
+
+function FaseCorregidaTicket({
+  open,
+  onOpenChange,
+  resguardo,
+  numeroTicketOriginal,
+  numeroTicketRectificativa,
+  onGenerada,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  resguardo: string;
+  numeroTicketOriginal: string;
+  numeroTicketRectificativa: string;
+  onGenerada: () => void;
+}) {
+  const [lineas, setLineas] = useState<LineaTicketCorr[]>([{ descripcion: "", cantidad: 1, precio: 0 }]);
+  const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [enviando, setEnviando] = useState(false);
+
+  const baseImponible = lineas.reduce((s, l) => s + (Number(l.cantidad) || 0) * (Number(l.precio) || 0), 0);
+  const iva = baseImponible * IVA_PCT;
+  const total = baseImponible + iva;
+
+  function actualizarLinea(i: number, campo: keyof LineaTicketCorr, valor: string | number) {
+    setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, [campo]: valor } : l)));
+  }
+
+  function cerrar(o: boolean) {
+    if (!enviando) onOpenChange(o);
+  }
+
+  async function generar() {
+    const validas = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0);
+    if (validas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${resguardo}/ticket-venta/corregida`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineas: validas, estado }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`Ticket corregido ${data.numeroTicket} generado`);
+      if (data.urlTicket) window.open(data.urlTicket, "_blank");
+      onOpenChange(false);
+      onGenerada();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={cerrar}>
+      <DialogContent className="max-w-2xl gap-0 p-0 sm:max-w-2xl" showCloseButton={false}>
+        <CabeceraFactura titulo={`Ticket Corregido — Ref. ${resguardo}`} onClose={() => cerrar(false)} />
+        <div className="space-y-4 bg-muted/30 p-4">
+          <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+            <TickCircle className="size-4 shrink-0" />
+            Rectificativa: <strong>{numeroTicketRectificativa}</strong> — corrige a: <strong>{numeroTicketOriginal}</strong>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <CampoLecturaCorr label="Serie / Código" valor="Se asignará al generar" />
+            <CampoLecturaCorr label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Estado</Label>
+              <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cobrada">Cobrada</SelectItem>
+                  <SelectItem value="Pendiente">Pendiente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-card shadow-sm">
+            <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
+              <span>Conceptos</span>
+              <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((p) => (p.length < 8 ? [...p, { descripcion: "", cantidad: 1, precio: 0 }] : p))}>
+                <Add className="size-3" /> Añadir línea
+              </Button>
+            </div>
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1.5 text-left font-medium">Descripción</th>
+                  <th className="w-20 px-2 py-1.5 text-center font-medium">Cantidad</th>
+                  <th className="w-28 px-2 py-1.5 text-right font-medium">Precio unidad</th>
+                  <th className="w-28 px-2 py-1.5 text-right font-medium">Total</th>
+                  <th className="w-7 px-1 py-1.5"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineas.map((l, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="p-1"><Input className="h-8 text-sm" placeholder="Descripción" value={l.descripcion} onChange={(e) => actualizarLinea(i, "descripcion", e.target.value)} /></td>
+                    <td className="p-1"><Input type="number" min={0} step={1} className="h-8 text-center text-sm" value={l.cantidad} onChange={(e) => actualizarLinea(i, "cantidad", parseFloat(e.target.value) || 0)} /></td>
+                    <td className="p-1"><Input type="number" step={0.01} className="h-8 text-right text-sm" value={l.precio} onChange={(e) => actualizarLinea(i, "precio", parseFloat(e.target.value) || 0)} /></td>
+                    <td className="px-2 py-1 text-right font-medium">{euros((Number(l.cantidad) || 0) * (Number(l.precio) || 0))}</td>
+                    <td className="p-1">
+                      <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => setLineas((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p))} disabled={lineas.length === 1}>
+                        <Trash className="size-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="text-sm">
+                <tr className="border-t bg-muted/30">
+                  <td colSpan={3}></td>
+                  <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base imponible</td>
+                  <td className="px-2 py-1 text-right font-medium">{euros(baseImponible)}</td>
+                </tr>
+                <tr className="bg-muted/30">
+                  <td colSpan={3}></td>
+                  <td className="px-2 py-1 text-right text-xs text-muted-foreground">IVA (21%)</td>
+                  <td className="px-2 py-1 text-right font-medium">{euros(iva)}</td>
+                </tr>
+                <tr className="border-t bg-primary/5">
+                  <td colSpan={3}></td>
+                  <td className="px-2 py-1.5 text-right text-xs font-semibold">TOTAL</td>
+                  <td className="px-2 py-1.5 text-right text-base font-bold">{euros(total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <footer className="flex justify-end gap-2 border-t bg-card px-4 py-3">
+          <Button variant="secondary" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
+          <Button className="gap-1.5" onClick={generar} disabled={enviando}>
+            <ArrowRight2 className="size-4" /> {enviando ? "Generando…" : "Generar Ticket Corregido"}
+          </Button>
+        </footer>
+      </DialogContent>
+    </Dialog>
   );
 }
 

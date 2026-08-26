@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
     // su propio paso de lookup — igual que "Añadir codigoCliente a ventas"
     // en el original.
     const ventasFacturas = ventas.rows.flatMap(expandirVenta).map((f) => ({ ...f, codigoCliente: lookupCodigo(f.dniCif, f.telefono) }));
-    // "Ticket Rápido" (Serie 2, desde 2026-08-26) ya usa el mismo formato
-    // "serie-correlativo" que el resto (numeroValido/calcularDesglose/
-    // numeroDocumento), así que ya no hace falta excluirlo de este reporte.
+    // "Ticket Rápido" (Serie 1/Serie 3 desde 2026-08-27) usa el mismo
+    // formato "serie-correlativo" que el resto (numeroValido/
+    // calcularDesglose/numeroDocumento), así que no hace falta excluirlo.
     const todas = [...base, ...ventasFacturas];
 
     // f.fecha es timestamptz (ISO en UTC) para reparación/revisión/etc. —

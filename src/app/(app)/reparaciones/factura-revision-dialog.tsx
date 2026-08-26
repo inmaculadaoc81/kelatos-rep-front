@@ -26,7 +26,7 @@ const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
  * Reproduce abrirModalMarcarRevision()/confirmarMarcarRevision() del
  * original, ampliado el 2026-08-26 (petición del usuario): la revisión ya
  * no se resuelve solo con una factura real — también puede resolverse con
- * un ticket (Serie 2), que no lleva datos de cliente. Por eso, si todavía
+ * un ticket (Serie 1), que no lleva datos de cliente. Por eso, si todavía
  * no se ha generado ninguno de los dos, primero se pregunta cuál se
  * quiere, y solo entonces se muestra el formulario correspondiente — meter
  * los dos caminos en un único modal con campos de cliente no tenía sentido
