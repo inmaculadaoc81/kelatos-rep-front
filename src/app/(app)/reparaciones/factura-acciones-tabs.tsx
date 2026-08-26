@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   DocumentDownload, DocumentText, Send2, Refresh2, ArrowRight2, TickCircle, InfoCircle, Add, Trash,
@@ -898,6 +898,7 @@ export function TabDevolucionTicket({
   apiCorregidaUrl,
   contexto,
   numeroTicketOriginal,
+  lineasIniciales,
   yaGenerada,
   corregida,
   onGenerada,
@@ -906,6 +907,12 @@ export function TabDevolucionTicket({
   apiCorregidaUrl: string;
   contexto: string;
   numeroTicketOriginal: string;
+  /** Líneas del documento original, para precargar el formulario del
+      ticket corregido en vez de empezar en blanco — solo disponible
+      cuando el origen guarda sus líneas (Ticket Manual); reparación/venta
+      no las guardan en ningún sitio y caen al formulario vacío de
+      siempre. */
+  lineasIniciales?: LineaTicketCorr[];
   yaGenerada: DocTicket | null;
   corregida: DocTicket | null;
   onGenerada: () => void;
@@ -944,6 +951,7 @@ export function TabDevolucionTicket({
           contexto={contexto}
           numeroTicketOriginal={numeroTicketOriginal}
           numeroTicketRectificativa={yaGenerada.numeroFactura}
+          lineasIniciales={lineasIniciales}
           onGenerada={onGenerada}
         />
       </div>
@@ -994,6 +1002,7 @@ export function TabRectificativoTicket({
   apiCorregidaUrl,
   contexto,
   numeroTicketOriginal,
+  lineasIniciales,
   rectificativa,
   corregida,
   onActualizado,
@@ -1002,6 +1011,7 @@ export function TabRectificativoTicket({
   apiCorregidaUrl: string;
   contexto: string;
   numeroTicketOriginal: string;
+  lineasIniciales?: LineaTicketCorr[];
   rectificativa: DocTicket | null;
   corregida: DocTicket | null;
   onActualizado: () => void;
@@ -1015,6 +1025,7 @@ export function TabRectificativoTicket({
         apiCorregidaUrl={apiCorregidaUrl}
         contexto={contexto}
         numeroTicketOriginal={numeroTicketOriginal}
+        lineasIniciales={lineasIniciales}
         yaGenerada={null}
         corregida={null}
         onGenerada={onActualizado}
@@ -1039,6 +1050,7 @@ export function TabRectificativoTicket({
           contexto={contexto}
           numeroTicketOriginal={numeroTicketOriginal}
           numeroTicketRectificativa={rectificativa.numeroFactura}
+          lineasIniciales={lineasIniciales}
           onGenerada={onActualizado}
         />
       </div>
@@ -1060,10 +1072,14 @@ export function TabRectificativoTicket({
   );
 }
 
-interface LineaTicketCorr {
+export interface LineaTicketCorr {
   descripcion: string;
   cantidad: number;
   precio: number;
+}
+
+function lineaVaciaCorr(): LineaTicketCorr {
+  return { descripcion: "", cantidad: 1, precio: 0 };
 }
 
 function FaseCorregidaTicket({
@@ -1073,6 +1089,7 @@ function FaseCorregidaTicket({
   contexto,
   numeroTicketOriginal,
   numeroTicketRectificativa,
+  lineasIniciales,
   onGenerada,
 }: {
   open: boolean;
@@ -1081,11 +1098,23 @@ function FaseCorregidaTicket({
   contexto: string;
   numeroTicketOriginal: string;
   numeroTicketRectificativa: string;
+  lineasIniciales?: LineaTicketCorr[];
   onGenerada: () => void;
 }) {
-  const [lineas, setLineas] = useState<LineaTicketCorr[]>([{ descripcion: "", cantidad: 1, precio: 0 }]);
+  const [lineas, setLineas] = useState<LineaTicketCorr[]>([lineaVaciaCorr()]);
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [enviando, setEnviando] = useState(false);
+
+  // Precarga las líneas del documento original (si están disponibles,
+  // p.ej. Ticket Manual — reparación/venta nunca las guardan) en vez de
+  // empezar en blanco — bug real reportado por el usuario, 2026-08-27:
+  // "no salen los datos cargados de el anterior en el corregido".
+  useEffect(() => {
+    if (open) {
+      setLineas(lineasIniciales && lineasIniciales.length > 0 ? lineasIniciales.map((l) => ({ ...l })) : [lineaVaciaCorr()]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const baseImponible = lineas.reduce((s, l) => s + (Number(l.cantidad) || 0) * (Number(l.precio) || 0), 0);
   const iva = baseImponible * IVA_PCT;

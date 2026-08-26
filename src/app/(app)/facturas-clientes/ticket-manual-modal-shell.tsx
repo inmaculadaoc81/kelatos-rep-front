@@ -138,6 +138,7 @@ export function TicketManualModalShell({
                     apiCorregidaUrl={apiCorregidaUrl}
                     contexto={`Ticket Manual ${detalle.numeroTicket}`}
                     numeroTicketOriginal={d.numeroTicket}
+                    lineasIniciales={detalle.lineasTicket}
                     yaGenerada={d.rectificativa}
                     corregida={d.corregida}
                     onGenerada={onActualizado}
@@ -149,6 +150,7 @@ export function TicketManualModalShell({
                     apiCorregidaUrl={apiCorregidaUrl}
                     contexto={`Ticket Manual ${detalle.numeroTicket}`}
                     numeroTicketOriginal={d.numeroTicket}
+                    lineasIniciales={detalle.lineasTicket}
                     rectificativa={d.rectificativa}
                     corregida={d.corregida}
                     onActualizado={onActualizado}
