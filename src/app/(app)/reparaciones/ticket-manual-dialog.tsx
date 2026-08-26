@@ -32,27 +32,10 @@ function lineaVacia(): LineaTicket {
   return { descripcion: "", cantidad: 1, precio: 0, descuento: 0 };
 }
 
-function factorDescuento(pct: number): number {
-  return 1 - Math.min(100, Math.max(0, Number(pct) || 0)) / 100;
-}
-
-function totalLinea(l: LineaTicket, descuentoGlobalPct = 0): number {
+function totalLinea(l: LineaTicket): number {
   const subtotal = (Number(l.cantidad) || 0) * (Number(l.precio) || 0);
-  return subtotal * factorDescuento(l.descuento) * factorDescuento(descuentoGlobalPct);
-}
-
-/**
- * La plantilla solo tiene UNA columna de descuento por línea (no una
- * segunda para el "global") — para que un descuento global se refleje de
- * verdad en el PDF sin tocar la plantilla otra vez, se combinan los dos
- * porcentajes en uno solo equivalente (1 - (1-línea)×(1-global)) antes de
- * enviar la línea al backend. El descuento que se ve impreso es ese
- * combinado, no el de línea "puro".
- */
-function lineaConDescuentoCombinado(l: LineaTicket, descuentoGlobalPct: number): LineaTicket {
-  if (!descuentoGlobalPct) return l;
-  const combinado = (1 - factorDescuento(l.descuento) * factorDescuento(descuentoGlobalPct)) * 100;
-  return { ...l, descuento: Math.round(combinado * 100) / 100 };
+  const descuento = Math.min(100, Math.max(0, Number(l.descuento) || 0));
+  return subtotal * (1 - descuento / 100);
 }
 
 /**
@@ -176,7 +159,14 @@ export function TicketManualDialog({
     setBuscarPiezaAbierto(false);
   }
 
-  const baseImponible = lineas.reduce((s, l) => s + totalLinea(l, descuentoGlobal), 0);
+  // Igual que factura-reparacion-dialog.tsx: "Descuento global" es una fila
+  // aparte del pie (no se mezcla con el % de cada línea) — subtotal = suma
+  // de líneas ya con su propio descuento aplicado; el global se resta
+  // encima de eso para dar la Base Imponible sobre la que se calcula el IVA.
+  const subtotal = lineas.reduce((s, l) => s + totalLinea(l), 0);
+  const descuentoGlobalPct = Math.min(100, Math.max(0, descuentoGlobal || 0));
+  const descuentoGlobalImporte = (subtotal * descuentoGlobalPct) / 100;
+  const baseImponible = subtotal - descuentoGlobalImporte;
   const iva = baseImponible * IVA_PCT;
   const total = baseImponible + iva;
 
@@ -186,10 +176,17 @@ export function TicketManualDialog({
   }
 
   async function generar() {
-    const lineasValidas = lineas
-      .filter((l) => l.descripcion.trim() && l.cantidad > 0)
-      .map((l) => lineaConDescuentoCombinado(l, descuentoGlobal));
+    const lineasValidas = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0);
     if (lineasValidas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
+    // El descuento global se envía como una línea propia negativa — igual
+    // que factura-reparacion-dialog.tsx — para que quede reflejado y
+    // visible en el PDF (la plantilla no tiene una segunda columna de
+    // descuento aparte de la de línea).
+    const importeGlobalRedondeado = Math.round(descuentoGlobalImporte * 100) / 100;
+    if (descuentoGlobalPct > 0 && importeGlobalRedondeado > 0) {
+      if (lineasValidas.length >= 8) return toast.error("No cabe la línea del descuento global — quita alguna línea (máximo 8)");
+      lineasValidas.push({ descripcion: `Descuento global (${descuentoGlobalPct}%)`, cantidad: 1, precio: -importeGlobalRedondeado, descuento: 0 });
+    }
 
     setGenerando(true);
     try {
@@ -255,7 +252,7 @@ export function TicketManualDialog({
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-3">
               <CampoLectura label="Serie / Código" valor={resultado?.numeroTicket || (esReal ? "Se asignará al generar" : "Se asignará al generar")} />
               <CampoLectura label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
               <div className="space-y-1">
@@ -267,20 +264,6 @@ export function TicketManualDialog({
                     <SelectItem value="Pendiente">Pendiente</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground" title="Se aplica sobre el total de todas las líneas, además del descuento propio de cada una.">
-                  Descuento global
-                </Label>
-                <div className="relative">
-                  <DecimalInput
-                    className="pr-6"
-                    value={descuentoGlobal}
-                    onChange={(n) => setDescuentoGlobal(Math.min(100, Math.max(0, n)))}
-                    disabled={!!resultado}
-                  />
-                  <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                </div>
               </div>
             </div>
 
@@ -336,7 +319,7 @@ export function TicketManualDialog({
                             <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                           </div>
                         </td>
-                        <td className="px-2 py-1 text-right font-medium">{euros(totalLinea(l, descuentoGlobal))}</td>
+                        <td className="px-2 py-1 text-right font-medium">{euros(totalLinea(l))}</td>
                         <td className="p-1">
                           {!resultado && (
                             <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => quitarLinea(i)} disabled={lineas.length === 1}>
@@ -351,7 +334,22 @@ export function TicketManualDialog({
                     <tr className="border-t bg-muted/30">
                       <td colSpan={5}></td>
                       <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base imponible</td>
-                      <td className="px-2 py-1 text-right font-medium">{euros(baseImponible)}</td>
+                      <td className="px-2 py-1 text-right font-medium">{euros(subtotal)}</td>
+                    </tr>
+                    <tr className="bg-muted/30">
+                      <td colSpan={5}></td>
+                      <td className="px-2 py-1 text-right text-xs text-muted-foreground">Descuento global</td>
+                      <td className="p-1">
+                        <div className="relative">
+                          <DecimalInput
+                            className="h-8 pr-5 text-right text-sm"
+                            value={descuentoGlobal}
+                            onChange={(n) => setDescuentoGlobal(Math.min(100, Math.max(0, n)))}
+                            disabled={!!resultado}
+                          />
+                          <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                        </div>
+                      </td>
                     </tr>
                     <tr className="bg-muted/30">
                       <td colSpan={5}></td>
