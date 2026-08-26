@@ -71,9 +71,20 @@ export interface FacturaCliente {
       viene (reparación o revisión), para resolver a qué documento
       (numero_factura_rectificativa vs. ..._revision, etc.) corresponde
       realmente esta fila. */
-  tipoOriginal?: "reparacion" | "revision" | "ticket";
+  tipoOriginal?: "reparacion" | "revision" | "ticket" | "ticket_revision";
   esAlquiler?: boolean;
   esManual?: boolean;
+  /** true = esta fila de tipo "revision" viene del ticket de revisión
+      (Marcar revisión pagada → Ticket), no de una factura real — decide si
+      el detalle abre con tipoBase "ticket_revision" (ciclo propio, sin
+      datos de cliente/envío) en vez de "revision". */
+  esTicket?: boolean;
+  /** true = viene de kelatos_app.tickets_manuales ("Ticket Manual", sin
+      reparación ni venta asociada) — igual que esManual pero para tickets:
+      decide que el detalle abra TicketManualModalShell (no
+      DetalleFacturaManualConTabs) y que la lista lo trate como standalone
+      (sin botón "Ver reparación"). */
+  esTicketManual?: boolean;
   /** true = este número fiscal fue real y se generó, pero quedó sustituido
       por un ciclo posterior de rectificativa/corregida (columna de un solo
       slot en reparaciones). Desde la migración 029 el total se conserva en
@@ -298,6 +309,23 @@ interface FilaReparacionFacturadaSql {
   total_ticket_corregida: string | number | null;
   fecha_ticket_corregida: string | null;
   estado_ticket_corregida: string | null;
+
+  numero_ticket_revision: string | null;
+  url_ticket_revision: string | null;
+  fecha_ticket_revision: string | null;
+  total_ticket_revision: string | number | null;
+  estado_ticket_revision: string | null;
+
+  numero_ticket_revision_rectificativa: string | null;
+  url_ticket_revision_rectificativa: string | null;
+  total_ticket_revision_rectificativa: string | number | null;
+  fecha_ticket_revision_rectificativa: string | null;
+
+  numero_ticket_revision_corregida: string | null;
+  url_ticket_revision_corregida: string | null;
+  total_ticket_revision_corregida: string | number | null;
+  fecha_ticket_revision_corregida: string | null;
+  estado_ticket_revision_corregida: string | null;
 }
 
 export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaCliente[] {
@@ -546,6 +574,63 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       estadoFactura: row.estado_ticket_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "corregida",
       tipoOriginal: "ticket",
+    });
+  }
+
+  // Pasada 10: ticket de revisión (Marcar revisión pagada → Ticket) —
+  // colapsa al mismo tipo "revision" que la factura real de revisión
+  // (mismo badge/filtro "Revisión Pagada"), distinguido por esTicket para
+  // que el detalle abra su propio ciclo (columnas propias, migración 054).
+  const numTicketRev = texto(row.numero_ticket_revision);
+  if (numTicketRev && numeroValido(numTicketRev)) {
+    facturas.push({
+      ...base,
+      numero: numTicketRev,
+      url: urlValida(texto(row.url_ticket_revision)),
+      total: num(row.total_ticket_revision) || 20,
+      fecha: row.fecha_ticket_revision,
+      formaPago: "",
+      banco: "",
+      estadoFactura: row.estado_ticket_revision === "Pendiente" ? "Pendiente" : "Cobrada",
+      tipo: "revision",
+      esTicket: true,
+    });
+  }
+
+  // Pasada 11: rectificativa del ticket de revisión (Serie 3, misma
+  // ticket_rectificativa_seq compartida) — tipoOriginal "ticket_revision"
+  // para distinguirla de la rectificativa de la factura real de revisión.
+  const numTicketRevRect = texto(row.numero_ticket_revision_rectificativa);
+  if (numTicketRevRect && numeroValido(numTicketRevRect)) {
+    facturas.push({
+      ...base,
+      numero: numTicketRevRect,
+      url: urlValida(texto(row.url_ticket_revision_rectificativa)),
+      total: num(row.total_ticket_revision_rectificativa),
+      fecha: row.fecha_ticket_revision_rectificativa,
+      formaPago: "",
+      banco: "",
+      estadoFactura: "Devolución",
+      tipo: "rectificativa",
+      tipoOriginal: "ticket_revision",
+    });
+  }
+
+  // Pasada 12: corregida del ticket de revisión (Serie 1, misma
+  // ticket_venta_seq compartida).
+  const numTicketRevCorr = texto(row.numero_ticket_revision_corregida);
+  if (numTicketRevCorr && numeroValido(numTicketRevCorr)) {
+    facturas.push({
+      ...base,
+      numero: numTicketRevCorr,
+      url: urlValida(texto(row.url_ticket_revision_corregida)),
+      total: num(row.total_ticket_revision_corregida),
+      fecha: row.fecha_ticket_revision_corregida,
+      formaPago: "",
+      banco: "",
+      estadoFactura: row.estado_ticket_revision_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
+      tipo: "corregida",
+      tipoOriginal: "ticket_revision",
     });
   }
 
@@ -907,6 +992,96 @@ export function expandirManuales(filas: FilaFacturaManualSql[]): FacturaCliente[
         banco: texto(row.banco),
         estadoFactura: "Emitida",
         tipo: "manual",
+      });
+    }
+  }
+
+  return facturas;
+}
+
+// ── Tickets manuales (kelatos_app.tickets_manuales, migración 055) ─────
+// "Ticket Manual" persistido, sin reparación ni venta asociada — mismo
+// tratamiento standalone que facturas manuales, pero un ticket NO crea una
+// fila nueva al corregirse (a diferencia de expandirManuales): reutiliza
+// las mismas columnas de un solo slot que ya usan reparación/revisión/
+// venta (rectificativa/corregida se sobrescriben en cada ciclo, mismo
+// documento — id = TICKETMAN-<numero original>).
+
+interface FilaTicketManualSql {
+  id: string;
+  numero_ticket: string | null;
+  fecha_ticket: string | null;
+  fecha_creacion: string | null;
+  total_ticket: string | number | null;
+  url_ticket: string | null;
+  estado_ticket: string | null;
+  numero_ticket_rectificativa: string | null;
+  url_ticket_rectificativa: string | null;
+  total_ticket_rectificativa: string | number | null;
+  fecha_ticket_rectificativa: string | null;
+  numero_ticket_corregida: string | null;
+  url_ticket_corregida: string | null;
+  total_ticket_corregida: string | number | null;
+  fecha_ticket_corregida: string | null;
+  estado_ticket_corregida: string | null;
+}
+
+export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCliente[] {
+  const facturas: FacturaCliente[] = [];
+
+  for (const row of filas) {
+    const numT = texto(row.numero_ticket);
+    if (!numT) continue;
+    const idT = texto(row.id);
+    const totalT = num(row.total_ticket);
+    const base = {
+      resguardo: idT,
+      cliente: "", telefono: "", email: "", dniCif: "",
+      equipo: "", estadoEntrega: "",
+      esTicketManual: true as const,
+    };
+
+    facturas.push({
+      ...base,
+      numero: numT,
+      url: urlValida(texto(row.url_ticket)),
+      total: totalT,
+      fecha: row.fecha_ticket || row.fecha_creacion,
+      formaPago: "",
+      banco: "",
+      estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
+      tipo: "ticket",
+    });
+
+    const numRectT = texto(row.numero_ticket_rectificativa);
+    if (numRectT) {
+      facturas.push({
+        ...base,
+        numero: numRectT,
+        url: urlValida(texto(row.url_ticket_rectificativa)),
+        total: num(row.total_ticket_rectificativa),
+        fecha: row.fecha_ticket_rectificativa,
+        formaPago: "",
+        banco: "",
+        estadoFactura: "Devolución",
+        tipo: "rectificativa",
+        tipoOriginal: "ticket",
+      });
+    }
+
+    const numCorrT = texto(row.numero_ticket_corregida);
+    if (numCorrT) {
+      facturas.push({
+        ...base,
+        numero: numCorrT,
+        url: urlValida(texto(row.url_ticket_corregida)),
+        total: num(row.total_ticket_corregida) || totalT,
+        fecha: row.fecha_ticket_corregida,
+        formaPago: "",
+        banco: "",
+        estadoFactura: row.estado_ticket_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
+        tipo: "corregida",
+        tipoOriginal: "ticket",
       });
     }
   }

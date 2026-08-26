@@ -27,7 +27,8 @@ import { useConfirm } from "@/components/confirm-provider";
 export type TipoFacturaBase =
   | "normal" | "revision" | "mensajeria" | "anticipo"
   | "rectificativa" | "rectificativa_revision" | "corregida" | "corregida_revision"
-  | "ticket" | "rectificativa_ticket" | "corregida_ticket";
+  | "ticket" | "rectificativa_ticket" | "corregida_ticket"
+  | "ticket_revision" | "rectificativa_ticket_revision" | "corregida_ticket_revision";
 
 // vfPago (#modalVistaFactura, usado por FaseCorregida): 4 opciones, sin
 // Redsys. mfaRectFormaPago/mfaRtvFormaPago (tabs Devolución/Rectificativo):
@@ -57,6 +58,9 @@ export const TIPO_BADGE: Record<TipoFacturaBase, { label: string; className: str
   ticket: { label: "Ticket", className: "bg-[#20c997] text-white" },
   rectificativa_ticket: { label: "Rectificativa", className: "bg-destructive text-white" },
   corregida_ticket: null,
+  ticket_revision: { label: "Revisión Pagada", className: "bg-[#fd7e14] text-white" },
+  rectificativa_ticket_revision: { label: "Rectificativa", className: "bg-destructive text-white" },
+  corregida_ticket_revision: null,
 };
 
 // Igual que _mfaRenderResumen(): el total de cabecera siempre se muestra CON
@@ -138,6 +142,26 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       formaPagoOriginal: "",
     };
   }
+  if (tipoBase === "ticket_revision") {
+    return {
+      numeroFactura: detalle.numeroTicketRevision,
+      urlFactura: detalle.urlTicketRevision,
+      totalConIva: (detalle.totalTicketRevision || 20) * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: detalle.ticketRevisionRectificativa
+        ? { numeroFactura: detalle.ticketRevisionRectificativa.numeroFactura, urlFactura: detalle.ticketRevisionRectificativa.urlFactura }
+        : null,
+      corregida: detalle.ticketRevisionCorregida
+        ? { numeroFactura: detalle.ticketRevisionCorregida.numeroFactura, urlFactura: detalle.ticketRevisionCorregida.urlFactura }
+        : null,
+      tipoRect: "rectificativa_ticket_revision", tipoCorr: "corregida_ticket_revision", tipoCombinado: "",
+      permiteDevolucion: true,
+      clienteOriginal: clienteOriginalDe(null, detalle),
+      formaPagoOriginal: "",
+    };
+  }
   // Rectificativa/corregida de ticket vistas directamente desde su propia
   // fila en la lista — igual que rectificativa/corregida reales, un
   // documento que YA es una de estas no encadena su propia devolución.
@@ -183,6 +207,44 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       rectificativa: hayCicloPosterior ? rectBase : null,
       corregida: null,
       tipoRect: "rectificativa_ticket", tipoCorr: "corregida_ticket", tipoCombinado: "",
+      permiteDevolucion: true,
+      clienteOriginal: clienteOriginalDe(null, detalle),
+      formaPagoOriginal: "",
+    };
+  }
+  // Rectificativa/corregida del ticket de revisión, vistas directamente
+  // desde su propia fila — mismo par de reglas que rectificativa_ticket/
+  // corregida_ticket, sobre las columnas propias del ticket de revisión
+  // (migración 054, para no compartir slot con el Ticket Rápido general).
+  if (tipoBase === "rectificativa_ticket_revision") {
+    return {
+      numeroFactura: detalle.ticketRevisionRectificativa?.numeroFactura || "",
+      urlFactura: detalle.ticketRevisionRectificativa?.urlFactura || "",
+      totalConIva: (detalle.ticketRevisionRectificativa?.totalFactura || 0) * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: null, corregida: null,
+      tipoRect: "", tipoCorr: "", tipoCombinado: "",
+      permiteDevolucion: false,
+      clienteOriginal: clienteOriginalDe(null, detalle),
+      formaPagoOriginal: "",
+    };
+  }
+  if (tipoBase === "corregida_ticket_revision") {
+    const doc = detalle.ticketRevisionCorregida;
+    const rectBase = detalle.ticketRevisionRectificativa;
+    const hayCicloPosterior = !!(rectBase?.fechaFactura && doc?.fechaFactura && new Date(rectBase.fechaFactura) > new Date(doc.fechaFactura));
+    return {
+      numeroFactura: doc?.numeroFactura || "",
+      urlFactura: doc?.urlFactura || "",
+      totalConIva: (doc?.totalFactura || 0) * 1.21,
+      clienteNombre: detalle.cliente.nombre || "",
+      clienteEmailDefault: detalle.cliente.email || "",
+      lineasOriginales: [],
+      rectificativa: hayCicloPosterior ? rectBase : null,
+      corregida: null,
+      tipoRect: "rectificativa_ticket_revision", tipoCorr: "corregida_ticket_revision", tipoCombinado: "",
       permiteDevolucion: true,
       clienteOriginal: clienteOriginalDe(null, detalle),
       formaPagoOriginal: "",
@@ -311,11 +373,19 @@ export function FacturaAccionesTabs({
   onActualizado: () => void;
 }) {
   const d = derivarDatosFactura(detalle, tipoBase);
-  const esTicket = tipoBase === "ticket" || tipoBase === "rectificativa_ticket" || tipoBase === "corregida_ticket";
+  const esTicketRevision = tipoBase === "ticket_revision" || tipoBase === "rectificativa_ticket_revision" || tipoBase === "corregida_ticket_revision";
+  const esTicket = tipoBase === "ticket" || tipoBase === "rectificativa_ticket" || tipoBase === "corregida_ticket" || esTicketRevision;
   // Los tickets no tienen ruta de envío por correo (nunca la tuvieron, ni
   // el ticket original) ni pasan por el saga de /facturas (endpoints
-  // propios, ver ticket-venta/rectificativa y ticket-venta/corregida).
-  const apiBase = esTicket ? `/api/reparaciones/${detalle.resguardo}/ticket-venta` : `/api/reparaciones/${detalle.resguardo}/facturas`;
+  // propios, ver ticket-venta/rectificativa y ticket-venta/corregida). El
+  // ticket de revisión usa su propia familia de endpoints
+  // (ticket-venta/revision/...) — columnas propias (migración 054) para no
+  // compartir ciclo con el Ticket Rápido general.
+  const apiBase = esTicket
+    ? esTicketRevision
+      ? `/api/reparaciones/${detalle.resguardo}/ticket-venta/revision`
+      : `/api/reparaciones/${detalle.resguardo}/ticket-venta`
+    : `/api/reparaciones/${detalle.resguardo}/facturas`;
 
   return (
     <Tabs defaultValue="pdf" className="w-full">
@@ -333,7 +403,15 @@ export function FacturaAccionesTabs({
           urlFactura={d.urlFactura}
           totalFactura={d.totalConIva}
           clienteEmailDefault={d.clienteEmailDefault}
-          motivoRectificativa={tipoBase === "rectificativa" || tipoBase === "rectificativa_revision" ? detalle.motivoRectificativa : tipoBase === "rectificativa_ticket" ? detalle.motivoTicketRectificativa : ""}
+          motivoRectificativa={
+            tipoBase === "rectificativa" || tipoBase === "rectificativa_revision"
+              ? detalle.motivoRectificativa
+              : tipoBase === "rectificativa_ticket"
+                ? detalle.motivoTicketRectificativa
+                : tipoBase === "rectificativa_ticket_revision"
+                  ? detalle.motivoTicketRevisionRectificativa
+                  : ""
+          }
         />
       </TabsContent>
 
@@ -341,7 +419,9 @@ export function FacturaAccionesTabs({
         <>
           <TabsContent value="devolucion" className="p-4">
             <TabDevolucionTicket
-              resguardo={detalle.resguardo}
+              apiRectificativaUrl={`${apiBase}/rectificativa`}
+              apiCorregidaUrl={`${apiBase}/corregida`}
+              contexto={`Resguardo #${detalle.resguardo}`}
               numeroTicketOriginal={d.numeroFactura}
               yaGenerada={d.rectificativa}
               corregida={d.corregida}
@@ -350,7 +430,9 @@ export function FacturaAccionesTabs({
           </TabsContent>
           <TabsContent value="rectificativo" className="p-4">
             <TabRectificativoTicket
-              resguardo={detalle.resguardo}
+              apiRectificativaUrl={`${apiBase}/rectificativa`}
+              apiCorregidaUrl={`${apiBase}/corregida`}
+              contexto={`Resguardo #${detalle.resguardo}`}
               numeroTicketOriginal={d.numeroFactura}
               rectificativa={d.rectificativa}
               corregida={d.corregida}
@@ -806,19 +888,23 @@ export function TabRectificativo({
 // por correo). Se implementa aparte, más simple, contra los endpoints
 // propios de ticket-venta/rectificativa y ticket-venta/corregida.
 
-interface DocTicket {
+export interface DocTicket {
   numeroFactura: string;
   urlFactura: string;
 }
 
-function TabDevolucionTicket({
-  resguardo,
+export function TabDevolucionTicket({
+  apiRectificativaUrl,
+  apiCorregidaUrl,
+  contexto,
   numeroTicketOriginal,
   yaGenerada,
   corregida,
   onGenerada,
 }: {
-  resguardo: string;
+  apiRectificativaUrl: string;
+  apiCorregidaUrl: string;
+  contexto: string;
   numeroTicketOriginal: string;
   yaGenerada: DocTicket | null;
   corregida: DocTicket | null;
@@ -854,7 +940,8 @@ function TabDevolucionTicket({
         <FaseCorregidaTicket
           open={abrirCorregida}
           onOpenChange={setAbrirCorregida}
-          resguardo={resguardo}
+          apiCorregidaUrl={apiCorregidaUrl}
+          contexto={contexto}
           numeroTicketOriginal={numeroTicketOriginal}
           numeroTicketRectificativa={yaGenerada.numeroFactura}
           onGenerada={onGenerada}
@@ -867,7 +954,7 @@ function TabDevolucionTicket({
     if (!motivo.trim()) return toast.error("El motivo es obligatorio");
     setEnviando(true);
     try {
-      const res = await fetch(`/api/reparaciones/${resguardo}/ticket-venta/rectificativa`, {
+      const res = await fetch(apiRectificativaUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ motivo: motivo.trim() }),
@@ -902,14 +989,18 @@ function TabDevolucionTicket({
   );
 }
 
-function TabRectificativoTicket({
-  resguardo,
+export function TabRectificativoTicket({
+  apiRectificativaUrl,
+  apiCorregidaUrl,
+  contexto,
   numeroTicketOriginal,
   rectificativa,
   corregida,
   onActualizado,
 }: {
-  resguardo: string;
+  apiRectificativaUrl: string;
+  apiCorregidaUrl: string;
+  contexto: string;
   numeroTicketOriginal: string;
   rectificativa: DocTicket | null;
   corregida: DocTicket | null;
@@ -920,7 +1011,9 @@ function TabRectificativoTicket({
   if (!rectificativa) {
     return (
       <TabDevolucionTicket
-        resguardo={resguardo}
+        apiRectificativaUrl={apiRectificativaUrl}
+        apiCorregidaUrl={apiCorregidaUrl}
+        contexto={contexto}
         numeroTicketOriginal={numeroTicketOriginal}
         yaGenerada={null}
         corregida={null}
@@ -942,7 +1035,8 @@ function TabRectificativoTicket({
         <FaseCorregidaTicket
           open={abrirCorregida}
           onOpenChange={setAbrirCorregida}
-          resguardo={resguardo}
+          apiCorregidaUrl={apiCorregidaUrl}
+          contexto={contexto}
           numeroTicketOriginal={numeroTicketOriginal}
           numeroTicketRectificativa={rectificativa.numeroFactura}
           onGenerada={onActualizado}
@@ -975,14 +1069,16 @@ interface LineaTicketCorr {
 function FaseCorregidaTicket({
   open,
   onOpenChange,
-  resguardo,
+  apiCorregidaUrl,
+  contexto,
   numeroTicketOriginal,
   numeroTicketRectificativa,
   onGenerada,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  resguardo: string;
+  apiCorregidaUrl: string;
+  contexto: string;
   numeroTicketOriginal: string;
   numeroTicketRectificativa: string;
   onGenerada: () => void;
@@ -1008,7 +1104,7 @@ function FaseCorregidaTicket({
     if (validas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
     setEnviando(true);
     try {
-      const res = await fetch(`/api/reparaciones/${resguardo}/ticket-venta/corregida`, {
+      const res = await fetch(apiCorregidaUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lineas: validas, estado }),
@@ -1029,7 +1125,7 @@ function FaseCorregidaTicket({
   return (
     <Dialog open={open} onOpenChange={cerrar}>
       <DialogContent className="max-w-2xl gap-0 p-0 sm:max-w-2xl" showCloseButton={false}>
-        <CabeceraFactura titulo={`Ticket Corregido — Ref. ${resguardo}`} onClose={() => cerrar(false)} />
+        <CabeceraFactura titulo={`Ticket Corregido — ${contexto}`} onClose={() => cerrar(false)} />
         <div className="space-y-4 bg-muted/30 p-4">
           <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
             <TickCircle className="size-4 shrink-0" />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -55,7 +54,7 @@ export function FacturaRevisionDialog({
   const yaGeneradaTicket = !!(detalle.numeroTicketRevision || detalle.urlTicketRevision);
 
   if (yaGeneradaFactura) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
-  if (yaGeneradaTicket) return <VistaGeneradaTicket detalle={detalle} open={open} onOpenChange={onOpenChange} />;
+  if (yaGeneradaTicket) return <VistaGeneradaTicket detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
   return (
     <VistaElegir
       detalle={detalle}
@@ -101,39 +100,24 @@ function VistaGenerada({
   return <FacturaModalShell detalle={detalle} tipoBase="revision" open={open} onOpenChange={onOpenChange} onActualizado={onActualizado} />;
 }
 
-/** Vista de solo lectura cuando la revisión ya se resolvió con un ticket
-    (en vez de una factura real) — más simple que FacturaModalShell porque
-    un ticket no tiene devolución/rectificativo (no es un documento fiscal
-    formal con serie de rectificativas propia). */
+/** Cuando la revisión ya se resolvió con un ticket (en vez de una factura
+    real) — reutiliza FacturaModalShell (igual que VistaGenerada para el
+    caso de factura real) para dar acceso a Devolución/Rectificativo/
+    Corregida sobre ESE ticket, con su propio ciclo independiente
+    (migración 054, petición del usuario 2026-08-27: "la revision se
+    genera con ticket y a ese se puede hacer su rectificativa corregida"). */
 function VistaGeneradaTicket({
   detalle,
   open,
   onOpenChange,
+  onActualizado,
 }: {
   detalle: ReparacionDetalle;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onActualizado: () => void;
 }) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
-        <CabeceraVerde titulo="Revisión pagada — Ticket" onClose={() => onOpenChange(false)} />
-        <div className="space-y-3 p-4">
-          <div className="flex items-center justify-between gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <span>Ticket <strong>{detalle.numeroTicketRevision}</strong> — Revisión técnica del equipo.</span>
-          </div>
-          {detalle.urlTicketRevision && (
-            <Button variant="outline" className="w-full gap-1.5" nativeButton={false} render={<Link href={detalle.urlTicketRevision} target="_blank" rel="noreferrer" />}>
-              <Ticket className="size-3.5" /> Ver PDF
-            </Button>
-          )}
-        </div>
-        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
-        </footer>
-      </DialogContent>
-    </Dialog>
-  );
+  return <FacturaModalShell detalle={detalle} tipoBase="ticket_revision" open={open} onOpenChange={onOpenChange} onActualizado={onActualizado} />;
 }
 
 /** Paso 1: elegir si la revisión se cobra con factura real o con ticket,

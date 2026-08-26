@@ -19,10 +19,12 @@ import {
 } from "@/lib/facturas-cliente";
 import type { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import type { FacturaManualDetalle } from "@/lib/factura-manual";
+import type { TicketManualDetalle } from "@/lib/ticket-manual";
 import type { AlquilerFacturaDetalle } from "@/lib/alquiler-detalle";
 import { FacturaModalShell } from "../reparaciones/factura-modal-shell";
 import type { TipoFacturaBase } from "../reparaciones/factura-acciones-tabs";
 import { FacturaManualModalShell } from "./factura-manual-modal-shell";
+import { TicketManualModalShell, type VistaTicketManual } from "./ticket-manual-modal-shell";
 import { AlquilerModalShell } from "./alquiler-modal-shell";
 
 /**
@@ -36,17 +38,23 @@ import { AlquilerModalShell } from "./alquiler-modal-shell";
  * abajo), no pasan por aquí.
  */
 function resolverTipoBase(factura: FacturaCliente): TipoFacturaBase | null {
-  if (factura.esAlquiler || factura.esManual) return null;
+  if (factura.esAlquiler || factura.esManual || factura.esTicketManual) return null;
   switch (factura.tipo) {
     case "reparacion": return "normal";
-    case "revision": return "revision";
+    case "revision": return factura.esTicket ? "ticket_revision" : "revision";
     case "mensajeria": return "mensajeria";
     case "anticipo": return "anticipo";
     case "ticket": return "ticket";
     case "rectificativa":
-      return factura.tipoOriginal === "revision" ? "rectificativa_revision" : factura.tipoOriginal === "ticket" ? "rectificativa_ticket" : "rectificativa";
+      return factura.tipoOriginal === "revision" ? "rectificativa_revision"
+        : factura.tipoOriginal === "ticket" ? "rectificativa_ticket"
+        : factura.tipoOriginal === "ticket_revision" ? "rectificativa_ticket_revision"
+        : "rectificativa";
     case "corregida":
-      return factura.tipoOriginal === "revision" ? "corregida_revision" : factura.tipoOriginal === "ticket" ? "corregida_ticket" : "corregida";
+      return factura.tipoOriginal === "revision" ? "corregida_revision"
+        : factura.tipoOriginal === "ticket" ? "corregida_ticket"
+        : factura.tipoOriginal === "ticket_revision" ? "corregida_ticket_revision"
+        : "corregida";
     default: return null;
   }
 }
@@ -86,6 +94,17 @@ export function DetalleFacturaDialog({
   if (factura.esManual) {
     return (
       <DetalleFacturaManualConTabs
+        key={factura.resguardo + factura.tipo}
+        factura={factura}
+        onOpenChange={onOpenChange}
+        onActualizado={onCobrada}
+      />
+    );
+  }
+
+  if (factura.esTicketManual) {
+    return (
+      <DetalleTicketManualConTabs
         key={factura.resguardo + factura.tipo}
         factura={factura}
         onOpenChange={onOpenChange}
@@ -200,6 +219,84 @@ function DetalleFacturaManualConTabs({
 
   return (
     <FacturaManualModalShell detalle={detalle} vistaRectificativa={vistaRectificativa} open onOpenChange={onOpenChange} onActualizado={actualizar} />
+  );
+}
+
+/**
+ * Igual que DetalleFacturaManualConTabs, pero para "Ticket Manual"
+ * (kelatos_app.tickets_manuales) — lee /api/tickets-manuales/:id. A
+ * diferencia de una factura manual, un ticket manual comparte el MISMO id
+ * entre sus 3 vistas de lista (ticket/rectificativa/corregida) — "vista"
+ * distingue cuál de las tres se está viendo con los mismos datos cargados.
+ */
+function DetalleTicketManualConTabs({
+  factura,
+  onOpenChange,
+  onActualizado,
+}: {
+  factura: FacturaCliente;
+  onOpenChange: (open: boolean) => void;
+  onActualizado: () => void;
+}) {
+  const [detalle, setDetalle] = useState<TicketManualDetalle | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const vista: VistaTicketManual = factura.tipo === "rectificativa" ? "rectificativa" : factura.tipo === "corregida" ? "corregida" : "ticket";
+
+  async function cargar() {
+    setCargando(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/tickets-manuales/${encodeURIComponent(factura.resguardo)}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setDetalle(data.detalle);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [factura.resguardo]);
+
+  function actualizar() {
+    cargar();
+    onActualizado();
+  }
+
+  if (cargando || error || !detalle) {
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
+          <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
+            <Receipt className="size-4.5 shrink-0" />
+            <DialogTitle className="text-sm font-semibold text-primary-foreground">{factura.numero}</DialogTitle>
+            <Button variant="ghost" size="icon-sm" className="ml-auto text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={() => onOpenChange(false)}>
+              <CloseCircle className="size-4" />
+            </Button>
+          </header>
+          <div className="space-y-2 p-4">
+            {error ? (
+              <p className="text-sm text-destructive">Error al cargar: {error}</p>
+            ) : (
+              <>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-24 w-full" />
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <TicketManualModalShell detalle={detalle} vista={vista} open onOpenChange={onOpenChange} onActualizado={actualizar} />
   );
 }
 

@@ -1,5 +1,5 @@
 import { kelatosApiGet } from "@/lib/kelatos-api";
-import { FacturaCliente, expandirFacturas, expandirFacturaHistorica, expandirAlquiler, expandirManuales } from "@/lib/facturas-cliente";
+import { FacturaCliente, expandirFacturas, expandirFacturaHistorica, expandirAlquiler, expandirManuales, expandirTicketsManuales } from "@/lib/facturas-cliente";
 
 interface RespuestaReparacionesFacturadas {
   ok: boolean;
@@ -53,11 +53,12 @@ export async function lookupCodigoCliente(): Promise<(dni: string, telefono: str
  * añade ventas encima de esta misma base, igual que el original).
  */
 export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
-  const [reparaciones, historicas, alquileres, manuales, lookup] = await Promise.all([
+  const [reparaciones, historicas, alquileres, manuales, ticketsManuales, lookup] = await Promise.all([
     kelatosApiGet<RespuestaReparacionesFacturadas>("/v1/lecturas/reparaciones-facturadas"),
     kelatosApiGet<RespuestaFacturasHistoricas>("/v1/lecturas/reparaciones-facturas-historicas"),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirAlquiler>[0]>>("/v1/alquileres", { limit: 1000 }),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirManuales>[0][number]>>("/v1/facturas_manuales", { limit: 1000 }),
+    kelatosApiGet<RespuestaTabla<Parameters<typeof expandirTicketsManuales>[0][number]>>("/v1/tickets_manuales", { limit: 1000 }),
     lookupCodigoCliente(),
   ]);
 
@@ -66,6 +67,7 @@ export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
     ...historicas.resultados.map(expandirFacturaHistorica).filter((f): f is FacturaCliente => f !== null),
     ...alquileres.rows.flatMap(expandirAlquiler),
     ...expandirManuales(manuales.rows),
+    ...expandirTicketsManuales(ticketsManuales.rows),
   ];
 
   return facturas.map((f) => ({ ...f, codigoCliente: lookup(f.dniCif, f.telefono) }));

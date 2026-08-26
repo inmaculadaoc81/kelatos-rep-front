@@ -100,14 +100,20 @@ function CampoLectura({ label, valor }: { label: string; valor: string }) {
 
 /**
  * Botón "Ticket Manual" (Reparaciones, suelto) y "Ticket Rápido" (junto a
- * Facturación, en el detalle de una reparación) — mismo diálogo, dos modos:
- * - Suelto (sin `resguardo`): prueba explícita, no persiste nada, el PDF
- *   se descarga directo.
- * - Ligado a una reparación (`resguardo` + `detalle`): numeración real
- *   (kelatos_app.ticket_venta_seq, desde 1000), líneas precargadas desde
- *   los presupuestos aceptados, el PDF se guarda en Drive. NO marca
- *   entrega — igual que Facturación real, eso sigue siendo un paso
- *   aparte ("Entregado en Local" / "Marcar como enviado").
+ * Facturación, en el detalle de una reparación, o en Ventas) — mismo
+ * diálogo, tres modos, los tres con numeración real (ticket_venta_seq) y
+ * PDF guardado en Drive:
+ * - Ligado a una reparación (`resguardo` + `detalle`): líneas precargadas
+ *   desde los presupuestos aceptados. NO marca entrega — igual que
+ *   Facturación real, eso sigue siendo un paso aparte.
+ * - Ligado a una venta (`ventaId` + `venta`): líneas precargadas desde las
+ *   piezas del pedido.
+ * - Suelto (sin resguardo ni ventaId) — "Ticket Manual": persiste en
+ *   kelatos_app.tickets_manuales (migración 055), visible después en
+ *   Facturas de Clientes con su propio ciclo de Devolución/Rectificativa/
+ *   Corregida. Petición del usuario, 2026-08-27: "haz que ya no sea de
+ *   pruebas que sea manual normal de ticket" — antes este modo solo
+ *   descargaba un PDF de /api/tickets/generar-prueba sin persistir nada.
  */
 export function TicketManualDialog({
   open,
@@ -127,7 +133,7 @@ export function TicketManualDialog({
   onGenerado?: () => void;
 }) {
   const esVenta = !!ventaId;
-  const esReal = !!resguardo || esVenta;
+  const esManualStandalone = !resguardo && !esVenta;
   const [lineas, setLineas] = useState<LineaTicket[]>([lineaVacia()]);
   const [descuentoGlobal, setDescuentoGlobal] = useState(0);
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
@@ -150,7 +156,7 @@ export function TicketManualDialog({
       // (numero_ticket/url_ticket es una sola columna, no un historial).
       const numeroTicketPrevio = esVenta ? venta?.numeroTicket : detalle?.numeroTicket;
       const urlTicketPrevio = esVenta ? venta?.urlTicket : detalle?.urlTicket;
-      setResultado(esReal && numeroTicketPrevio ? { numeroTicket: numeroTicketPrevio, urlTicket: urlTicketPrevio || "" } : null);
+      setResultado(numeroTicketPrevio ? { numeroTicket: numeroTicketPrevio, urlTicket: urlTicketPrevio || "" } : null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -213,40 +219,21 @@ export function TicketManualDialog({
 
     setGenerando(true);
     try {
-      if (esReal) {
-        const url = esVenta ? `/api/ventas/${ventaId}/ticket-venta` : `/api/reparaciones/${resguardo}/ticket-venta`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lineas: lineasValidas, estado }),
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error || "Error desconocido");
-        toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
-        setResultado({ numeroTicket: data.numeroTicket, urlTicket: data.urlTicket });
-        onGenerado?.();
-        return;
-      }
-
-      const res = await fetch("/api/tickets/generar-prueba", {
+      const url = esVenta
+        ? `/api/ventas/${ventaId}/ticket-venta`
+        : resguardo
+          ? `/api/reparaciones/${resguardo}/ticket-venta`
+          : "/api/tickets-manuales";
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lineas: lineasValidas, estado }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "Error desconocido");
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "ticket-prueba.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Ticket generado");
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
+      setResultado({ numeroTicket: data.numeroTicket, urlTicket: data.urlTicket });
+      onGenerado?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -258,8 +245,8 @@ export function TicketManualDialog({
     <Dialog open={open} onOpenChange={cerrar}>
       <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
         <Cabecera
-          titulo={esReal ? "Ticket Rápido" : "Ticket Manual"}
-          subtitulo={esVenta ? `— Pedido #${ventaId}` : resguardo ? `— Resguardo #${resguardo}` : "(prueba — no se guarda)"}
+          titulo={esManualStandalone ? "Ticket Manual" : "Ticket Rápido"}
+          subtitulo={esVenta ? `— Pedido #${ventaId}` : resguardo ? `— Resguardo #${resguardo}` : ""}
           onClose={() => cerrar(false)}
         />
 
@@ -277,7 +264,7 @@ export function TicketManualDialog({
             )}
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <CampoLectura label="Serie / Código" valor={resultado?.numeroTicket || (esReal ? "Se asignará al generar" : "Se asignará al generar")} />
+              <CampoLectura label="Serie / Código" valor={resultado?.numeroTicket || "Se asignará al generar"} />
               <CampoLectura label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Estado</Label>
@@ -390,7 +377,7 @@ export function TicketManualDialog({
               </div>
             </div>
 
-            {esReal && !resultado && (
+            {!esManualStandalone && !resultado && (
               <p className="text-xs text-muted-foreground">
                 Esto solo genera el ticket — para marcar el equipo como entregado, usa "Entregado en Local" o "Marcar como enviado" aparte, igual que con Facturación.
               </p>

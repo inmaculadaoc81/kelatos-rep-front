@@ -159,12 +159,15 @@ function TipoBadge({ f }: { f: FacturaCliente }) {
   // Una factura "corregida" reproduce el badge de su tipo de origen en vez
   // de tener uno propio — así se ve en el original (tipoBadge()).
   const tipoEfectivo: TipoFactura =
-    f.tipo === "corregida" ? (f.tipoOriginal === "revision" ? "revision" : f.tipoOriginal === "ticket" ? "ticket" : "reparacion") : f.tipo;
+    f.tipo === "corregida"
+      ? (f.tipoOriginal === "revision" || f.tipoOriginal === "ticket_revision" ? "revision" : f.tipoOriginal === "ticket" ? "ticket" : "reparacion")
+      : f.tipo;
   const estilo = TIPO_BADGE_ESTILO[tipoEfectivo] ?? { bg: "#e9ecef", color: "#6c757d" };
+  const esDocTicket = f.tipo === "ticket" || f.esTicket || (f.tipo === "corregida" && (f.tipoOriginal === "ticket" || f.tipoOriginal === "ticket_revision"));
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
       {f.tipo === "recogida" && <Box className="size-3" />}
-      {(f.tipo === "ticket" || (f.tipo === "corregida" && f.tipoOriginal === "ticket")) && <Ticket className="size-3" />}
+      {esDocTicket && <Ticket className="size-3" />}
       {ETIQUETA_TIPO_FACTURA[tipoEfectivo]}
     </span>
   );
@@ -277,7 +280,7 @@ function FacturaBadge({ f }: { f: FacturaCliente }) {
 
 function ResguardoCell({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: string) => void }) {
   if (f.esAlquiler) return <span className="font-bold" style={{ color: "#198754" }}>{f.resguardo || "—"}</span>;
-  if (f.esManual) return <span className="font-bold" style={{ color: "#6f42c1" }}>{f.resguardo || "—"}</span>;
+  if (f.esManual || f.esTicketManual) return <span className="font-bold" style={{ color: "#6f42c1" }}>{f.resguardo || "—"}</span>;
   return (
     <button
       type="button"
@@ -291,7 +294,7 @@ function ResguardoCell({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: str
 
 function VerBoton({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: string) => void }) {
   const router = useRouter();
-  if (f.esManual) return <span className="mr-1 inline-block size-7" />;
+  if (f.esManual || f.esTicketManual) return <span className="mr-1 inline-block size-7" />;
   if (f.esAlquiler) {
     return (
       <Button variant="outline" size="icon-sm" className="mr-1" title="Ver alquiler" onClick={() => router.push("/equipos")}>
