@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash } from "@/lib/icons";
+import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash, Ticket } from "@/lib/icons";
 import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { RechazarFormularioDialog } from "./formulario-pendiente-dialog";
 import { DashboardMetricas } from "./dashboard-metricas";
 import { NuevaFacturaManualDialog } from "./nueva-factura-manual-dialog";
 import { FormulariosRechazadosDialog } from "./formularios-rechazados-dialog";
+import { TicketManualDialog } from "./ticket-manual-dialog";
 
 type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | null };
 
@@ -180,6 +181,7 @@ export default function ReparacionesPage() {
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [nuevaFacturaAbierta, setNuevaFacturaAbierta] = useState(false);
   const [formulariosRechazadosAbierto, setFormulariosRechazadosAbierto] = useState(false);
+  const [ticketManualAbierto, setTicketManualAbierto] = useState(false);
   const [eliminarResguardo, setEliminarResguardo] = useState<string | null>(null);
   const esSuperadmin = useEsSuperadmin();
 
@@ -401,6 +403,14 @@ export default function ReparacionesPage() {
             title="Formularios Rechazados"
           >
             <CloseCircle className="size-4" /> Formularios Rechazados
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 gap-1.5"
+            onClick={() => setTicketManualAbierto(true)}
+            title="Ticket Manual"
+          >
+            <Ticket className="size-4" /> Ticket Manual
           </Button>
         </div>
       </div>
@@ -661,6 +671,8 @@ export default function ReparacionesPage() {
       />
 
       <FormulariosRechazadosDialog open={formulariosRechazadosAbierto} onOpenChange={setFormulariosRechazadosAbierto} />
+
+      <TicketManualDialog open={ticketManualAbierto} onOpenChange={setTicketManualAbierto} />
 
       <RechazarFormularioDialog
         reparacion={formularioPendiente?.modo === "rechazar" ? formularioPendiente.rep : null}

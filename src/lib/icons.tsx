@@ -101,6 +101,7 @@ export const Sms = withDefaults(Iconsax.Sms);
 export const Star = withDefaults(Iconsax.Star);
 export const Tag = withDefaults(Iconsax.Tag);
 export const TickCircle = withDefaults(Iconsax.TickCircle);
+export const Ticket = withDefaults(Iconsax.Ticket);
 export const Timer1 = withDefaults(Iconsax.Timer1);
 export const TimerStart = withDefaults(Iconsax.TimerStart);
 export const Trash = withDefaults(Iconsax.Trash);
