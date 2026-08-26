@@ -68,6 +68,7 @@ export interface CallbacksAccion {
   onMarcarEquipoRecibido: () => void;
   onEnviarPuntoLimpio: () => void;
   onFacturacion: () => void;
+  onTicketRapido: () => void;
   onMarcarEnviadoRapido: () => void;
   onReportarProblemaPieza: () => void;
 }
@@ -420,13 +421,13 @@ export function AccionRequerida({
         <Receipt className="size-3.5" /> Facturación
       </Button>
     );
-    // Ticket rápido: aún sin conectar (pendiente decidir numeración real y
-    // si queda ligado al resguardo) — visible pero inerte a propósito,
-    // petición explícita del usuario, 2026-08-26.
+    // Ticket rápido: numeración real desde ticket_venta_seq, líneas
+    // precargadas desde los presupuestos aceptados, marca entregado al
+    // generar — mismo momento que Facturación, petición explícita del
+    // usuario, 2026-08-26.
     botones.push(
-      <Button key="ticket-rapido" size="sm" variant="outline" className="gap-1.5 text-muted-foreground" disabled>
+      <Button key="ticket-rapido" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onTicketRapido}>
         <Ticket className="size-3.5" /> Ticket Rápido
-        <span className="text-[10px]">pronto</span>
       </Button>
     );
   }

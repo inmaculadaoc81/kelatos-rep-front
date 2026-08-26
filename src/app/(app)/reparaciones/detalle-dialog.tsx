@@ -38,6 +38,7 @@ import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog, MarcarEnviadoDi
 import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
 import { AnticipoDialog } from "./anticipo-dialog";
 import { FacturaReparacionDialog, TarjetaResena } from "./factura-reparacion-dialog";
+import { TicketManualDialog } from "./ticket-manual-dialog";
 import { EstadosEspecialesPanel } from "./estados-especiales-panel";
 import { PresupuestoCard } from "./presupuesto-card";
 import { PresupuestosEnvioBar } from "./presupuestos-envio-bar";
@@ -280,6 +281,7 @@ export function DetalleReparacionDialog({
   const [registrarPedidoAbierto, setRegistrarPedidoAbierto] = useState(false);
   const [gestionPptosAbierto, setGestionPptosAbierto] = useState(false);
   const [facturaAbierta, setFacturaAbierta] = useState(false);
+  const [ticketRapidoAbierto, setTicketRapidoAbierto] = useState(false);
   const [facturarMensajeriaAbierto, setFacturarMensajeriaAbierto] = useState(false);
   const [anticipoAbierto, setAnticipoAbierto] = useState(false);
   const [editarPedidoAbierto, setEditarPedidoAbierto] = useState(false);
@@ -647,6 +649,7 @@ export function DetalleReparacionDialog({
                   onMarcarEquipoRecibido: marcarEquipoRecibido,
                   onEnviarPuntoLimpio: enviarPuntoLimpio,
                   onFacturacion: () => setFacturaAbierta(true),
+                  onTicketRapido: () => setTicketRapidoAbierto(true),
                   onMarcarEnviadoRapido: () => setMarcarEnviadoAbierta(true),
                   onReportarProblemaPieza: () => setProblemaPiezaAbierto(true),
                   }}
@@ -920,6 +923,13 @@ export function DetalleReparacionDialog({
             open={facturaAbierta}
             onOpenChange={setFacturaAbierta}
             onGenerada={actualizarTodo}
+          />
+          <TicketManualDialog
+            resguardo={detalle.resguardo}
+            detalle={detalle}
+            open={ticketRapidoAbierto}
+            onOpenChange={setTicketRapidoAbierto}
+            onGenerado={actualizarTodo}
           />
           <PresupuestoFormDialog
             resguardo={detalle.resguardo}
