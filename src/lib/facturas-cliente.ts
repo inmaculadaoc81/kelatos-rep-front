@@ -474,16 +474,17 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
     });
   }
 
-  // Pasada 7: "Ticket Rápido" — no es una factura fiscal (numeración
-  // propia desde 1000, sin serie ni guion, por eso NO pasa por
-  // numeroValido()) pero se trata como el mismo proceso de facturación
-  // desde que existe: sale en Facturas de Clientes/Reporte de Facturas
-  // igual que cualquier otro tipo. Se considera Cobrada siempre — es un
-  // recibo de una venta ya cerrada en el momento de generarlo, no hay
-  // forma de pago ni estado pendiente que registrar (a diferencia de una
-  // factura real, "Ticket Rápido" no lo pide).
+  // Pasada 7: "Ticket Rápido" — Serie 2 (numeración propia desde 1000,
+  // prefijo "2-" añadido el 2026-08-26 para encajar en el mismo formato
+  // serie-correlativo que Serie 1/Serie 3, aunque una factura simplificada
+  // no exige legalmente una serie). Se trata como el mismo proceso de
+  // facturación desde que existe: sale en Facturas de Clientes/Reporte de
+  // Facturas igual que cualquier otro tipo. Se considera Cobrada siempre —
+  // es un recibo de una venta ya cerrada en el momento de generarlo, no
+  // hay forma de pago ni estado pendiente que registrar (a diferencia de
+  // una factura real, "Ticket Rápido" no lo pide).
   const numTicket = texto(row.numero_ticket);
-  if (numTicket) {
+  if (numTicket && numeroValido(numTicket)) {
     facturas.push({
       ...base,
       ...aplicarClienteFactura(base, row.cliente_factura),

@@ -172,6 +172,7 @@ function TipoBadge({ f }: { f: FacturaCliente }) {
 function SerieBadge({ numero }: { numero: string }) {
   const s = serieFactura(numero);
   if (s === "1") return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#0d6efd" }}>Serie 1</span>;
+  if (s === "2") return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#20c997" }}>Serie 2</span>;
   if (s === "3") return <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: "#ffc107", color: "#332701" }}>Serie 3</span>;
   return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#6c757d" }}>—</span>;
 }
