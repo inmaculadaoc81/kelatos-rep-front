@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { origenPublico } from "@/lib/request-origin";
 
 // Mismos servicios públicos de generación de QR que ya usa el QR de
 // recogida (ver qr-recogida/route.ts) — sin token ni datos sensibles
@@ -10,7 +11,7 @@ const APIS_QR = (url: string) => [
 ];
 
 export async function GET(req: Request) {
-  const origin = new URL(req.url).origin;
+  const origin = origenPublico(req);
   const url = `${origin}/formulario`;
 
   for (const apiUrl of APIS_QR(url)) {

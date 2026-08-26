@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { generarTokenRecogida } from "@/lib/token-recogida";
+import { origenPublico } from "@/lib/request-origin";
 
 // Mismos servicios públicos de generación de QR que usa el original
 // (apiGenerarQrBase64, Code.js) — con fallback si el primero no responde.
@@ -26,7 +27,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 
-  const origin = new URL(req.url).origin;
+  const origin = origenPublico(req);
   const url = `${origin}/formulario-recogida?resguardo=${encodeURIComponent(resguardo)}&token=${encodeURIComponent(token)}`;
 
   for (const apiUrl of APIS_QR(url)) {
