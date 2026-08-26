@@ -29,7 +29,13 @@ export async function GET(request: NextRequest) {
     // su propio paso de lookup — igual que "Añadir codigoCliente a ventas"
     // en el original.
     const ventasFacturas = ventas.rows.flatMap(expandirVenta).map((f) => ({ ...f, codigoCliente: lookupCodigo(f.dniCif, f.telefono) }));
-    const todas = [...base, ...ventasFacturas];
+    // "Ticket Rápido" no es un documento fiscal (sin serie ni correlativo
+    // real, numeración propia desde 1000) — sí sale en Facturas de Clientes
+    // (vista de cuenta del cliente), pero se excluye aquí porque este
+    // reporte asume formato "serie-correlativo" para todo (calcularDesglose,
+    // numeroDocumento, el CSV de IVA): mezclarlo rompería esa numeración
+    // fiscal secuencial que este reporte sí necesita que sea real.
+    const todas = [...base.filter((f) => f.tipo !== "ticket"), ...ventasFacturas];
 
     // f.fecha es timestamptz (ISO en UTC) para reparación/revisión/etc. —
     // truncar con slice(0,10) se queda con el día UTC, no el de Madrid, y

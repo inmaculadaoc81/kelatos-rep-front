@@ -20,7 +20,8 @@ export type TipoFactura =
   | "alquiler"
   | "recogida"
   | "manual"
-  | "venta";
+  | "venta"
+  | "ticket";
 
 export const ETIQUETA_TIPO_FACTURA: Record<TipoFactura, string> = {
   reparacion: "Reparación",
@@ -33,6 +34,7 @@ export const ETIQUETA_TIPO_FACTURA: Record<TipoFactura, string> = {
   recogida: "Recogida",
   manual: "Manual",
   venta: "Venta",
+  ticket: "Ticket",
 };
 
 export interface FacturaCliente {
@@ -278,6 +280,11 @@ interface FilaReparacionFacturadaSql {
   fecha_factura_corregida_revision: string | null;
 
   cliente_factura_corregida: ClienteFacturaJson | string | null;
+
+  numero_ticket: string | null;
+  url_ticket: string | null;
+  fecha_ticket: string | null;
+  total_ticket: string | number | null;
 }
 
 export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaCliente[] {
@@ -464,6 +471,30 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       estadoFactura: "",
       tipo: "corregida",
       tipoOriginal: "reparacion",
+    });
+  }
+
+  // Pasada 7: "Ticket Rápido" — no es una factura fiscal (numeración
+  // propia desde 1000, sin serie ni guion, por eso NO pasa por
+  // numeroValido()) pero se trata como el mismo proceso de facturación
+  // desde que existe: sale en Facturas de Clientes/Reporte de Facturas
+  // igual que cualquier otro tipo. Se considera Cobrada siempre — es un
+  // recibo de una venta ya cerrada en el momento de generarlo, no hay
+  // forma de pago ni estado pendiente que registrar (a diferencia de una
+  // factura real, "Ticket Rápido" no lo pide).
+  const numTicket = texto(row.numero_ticket);
+  if (numTicket) {
+    facturas.push({
+      ...base,
+      ...aplicarClienteFactura(base, row.cliente_factura),
+      numero: numTicket,
+      url: urlValida(texto(row.url_ticket)),
+      total: num(row.total_ticket),
+      fecha: row.fecha_ticket,
+      formaPago: "",
+      banco: "",
+      estadoFactura: "Cobrada",
+      tipo: "ticket",
     });
   }
 

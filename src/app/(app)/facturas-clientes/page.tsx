@@ -11,6 +11,7 @@ import {
   Bank,
   ExportSquare,
   Box,
+  Ticket,
   ArrowLeft2,
   ArrowLeft3,
   ArrowRight2,
@@ -151,6 +152,7 @@ const TIPO_BADGE_ESTILO: Partial<Record<TipoFactura, { bg: string; color: string
   recogida: { bg: "#6c757d", color: "#fff" },
   alquiler: { bg: "#198754", color: "#fff" },
   manual: { bg: "#6f42c1", color: "#fff" },
+  ticket: { bg: "#20c997", color: "#fff" },
 };
 
 function TipoBadge({ f }: { f: FacturaCliente }) {
@@ -161,6 +163,7 @@ function TipoBadge({ f }: { f: FacturaCliente }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
       {f.tipo === "recogida" && <Box className="size-3" />}
+      {f.tipo === "ticket" && <Ticket className="size-3" />}
       {ETIQUETA_TIPO_FACTURA[tipoEfectivo]}
     </span>
   );
