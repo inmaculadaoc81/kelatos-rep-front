@@ -157,16 +157,33 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
     };
   }
   if (tipoBase === "corregida_ticket") {
+    // Igual que "corregida"/"corregida_revision" reales (ver más abajo): un
+    // ticket corregido es, a todos los efectos, un ticket nuevo e
+    // independiente — SÍ se puede volver a rectificar y corregir tantas
+    // veces como haga falta. Como solo hay una pareja de columnas
+    // rectificativa/corregida por reparación (se sobrescriben en cada
+    // ciclo), "rectificativa" aquí solo se rellena si pertenece a un ciclo
+    // POSTERIOR a esta corregida (fecha más reciente) — si no, es la
+    // rectificativa del ciclo anterior que ya dio lugar a esta misma
+    // corregida y no aplica a este documento. Corregido 2026-08-27: antes
+    // esta rama tenía permiteDevolucion: false, tratando la corregida como
+    // si fuera terminal igual que una rectificativa — impedía generar una
+    // segunda vuelta de devolución sobre un ticket corregido, a diferencia
+    // de las facturas reales.
+    const doc = detalle.ticketCorregida;
+    const rectBase = detalle.ticketRectificativa;
+    const hayCicloPosterior = !!(rectBase?.fechaFactura && doc?.fechaFactura && new Date(rectBase.fechaFactura) > new Date(doc.fechaFactura));
     return {
-      numeroFactura: detalle.ticketCorregida?.numeroFactura || "",
-      urlFactura: detalle.ticketCorregida?.urlFactura || "",
-      totalConIva: (detalle.ticketCorregida?.totalFactura || 0) * 1.21,
+      numeroFactura: doc?.numeroFactura || "",
+      urlFactura: doc?.urlFactura || "",
+      totalConIva: (doc?.totalFactura || 0) * 1.21,
       clienteNombre: detalle.cliente.nombre || "",
       clienteEmailDefault: detalle.cliente.email || "",
       lineasOriginales: [],
-      rectificativa: null, corregida: null,
-      tipoRect: "", tipoCorr: "", tipoCombinado: "",
-      permiteDevolucion: false,
+      rectificativa: hayCicloPosterior ? rectBase : null,
+      corregida: null,
+      tipoRect: "rectificativa_ticket", tipoCorr: "corregida_ticket", tipoCombinado: "",
+      permiteDevolucion: true,
       clienteOriginal: clienteOriginalDe(null, detalle),
       formaPagoOriginal: "",
     };
