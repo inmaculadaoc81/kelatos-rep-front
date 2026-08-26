@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Receipt, TickCircle, CloseCircle, SearchNormal1 } from "@/lib/icons";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,11 +24,13 @@ const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 
 /**
  * Reproduce abrirModalMarcarRevision()/confirmarMarcarRevision() del
- * original — dos vistas según si ya hay factura de revisión generada
- * (solo lectura, con enlace al PDF) o todavía no ("opciones" del proceso:
- * datos fiscales del cliente + importe + método de pago + banco si es
- * tarjeta). Orquesta el saga completo (preparar→iniciar→generar-pdf→
- * confirmar) en una sola llamada a /api/reparaciones/:resguardo/facturas.
+ * original, ampliado el 2026-08-26 (petición del usuario): la revisión ya
+ * no se resuelve solo con una factura real — también puede resolverse con
+ * un ticket (Serie 2), que no lleva datos de cliente. Por eso, si todavía
+ * no se ha generado ninguno de los dos, primero se pregunta cuál se
+ * quiere, y solo entonces se muestra el formulario correspondiente — meter
+ * los dos caminos en un único modal con campos de cliente no tenía sentido
+ * para el camino de ticket, que nunca los usa.
  */
 export function FacturaRevisionDialog({
   detalle,
@@ -48,11 +51,13 @@ export function FacturaRevisionDialog({
   metodoPagoInicial?: string;
   bancoInicial?: string;
 }) {
-  const yaGenerada = !!(detalle.numeroFacturaRevision || detalle.urlFacturaRevision);
+  const yaGeneradaFactura = !!(detalle.numeroFacturaRevision || detalle.urlFacturaRevision);
+  const yaGeneradaTicket = !!(detalle.numeroTicketRevision || detalle.urlTicketRevision);
 
-  if (yaGenerada) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
+  if (yaGeneradaFactura) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
+  if (yaGeneradaTicket) return <VistaGeneradaTicket detalle={detalle} open={open} onOpenChange={onOpenChange} />;
   return (
-    <VistaGenerar
+    <VistaElegir
       detalle={detalle}
       open={open}
       onOpenChange={onOpenChange}
@@ -63,9 +68,14 @@ export function FacturaRevisionDialog({
   );
 }
 
-function CabeceraVerde({ titulo, onClose }: { titulo: string; onClose: () => void }) {
+function CabeceraVerde({ titulo, onClose, onVolver }: { titulo: string; onClose: () => void; onVolver?: () => void }) {
   return (
     <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-3 text-white">
+      {onVolver && (
+        <Button variant="ghost" size="icon-sm" className="text-white hover:bg-white/15 hover:text-white" onClick={onVolver}>
+          <ArrowLeft2 className="size-4" />
+        </Button>
+      )}
       <Receipt className="size-4.5 shrink-0" />
       <DialogTitle className="text-sm font-semibold text-white">{titulo}</DialogTitle>
       <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={onClose}>
@@ -89,7 +99,44 @@ function VistaGenerada({
   return <FacturaModalShell detalle={detalle} tipoBase="revision" open={open} onOpenChange={onOpenChange} onActualizado={onActualizado} />;
 }
 
-function VistaGenerar({
+/** Vista de solo lectura cuando la revisión ya se resolvió con un ticket
+    (en vez de una factura real) — más simple que FacturaModalShell porque
+    un ticket no tiene devolución/rectificativo (no es un documento fiscal
+    formal con serie de rectificativas propia). */
+function VistaGeneradaTicket({
+  detalle,
+  open,
+  onOpenChange,
+}: {
+  detalle: ReparacionDetalle;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
+        <CabeceraVerde titulo="Revisión pagada — Ticket" onClose={() => onOpenChange(false)} />
+        <div className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+            <span>Ticket <strong>{detalle.numeroTicketRevision}</strong> — Revisión técnica del equipo.</span>
+          </div>
+          {detalle.urlTicketRevision && (
+            <Button variant="outline" className="w-full gap-1.5" nativeButton={false} render={<Link href={detalle.urlTicketRevision} target="_blank" rel="noreferrer" />}>
+              <Ticket className="size-3.5" /> Ver PDF
+            </Button>
+          )}
+        </div>
+        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Paso 1: elegir si la revisión se cobra con factura real o con ticket,
+    antes de mostrar el formulario correspondiente. */
+function VistaElegir({
   detalle,
   open,
   onOpenChange,
@@ -103,6 +150,168 @@ function VistaGenerar({
   onGenerada: () => void;
   metodoPagoInicial?: string;
   bancoInicial?: string;
+}) {
+  const [modo, setModo] = useState<"" | "factura" | "ticket">("");
+
+  useEffect(() => {
+    if (open) setModo("");
+  }, [open]);
+
+  if (modo === "factura") {
+    return (
+      <VistaGenerar
+        detalle={detalle}
+        open={open}
+        onOpenChange={onOpenChange}
+        onGenerada={onGenerada}
+        metodoPagoInicial={metodoPagoInicial}
+        bancoInicial={bancoInicial}
+        onVolver={() => setModo("")}
+      />
+    );
+  }
+  if (modo === "ticket") {
+    return <VistaGenerarTicket detalle={detalle} open={open} onOpenChange={onOpenChange} onGenerada={onGenerada} onVolver={() => setModo("")} />;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
+        <CabeceraVerde titulo="Marcar revisión pagada" onClose={() => onOpenChange(false)} />
+        <div className="space-y-3 p-4">
+          <p className="text-sm text-muted-foreground">¿Cómo se cobra la revisión (20€ s/IVA)?</p>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left hover:bg-muted"
+            onClick={() => setModo("factura")}
+          >
+            <Receipt className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-semibold">Factura</p>
+              <p className="text-xs text-muted-foreground">Documento fiscal completo, con datos del cliente.</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left hover:bg-muted"
+            onClick={() => setModo("ticket")}
+          >
+            <Ticket className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-semibold">Ticket</p>
+              <p className="text-xs text-muted-foreground">Recibo simple, sin datos de cliente.</p>
+            </div>
+          </button>
+        </div>
+        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function VistaGenerarTicket({
+  detalle,
+  open,
+  onOpenChange,
+  onGenerada,
+  onVolver,
+}: {
+  detalle: ReparacionDetalle;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onGenerada: () => void;
+  onVolver: () => void;
+}) {
+  const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [enviando, setEnviando] = useState(false);
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  function cerrar(o: boolean, eventDetails?: { reason?: string; cancel?: () => void }) {
+    if (enviando) return;
+    if (eventDetails && esCierreAccidental(o, eventDetails)) return;
+    if (!o) setRequestId(null);
+    onOpenChange(o);
+  }
+
+  async function confirmar() {
+    setEnviando(true);
+    const rid = requestId || crypto.randomUUID();
+    setRequestId(rid);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          modo: "revision",
+          estado,
+          lineas: [{ descripcion: "Revisión técnica del equipo", cantidad: 1, precio: 20 }],
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`Revisión marcada — Ticket ${data.numeroTicket} generado correctamente`);
+      setRequestId(null);
+      onOpenChange(false);
+      onGenerada();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={cerrar}>
+      <DialogContent className="gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
+        <CabeceraVerde titulo="Marcar revisión — Ticket" onClose={() => cerrar(false)} onVolver={enviando ? undefined : onVolver} />
+        <div className="space-y-3 p-4">
+          <p className="text-sm text-muted-foreground">Genera un ticket (sin datos de cliente) para la revisión técnica.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Importe (€ s/IVA)</Label>
+              <Input value="20" disabled className="bg-muted" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cobrada">Cobrada</SelectItem>
+                  <SelectItem value="Pendiente">Pendiente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
+          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
+          <Button className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
+            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
+          </Button>
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function VistaGenerar({
+  detalle,
+  open,
+  onOpenChange,
+  onGenerada,
+  metodoPagoInicial,
+  bancoInicial,
+  onVolver,
+}: {
+  detalle: ReparacionDetalle;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onGenerada: () => void;
+  metodoPagoInicial?: string;
+  bancoInicial?: string;
+  onVolver?: () => void;
 }) {
   const [nombre, setNombre] = useState(detalle.cliente.nombre || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
@@ -176,7 +385,7 @@ function VistaGenerar({
   return (
     <Dialog open={open} onOpenChange={cerrar}>
       <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
-        <CabeceraVerde titulo="Marcar revisión pagada" onClose={() => cerrar(false)} />
+        <CabeceraVerde titulo="Marcar revisión pagada" onClose={() => cerrar(false)} onVolver={enviando ? undefined : onVolver} />
         <div className="space-y-3 p-4">
           <p className="text-sm text-muted-foreground">Verifica los datos que aparecerán en la factura y confirma el pago.</p>
 

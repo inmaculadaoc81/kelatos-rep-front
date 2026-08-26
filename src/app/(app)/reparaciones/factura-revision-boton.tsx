@@ -23,7 +23,7 @@ export function FacturaRevisionBoton({
   const [abierto, setAbierto] = useState(false);
   if (ENTREGA_CERRADA.includes(detalle.estadoEntrega)) return null;
 
-  const yaGenerada = !!(detalle.numeroFacturaRevision || detalle.urlFacturaRevision);
+  const yaGenerada = !!(detalle.numeroFacturaRevision || detalle.urlFacturaRevision || detalle.numeroTicketRevision || detalle.urlTicketRevision);
 
   return (
     <>
