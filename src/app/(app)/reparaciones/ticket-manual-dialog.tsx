@@ -103,7 +103,12 @@ export function TicketManualDialog({
   useEffect(() => {
     if (open) {
       setLineas(esReal && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]);
-      setResultado(null);
+      // Si esta reparación ya tiene un ticket generado, se muestra tal
+      // cual en vez de un formulario en blanco — sin esto, reabrir el
+      // diálogo (p.ej. tras generar uno) ofrecía crear otro sin ningún
+      // aviso, gastando un número nuevo y perdiendo el enlace anterior
+      // (numero_ticket/url_ticket es una sola columna, no un historial).
+      setResultado(esReal && detalle?.numeroTicket ? { numeroTicket: detalle.numeroTicket, urlTicket: detalle.urlTicket } : null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
