@@ -422,9 +422,9 @@ export function AccionRequerida({
       </Button>
     );
     // Ticket rápido: numeración real desde ticket_venta_seq, líneas
-    // precargadas desde los presupuestos aceptados, marca entregado al
-    // generar — mismo momento que Facturación, petición explícita del
-    // usuario, 2026-08-26.
+    // precargadas desde los presupuestos aceptados. No marca entrega —
+    // igual que Facturación real, eso sigue siendo un paso aparte
+    // ("Entregado en Local" / "Marcar como enviado", más abajo).
     botones.push(
       <Button key="ticket-rapido" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onTicketRapido}>
         <Ticket className="size-3.5" /> Ticket Rápido

@@ -78,8 +78,9 @@ function CampoLectura({ label, valor }: { label: string; valor: string }) {
  *   se descarga directo.
  * - Ligado a una reparación (`resguardo` + `detalle`): numeración real
  *   (kelatos_app.ticket_venta_seq, desde 1000), líneas precargadas desde
- *   los presupuestos aceptados, el PDF se guarda en Drive y el equipo
- *   queda marcado como entregado — igual que al emitir una factura real.
+ *   los presupuestos aceptados, el PDF se guarda en Drive. NO marca
+ *   entrega — igual que Facturación real, eso sigue siendo un paso
+ *   aparte ("Entregado en Local" / "Marcar como enviado").
  */
 export function TicketManualDialog({
   open,
@@ -143,7 +144,7 @@ export function TicketManualDialog({
         });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || "Error desconocido");
-        toast.success(`Ticket ${data.numeroTicket} generado — equipo marcado como entregado`);
+        toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
         setResultado({ numeroTicket: data.numeroTicket, urlTicket: data.urlTicket });
         onGenerado?.();
         return;
@@ -274,7 +275,7 @@ export function TicketManualDialog({
 
             {esReal && !resultado && (
               <p className="text-xs text-muted-foreground">
-                Al generar, el equipo quedará marcado como <strong>entregado en local</strong> — igual que al emitir una factura.
+                Esto solo genera el ticket — para marcar el equipo como entregado, usa "Entregado en Local" o "Marcar como enviado" aparte, igual que con Facturación.
               </p>
             )}
           </div>
