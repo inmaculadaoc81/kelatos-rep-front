@@ -13,20 +13,24 @@ interface RespuestaFila<T> {
 }
 
 /**
- * GET /api/presupuestos — reproduce apiObtenerPresupuestosEnviados():
- * presupuestos en estado "enviado", más recientes primero, con
- * cliente/equipo resueltos desde la reparación de cada uno. Usa las rutas
- * CRUD genéricas /v1/presupuestos y /v1/reparaciones/:resguardo — no hace
- * falta ningún endpoint dedicado nuevo en el backend.
+ * GET /api/presupuestos — reproduce apiObtenerPresupuestosEnviados(), pero
+ * ya no se limita a estado "enviado": el listado necesita mostrar también
+ * si un presupuesto ya enviado fue aceptado/rechazado (y con qué motivo y
+ * fecha), así que se trae todo salvo los "borrador" (nunca llegaron a
+ * enviarse, no son "presupuestos enviados"). El endpoint genérico
+ * /v1/presupuestos solo permite filtros de igualdad, así que el descarte de
+ * borradores se hace aquí. Cliente/equipo se resuelven desde la reparación
+ * de cada uno vía /v1/reparaciones/:resguardo — no hace falta ningún
+ * endpoint dedicado nuevo en el backend.
  */
 export async function GET() {
   try {
     const presupuestos = await kelatosApiGet<RespuestaLista<Parameters<typeof mapearPresupuestoEnviado>[0]>>("/v1/presupuestos", {
-      estado: "enviado",
       order: "fecha_envio",
       direction: "desc",
       limit: 500,
     });
+    presupuestos.rows = presupuestos.rows.filter((p) => p.estado !== "borrador");
 
     const resguardosUnicos = [...new Set(presupuestos.rows.map((p) => p.resguardo).filter(Boolean))];
     const reparaciones = await Promise.all(
