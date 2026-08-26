@@ -68,7 +68,7 @@ export function FacturaRevisionDialog({
   );
 }
 
-function CabeceraVerde({ titulo, onClose, onVolver }: { titulo: string; onClose: () => void; onVolver?: () => void }) {
+function CabeceraVerde({ titulo, onClose, onVolver }: { titulo: string; onClose?: () => void; onVolver?: () => void }) {
   return (
     <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-3 text-white">
       {onVolver && (
@@ -78,9 +78,11 @@ function CabeceraVerde({ titulo, onClose, onVolver }: { titulo: string; onClose:
       )}
       <Receipt className="size-4.5 shrink-0" />
       <DialogTitle className="text-sm font-semibold text-white">{titulo}</DialogTitle>
-      <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={onClose}>
-        <CloseCircle className="size-4" />
-      </Button>
+      {onClose && (
+        <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={onClose}>
+          <CloseCircle className="size-4" />
+        </Button>
+      )}
     </header>
   );
 }
@@ -174,10 +176,15 @@ function VistaElegir({
     return <VistaGenerarTicket detalle={detalle} open={open} onOpenChange={onOpenChange} onGenerada={onGenerada} onVolver={() => setModo("")} />;
   }
 
+  // Sin forma de cerrar (ni X, ni Cancelar, ni clic fuera, ni Esc) —
+  // petición explícita del usuario, 2026-08-26: una vez que "revisión
+  // corresponde" se marcó en el alta, hay que resolverla sí o sí (factura
+  // o ticket) antes de seguir, en vez de poder dejarla a medias como
+  // pasaba antes (de ahí salía el bug de revision_pagada sin documento).
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
-        <CabeceraVerde titulo="Marcar revisión pagada" onClose={() => onOpenChange(false)} />
+        <CabeceraVerde titulo="Marcar revisión pagada" />
         <div className="space-y-3 p-4">
           <p className="text-sm text-muted-foreground">¿Cómo se cobra la revisión (20€ s/IVA)?</p>
           <button
@@ -203,9 +210,6 @@ function VistaElegir({
             </div>
           </button>
         </div>
-        <footer className="flex justify-end border-t bg-muted/50 px-4 py-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-        </footer>
       </DialogContent>
     </Dialog>
   );

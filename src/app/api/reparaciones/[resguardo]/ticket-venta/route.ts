@@ -38,11 +38,17 @@ export async function POST(
   const lineas = Array.isArray(datos?.lineas) ? (datos.lineas as LineaTicket[]) : [];
   if (!lineas.length) return NextResponse.json({ ok: false, error: "Debe incluir al menos una línea" }, { status: 400 });
   const estado = datos?.estado === "Pendiente" ? "Pendiente" : "Cobrada";
+  // "modo: revision" (Marcar revisión pagada → Ticket) se perdía aquí: se
+  // recibía en el body pero nunca se reenviaba al backend, así que el
+  // ticket se generaba como Ticket Rápido normal (numero_ticket) en vez de
+  // como ticket de revisión (numero_ticket_revision + revision_pagada =
+  // true) — bug real reportado, 2026-08-26.
+  const modo = datos?.modo === "revision" ? "revision" : undefined;
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketVenta>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/ticket-venta`,
-      { requestId: crypto.randomUUID(), usuario, lineas, estado }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, modo }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, reparacion: resultado.reparacion });
   } catch (error) {
