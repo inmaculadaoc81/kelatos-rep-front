@@ -91,6 +91,8 @@ interface FilaReparacionSqlDetalle {
   fecha_ticket_revision: string | null;
   total_ticket_revision: string | number | null;
   estado_ticket_revision: string | null;
+  lineas_ticket: unknown;
+  lineas_ticket_revision: unknown;
   numero_ticket_rectificativa: string | null;
   url_ticket_rectificativa: string | null;
   total_ticket_rectificativa: string | number | null;
@@ -320,6 +322,12 @@ export interface ReparacionDetalle {
   fechaTicketRevision: string | null;
   totalTicketRevision: number;
   estadoTicketRevision: string;
+  /** Líneas reales usadas al generar el ticket vigente de cada linaje
+      (se sobrescriben en cada corregida) — permiten precargar el
+      formulario de "Ticket Corregido" en vez de dejarlo en blanco
+      (migración 056). */
+  lineasTicket: { referencia?: string; descripcion: string; cantidad: number; precio: number; descuento?: number }[];
+  lineasTicketRevision: { referencia?: string; descripcion: string; cantidad: number; precio: number; descuento?: number }[];
   ticketRectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   motivoTicketRectificativa: string;
   ticketCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
@@ -508,6 +516,16 @@ export function mapearReparacionDetalle(
     fechaTicketRevision: fecha(row.fecha_ticket_revision),
     totalTicketRevision: numero(row.total_ticket_revision),
     estadoTicketRevision: row.estado_ticket_revision || "",
+    lineasTicket: Array.isArray(row.lineas_ticket)
+      ? (row.lineas_ticket as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
+          referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
+        }))
+      : [],
+    lineasTicketRevision: Array.isArray(row.lineas_ticket_revision)
+      ? (row.lineas_ticket_revision as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
+          referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
+        }))
+      : [],
     ticketRectificativa: row.numero_ticket_rectificativa
       ? { numeroFactura: row.numero_ticket_rectificativa, urlFactura: row.url_ticket_rectificativa || "", totalFactura: numero(row.total_ticket_rectificativa), fechaFactura: fecha(row.fecha_ticket_rectificativa) }
       : null,

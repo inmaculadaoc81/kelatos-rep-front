@@ -129,7 +129,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       totalConIva: detalle.totalTicket * 1.21,
       clienteNombre: detalle.cliente.nombre || "",
       clienteEmailDefault: detalle.cliente.email || "",
-      lineasOriginales: [],
+      lineasOriginales: detalle.lineasTicket,
       rectificativa: detalle.ticketRectificativa
         ? { numeroFactura: detalle.ticketRectificativa.numeroFactura, urlFactura: detalle.ticketRectificativa.urlFactura }
         : null,
@@ -149,7 +149,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       totalConIva: (detalle.totalTicketRevision || 20) * 1.21,
       clienteNombre: detalle.cliente.nombre || "",
       clienteEmailDefault: detalle.cliente.email || "",
-      lineasOriginales: [],
+      lineasOriginales: detalle.lineasTicketRevision,
       rectificativa: detalle.ticketRevisionRectificativa
         ? { numeroFactura: detalle.ticketRevisionRectificativa.numeroFactura, urlFactura: detalle.ticketRevisionRectificativa.urlFactura }
         : null,
@@ -203,7 +203,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       totalConIva: (doc?.totalFactura || 0) * 1.21,
       clienteNombre: detalle.cliente.nombre || "",
       clienteEmailDefault: detalle.cliente.email || "",
-      lineasOriginales: [],
+      lineasOriginales: detalle.lineasTicket,
       rectificativa: hayCicloPosterior ? rectBase : null,
       corregida: null,
       tipoRect: "rectificativa_ticket", tipoCorr: "corregida_ticket", tipoCombinado: "",
@@ -241,7 +241,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       totalConIva: (doc?.totalFactura || 0) * 1.21,
       clienteNombre: detalle.cliente.nombre || "",
       clienteEmailDefault: detalle.cliente.email || "",
-      lineasOriginales: [],
+      lineasOriginales: detalle.lineasTicketRevision,
       rectificativa: hayCicloPosterior ? rectBase : null,
       corregida: null,
       tipoRect: "rectificativa_ticket_revision", tipoCorr: "corregida_ticket_revision", tipoCombinado: "",
@@ -423,6 +423,7 @@ export function FacturaAccionesTabs({
               apiCorregidaUrl={`${apiBase}/corregida`}
               contexto={`Resguardo #${detalle.resguardo}`}
               numeroTicketOriginal={d.numeroFactura}
+              lineasIniciales={d.lineasOriginales}
               yaGenerada={d.rectificativa}
               corregida={d.corregida}
               onGenerada={onActualizado}
@@ -434,6 +435,7 @@ export function FacturaAccionesTabs({
               apiCorregidaUrl={`${apiBase}/corregida`}
               contexto={`Resguardo #${detalle.resguardo}`}
               numeroTicketOriginal={d.numeroFactura}
+              lineasIniciales={d.lineasOriginales}
               rectificativa={d.rectificativa}
               corregida={d.corregida}
               onActualizado={onActualizado}
