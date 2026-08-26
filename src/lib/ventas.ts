@@ -38,6 +38,9 @@ export interface Venta {
   ultimoUsuario: string;
   montoPagado: number;
   numeroFactura: string;
+  numeroTicket: string;
+  urlTicket: string;
+  estadoTicket: string;
   items: ItemVenta[];
 }
 
@@ -55,6 +58,9 @@ interface FilaVentaSql {
   ultimo_usuario: string | null;
   monto_pagado: string | number | null;
   numero_factura: string | null;
+  numero_ticket: string | null;
+  url_ticket: string | null;
+  estado_ticket: string | null;
 }
 
 interface FilaItemVentaSql {
@@ -110,6 +116,9 @@ export function mapearVenta(row: FilaVentaSql, items: FilaItemVentaSql[]): Venta
     ultimoUsuario: row.ultimo_usuario || "",
     montoPagado: Number(row.monto_pagado) || 0,
     numeroFactura: row.numero_factura || "",
+    numeroTicket: row.numero_ticket || "",
+    urlTicket: row.url_ticket || "",
+    estadoTicket: row.estado_ticket || "",
     items: items.map(mapearItem),
   };
 }

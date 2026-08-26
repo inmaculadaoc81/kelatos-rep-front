@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText } from "@/lib/icons";
+import Link from "next/link";
+import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import {
 } from "@/lib/ventas";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import { esUrlValida } from "@/lib/validacion";
+import { TicketManualDialog } from "../reparaciones/ticket-manual-dialog";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -79,6 +81,7 @@ export function DetalleVentaDialog({
   const confirmar = useConfirm();
   const esSuperadmin = useEsSuperadmin();
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const [ticketAbierto, setTicketAbierto] = useState(false);
   const [venta, setVenta] = useState<Venta | null>(null);
   const [cargando, setCargando] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -348,9 +351,28 @@ export function DetalleVentaDialog({
               <div><span className="font-semibold">Ganancia:</span> <span className="font-bold text-emerald-700 dark:text-emerald-400">{euros(venta.items.reduce((s, i) => s + (i.precio - i.costo), 0))}</span></div>
             </div>
 
-            <div className="flex items-center gap-1.5 text-sm">
-              <DocumentText className="size-4 text-muted-foreground" />
-              <span className="font-semibold">Factura:</span> {venta.numeroFactura || "-"}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+              <div className="flex items-center gap-1.5">
+                <DocumentText className="size-4 text-muted-foreground" />
+                <span className="font-semibold">Factura:</span> {venta.numeroFactura || "-"}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Ticket className="size-4 text-muted-foreground" />
+                <span className="font-semibold">Ticket:</span>{" "}
+                {venta.numeroTicket ? (
+                  venta.urlTicket ? (
+                    <Button variant="link" size="sm" className="h-auto p-0" nativeButton={false} render={<Link href={venta.urlTicket} target="_blank" rel="noreferrer" />}>
+                      {venta.numeroTicket}
+                    </Button>
+                  ) : (
+                    venta.numeroTicket
+                  )
+                ) : (
+                  <Button size="sm" variant="outline" className="h-6 gap-1.5 px-2 text-xs" onClick={() => setTicketAbierto(true)}>
+                    <Ticket className="size-3.5" /> Generar Ticket
+                  </Button>
+                )}
+              </div>
             </div>
 
             {venta.observaciones && (
@@ -527,6 +549,16 @@ export function DetalleVentaDialog({
           open={eliminarAbierto}
           onOpenChange={setEliminarAbierto}
           onEliminado={() => { onOpenChange(false); onActualizado(); }}
+        />
+      )}
+
+      {venta && (
+        <TicketManualDialog
+          open={ticketAbierto}
+          onOpenChange={setTicketAbierto}
+          ventaId={venta.ventaId}
+          venta={venta}
+          onGenerado={actualizarTodo}
         />
       )}
     </Dialog>

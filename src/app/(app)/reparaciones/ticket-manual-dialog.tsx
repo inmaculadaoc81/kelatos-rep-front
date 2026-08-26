@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { Venta } from "@/lib/ventas";
 import { StockPieza } from "@/lib/stock-piezas";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 
@@ -58,6 +59,18 @@ function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
   return lineas.length > 0 ? lineas : [lineaVacia()];
 }
 
+/**
+ * Equivalente de lineasDesdePresupuestos() para Ventas (pedidos de piezas)
+ * — precarga una línea por cada pieza del pedido, con su precio de venta
+ * al cliente ya fijado.
+ */
+function lineasDesdeVenta(venta: Venta): LineaTicket[] {
+  const lineas = venta.items
+    .filter((it) => it.precio > 0)
+    .map((it) => ({ descripcion: it.descripcion || "Pieza", cantidad: 1, precio: it.precio, descuento: 0 }));
+  return lineas.length > 0 ? lineas : [lineaVacia()];
+}
+
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
@@ -101,15 +114,20 @@ export function TicketManualDialog({
   onOpenChange,
   resguardo,
   detalle,
+  ventaId,
+  venta,
   onGenerado,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   resguardo?: string;
   detalle?: ReparacionDetalle;
+  ventaId?: string;
+  venta?: Venta;
   onGenerado?: () => void;
 }) {
-  const esReal = !!resguardo;
+  const esVenta = !!ventaId;
+  const esReal = !!resguardo || esVenta;
   const [lineas, setLineas] = useState<LineaTicket[]>([lineaVacia()]);
   const [descuentoGlobal, setDescuentoGlobal] = useState(0);
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
@@ -119,15 +137,20 @@ export function TicketManualDialog({
 
   useEffect(() => {
     if (open) {
-      setLineas(esReal && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]);
+      setLineas(
+        esVenta && venta ? lineasDesdeVenta(venta) : !esVenta && resguardo && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]
+      );
       setDescuentoGlobal(0);
-      setEstado(detalle?.estadoTicket === "Pendiente" ? "Pendiente" : "Cobrada");
-      // Si esta reparación ya tiene un ticket generado, se muestra tal
-      // cual en vez de un formulario en blanco — sin esto, reabrir el
+      const estadoTicketPrevio = esVenta ? venta?.estadoTicket : detalle?.estadoTicket;
+      setEstado(estadoTicketPrevio === "Pendiente" ? "Pendiente" : "Cobrada");
+      // Si esta reparación/venta ya tiene un ticket generado, se muestra
+      // tal cual en vez de un formulario en blanco — sin esto, reabrir el
       // diálogo (p.ej. tras generar uno) ofrecía crear otro sin ningún
       // aviso, gastando un número nuevo y perdiendo el enlace anterior
       // (numero_ticket/url_ticket es una sola columna, no un historial).
-      setResultado(esReal && detalle?.numeroTicket ? { numeroTicket: detalle.numeroTicket, urlTicket: detalle.urlTicket } : null);
+      const numeroTicketPrevio = esVenta ? venta?.numeroTicket : detalle?.numeroTicket;
+      const urlTicketPrevio = esVenta ? venta?.urlTicket : detalle?.urlTicket;
+      setResultado(esReal && numeroTicketPrevio ? { numeroTicket: numeroTicketPrevio, urlTicket: urlTicketPrevio || "" } : null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -191,7 +214,8 @@ export function TicketManualDialog({
     setGenerando(true);
     try {
       if (esReal) {
-        const res = await fetch(`/api/reparaciones/${resguardo}/ticket-venta`, {
+        const url = esVenta ? `/api/ventas/${ventaId}/ticket-venta` : `/api/reparaciones/${resguardo}/ticket-venta`;
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lineas: lineasValidas, estado }),
@@ -235,7 +259,7 @@ export function TicketManualDialog({
       <DialogContent className="max-w-4xl gap-0 p-0 sm:max-w-4xl" showCloseButton={false}>
         <Cabecera
           titulo={esReal ? "Ticket Rápido" : "Ticket Manual"}
-          subtitulo={esReal ? `— Resguardo #${resguardo}` : "(prueba — no se guarda)"}
+          subtitulo={esVenta ? `— Pedido #${ventaId}` : resguardo ? `— Resguardo #${resguardo}` : "(prueba — no se guarda)"}
           onClose={() => cerrar(false)}
         />
 
