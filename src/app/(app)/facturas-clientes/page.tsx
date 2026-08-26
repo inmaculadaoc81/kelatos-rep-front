@@ -50,6 +50,7 @@ import {
 } from "@/lib/facturas-cliente";
 import { ColumnaFiltro } from "./columna-filtro";
 import { DetalleFacturaDialog } from "./detalle-factura-dialog";
+import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -270,23 +271,21 @@ function FacturaBadge({ f }: { f: FacturaCliente }) {
   );
 }
 
-function ResguardoCell({ f }: { f: FacturaCliente }) {
-  const router = useRouter();
+function ResguardoCell({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: string) => void }) {
   if (f.esAlquiler) return <span className="font-bold" style={{ color: "#198754" }}>{f.resguardo || "—"}</span>;
   if (f.esManual) return <span className="font-bold" style={{ color: "#6f42c1" }}>{f.resguardo || "—"}</span>;
-  const cerrada = f.estadoEntrega === "ENTREGADO" || f.estadoEntrega === "ENVIO" || f.estadoEntrega === "RECICLAJE";
   return (
     <button
       type="button"
       className="font-bold text-primary underline-offset-2 hover:underline"
-      onClick={() => router.push(`/${cerrada ? "historial" : "reparaciones"}?resguardo=${encodeURIComponent(f.resguardo)}`)}
+      onClick={() => onVer(f.resguardo)}
     >
       {f.resguardo || "—"}
     </button>
   );
 }
 
-function VerBoton({ f }: { f: FacturaCliente }) {
+function VerBoton({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: string) => void }) {
   const router = useRouter();
   if (f.esManual) return <span className="mr-1 inline-block size-7" />;
   if (f.esAlquiler) {
@@ -296,14 +295,13 @@ function VerBoton({ f }: { f: FacturaCliente }) {
       </Button>
     );
   }
-  const cerrada = f.estadoEntrega === "ENTREGADO" || f.estadoEntrega === "ENVIO" || f.estadoEntrega === "RECICLAJE";
   return (
     <Button
       variant="outline"
       size="icon-sm"
       className="mr-1"
       title="Ver reparación"
-      onClick={() => router.push(`/${cerrada ? "historial" : "reparaciones"}?resguardo=${encodeURIComponent(f.resguardo)}`)}
+      onClick={() => onVer(f.resguardo)}
     >
       <Eye className="size-3.5" />
     </Button>
@@ -331,6 +329,7 @@ export default function FacturasClientesPage() {
   const [filasPorPagina, setFilasPorPagina] = useState(15);
 
   const [facturaAcciones, setFacturaAcciones] = useState<FacturaCliente | null>(null);
+  const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -717,7 +716,7 @@ export default function FacturasClientesPage() {
                       paginaActual.map((f, i) => (
                         <TableRow key={`${f.resguardo}-${f.numero}-${f.tipo}-${i}`}>
                           <TableCell>
-                            <ResguardoCell f={f} />
+                            <ResguardoCell f={f} onVer={setResguardoDetalle} />
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5">
@@ -749,7 +748,7 @@ export default function FacturasClientesPage() {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{formaPagoLabel(f)}</TableCell>
                           <TableCell className="text-nowrap">
-                            <VerBoton f={f} />
+                            <VerBoton f={f} onVer={setResguardoDetalle} />
                             {!f.historica && (
                               <Button variant="outline" size="icon-sm" title="Detalle de factura" onClick={() => setFacturaAcciones(f)}>
                                 <DocumentText className="size-3.5" />
@@ -819,6 +818,7 @@ export default function FacturasClientesPage() {
       </div>
 
       <DetalleFacturaDialog factura={facturaAcciones} onOpenChange={(o) => !o && setFacturaAcciones(null)} onCobrada={cargar} />
+      <DetalleReparacionDialog resguardo={resguardoDetalle} onOpenChange={(o) => !o && setResguardoDetalle(null)} onActualizado={cargar} />
     </div>
   );
 }
