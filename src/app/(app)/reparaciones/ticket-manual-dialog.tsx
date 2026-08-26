@@ -39,15 +39,43 @@ function totalLinea(l: LineaTicket): number {
   return subtotal * (1 - descuento / 100);
 }
 
+const NOMBRES_TIPO_CINTA: Record<string, string> = {
+  vhs: "VHS", vhsc: "VHS-C", beta: "Betamax", minidv: "MiniDV", "8mm": "8mm / Hi8", cassette: "Cassette audio", bobina: "Bobina",
+};
+
 /**
  * Puerto simplificado de construirLineasIniciales() (factura-reparacion-
  * dialog.tsx) para el caso común: mano de obra + piezas de los
  * presupuestos aceptados. A propósito NO replica los casos especiales de
- * la factura real (cintas, remanente de anticipo, descuento de revisión,
- * portes de mensajería) — "Ticket Rápido" es la alternativa simple, no un
+ * la factura real (remanente de anticipo, descuento de revisión, portes
+ * de mensajería) — "Ticket Rápido" es la alternativa simple, no un
  * sustituto completo de Facturación.
+ *
+ * SÍ replica el caso de cintas (datos_cintas) — petición del usuario,
+ * 2026-08-27: antes una reparación de conversión de cintas no tenía
+ * presupuestos con mano de obra/piezas normales, así que el Ticket Rápido
+ * salía vacío en vez de con las líneas reales de conversión por tipo.
  */
 function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
+  let datosCintas: { tipos?: Record<string, number>; precioUnitario?: number; precioPorCinta?: number; precioBobina?: number } | null = null;
+  try {
+    datosCintas = detalle.datosCintas ? JSON.parse(detalle.datosCintas) : null;
+  } catch {
+    datosCintas = null;
+  }
+
+  if (datosCintas?.tipos) {
+    const lineasCintas: LineaTicket[] = [];
+    for (const [tipo, qty] of Object.entries(datosCintas.tipos)) {
+      if (!qty || qty <= 0) continue;
+      const precioReal = tipo === "bobina"
+        ? (datosCintas.precioBobina ?? datosCintas.precioUnitario ?? 0)
+        : (datosCintas.precioPorCinta ?? datosCintas.precioUnitario ?? 0);
+      lineasCintas.push({ descripcion: `Conversión ${NOMBRES_TIPO_CINTA[tipo] || tipo}`, cantidad: qty, precio: precioReal, descuento: 0 });
+    }
+    if (lineasCintas.length > 0) return lineasCintas;
+  }
+
   const lineas: LineaTicket[] = [];
   const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
   for (const p of aceptados) {
