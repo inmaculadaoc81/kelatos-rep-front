@@ -19,10 +19,21 @@ interface LineaTicket {
   descripcion: string;
   cantidad: number;
   precio: number;
+  /** Porcentaje (0-100) — aplicado sobre el subtotal de la línea (cantidad
+      × precio) para obtener su total. Columna "DESCUENTO" añadida a la
+      plantilla el 2026-08-26 (petición del usuario: descuentos por línea,
+      y también "globales" poniéndolo en una única línea). */
+  descuento: number;
 }
 
 function lineaVacia(): LineaTicket {
-  return { descripcion: "", cantidad: 1, precio: 0 };
+  return { descripcion: "", cantidad: 1, precio: 0, descuento: 0 };
+}
+
+function totalLinea(l: LineaTicket): number {
+  const subtotal = (Number(l.cantidad) || 0) * (Number(l.precio) || 0);
+  const descuento = Math.min(100, Math.max(0, Number(l.descuento) || 0));
+  return subtotal * (1 - descuento / 100);
 }
 
 /**
@@ -37,9 +48,9 @@ function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
   const lineas: LineaTicket[] = [];
   const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
   for (const p of aceptados) {
-    if (p.manoObra > 0) lineas.push({ descripcion: "Mano de obra", cantidad: 1, precio: p.manoObra });
+    if (p.manoObra > 0) lineas.push({ descripcion: "Mano de obra", cantidad: 1, precio: p.manoObra, descuento: 0 });
     for (const pz of p.piezas) {
-      if (pz.precio > 0) lineas.push({ descripcion: pz.descripcion || "Pieza", cantidad: 1, precio: pz.precio });
+      if (pz.precio > 0) lineas.push({ descripcion: pz.descripcion || "Pieza", cantidad: 1, precio: pz.precio, descuento: 0 });
     }
   }
   return lineas.length > 0 ? lineas : [lineaVacia()];
@@ -129,7 +140,7 @@ export function TicketManualDialog({
     setLineas((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
   }
 
-  const baseImponible = lineas.reduce((s, l) => s + (Number(l.cantidad) || 0) * (Number(l.precio) || 0), 0);
+  const baseImponible = lineas.reduce((s, l) => s + totalLinea(l), 0);
   const iva = baseImponible * IVA_PCT;
   const total = baseImponible + iva;
 
@@ -247,9 +258,11 @@ export function TicketManualDialog({
                   <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
                       <th className="px-2 py-1.5 text-left font-medium">Descripción</th>
-                      <th className="w-20 px-2 py-1.5 text-center font-medium">Cantidad</th>
-                      <th className="w-28 px-2 py-1.5 text-right font-medium">Precio unidad</th>
-                      <th className="w-28 px-2 py-1.5 text-right font-medium">Total</th>
+                      <th className="w-16 px-2 py-1.5 text-center font-medium">Cantidad</th>
+                      <th className="w-24 px-2 py-1.5 text-right font-medium">Precio unidad</th>
+                      <th className="w-24 px-2 py-1.5 text-right font-medium">Subtotal</th>
+                      <th className="w-20 px-2 py-1.5 text-center font-medium">Descuento</th>
+                      <th className="w-24 px-2 py-1.5 text-right font-medium">Total</th>
                       <th className="w-7 px-1 py-1.5"></th>
                     </tr>
                   </thead>
@@ -259,7 +272,14 @@ export function TicketManualDialog({
                         <td className="p-1"><Input className="h-8 text-sm" placeholder="Descripción" value={l.descripcion} onChange={(e) => actualizarLinea(i, "descripcion", e.target.value)} disabled={!!resultado} /></td>
                         <td className="p-1"><DecimalInput className="h-8 text-center text-sm" value={l.cantidad} onChange={(n) => actualizarLinea(i, "cantidad", n)} disabled={!!resultado} /></td>
                         <td className="p-1"><DecimalInput className="h-8 text-right text-sm" value={l.precio} onChange={(n) => actualizarLinea(i, "precio", n)} disabled={!!resultado} /></td>
-                        <td className="px-2 py-1 text-right font-medium">{euros((Number(l.cantidad) || 0) * (Number(l.precio) || 0))}</td>
+                        <td className="px-2 py-1 text-right text-muted-foreground">{euros((Number(l.cantidad) || 0) * (Number(l.precio) || 0))}</td>
+                        <td className="p-1">
+                          <div className="relative">
+                            <DecimalInput className="h-8 pr-5 text-right text-sm" value={l.descuento} onChange={(n) => actualizarLinea(i, "descuento", Math.min(100, Math.max(0, n)))} disabled={!!resultado} />
+                            <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-1 text-right font-medium">{euros(totalLinea(l))}</td>
                         <td className="p-1">
                           {!resultado && (
                             <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => quitarLinea(i)} disabled={lineas.length === 1}>
@@ -272,17 +292,17 @@ export function TicketManualDialog({
                   </tbody>
                   <tfoot className="text-sm">
                     <tr className="border-t bg-muted/30">
-                      <td colSpan={3}></td>
+                      <td colSpan={5}></td>
                       <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base imponible</td>
                       <td className="px-2 py-1 text-right font-medium">{euros(baseImponible)}</td>
                     </tr>
                     <tr className="bg-muted/30">
-                      <td colSpan={3}></td>
+                      <td colSpan={5}></td>
                       <td className="px-2 py-1 text-right text-xs text-muted-foreground">IVA (21%)</td>
                       <td className="px-2 py-1 text-right font-medium">{euros(iva)}</td>
                     </tr>
                     <tr className="border-t bg-primary/5">
-                      <td colSpan={3}></td>
+                      <td colSpan={5}></td>
                       <td className="px-2 py-1.5 text-right text-xs font-semibold">TOTAL</td>
                       <td className="px-2 py-1.5 text-right text-base font-bold">{euros(total)}</td>
                     </tr>
