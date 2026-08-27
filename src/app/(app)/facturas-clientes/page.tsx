@@ -177,6 +177,7 @@ function SerieBadge({ numero }: { numero: string }) {
   const s = serieFactura(numero);
   if (s === "1") return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#0d6efd" }}>Serie 1</span>;
   if (s === "3") return <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: "#ffc107", color: "#332701" }}>Serie 3</span>;
+  if (s === "4") return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#20c997" }}>Serie 4</span>;
   return <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: "#6c757d" }}>—</span>;
 }
 
@@ -322,7 +323,7 @@ export default function FacturasClientesPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [filtroSerie, setFiltroSerie] = useState<"todas" | "1" | "3" | "alquiler">("todas");
+  const [filtroSerie, setFiltroSerie] = useState<"todas" | "1" | "3" | "4" | "alquiler">("todas");
   const [estPend, setEstPend] = useState(true);
   const [estCobr, setEstCobr] = useState(true);
   const [estAnul, setEstAnul] = useState(true);
@@ -524,13 +525,14 @@ export default function FacturasClientesPage() {
             >
               <SelectTrigger className="h-8 w-44 text-xs">
                 <SelectValue>
-                  {(v: string) => (v === "1" ? "Serie 1 — Cobros" : v === "3" ? "Serie 3 — Rectificativas" : v === "alquiler" ? "Alquiler" : "Todas")}
+                  {(v: string) => (v === "1" ? "Serie 1 — Cobros" : v === "3" ? "Serie 3 — Rectificativas" : v === "4" ? "Serie 4 — Tickets" : v === "alquiler" ? "Alquiler" : "Todas")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas</SelectItem>
                 <SelectItem value="1">Serie 1 — Cobros</SelectItem>
                 <SelectItem value="3">Serie 3 — Rectificativas</SelectItem>
+                <SelectItem value="4">Serie 4 — Tickets</SelectItem>
                 <SelectItem value="alquiler">Alquiler</SelectItem>
               </SelectContent>
             </Select>
