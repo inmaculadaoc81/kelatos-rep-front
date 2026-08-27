@@ -420,8 +420,22 @@ export function AccionRequerida({
   // "Reparado" — igual que el original, el botón se muestra siempre en esa
   // rama (ya haya factura o no); el propio diálogo decide lectura/escritura.
   if (estado === "Reparado" && detalle.tipoIngreso !== "GARANTIA" && entregaAbierta) {
+    // Factura y Ticket Rápido son alternativas excluyentes para cobrar la
+    // MISMA reparación — bug real reportado, 2026-08-27: se generó un
+    // Ticket Rápido y, al reabrir el resguardo, "Facturación" seguía
+    // ofreciendo generar una factura nueva del mismo resguardo. Cada botón
+    // se deshabilita en cuanto el otro documento ya existe (nunca se
+    // ocultan del todo: "Facturación" también sirve para ver la factura ya
+    // generada en modo lectura).
     botones.push(
-      <Button key="facturacion" size="sm" className="gap-1.5" onClick={callbacks.onFacturacion}>
+      <Button
+        key="facturacion"
+        size="sm"
+        className="gap-1.5"
+        onClick={callbacks.onFacturacion}
+        disabled={!detalle.numeroFactura && !!detalle.numeroTicket}
+        title={!detalle.numeroFactura && detalle.numeroTicket ? `Ya se generó el Ticket Rápido ${detalle.numeroTicket} para este resguardo` : undefined}
+      >
         <Receipt className="size-3.5" /> Facturación
       </Button>
     );
@@ -430,7 +444,15 @@ export function AccionRequerida({
     // igual que Facturación real, eso sigue siendo un paso aparte
     // ("Entregado en Local" / "Marcar como enviado", más abajo).
     botones.push(
-      <Button key="ticket-rapido" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onTicketRapido}>
+      <Button
+        key="ticket-rapido"
+        size="sm"
+        variant="outline"
+        className="gap-1.5"
+        onClick={callbacks.onTicketRapido}
+        disabled={!detalle.numeroTicket && !!detalle.numeroFactura}
+        title={!detalle.numeroTicket && detalle.numeroFactura ? `Ya se generó la factura ${detalle.numeroFactura} para este resguardo` : undefined}
+      >
         <Ticket className="size-3.5" /> Ticket Rápido
       </Button>
     );
