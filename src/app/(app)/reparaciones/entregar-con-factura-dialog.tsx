@@ -307,17 +307,17 @@ function VistaConFactura({
   onCompletado: () => void;
 }) {
   const esEnvio = tipoEntrega === "ENVIO";
-  // Se puede elegir ticket en vez de factura siempre que el único cargo
-  // posible sea el de mensajería — "No tiene Reparación"/"Presupuesto
-  // Rechazado" (info.estadoSinFactura), sea cual sea tipoEntrega: petición
-  // del usuario, 2026-08-27. Al principio solo se ofrecía con
-  // tipoEntrega="ENVIO" ("Facturar y Enviar por Mensajería"), pero estos
-  // mismos estados también llegan aquí con "ENTREGADO"/"RECICLAJE" cuando
-  // el equipo se recibió por mensajería y se recoge/desecha en local — se
-  // reportó que ahí seguía faltando la opción. "Reparado"+Garantía (el
-  // tercer caso que sí ofrece el botón) se deja fuera a propósito: ese
-  // cargo de reparación si puede ser real, no solo mensajería.
-  const permiteTicket = info.estadoSinFactura;
+  // Se puede elegir ticket en vez de factura en los tres casos que ofrecen
+  // el botón "Facturar y Enviar por Mensajería"/"Entregado en Local"/
+  // "Enviar a Punto Limpio" para esto: "No tiene Reparación"/"Presupuesto
+  // Rechazado" (info.estadoSinFactura) y "Reparado"+Garantía — petición
+  // del usuario, 2026-08-27. Al principio se excluyó Garantía pensando que
+  // ahí la reparación en sí podría llevar un cargo real que exigiera
+  // factura, pero `lineas` (más abajo) ya incluye esa línea de reparación
+  // igual en ambos documentos — no hay motivo técnico para negarle el
+  // ticket, así que se ofrece igual que en los otros dos casos.
+  const esGarantiaReparado = detalle.estado === "Reparado" && detalle.tipoIngreso === "GARANTIA";
+  const permiteTicket = info.estadoSinFactura || esGarantiaReparado;
   const [tipoDocumento, setTipoDocumento] = useState<"factura" | "ticket">("factura");
   const esTicket = permiteTicket && tipoDocumento === "ticket";
   const [nombre, setNombre] = useState(detalle.cliente.nombre || "");
@@ -519,7 +519,9 @@ function VistaConFactura({
             )}
             <p className="text-sm text-muted-foreground">
               {esTicket
-                ? "Ticket del cobro de mensajería únicamente — no hay cargo de reparación."
+                ? info.totalBase > 0
+                  ? "Verifica los conceptos y confirma el cobro pendiente — se incluirá también en el ticket."
+                  : "Ticket del cobro de mensajería únicamente — no hay cargo de reparación."
                 : esEnvio
                   ? "Factura de envío únicamente — la reparación se factura por separado."
                   : info.totalBase > 0
