@@ -542,11 +542,12 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
     });
   }
 
-  // Pasada 7: "Ticket Rápido" — Serie 1 (numeración propia desde 1000,
-  // prefijo "1-" — decisión explícita del usuario, 2026-08-27: se agrupa
-  // bajo la misma serie que reparación/revisión a efectos de filtros e
-  // informes, aunque usa su propia secuencia — ticket_venta_seq, nunca
-  // factura_serie1_seq). Se trata como el mismo proceso de facturación
+  // Pasada 7: "Ticket Rápido" — Serie 4 propia de tickets (numeración
+  // propia desde 1000, prefijo "4-" — decisión explícita del usuario,
+  // 2026-08-27: separa del todo los tickets de la numeración de facturas
+  // reales; antes era "1-"/Serie 1, compartida solo a efectos de
+  // filtros/informes). Usa su propia secuencia — ticket_venta_seq, nunca
+  // factura_serie1_seq. Se trata como el mismo proceso de facturación
   // desde que existe: sale en Facturas de Clientes/Reporte de Facturas
   // igual que cualquier otro tipo, con el mismo Estado Cobrada/Pendiente
   // que una factura real.
