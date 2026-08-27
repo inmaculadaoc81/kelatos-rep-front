@@ -5,6 +5,7 @@ import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, Docume
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
@@ -390,8 +391,8 @@ export function DetalleVentaDialog({
                 <p className="text-xs font-semibold">Agregar Pieza</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <Input placeholder="Descripción *" className="col-span-2" value={nuevoDesc} onChange={(e) => setNuevoDesc(e.target.value)} />
-                  <Input type="number" placeholder="Costo *" step="0.01" value={nuevoCosto} onChange={(e) => setNuevoCosto(parseFloat(e.target.value) || 0)} />
-                  <Input type="number" placeholder="Precio *" step="0.01" value={nuevoPrecio} onChange={(e) => setNuevoPrecio(parseFloat(e.target.value) || 0)} />
+                  <DecimalInput placeholder="Costo *" value={nuevoCosto} onChange={setNuevoCosto} />
+                  <DecimalInput placeholder="Precio *" value={nuevoPrecio} onChange={setNuevoPrecio} />
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Select value={nuevoProveedor} onValueChange={(v) => setNuevoProveedor(v || "")}>
@@ -416,8 +417,8 @@ export function DetalleVentaDialog({
                 <p className="text-xs font-semibold">Editar pieza</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <Input placeholder="Descripción" className="col-span-2" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
-                  <Input type="number" placeholder="Costo" step="0.01" value={editCosto} onChange={(e) => setEditCosto(parseFloat(e.target.value) || 0)} />
-                  <Input type="number" placeholder="Precio" step="0.01" value={editPrecio} onChange={(e) => setEditPrecio(parseFloat(e.target.value) || 0)} />
+                  <DecimalInput placeholder="Costo" value={editCosto} onChange={setEditCosto} />
+                  <DecimalInput placeholder="Precio" value={editPrecio} onChange={setEditPrecio} />
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" className="gap-1.5 bg-amber-500 text-white hover:bg-amber-600" onClick={guardarEdicion} disabled={enviando}>Guardar</Button>

@@ -11,6 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -243,10 +244,10 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                             <Input className="h-8 border-0 text-sm" placeholder="Descripción de la pieza" value={it.descripcion} onChange={(e) => actualizarItem(i, "descripcion", e.target.value)} />
                           </td>
                           <td className="p-1">
-                            <Input type="number" min={1} step={1} className="h-8 border-0 text-center text-sm" value={it.cantidad} onChange={(e) => actualizarItem(i, "cantidad", parseInt(e.target.value) || 1)} />
+                            <DecimalInput className="h-8 border-0 text-center text-sm" value={it.cantidad} onChange={(n) => actualizarItem(i, "cantidad", n || 1)} />
                           </td>
                           <td className="p-1">
-                            <Input type="number" min={0} step={0.01} className="h-8 border-0 text-right text-sm" value={it.precioUnitario} onChange={(e) => actualizarItem(i, "precioUnitario", parseFloat(e.target.value) || 0)} />
+                            <DecimalInput className="h-8 border-0 text-right text-sm" value={it.precioUnitario} onChange={(n) => actualizarItem(i, "precioUnitario", n)} />
                           </td>
                           <td className="p-2 text-right whitespace-nowrap">{euros(it.cantidad * it.precioUnitario)}</td>
                           <td className="p-1 text-center">
@@ -266,14 +267,10 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                         <td colSpan={2} className="p-1.5 text-right text-xs text-muted-foreground">Descuento</td>
                         <td className="p-1.5">
                           <div className="flex items-center justify-end gap-1">
-                            <Input
-                              type="number"
-                              min={0}
-                              max={100}
-                              step={0.5}
+                            <DecimalInput
                               className="h-7 w-14 border-0 bg-transparent text-right text-xs"
                               value={datos.descuentoPct}
-                              onChange={(e) => actualizar("descuentoPct", parseFloat(e.target.value) || 0)}
+                              onChange={(n) => actualizar("descuentoPct", Math.min(100, Math.max(0, n)))}
                             />
                             <span className="text-xs text-muted-foreground">%</span>
                           </div>
