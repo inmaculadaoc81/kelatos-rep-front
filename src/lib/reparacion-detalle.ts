@@ -152,6 +152,9 @@ interface FilaReparacionSqlDetalle {
   banco_ticket_revision: string | null;
   forma_pago_ticket_anticipo: string | null;
   banco_ticket_anticipo: string | null;
+  cliente_email_ticket: string | null;
+  cliente_email_ticket_revision: string | null;
+  cliente_email_ticket_anticipo: string | null;
   numero_factura_mensajeria: string | null;
   url_factura_mensajeria: string | null;
   total_factura_mensajeria: string | number | null;
@@ -391,6 +394,13 @@ export interface ReparacionDetalle {
   bancoTicketRevision: string;
   formaPagoTicketAnticipo: string;
   bancoTicketAnticipo: string;
+  /** Correo del ticket — precargado con el de la reparación al generar,
+      editable en ese momento y fijo después (migración 061). "Enviar al
+      cliente" lo usa como destino por defecto en vez del email general
+      de la reparación. */
+  clienteEmailTicket: string;
+  clienteEmailTicketRevision: string;
+  clienteEmailTicketAnticipo: string;
   numeroFacturaMensajeria: string;
   urlFacturaMensajeria: string;
   totalFacturaMensajeria: number;
@@ -606,6 +616,9 @@ export function mapearReparacionDetalle(
     bancoTicketRevision: row.banco_ticket_revision || "",
     formaPagoTicketAnticipo: row.forma_pago_ticket_anticipo || "",
     bancoTicketAnticipo: row.banco_ticket_anticipo || "",
+    clienteEmailTicket: row.cliente_email_ticket || "",
+    clienteEmailTicketRevision: row.cliente_email_ticket_revision || "",
+    clienteEmailTicketAnticipo: row.cliente_email_ticket_anticipo || "",
     numeroFacturaMensajeria: row.numero_factura_mensajeria || "",
     urlFacturaMensajeria: row.url_factura_mensajeria || "",
     totalFacturaMensajeria: numero(row.total_factura_mensajeria),

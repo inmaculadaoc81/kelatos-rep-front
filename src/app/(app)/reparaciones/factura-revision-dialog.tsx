@@ -229,6 +229,7 @@ function VistaGenerarTicket({
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [metodo, setMetodo] = useState(metodoPagoInicial || "");
   const [banco, setBanco] = useState(bancoInicial || "");
+  const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
 
@@ -255,6 +256,7 @@ function VistaGenerarTicket({
           estado,
           formaPago: metodo,
           banco: metodo === "tarjeta" ? banco : "",
+          emailTicket: emailTicket.trim(),
           lineas: [{ descripcion: "Revisión técnica del equipo", cantidad: 1, precio: 20 }],
         }),
       });
@@ -276,7 +278,7 @@ function VistaGenerarTicket({
       <DialogContent className="gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
         <CabeceraVerde titulo="Marcar revisión — Ticket" onClose={() => cerrar(false)} onVolver={enviando ? undefined : onVolver} />
         <div className="space-y-3 p-4">
-          <p className="text-sm text-muted-foreground">Genera un ticket (sin datos de cliente) para la revisión técnica.</p>
+          <p className="text-sm text-muted-foreground">Genera un ticket (sin datos fiscales de cliente) para la revisión técnica.</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Importe (€ s/IVA)</Label>
@@ -313,6 +315,11 @@ function VistaGenerarTicket({
               </Select>
             </div>
           )}
+          <div className="space-y-1.5">
+            <Label>Correo del cliente</Label>
+            <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} placeholder="correo@ejemplo.com" />
+            <p className="text-xs text-muted-foreground">Tomado del resguardo — edítalo si el ticket debe enviarse a otro correo.</p>
+          </div>
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>

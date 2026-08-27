@@ -47,11 +47,12 @@ export async function POST(
   const modo = datos?.modo === "revision" ? "revision" : datos?.modo === "anticipo" ? "anticipo" : undefined;
   const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
   const banco = typeof datos?.banco === "string" ? datos.banco : "";
+  const emailTicket = typeof datos?.emailTicket === "string" ? datos.emailTicket : "";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketVenta>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/ticket-venta`,
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, modo, formaPago, banco }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, modo, formaPago, banco, emailTicket }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, reparacion: resultado.reparacion });
   } catch (error) {

@@ -231,6 +231,13 @@ export function TicketManualDialog({
   // manual-dialog.tsx, factura-reparacion-dialog.tsx).
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
+  // Correo del ticket — solo aplica al Ticket Rápido ligado a una
+  // reparación (petición del usuario, 2026-08-27: "coje el del resguardo
+  // y si se quiere editar se envie a ese correo nuevo, cuando se entre a
+  // el ticket ya no deja editar"). Se precarga con el email del cliente
+  // de la reparación, editable hasta generar; después queda fijo (mismo
+  // patrón que el resto de campos, disabled={!!resultado}).
+  const [emailTicket, setEmailTicket] = useState("");
 
   function seleccionarCliente(c: Cliente) {
     setClienteNombre(c.nombre || "");
@@ -275,6 +282,9 @@ export function TicketManualDialog({
       const bancoPrevio = esVenta ? venta?.bancoTicket : detalle?.bancoTicket;
       setMetodo(metodoPrevio || "");
       setBanco(bancoPrevio || "");
+      if (!esVenta && !esManualStandalone && detalle) {
+        setEmailTicket(yaGenerado ? detalle.clienteEmailTicket || detalle.cliente.email || "" : detalle.cliente.email || "");
+      }
       if (esManualStandalone) { setClienteNombre(""); setClienteEmail(""); }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,6 +369,7 @@ export function TicketManualDialog({
           ...(esManualStandalone
             ? { cliente: { nombre: clienteNombre.trim(), email: clienteEmail.trim() } }
             : {}),
+          ...(!esVenta && !esManualStandalone ? { emailTicket: emailTicket.trim() } : {}),
         }),
       });
       const data = await res.json();
@@ -426,6 +437,22 @@ export function TicketManualDialog({
                 )}
               </div>
             </div>
+
+            {!esVenta && !esManualStandalone && (
+              <div className="space-y-1">
+                <Label htmlFor="tmEmailTicket" className="text-xs text-muted-foreground">
+                  Correo del cliente (tomado del resguardo — edítalo si el ticket debe enviarse a otro correo)
+                </Label>
+                <Input
+                  id="tmEmailTicket"
+                  type="email"
+                  value={emailTicket}
+                  onChange={(e) => setEmailTicket(e.target.value)}
+                  disabled={!!resultado}
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+            )}
 
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="flex items-center gap-1.5 rounded-t-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white">

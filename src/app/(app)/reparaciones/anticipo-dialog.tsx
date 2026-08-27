@@ -455,6 +455,7 @@ function VistaGenerarTicket({
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
+  const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
   const [enviando, setEnviando] = useState(false);
 
   const base = lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
@@ -476,7 +477,7 @@ function VistaGenerarTicket({
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modo: "anticipo", estado, formaPago: metodo, banco: metodo === "tarjeta" ? banco : "", lineas: validas }),
+        body: JSON.stringify({ modo: "anticipo", estado, formaPago: metodo, banco: metodo === "tarjeta" ? banco : "", emailTicket: emailTicket.trim(), lineas: validas }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -506,7 +507,7 @@ function VistaGenerarTicket({
           </Button>
         </header>
         <div className="space-y-3 p-4">
-          <p className="text-sm text-muted-foreground">Genera un ticket (sin datos de cliente) por el {PORCENTAJE}% del presupuesto aceptado.</p>
+          <p className="text-sm text-muted-foreground">Genera un ticket (sin datos fiscales de cliente) por el {PORCENTAJE}% del presupuesto aceptado.</p>
 
           <div className="rounded-lg border bg-card shadow-sm">
             <div className="rounded-t-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white">Conceptos</div>
@@ -581,6 +582,11 @@ function VistaGenerarTicket({
               </Select>
             </div>
           )}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Correo del cliente</Label>
+            <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} disabled={enviando} placeholder="correo@ejemplo.com" />
+            <p className="text-xs text-muted-foreground">Tomado del resguardo — edítalo si el ticket debe enviarse a otro correo.</p>
+          </div>
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
