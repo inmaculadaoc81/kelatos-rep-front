@@ -516,7 +516,7 @@ function VistaConFactura({
 
             {metodo === "tarjeta" && (
               <div className="space-y-1.5">
-                <Label>Banco</Label>
+                <Label>Banco *</Label>
                 <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
                   <SelectContent>
