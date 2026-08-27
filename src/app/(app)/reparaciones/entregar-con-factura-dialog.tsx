@@ -224,6 +224,8 @@ function VistaSinFactura({
   const [observaciones, setObservaciones] = useState("");
   const [resena, setResena] = useState<"SI" | "NO">("NO");
   const [enviando, setEnviando] = useState(false);
+  const [enviandoTicket, setEnviandoTicket] = useState(false);
+  const confirmarEnvio = useConfirm();
   const esEnvio = tipoEntrega === "ENVIO";
   const { titulo, icono } = tituloEIcono(tipoEntrega);
   // Reproduce entFacturaExistente: esEnvio usa numeroFacturaMensajeria si
@@ -245,6 +247,35 @@ function VistaSinFactura({
   const facturaExistenteUrl = esEnvio
     ? detalle.urlFacturaMensajeria || detalle.urlTicketMensajeria || detalle.urlFactura
     : detalle.urlFactura || detalle.urlFacturaMensajeria || detalle.urlTicketMensajeria;
+
+  // Ticket ya generado en una apertura anterior de este diálogo (o en la
+  // MISMA sesión, si el usuario cerró antes de pulsar "Enviar al
+  // cliente") — sin esto no había forma de enviarlo, porque VistaSinFactura
+  // nunca ofrecía envío. Bug real reportado, 2026-08-27: "le di a generar
+  // y me envió a esta vista, no le di a enviar al cliente aún".
+  const emailTicketExistente = detalle.clienteEmailTicketMensajeria;
+
+  async function enviarTicket() {
+    if (!emailTicketExistente) return;
+    const ok = await confirmarEnvio(`¿Enviar el ticket ${facturaExistenteNum} a ${emailTicketExistente}?`);
+    if (!ok) return;
+    setEnviandoTicket(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta/enviar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "mensajeria", emailDestino: emailTicketExistente }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
+      toast.success(`Ticket enviado a ${emailTicketExistente}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoTicket(false);
+    }
+  }
 
   function cerrar(o: boolean) {
     if (enviando) return;
@@ -284,9 +315,16 @@ function VistaSinFactura({
         <div className="space-y-4 p-4">
           <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
             {facturaExistenteNum ? (
-              <>{esTicketExistente ? "Ticket ya generado" : "Factura ya generada"}: <strong className="text-foreground">{facturaExistenteNum}</strong>{facturaExistenteUrl && (
-                <a href={facturaExistenteUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline">Ver PDF</a>
-              )}</>
+              <>
+                {esTicketExistente ? "Ticket ya generado" : "Factura ya generada"}: <strong className="text-foreground">{facturaExistenteNum}</strong>{facturaExistenteUrl && (
+                  <a href={facturaExistenteUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline">Ver PDF</a>
+                )}
+                {esTicketExistente && (
+                  <p className="mt-1 text-xs">
+                    {emailTicketExistente ? <>Correo: <strong className="text-foreground">{emailTicketExistente}</strong></> : "Sin correo registrado para este ticket."}
+                  </p>
+                )}
+              </>
             ) : (
               "No aplica factura en este caso."
             )}
@@ -295,6 +333,11 @@ function VistaSinFactura({
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
+          {esTicketExistente && (
+            <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!emailTicketExistente || enviandoTicket}>
+              <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+            </Button>
+          )}
           <Button className="gap-1.5" onClick={confirmar} disabled={enviando}>
             <TickCircle className="size-3.5" /> {enviando ? "Guardando…" : textoBoton(tipoEntrega, true)}
           </Button>
