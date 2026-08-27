@@ -182,12 +182,6 @@ export function TicketManualDialog({
 
   useEffect(() => {
     if (open) {
-      setLineas(
-        esVenta && venta ? lineasDesdeVenta(venta) : !esVenta && resguardo && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]
-      );
-      setDescuentoGlobal(0);
-      const estadoTicketPrevio = esVenta ? venta?.estadoTicket : detalle?.estadoTicket;
-      setEstado(estadoTicketPrevio === "Pendiente" ? "Pendiente" : "Cobrada");
       // Si esta reparación/venta ya tiene un ticket generado, se muestra
       // tal cual en vez de un formulario en blanco — sin esto, reabrir el
       // diálogo (p.ej. tras generar uno) ofrecía crear otro sin ningún
@@ -195,7 +189,30 @@ export function TicketManualDialog({
       // (numero_ticket/url_ticket es una sola columna, no un historial).
       const numeroTicketPrevio = esVenta ? venta?.numeroTicket : detalle?.numeroTicket;
       const urlTicketPrevio = esVenta ? venta?.urlTicket : detalle?.urlTicket;
-      setResultado(numeroTicketPrevio ? { numeroTicket: numeroTicketPrevio, urlTicket: urlTicketPrevio || "" } : null);
+      const yaGenerado = !!numeroTicketPrevio;
+
+      // Con un ticket ya generado, se muestran las líneas REALES tal como
+      // se persistieron al generarlo (lineas_ticket, migración 056) — no
+      // un recálculo en vivo desde los presupuestos actuales, que puede
+      // no coincidir (presupuesto cambiado después) y que nunca incluye
+      // el descuento global (era una línea añadida solo al enviar, no un
+      // dato que lineasDesdePresupuestos() pueda reconstruir). Bug real
+      // reportado por el usuario, 2026-08-27: "los importes son diferentes
+      // a lo que se encuentra en el pdf. Tampoco se visualiza el
+      // descuento aplicado". Igual que VistaGenerada en
+      // factura-reparacion-dialog.tsx con detalle.lineasFactura.
+      const lineasPersistidas = !esVenta && detalle && detalle.lineasTicket.length > 0
+        ? detalle.lineasTicket.map((l) => ({ descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio, descuento: l.descuento || 0 }))
+        : [];
+      setLineas(
+        yaGenerado && lineasPersistidas.length > 0
+          ? lineasPersistidas
+          : esVenta && venta ? lineasDesdeVenta(venta) : !esVenta && resguardo && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]
+      );
+      setDescuentoGlobal(0);
+      const estadoTicketPrevio = esVenta ? venta?.estadoTicket : detalle?.estadoTicket;
+      setEstado(estadoTicketPrevio === "Pendiente" ? "Pendiente" : "Cobrada");
+      setResultado(yaGenerado ? { numeroTicket: numeroTicketPrevio, urlTicket: urlTicketPrevio || "" } : null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
