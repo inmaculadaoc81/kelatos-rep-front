@@ -47,14 +47,15 @@ const NOMBRES_TIPO_CINTA: Record<string, string> = {
  * Puerto simplificado de construirLineasIniciales() (factura-reparacion-
  * dialog.tsx) para el caso común: mano de obra + piezas de los
  * presupuestos aceptados. A propósito NO replica los casos especiales de
- * la factura real (remanente de anticipo, descuento de revisión, portes
- * de mensajería) — "Ticket Rápido" es la alternativa simple, no un
- * sustituto completo de Facturación.
+ * la factura real (remanente de anticipo, descuento de revisión) —
+ * "Ticket Rápido" es la alternativa simple, no un sustituto completo de
+ * Facturación.
  *
- * SÍ replica el caso de cintas (datos_cintas) — petición del usuario,
- * 2026-08-27: antes una reparación de conversión de cintas no tenía
- * presupuestos con mano de obra/piezas normales, así que el Ticket Rápido
- * salía vacío en vez de con las líneas reales de conversión por tipo.
+ * SÍ replica el caso de cintas (datos_cintas) y los portes de mensajería
+ * — peticiones del usuario, 2026-08-27: antes una reparación de
+ * conversión de cintas no tenía presupuestos con mano de obra/piezas
+ * normales (salía vacío), y "Recogida"/"Envío por mensajería" (12,40€
+ * fijos cada uno) no se añadían nunca, aunque estuvieran marcados.
  */
 function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
   let datosCintas: { tipos?: Record<string, number>; precioUnitario?: number; precioPorCinta?: number; precioBobina?: number } | null = null;
@@ -64,26 +65,36 @@ function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
     datosCintas = null;
   }
 
+  let lineas: LineaTicket[] = [];
   if (datosCintas?.tipos) {
-    const lineasCintas: LineaTicket[] = [];
     for (const [tipo, qty] of Object.entries(datosCintas.tipos)) {
       if (!qty || qty <= 0) continue;
       const precioReal = tipo === "bobina"
         ? (datosCintas.precioBobina ?? datosCintas.precioUnitario ?? 0)
         : (datosCintas.precioPorCinta ?? datosCintas.precioUnitario ?? 0);
-      lineasCintas.push({ descripcion: `Conversión ${NOMBRES_TIPO_CINTA[tipo] || tipo}`, cantidad: qty, precio: precioReal, descuento: 0 });
+      lineas.push({ descripcion: `Conversión ${NOMBRES_TIPO_CINTA[tipo] || tipo}`, cantidad: qty, precio: precioReal, descuento: 0 });
     }
-    if (lineasCintas.length > 0) return lineasCintas;
   }
 
-  const lineas: LineaTicket[] = [];
-  const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
-  for (const p of aceptados) {
-    if (p.manoObra > 0) lineas.push({ descripcion: "Mano de obra", cantidad: 1, precio: p.manoObra, descuento: 0 });
-    for (const pz of p.piezas) {
-      if (pz.precio > 0) lineas.push({ descripcion: pz.descripcion || "Pieza", cantidad: 1, precio: pz.precio, descuento: 0 });
+  if (lineas.length === 0) {
+    const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
+    for (const p of aceptados) {
+      if (p.manoObra > 0) lineas.push({ descripcion: "Mano de obra", cantidad: 1, precio: p.manoObra, descuento: 0 });
+      for (const pz of p.piezas) {
+        if (pz.precio > 0) lineas.push({ descripcion: pz.descripcion || "Pieza", cantidad: 1, precio: pz.precio, descuento: 0 });
+      }
     }
   }
+
+  // Portes de mensajería (mismo importe fijo que la factura real,
+  // 12,40€) — solo si el ticket todavía no se generó, igual que la
+  // factura real solo los añade si !detalle.urlFactura (evita duplicarlos
+  // al reabrir un ticket ya existente).
+  if (!detalle.numeroTicket) {
+    if ((detalle.tipoRecepcion || "LOCAL") === "ENVIO") lineas.push({ descripcion: "Recogida por mensajería", cantidad: 1, precio: 12.4, descuento: 0 });
+    if (detalle.entregaMensajeria === "SI") lineas.push({ descripcion: "Envío por mensajería", cantidad: 1, precio: 12.4, descuento: 0 });
+  }
+
   return lineas.length > 0 ? lineas : [lineaVacia()];
 }
 
