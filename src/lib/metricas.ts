@@ -108,6 +108,8 @@ interface RespuestaMetricasSql {
     estado: string;
     fecha_respuesta: string;
     dias_entrega: string | number;
+    costo_piezas: string | number | null;
+    fecha_pieza_recibida: string | null;
   }[];
 }
 
@@ -160,7 +162,15 @@ export function mapearMetricas(resp: RespuestaMetricasSql): MetricasDashboard {
 
   const equiposRetrasados: EquipoRetrasado[] = [];
   for (const r of resp.equiposRetrasadosCandidatos) {
-    const transcurridos = diasLaborables(new Date(r.fecha_respuesta), ahora);
+    // Réplica exacta de calcularDiasEntrega() (dias-entrega.ts): con pieza,
+    // el plazo cuenta desde que la pieza llegó, no desde que se aceptó el
+    // presupuesto — y si la pieza aún no ha llegado, no hay fecha de inicio
+    // real, así que el caso NUNCA se considera "retrasado" todavía (igual
+    // que la columna Días lo muestra en gris, no en rojo).
+    const costoPiezas = Number(r.costo_piezas) || 0;
+    const fechaInicio = costoPiezas > 0 ? r.fecha_pieza_recibida : r.fecha_respuesta;
+    if (!fechaInicio) continue;
+    const transcurridos = diasLaborables(new Date(fechaInicio), ahora);
     const restantes = Number(r.dias_entrega) - transcurridos;
     if (restantes < 0) {
       equiposRetrasados.push({
