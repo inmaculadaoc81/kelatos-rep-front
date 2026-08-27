@@ -178,9 +178,9 @@ function CampoLectura({ label, valor }: { label: string; valor: string }) {
  *   Corregida. Petición del usuario, 2026-08-27: "haz que ya no sea de
  *   pruebas que sea manual normal de ticket" — antes este modo solo
  *   descargaba un PDF de /api/tickets/generar-prueba sin persistir nada.
- *   Único modo con tarjeta de Cliente (nombre obligatorio, resto
- *   opcional, migración 059) — un Ticket Rápido/de Ventas ya tiene
- *   cliente vía la reparación/venta.
+ *   Único modo con tarjeta de Cliente — solo el email (petición del
+ *   usuario, 2026-08-27: "solo el mail solo el campo correo"), migración
+ *   059. Un Ticket Rápido/de Ventas ya tiene cliente vía la reparación/venta.
  */
 export function TicketManualDialog({
   open,
@@ -211,9 +211,10 @@ export function TicketManualDialog({
   // usuario, 2026-08-27: "container de cliente... para saber a que
   // cliente con que correo se enviara"). Un Ticket Rápido/de Ventas ya
   // tiene su cliente vía la reparación/venta, así que no necesita esto.
-  // Solo nombre + email (petición del usuario: "aca mejor solo deja el
-  // campo de correo") — DNI/teléfono/dirección quedan sin usar aquí, la
-  // columna de la BD los sigue aceptando por si algún día hacen falta.
+  // Solo se pide el email (petición del usuario: "solo el mail solo el
+  // campo correo") — clienteNombre ya no tiene campo propio, solo se
+  // rellena si se usa "Buscar" (útil para identificar el ticket después
+  // en Facturas de Clientes, pero nunca obligatorio ni editable a mano).
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
@@ -308,7 +309,6 @@ export function TicketManualDialog({
   }
 
   async function generar() {
-    if (esManualStandalone && !clienteNombre.trim()) return toast.error("El nombre del cliente es obligatorio");
     const lineasValidas = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0);
     if (lineasValidas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
     // El descuento global se envía como una línea propia negativa — igual
@@ -408,11 +408,7 @@ export function TicketManualDialog({
                     <SearchNormal1 className="size-3" /> Buscar
                   </Button>
                 </div>
-                <div className="grid gap-2 p-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="tmNombre" className="text-xs text-muted-foreground">Nombre *</Label>
-                    <Input id="tmNombre" className="h-8 text-sm" value={clienteNombre} onChange={(e) => setClienteNombre(e.target.value)} disabled={!!resultado} />
-                  </div>
+                <div className="p-3">
                   <div className="space-y-1">
                     <Label htmlFor="tmEmail" className="text-xs text-muted-foreground">Email</Label>
                     <Input id="tmEmail" type="email" className="h-8 text-sm" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} disabled={!!resultado} />

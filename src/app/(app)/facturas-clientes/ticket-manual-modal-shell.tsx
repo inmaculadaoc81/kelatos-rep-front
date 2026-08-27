@@ -93,7 +93,7 @@ export function TicketManualModalShell({
                 <span className="rounded bg-[#20c997] px-1.5 py-0.5 text-[10px] font-semibold text-white">{etiquetaVista}</span>
               </div>
               <p className="truncate text-xs text-primary-foreground/70">
-                {detalle.clienteNombre || "Sin nombre"}{detalle.clienteEmail ? ` · ${detalle.clienteEmail}` : ""}
+                {[detalle.clienteNombre, detalle.clienteEmail].filter(Boolean).join(" · ") || "Sin datos de cliente"}
               </p>
             </div>
             <Button variant="ghost" size="icon-sm" className="text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={() => onOpenChange(false)}>
