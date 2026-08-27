@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket, Receipt } from "@/lib/icons";
+import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket, Receipt, Send2 } from "@/lib/icons";
+import { useConfirm } from "@/components/confirm-provider";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -327,6 +328,15 @@ function VistaConFactura({
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
   const [email, setEmail] = useState(detalle.cliente.email || "");
+  // Correo propio del ticket de mensajería — mismo patrón que Ticket
+  // Rápido/Revisión/Anticipo: precargado del resguardo, editable hasta
+  // generar, luego de solo lectura. Petición del usuario, 2026-08-27: "en
+  // esta vista no sale la opción del correo electrónico como en las otras
+  // vistas".
+  const [emailTicket, setEmailTicket] = useState(detalle.clienteEmailTicketMensajeria || detalle.cliente.email || "");
+  const [resultadoTicket, setResultadoTicket] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
+  const [enviandoTicket, setEnviandoTicket] = useState(false);
+  const confirmarEnvio = useConfirm();
   const [observaciones, setObservaciones] = useState("");
   const [resena, setResena] = useState<"SI" | "NO">("NO");
   const [enviando, setEnviando] = useState(false);
@@ -349,7 +359,11 @@ function VistaConFactura({
 
   function cerrar(o: boolean) {
     if (enviando) return;
-    if (!o) setRequestId(null);
+    if (!o) {
+      setRequestId(null);
+      setResultadoTicket(null);
+      setTipoDocumento("factura");
+    }
     onOpenChange(o);
   }
 
@@ -381,7 +395,7 @@ function VistaConFactura({
     const rid = requestId || crypto.randomUUID();
     setRequestId(rid);
     try {
-      let data: { ok: boolean; error?: string; numeroFactura?: string; numeroTicket?: string };
+      let data: { ok: boolean; error?: string; numeroFactura?: string; numeroTicket?: string; urlTicket?: string };
       if (esTicket) {
         // El ticket-venta genérico no marca entrega por sí solo (igual que
         // Facturación real) — aquí sí hace falta el segundo paso a
@@ -391,7 +405,7 @@ function VistaConFactura({
         const resTicket = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lineas, estado: "Cobrada", formaPago: metodo, banco, modo: "mensajeria" }),
+          body: JSON.stringify({ lineas, estado: "Cobrada", formaPago: metodo, banco, modo: "mensajeria", emailTicket: emailTicket.trim() }),
         });
         data = await resTicket.json();
         if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -430,13 +444,45 @@ function VistaConFactura({
       const accionTxt = esEnvio ? "Envío registrado" : tipoEntrega === "RECICLAJE" ? "Equipo enviado a punto limpio" : "Equipo entregado";
       const docTxt = esTicket ? `Ticket ${data.numeroTicket} generado` : `Factura ${data.numeroFactura} generada`;
       toast.success(`${accionTxt} — ${docTxt}`);
-      setRequestId(null);
-      onOpenChange(false);
       onCompletado();
+      if (esTicket) {
+        // A diferencia de la factura, el ticket se queda con el diálogo
+        // abierto para poder ofrecer "Enviar al cliente" — mismo patrón que
+        // ticket-manual-dialog.tsx.
+        setResultadoTicket({ numeroTicket: data.numeroTicket || "", urlTicket: data.urlTicket || "" });
+      } else {
+        setRequestId(null);
+        onOpenChange(false);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function enviarTicket() {
+    if (!resultadoTicket) return;
+    const destino = emailTicket.trim();
+    if (!destino) return toast.error("No hay ningún correo de destino disponible");
+    const ok = await confirmarEnvio(`¿Enviar el ticket ${resultadoTicket.numeroTicket} a ${destino}?`);
+    if (!ok) return;
+
+    setEnviandoTicket(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta/enviar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "mensajeria", emailDestino: destino }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
+      toast.success(`Ticket enviado a ${destino}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoTicket(false);
     }
   }
 
@@ -506,13 +552,32 @@ function VistaConFactura({
                   </SelectContent>
                 </Select>
               </div>
-              {!esTicket && (
+              {esTicket ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="efEmailTicket">Correo del cliente (opcional)</Label>
+                  <Input id="efEmailTicket" type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} disabled={!!resultadoTicket} />
+                </div>
+              ) : (
                 <div className="space-y-1.5">
                   <Label htmlFor="efEmail">Email para enviar factura (opcional)</Label>
                   <Input id="efEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
               )}
             </div>
+
+            {esTicket && resultadoTicket && (
+              <div className="space-y-1 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <div className="flex items-center justify-between gap-2">
+                  <span>Ticket <strong>{resultadoTicket.numeroTicket}</strong> generado correctamente.</span>
+                  {resultadoTicket.urlTicket && (
+                    <a href={resultadoTicket.urlTicket} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver PDF</a>
+                  )}
+                </div>
+                <p className="text-xs">
+                  {emailTicket.trim() ? <>Se enviará a: <strong>{emailTicket.trim()}</strong></> : "Sin correo de destino — añade uno arriba para poder enviarlo."}
+                </p>
+              </div>
+            )}
 
             {metodo === "tarjeta" && (
               <div className="space-y-1.5">
@@ -561,10 +626,17 @@ function VistaConFactura({
           <SeccionEntrega observaciones={observaciones} setObservaciones={setObservaciones} resena={resena} setResena={setResena} />
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
-          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
-          <Button className="gap-1.5" onClick={confirmar} disabled={enviando}>
-            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : textoBoton(tipoEntrega, false, esTicket ? "ticket" : "factura")}
-          </Button>
+          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>{esTicket && resultadoTicket ? "Cerrar" : "Cancelar"}</Button>
+          {!(esTicket && resultadoTicket) && (
+            <Button className="gap-1.5" onClick={confirmar} disabled={enviando}>
+              <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : textoBoton(tipoEntrega, false, esTicket ? "ticket" : "factura")}
+            </Button>
+          )}
+          {esTicket && (
+            <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!resultadoTicket || !emailTicket.trim() || enviandoTicket}>
+              <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+            </Button>
+          )}
         </footer>
       </DialogContent>
       <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />

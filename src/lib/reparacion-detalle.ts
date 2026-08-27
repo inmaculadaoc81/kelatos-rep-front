@@ -164,6 +164,7 @@ interface FilaReparacionSqlDetalle {
   total_ticket_mensajeria: string | number | null;
   forma_pago_ticket_mensajeria: string | null;
   banco_ticket_mensajeria: string | null;
+  cliente_email_ticket_mensajeria: string | null;
   lineas_factura: unknown;
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -415,6 +416,7 @@ export interface ReparacionDetalle {
   totalTicketMensajeria: number;
   formaPagoTicketMensajeria: string;
   bancoTicketMensajeria: string;
+  clienteEmailTicketMensajeria: string;
   lineasFactura: { referencia?: string; descripcion: string; cantidad: number; precio: number; descuento?: number }[];
   rectificativa: {
     numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
@@ -638,6 +640,7 @@ export function mapearReparacionDetalle(
     totalTicketMensajeria: numero(row.total_ticket_mensajeria),
     formaPagoTicketMensajeria: row.forma_pago_ticket_mensajeria || "",
     bancoTicketMensajeria: row.banco_ticket_mensajeria || "",
+    clienteEmailTicketMensajeria: row.cliente_email_ticket_mensajeria || "",
     lineasFactura: Array.isArray(row.lineas_factura)
       ? (row.lineas_factura as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
           referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
