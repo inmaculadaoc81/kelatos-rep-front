@@ -86,7 +86,63 @@ export async function POST(req: Request) {
         observaciones: datos.observaciones.trim(),
         items: itemsVenta,
       });
-      const resultado: ResultadoNuevoPedido = { ventaId: resVenta.venta_id, numeroFactura: "", urlPdf: "" };
+      const resultado: ResultadoNuevoPedido = { ventaId: resVenta.venta_id, numeroFactura: "", numeroTicket: "", urlPdf: "" };
+      return NextResponse.json({ ok: true, ...resultado });
+    }
+
+    // ── Modo ticket: venta pagada de verdad, pero con un Ticket de Venta
+    // (Serie 4, no fiscal) en vez de una Factura real — sin saga fiscal
+    // (crea la venta directamente, como Garantía), pero encadenando la
+    // generación del ticket sobre la venta ya creada. Petición del
+    // usuario, 2026-08-28: "añade tickets también aquí". ────────────────
+    if (datos.modoTicket) {
+      if (!datos.formaPago) return NextResponse.json({ ok: false, error: "Selecciona la forma de pago" }, { status: 400 });
+      if (datos.formaPago === "tarjeta" && !datos.banco) return NextResponse.json({ ok: false, error: "Selecciona el banco" }, { status: 400 });
+
+      await registrarClienteVenta(usuario, datos);
+      const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: it.cantidad * it.precioUnitario }));
+      const resVenta = await kelatosApiPost<{ ok: boolean; venta_id: string }>("/v1/ventas", {
+        requestId,
+        usuario,
+        es_garantia: false,
+        es_ticket: true,
+        cliente_nombre: datos.clienteNombre.trim(),
+        cliente_telefono: datos.clienteTelefono.trim(),
+        cliente_email: datos.clienteEmail.trim(),
+        observaciones: datos.observaciones.trim(),
+        items: itemsVenta,
+      });
+
+      const descuentoPct = Math.min(100, Math.max(0, Number(datos.descuentoPct) || 0));
+      const lineasTicket = datos.items.map((it) => ({
+        descripcion: it.descripcion.trim(),
+        cantidad: it.cantidad,
+        precio: it.precioUnitario,
+        descuento: descuentoPct,
+      }));
+
+      let ticket: { ok: boolean; numeroTicket: string; urlTicket: string };
+      try {
+        ticket = await kelatosApiPost<{ ok: boolean; numeroTicket: string; urlTicket: string }>(
+          `/v1/ventas/${resVenta.venta_id}/ticket-venta`,
+          {
+            requestId: crypto.randomUUID(),
+            usuario,
+            lineas: lineasTicket,
+            estado: "Cobrada",
+            formaPago: datos.formaPago,
+            banco: datos.formaPago === "tarjeta" ? datos.banco : "",
+          }
+        );
+      } catch (errorTicket) {
+        const mensaje = errorTicket instanceof Error ? errorTicket.message : "Error desconocido generando el ticket";
+        return NextResponse.json({
+          ok: false,
+          error: `El pedido #${resVenta.venta_id} se creó pero no se pudo generar el ticket: ${mensaje}. Puedes generarlo desde el detalle del pedido.`,
+        }, { status: 502 });
+      }
+
+      const resultado: ResultadoNuevoPedido = { ventaId: resVenta.venta_id, numeroFactura: "", numeroTicket: ticket.numeroTicket, urlPdf: ticket.urlTicket };
       return NextResponse.json({ ok: true, ...resultado });
     }
 
@@ -183,7 +239,7 @@ export async function POST(req: Request) {
       console.error("No se pudo confirmar la reserva fiscal del pedido (resultado desconocido):", errorConfirmar);
     }
 
-    const resultado: ResultadoNuevoPedido = { ventaId: resVenta.venta_id, numeroFactura: preparar.numeroFactura, urlPdf: generado.url };
+    const resultado: ResultadoNuevoPedido = { ventaId: resVenta.venta_id, numeroFactura: preparar.numeroFactura, numeroTicket: "", urlPdf: generado.url };
     return NextResponse.json({ ok: true, ...resultado });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";

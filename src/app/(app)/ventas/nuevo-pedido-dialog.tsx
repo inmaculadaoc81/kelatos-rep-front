@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Add, Trash, ShoppingCart, ShieldTick, Building, Profile } from "@/lib/icons";
+import { Add, Trash, ShoppingCart, ShieldTick, Building, Profile, Ticket } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,7 @@ function euros(n: number): string {
 function vacio(): DatosNuevoPedido {
   return {
     esGarantia: false,
+    modoTicket: false,
     clienteDni: "",
     clienteNombre: "",
     clienteTelefono: "",
@@ -98,7 +99,11 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   }, [datos.items, datos.descuentoPct]);
 
   function toggleGarantia() {
-    actualizar("esGarantia", !datos.esGarantia);
+    setDatos((prev) => ({ ...prev, esGarantia: !prev.esGarantia, modoTicket: false }));
+  }
+
+  function toggleTicket() {
+    setDatos((prev) => ({ ...prev, modoTicket: !prev.modoTicket, esGarantia: false }));
   }
 
   async function guardar() {
@@ -123,7 +128,13 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(datos.esGarantia ? `Garantía #${data.ventaId} registrada` : `Factura ${data.numeroFactura} generada`);
+      toast.success(
+        datos.esGarantia
+          ? `Garantía #${data.ventaId} registrada`
+          : datos.modoTicket
+            ? `Ticket ${data.numeroTicket} generado`
+            : `Factura ${data.numeroFactura} generada`
+      );
       if (data.urlPdf) window.open(data.urlPdf, "_blank");
       setOpen(false);
       onCreado();
@@ -150,11 +161,11 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
             {!datos.esGarantia && (
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1.5">
-                  <Label>Nº Factura</Label>
-                  <Input value={numeroPreview} disabled placeholder="1-000001" className="bg-muted/50" />
+                  <Label>{datos.modoTicket ? "Nº Ticket" : "Nº Factura"}</Label>
+                  <Input value={datos.modoTicket ? "" : numeroPreview} disabled placeholder={datos.modoTicket ? "Se asignará al generar" : "1-000001"} className="bg-muted/50" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Fecha de factura</Label>
+                  <Label>{datos.modoTicket ? "Fecha" : "Fecha de factura"}</Label>
                   <Input value={fechaHoyCorta()} disabled className="bg-muted/50" />
                 </div>
                 <div className="space-y-1.5">
@@ -174,6 +185,12 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                     </Select>
                   )}
                 </div>
+              </div>
+            )}
+
+            {datos.modoTicket && (
+              <div className="flex items-center gap-1.5 rounded-md bg-sky-500/10 px-3 py-2 text-sm text-sky-800 dark:text-sky-400">
+                <Ticket className="size-4 shrink-0" /> <strong>Modo Ticket</strong> — Se generará un Ticket de Venta (Serie 4), sin factura fiscal, y se registrará el pago.
               </div>
             )}
 
@@ -304,6 +321,14 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
           </Button>
           <Button
             variant="outline"
+            className={datos.modoTicket ? "gap-1.5 bg-sky-600 text-white hover:bg-sky-700" : "gap-1.5 border-sky-500 text-sky-700 hover:bg-sky-50 dark:text-sky-400"}
+            onClick={toggleTicket}
+            disabled={enviando}
+          >
+            <Ticket className="size-3.5" /> Ticket
+          </Button>
+          <Button
+            variant="outline"
             className={datos.esGarantia ? "gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" : "gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400"}
             onClick={toggleGarantia}
             disabled={enviando}
@@ -311,7 +336,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
             <ShieldTick className="size-3.5" /> Garantía
           </Button>
           <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={guardar} disabled={enviando}>
-            {enviando ? "Generando…" : datos.esGarantia ? "Registrar Garantía" : "Generar Factura"}
+            {enviando ? "Generando…" : datos.esGarantia ? "Registrar Garantía" : datos.modoTicket ? "Generar Ticket" : "Generar Factura"}
           </Button>
         </footer>
       </DialogContent>

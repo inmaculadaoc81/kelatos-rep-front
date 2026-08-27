@@ -268,6 +268,11 @@ export interface ItemPedidoForm {
 
 export interface DatosNuevoPedido {
   esGarantia: boolean;
+  /** Tercera opción junto a Factura real y Garantía — venta pagada de
+      verdad pero documentada con un Ticket de Venta (Serie 4, no fiscal)
+      en vez de reservar un número de Factura real (Serie 1). Petición del
+      usuario, 2026-08-28: "añade tickets también aquí". */
+  modoTicket: boolean;
   clienteDni: string;
   clienteNombre: string;
   clienteTelefono: string;
@@ -283,5 +288,7 @@ export interface DatosNuevoPedido {
 export interface ResultadoNuevoPedido {
   ventaId: string;
   numeroFactura: string;
+  /** Solo presente cuando el pedido se generó en modoTicket. */
+  numeroTicket: string;
   urlPdf: string;
 }
