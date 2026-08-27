@@ -40,6 +40,8 @@ interface FilaTicketManualRaw {
   cliente_dni: string | null;
   cliente_telefono: string | null;
   cliente_email: string | null;
+  forma_pago_ticket: string | null;
+  banco_ticket: string | null;
 }
 
 export interface TicketManualDetalle {
@@ -59,6 +61,8 @@ export interface TicketManualDetalle {
   clienteDni: string;
   clienteTelefono: string;
   clienteEmail: string;
+  formaPagoTicket: string;
+  bancoTicket: string;
 }
 
 function numero(v: unknown): number {
@@ -103,5 +107,7 @@ export function mapTicketManualDetalle(row: FilaTicketManualRaw): TicketManualDe
     clienteDni: row.cliente_dni || "",
     clienteTelefono: row.cliente_telefono || "",
     clienteEmail: row.cliente_email || "",
+    formaPagoTicket: row.forma_pago_ticket || "",
+    bancoTicket: row.banco_ticket || "",
   };
 }

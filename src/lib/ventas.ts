@@ -50,6 +50,8 @@ export interface Venta {
   ticketRectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   motivoTicketRectificativa: string;
   ticketCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
+  formaPagoTicket: string;
+  bancoTicket: string;
   items: ItemVenta[];
 }
 
@@ -82,6 +84,8 @@ interface FilaVentaSql {
   total_ticket_corregida: string | number | null;
   fecha_ticket_corregida: string | null;
   estado_ticket_corregida: string | null;
+  forma_pago_ticket: string | null;
+  banco_ticket: string | null;
 }
 
 interface FilaItemVentaSql {
@@ -153,6 +157,8 @@ export function mapearVenta(row: FilaVentaSql, items: FilaItemVentaSql[]): Venta
     ticketCorregida: row.numero_ticket_corregida
       ? { numeroFactura: row.numero_ticket_corregida, urlFactura: row.url_ticket_corregida || "", totalFactura: Number(row.total_ticket_corregida) || 0, fechaFactura: row.fecha_ticket_corregida || null }
       : null,
+    formaPagoTicket: row.forma_pago_ticket || "",
+    bancoTicket: row.banco_ticket || "",
     items: items.map(mapearItem),
   };
 }

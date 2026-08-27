@@ -26,11 +26,13 @@ export async function POST(
   const datos = await req.json();
   const motivo = typeof datos?.motivo === "string" ? datos.motivo.trim() : "";
   if (!motivo) return NextResponse.json({ ok: false, error: "El motivo es obligatorio" }, { status: 400 });
+  const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
+  const banco = typeof datos?.banco === "string" ? datos.banco : "";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketRectificativa>(
       `/v1/ventas/${encodeURIComponent(ventaId)}/ticket-venta/rectificativa`,
-      { requestId: crypto.randomUUID(), usuario, motivo }
+      { requestId: crypto.randomUUID(), usuario, motivo, formaPago, banco }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, venta: resultado.venta });
   } catch (error) {

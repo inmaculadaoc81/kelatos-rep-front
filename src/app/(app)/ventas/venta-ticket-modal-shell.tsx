@@ -108,6 +108,7 @@ export function VentaTicketModalShell({
                     contexto={`Pedido #${venta.ventaId}`}
                     numeroTicketOriginal={d.numeroTicket}
                     lineasIniciales={venta.lineasTicket}
+                    formaPagoOriginal={venta.formaPagoTicket}
                     yaGenerada={d.rectificativa}
                     corregida={d.corregida}
                     onGenerada={onActualizado}
@@ -120,6 +121,7 @@ export function VentaTicketModalShell({
                     contexto={`Pedido #${venta.ventaId}`}
                     numeroTicketOriginal={d.numeroTicket}
                     lineasIniciales={venta.lineasTicket}
+                    formaPagoOriginal={venta.formaPagoTicket}
                     rectificativa={d.rectificativa}
                     corregida={d.corregida}
                     onActualizado={onActualizado}

@@ -34,11 +34,13 @@ export async function POST(
   const lineas = Array.isArray(datos?.lineas) ? (datos.lineas as LineaTicket[]) : [];
   if (!lineas.length) return NextResponse.json({ ok: false, error: "Debe incluir al menos una línea" }, { status: 400 });
   const estado = datos?.estado === "Pendiente" ? "Pendiente" : "Cobrada";
+  const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
+  const banco = typeof datos?.banco === "string" ? datos.banco : "";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketCorregida>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/ticket-venta/revision/corregida`,
-      { requestId: crypto.randomUUID(), usuario, lineas, estado }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, formaPago, banco }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, reparacion: resultado.reparacion });
   } catch (error) {

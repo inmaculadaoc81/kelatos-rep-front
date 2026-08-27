@@ -17,6 +17,7 @@ import { StockPieza } from "@/lib/stock-piezas";
 import type { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
+import { METODOS_PAGO, BANCOS } from "./factura-acciones-tabs";
 
 const IVA_PCT = 0.21;
 // La plantilla de Sheets se amplió de 8 a 16 filas, 2026-08-27 (ver
@@ -218,6 +219,13 @@ export function TicketManualDialog({
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+  // Forma de pago — petición del usuario, 2026-08-27: "añade metodo de
+  // pago en todos, copia los metodos de pago y select de eso de facturas
+  // y lo pones en tickets... tiene que ser obligatorio seleccionar uno".
+  // Mismo componente/validación que en facturas reales (nueva-factura-
+  // manual-dialog.tsx, factura-reparacion-dialog.tsx).
+  const [metodo, setMetodo] = useState("");
+  const [banco, setBanco] = useState("");
 
   function seleccionarCliente(c: Cliente) {
     setClienteNombre(c.nombre || "");
@@ -258,6 +266,11 @@ export function TicketManualDialog({
       const estadoTicketPrevio = esVenta ? venta?.estadoTicket : detalle?.estadoTicket;
       setEstado(estadoTicketPrevio === "Pendiente" ? "Pendiente" : "Cobrada");
       setResultado(yaGenerado ? { numeroTicket: numeroTicketPrevio, urlTicket: urlTicketPrevio || "" } : null);
+      const metodoPrevio = esVenta ? venta?.formaPagoTicket : detalle?.formaPagoTicket;
+      const bancoPrevio = esVenta ? venta?.bancoTicket : detalle?.bancoTicket;
+      setMetodo(metodoPrevio || "");
+      setBanco(bancoPrevio || "");
+      if (esManualStandalone) { setClienteNombre(""); setClienteEmail(""); }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -311,6 +324,8 @@ export function TicketManualDialog({
   async function generar() {
     const lineasValidas = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0);
     if (lineasValidas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
+    if (!metodo) return toast.error("Selecciona la forma de pago");
+    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
     // El descuento global se envía como una línea propia negativa — igual
     // que factura-reparacion-dialog.tsx — para que quede reflejado y
     // visible en el PDF (la plantilla no tiene una segunda columna de
@@ -334,6 +349,8 @@ export function TicketManualDialog({
         body: JSON.stringify({
           lineas: lineasValidas,
           estado,
+          formaPago: metodo,
+          banco: metodo === "tarjeta" ? banco : "",
           ...(esManualStandalone
             ? { cliente: { nombre: clienteNombre.trim(), email: clienteEmail.trim() } }
             : {}),
@@ -373,7 +390,7 @@ export function TicketManualDialog({
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-4">
               <CampoLectura label="Serie / Código" valor={resultado?.numeroTicket || "Se asignará al generar"} />
               <CampoLectura label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
               <div className="space-y-1">
@@ -385,6 +402,23 @@ export function TicketManualDialog({
                     <SelectItem value="Pendiente">Pendiente</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Forma de pago *</Label>
+                <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={!!resultado}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+                  <SelectContent>
+                    {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {metodo === "tarjeta" && (
+                  <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultado}>
+                    <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                    <SelectContent>
+                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 

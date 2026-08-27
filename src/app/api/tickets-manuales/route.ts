@@ -42,11 +42,13 @@ export async function POST(req: Request) {
   const estado = datos?.estado === "Pendiente" ? "Pendiente" : "Cobrada";
   const notas = typeof datos?.notas === "string" ? datos.notas : "";
   const cliente = datos?.cliente && typeof datos.cliente === "object" ? (datos.cliente as ClienteTicket) : undefined;
+  const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
+  const banco = typeof datos?.banco === "string" ? datos.banco : "";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketManual>(
       "/v1/tickets-manuales/crear",
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, notas, cliente }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, notas, cliente, formaPago, banco }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, ticket: resultado.ticket });
   } catch (error) {

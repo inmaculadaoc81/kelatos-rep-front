@@ -144,6 +144,7 @@ export function TicketManualModalShell({
                     contexto={`Ticket Manual ${detalle.numeroTicket}`}
                     numeroTicketOriginal={d.numeroTicket}
                     lineasIniciales={detalle.lineasTicket}
+                    formaPagoOriginal={detalle.formaPagoTicket}
                     yaGenerada={d.rectificativa}
                     corregida={d.corregida}
                     onGenerada={onActualizado}
@@ -156,6 +157,7 @@ export function TicketManualModalShell({
                     contexto={`Ticket Manual ${detalle.numeroTicket}`}
                     numeroTicketOriginal={d.numeroTicket}
                     lineasIniciales={detalle.lineasTicket}
+                    formaPagoOriginal={detalle.formaPagoTicket}
                     rectificativa={d.rectificativa}
                     corregida={d.corregida}
                     onActualizado={onActualizado}

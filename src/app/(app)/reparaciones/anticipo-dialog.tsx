@@ -431,11 +431,12 @@ function VistaGenerarFactura({
 
 /**
  * Ticket de anticipo — mismas líneas calculadas automáticamente al 50%
- * que la factura real (construirLineas), pero sin datos de cliente ni
- * forma de pago. Al confirmar: modo:"anticipo" (POST .../ticket-venta)
- * marca anticipo_importe + equipo_en_local='NO', igual que la factura
- * real de anticipo — así "Anticipo Registrado" en accion-requerida.tsx
- * se activa igual sea cual sea la vía elegida.
+ * que la factura real (construirLineas), sin datos de cliente pero con
+ * forma de pago obligatoria (petición del usuario, 2026-08-27: "añade
+ * metodo de pago en todos"). Al confirmar: modo:"anticipo" (POST
+ * .../ticket-venta) marca anticipo_importe + equipo_en_local='NO', igual
+ * que la factura real de anticipo — así "Anticipo Registrado" en
+ * accion-requerida.tsx se activa igual sea cual sea la vía elegida.
  */
 function VistaGenerarTicket({
   detalle,
@@ -452,6 +453,8 @@ function VistaGenerarTicket({
 }) {
   const [lineas] = useState<LineaFactura[]>(() => construirLineas(detalle));
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [metodo, setMetodo] = useState("");
+  const [banco, setBanco] = useState("");
   const [enviando, setEnviando] = useState(false);
 
   const base = lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
@@ -466,12 +469,14 @@ function VistaGenerarTicket({
   async function confirmar() {
     const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
     if (validas.length === 0) return toast.error("No hay presupuesto aceptado con importe para calcular el anticipo");
+    if (!metodo) return toast.error("Selecciona la forma de pago");
+    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
     setEnviando(true);
     try {
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modo: "anticipo", estado, lineas: validas }),
+        body: JSON.stringify({ modo: "anticipo", estado, formaPago: metodo, banco: metodo === "tarjeta" ? banco : "", lineas: validas }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -544,16 +549,38 @@ function VistaGenerarTicket({
             </div>
           </div>
 
-          <div className="space-y-1 max-w-40">
-            <Label className="text-xs text-muted-foreground">Estado</Label>
-            <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={enviando}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Cobrada">Cobrada</SelectItem>
-                <SelectItem value="Pendiente">Pendiente</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Estado</Label>
+              <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={enviando}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cobrada">Cobrada</SelectItem>
+                  <SelectItem value="Pendiente">Pendiente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Forma de pago</Label>
+              <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={enviando}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+                <SelectContent>
+                  {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+          {metodo === "tarjeta" && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Banco</Label>
+              <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={enviando}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                <SelectContent>
+                  {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>

@@ -45,11 +45,13 @@ export async function POST(
   // true) — bug real reportado, 2026-08-26. "anticipo" añadido 2026-08-27,
   // mismo mecanismo para el ticket de Anticipo.
   const modo = datos?.modo === "revision" ? "revision" : datos?.modo === "anticipo" ? "anticipo" : undefined;
+  const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
+  const banco = typeof datos?.banco === "string" ? datos.banco : "";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketVenta>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/ticket-venta`,
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, modo }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, modo, formaPago, banco }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, reparacion: resultado.reparacion });
   } catch (error) {

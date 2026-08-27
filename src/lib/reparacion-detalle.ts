@@ -146,6 +146,12 @@ interface FilaReparacionSqlDetalle {
   fecha_ticket_anticipo: string | null;
   total_ticket_anticipo: string | number | null;
   estado_ticket_anticipo: string | null;
+  forma_pago_ticket: string | null;
+  banco_ticket: string | null;
+  forma_pago_ticket_revision: string | null;
+  banco_ticket_revision: string | null;
+  forma_pago_ticket_anticipo: string | null;
+  banco_ticket_anticipo: string | null;
   numero_factura_mensajeria: string | null;
   url_factura_mensajeria: string | null;
   total_factura_mensajeria: string | number | null;
@@ -376,6 +382,15 @@ export interface ReparacionDetalle {
   totalTicketAnticipo: number;
   estadoTicketAnticipo: string;
   urlFacturaAnticipo: string;
+  /** Forma de pago de cada ticket — un solo slot por linaje, se
+      sobrescribe en cada etapa (original → rectificativa → corregida),
+      igual que lineasTicket (migración 060). */
+  formaPagoTicket: string;
+  bancoTicket: string;
+  formaPagoTicketRevision: string;
+  bancoTicketRevision: string;
+  formaPagoTicketAnticipo: string;
+  bancoTicketAnticipo: string;
   numeroFacturaMensajeria: string;
   urlFacturaMensajeria: string;
   totalFacturaMensajeria: number;
@@ -585,6 +600,12 @@ export function mapearReparacionDetalle(
     fechaTicketAnticipo: fecha(row.fecha_ticket_anticipo),
     totalTicketAnticipo: numero(row.total_ticket_anticipo),
     estadoTicketAnticipo: row.estado_ticket_anticipo || "",
+    formaPagoTicket: row.forma_pago_ticket || "",
+    bancoTicket: row.banco_ticket || "",
+    formaPagoTicketRevision: row.forma_pago_ticket_revision || "",
+    bancoTicketRevision: row.banco_ticket_revision || "",
+    formaPagoTicketAnticipo: row.forma_pago_ticket_anticipo || "",
+    bancoTicketAnticipo: row.banco_ticket_anticipo || "",
     numeroFacturaMensajeria: row.numero_factura_mensajeria || "",
     urlFacturaMensajeria: row.url_factura_mensajeria || "",
     totalFacturaMensajeria: numero(row.total_factura_mensajeria),

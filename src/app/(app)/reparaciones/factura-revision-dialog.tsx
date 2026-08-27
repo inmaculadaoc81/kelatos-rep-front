@@ -157,7 +157,17 @@ function VistaElegir({
     );
   }
   if (modo === "ticket") {
-    return <VistaGenerarTicket detalle={detalle} open={open} onOpenChange={onOpenChange} onGenerada={onGenerada} onVolver={() => setModo("")} />;
+    return (
+      <VistaGenerarTicket
+        detalle={detalle}
+        open={open}
+        onOpenChange={onOpenChange}
+        onGenerada={onGenerada}
+        metodoPagoInicial={metodoPagoInicial}
+        bancoInicial={bancoInicial}
+        onVolver={() => setModo("")}
+      />
+    );
   }
 
   // Sin forma de cerrar (ni X, ni Cancelar, ni clic fuera, ni Esc) —
@@ -204,15 +214,21 @@ function VistaGenerarTicket({
   open,
   onOpenChange,
   onGenerada,
+  metodoPagoInicial,
+  bancoInicial,
   onVolver,
 }: {
   detalle: ReparacionDetalle;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGenerada: () => void;
+  metodoPagoInicial?: string;
+  bancoInicial?: string;
   onVolver: () => void;
 }) {
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [metodo, setMetodo] = useState(metodoPagoInicial || "");
+  const [banco, setBanco] = useState(bancoInicial || "");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
 
@@ -224,6 +240,9 @@ function VistaGenerarTicket({
   }
 
   async function confirmar() {
+    if (!metodo) return toast.error("Selecciona el método de pago");
+    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
     setRequestId(rid);
@@ -234,6 +253,8 @@ function VistaGenerarTicket({
         body: JSON.stringify({
           modo: "revision",
           estado,
+          formaPago: metodo,
+          banco: metodo === "tarjeta" ? banco : "",
           lineas: [{ descripcion: "Revisión técnica del equipo", cantidad: 1, precio: 20 }],
         }),
       });
@@ -272,6 +293,26 @@ function VistaGenerarTicket({
               </Select>
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label>Método de pago</Label>
+            <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+              <SelectContent>
+                {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {metodo === "tarjeta" && (
+            <div className="space-y-1.5">
+              <Label>Banco</Label>
+              <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                <SelectContent>
+                  {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>

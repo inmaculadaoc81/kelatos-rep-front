@@ -139,7 +139,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       tipoRect: "rectificativa_ticket", tipoCorr: "corregida_ticket", tipoCombinado: "",
       permiteDevolucion: true,
       clienteOriginal: clienteOriginalDe(null, detalle),
-      formaPagoOriginal: "",
+      formaPagoOriginal: detalle.formaPagoTicket,
     };
   }
   if (tipoBase === "ticket_revision") {
@@ -159,7 +159,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       tipoRect: "rectificativa_ticket_revision", tipoCorr: "corregida_ticket_revision", tipoCombinado: "",
       permiteDevolucion: true,
       clienteOriginal: clienteOriginalDe(null, detalle),
-      formaPagoOriginal: "",
+      formaPagoOriginal: detalle.formaPagoTicketRevision,
     };
   }
   // Rectificativa/corregida de ticket vistas directamente desde su propia
@@ -177,7 +177,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       tipoRect: "", tipoCorr: "", tipoCombinado: "",
       permiteDevolucion: false,
       clienteOriginal: clienteOriginalDe(null, detalle),
-      formaPagoOriginal: "",
+      formaPagoOriginal: detalle.formaPagoTicket,
     };
   }
   if (tipoBase === "corregida_ticket") {
@@ -209,7 +209,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       tipoRect: "rectificativa_ticket", tipoCorr: "corregida_ticket", tipoCombinado: "",
       permiteDevolucion: true,
       clienteOriginal: clienteOriginalDe(null, detalle),
-      formaPagoOriginal: "",
+      formaPagoOriginal: detalle.formaPagoTicket,
     };
   }
   // Rectificativa/corregida del ticket de revisión, vistas directamente
@@ -228,7 +228,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       tipoRect: "", tipoCorr: "", tipoCombinado: "",
       permiteDevolucion: false,
       clienteOriginal: clienteOriginalDe(null, detalle),
-      formaPagoOriginal: "",
+      formaPagoOriginal: detalle.formaPagoTicketRevision,
     };
   }
   if (tipoBase === "corregida_ticket_revision") {
@@ -247,7 +247,7 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
       tipoRect: "rectificativa_ticket_revision", tipoCorr: "corregida_ticket_revision", tipoCombinado: "",
       permiteDevolucion: true,
       clienteOriginal: clienteOriginalDe(null, detalle),
-      formaPagoOriginal: "",
+      formaPagoOriginal: detalle.formaPagoTicketRevision,
     };
   }
   if (tipoBase === "anticipo") {
@@ -431,6 +431,7 @@ export function FacturaAccionesTabs({
               contexto={`Resguardo #${detalle.resguardo}`}
               numeroTicketOriginal={d.numeroFactura}
               lineasIniciales={d.lineasOriginales}
+              formaPagoOriginal={d.formaPagoOriginal}
               yaGenerada={d.rectificativa}
               corregida={d.corregida}
               onGenerada={onActualizado}
@@ -443,6 +444,7 @@ export function FacturaAccionesTabs({
               contexto={`Resguardo #${detalle.resguardo}`}
               numeroTicketOriginal={d.numeroFactura}
               lineasIniciales={d.lineasOriginales}
+              formaPagoOriginal={d.formaPagoOriginal}
               rectificativa={d.rectificativa}
               corregida={d.corregida}
               onActualizado={onActualizado}
@@ -927,6 +929,7 @@ export function TabDevolucionTicket({
   contexto,
   numeroTicketOriginal,
   lineasIniciales,
+  formaPagoOriginal,
   yaGenerada,
   corregida,
   onGenerada,
@@ -941,11 +944,16 @@ export function TabDevolucionTicket({
       no las guardan en ningún sitio y caen al formulario vacío de
       siempre. */
   lineasIniciales?: LineaTicketCorr[];
+  /** Forma de pago del ticket vigente — precarga el selector, igual que
+      formaPagoOriginal en TabDevolucionRectificativo (facturas reales). */
+  formaPagoOriginal: string;
   yaGenerada: DocTicket | null;
   corregida: DocTicket | null;
   onGenerada: () => void;
 }) {
   const [motivo, setMotivo] = useState("");
+  const [metodo, setMetodo] = useState(formaPagoOriginal);
+  const [banco, setBanco] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [abrirCorregida, setAbrirCorregida] = useState(false);
 
@@ -980,6 +988,7 @@ export function TabDevolucionTicket({
           numeroTicketOriginal={numeroTicketOriginal}
           numeroTicketRectificativa={yaGenerada.numeroFactura}
           lineasIniciales={lineasIniciales}
+          formaPagoOriginal={formaPagoOriginal}
           onGenerada={onGenerada}
         />
       </div>
@@ -988,12 +997,14 @@ export function TabDevolucionTicket({
 
   async function generar() {
     if (!motivo.trim()) return toast.error("El motivo es obligatorio");
+    if (!metodo) return toast.error("Selecciona la forma de pago de la devolución");
+    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco");
     setEnviando(true);
     try {
       const res = await fetch(apiRectificativaUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ motivo: motivo.trim() }),
+        body: JSON.stringify({ motivo: motivo.trim(), formaPago: metodo, banco: metodo === "tarjeta" ? banco : "" }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -1018,6 +1029,23 @@ export function TabDevolucionTicket({
         <Textarea id="motivoTicket" rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo interno — no aparece en el PDF…" />
         <p className="text-xs text-muted-foreground">Registro interno. No se incluye en el PDF.</p>
       </div>
+      <div className="space-y-1.5">
+        <Label>Forma de pago de la devolución</Label>
+        <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
+          <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+          <SelectContent>
+            {METODOS_PAGO_RECT.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {metodo === "tarjeta" && (
+          <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
+            <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+            <SelectContent>
+              {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
       <Button className="w-full gap-1.5" variant="destructive" onClick={generar} disabled={enviando}>
         <Refresh2 className="size-4" /> {enviando ? "Generando…" : "Generar Rectificativa (Serie 3)"}
       </Button>
@@ -1031,6 +1059,7 @@ export function TabRectificativoTicket({
   contexto,
   numeroTicketOriginal,
   lineasIniciales,
+  formaPagoOriginal,
   rectificativa,
   corregida,
   onActualizado,
@@ -1040,6 +1069,7 @@ export function TabRectificativoTicket({
   contexto: string;
   numeroTicketOriginal: string;
   lineasIniciales?: LineaTicketCorr[];
+  formaPagoOriginal: string;
   rectificativa: DocTicket | null;
   corregida: DocTicket | null;
   onActualizado: () => void;
@@ -1054,6 +1084,7 @@ export function TabRectificativoTicket({
         contexto={contexto}
         numeroTicketOriginal={numeroTicketOriginal}
         lineasIniciales={lineasIniciales}
+        formaPagoOriginal={formaPagoOriginal}
         yaGenerada={null}
         corregida={null}
         onGenerada={onActualizado}
@@ -1079,6 +1110,7 @@ export function TabRectificativoTicket({
           numeroTicketOriginal={numeroTicketOriginal}
           numeroTicketRectificativa={rectificativa.numeroFactura}
           lineasIniciales={lineasIniciales}
+          formaPagoOriginal={formaPagoOriginal}
           onGenerada={onActualizado}
         />
       </div>
@@ -1125,6 +1157,7 @@ function FaseCorregidaTicket({
   numeroTicketOriginal,
   numeroTicketRectificativa,
   lineasIniciales,
+  formaPagoOriginal,
   onGenerada,
 }: {
   open: boolean;
@@ -1134,10 +1167,13 @@ function FaseCorregidaTicket({
   numeroTicketOriginal: string;
   numeroTicketRectificativa: string;
   lineasIniciales?: LineaTicketCorr[];
+  formaPagoOriginal: string;
   onGenerada: () => void;
 }) {
   const [lineas, setLineas] = useState<LineaTicketCorr[]>([lineaVaciaCorr()]);
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [metodo, setMetodo] = useState(formaPagoOriginal);
+  const [banco, setBanco] = useState("");
   const [enviando, setEnviando] = useState(false);
 
   // Precarga las líneas del documento original (si están disponibles,
@@ -1151,6 +1187,8 @@ function FaseCorregidaTicket({
           ? lineasIniciales.map((l) => ({ descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio, descuento: l.descuento || 0 }))
           : [lineaVaciaCorr()]
       );
+      setMetodo(formaPagoOriginal);
+      setBanco("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -1175,12 +1213,14 @@ function FaseCorregidaTicket({
   async function generar() {
     const validas = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0);
     if (validas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
+    if (!metodo) return toast.error("Selecciona la forma de pago");
+    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco");
     setEnviando(true);
     try {
       const res = await fetch(apiCorregidaUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineas: validas, estado }),
+        body: JSON.stringify({ lineas: validas, estado, formaPago: metodo, banco: metodo === "tarjeta" ? banco : "" }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -1205,7 +1245,7 @@ function FaseCorregidaTicket({
             Rectificativa: <strong>{numeroTicketRectificativa}</strong> — corrige a: <strong>{numeroTicketOriginal}</strong>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <CampoLecturaCorr label="Serie / Código" valor="Se asignará al generar" />
             <CampoLecturaCorr label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
             <div className="space-y-1">
@@ -1217,6 +1257,23 @@ function FaseCorregidaTicket({
                   <SelectItem value="Pendiente">Pendiente</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Forma de pago</Label>
+              <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+                <SelectContent>
+                  {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {metodo === "tarjeta" && (
+                <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
+                  <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                  <SelectContent>
+                    {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 
