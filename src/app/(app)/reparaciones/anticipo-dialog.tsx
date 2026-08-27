@@ -643,7 +643,7 @@ function VistaGenerarTicket({
             </div>
           )}
         </div>
-        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
+        <footer className="flex flex-wrap justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>{resultadoTicket ? "Cerrar" : "Cancelar"}</Button>
           <Button className="gap-1.5 bg-amber-600 text-white hover:bg-amber-700" onClick={confirmar} disabled={enviando || !!resultadoTicket}>
             <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
