@@ -281,8 +281,13 @@ export function ReparacionSheet({
     }
     if (esAceptarAhora) {
       if (!datos.presupuestoInmediato.elaboradoPor) return "El responsable del presupuesto es obligatorio";
-      if (!datos.presupuestoInmediato.descripcion.trim()) return "El diagnóstico del presupuesto es obligatorio";
+      // En cintas el presupuesto se genera y acepta automáticamente (tarifa
+      // fija por cantidad, ver calcularTotalCintas) — no hay nada que
+      // diagnosticar, este campo es solo "Observaciones adicionales"
+      // opcional. Bug real reportado, 2026-08-27: pedía "Diagnóstico" como
+      // obligatorio también para digitalización de cintas.
       if (!datos.esCintas) {
+        if (!datos.presupuestoInmediato.descripcion.trim()) return "El diagnóstico del presupuesto es obligatorio";
         if (datos.presupuestoInmediato.manoObra <= 0 && !datos.necesitaPieza) return "Introduce la mano de obra o añade al menos una pieza";
         if (!datos.presupuestoInmediato.diasEntrega || datos.presupuestoInmediato.diasEntrega <= 0) return "Los días estimados de entrega son obligatorios";
         if (datos.necesitaPieza) {
@@ -607,7 +612,7 @@ export function ReparacionSheet({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Diagnóstico / trabajo a realizar *</Label>
+                  <Label>{datos.esCintas ? "Observaciones adicionales" : "Diagnóstico / trabajo a realizar *"}</Label>
                   <Textarea rows={2} value={datos.presupuestoInmediato.descripcion} onChange={(e) => actualizarInmediato("descripcion", e.target.value)} />
                 </div>
 
