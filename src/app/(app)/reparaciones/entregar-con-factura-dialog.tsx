@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket, Receipt, Send2 } from "@/lib/icons";
 import { useConfirm } from "@/components/confirm-provider";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -122,7 +122,20 @@ export function EntregarConFacturaDialog({
   const esEnvio = tipoEntrega === "ENVIO";
   const info = calcularInfo(detalle, esEnvio);
 
-  if (info.sinNuevaFactura) {
+  // Congela la decisión "sinNuevaFactura" al ABRIR el diálogo — generar un
+  // ticket aquí mismo llama a onCompletado(), que refresca "detalle" en el
+  // padre; sin esto, ese refresco recalculaba sinNuevaFactura=true (el
+  // ticket ya existe) a media faena y conmutaba a VistaSinFactura,
+  // cortando la oportunidad de pulsar "Enviar al cliente". Bug real
+  // reportado, 2026-08-27: "le di a generar y me envió a esta vista, no le
+  // di a enviar al cliente aún".
+  const sinNuevaFacturaAlAbrir = useRef(info.sinNuevaFactura);
+  useEffect(() => {
+    if (open) sinNuevaFacturaAlAbrir.current = info.sinNuevaFactura;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  if (sinNuevaFacturaAlAbrir.current) {
     return (
       <VistaSinFactura
         detalle={detalle}
