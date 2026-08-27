@@ -9,6 +9,14 @@ interface LineaTicket {
   precio: number;
 }
 
+interface ClienteTicket {
+  nombre: string;
+  direccion: string;
+  dni: string;
+  telefono: string;
+  email: string;
+}
+
 interface RespuestaTicketManual {
   ok: boolean;
   numeroTicket: string;
@@ -33,11 +41,12 @@ export async function POST(req: Request) {
   if (!lineas.length) return NextResponse.json({ ok: false, error: "Debe incluir al menos una línea" }, { status: 400 });
   const estado = datos?.estado === "Pendiente" ? "Pendiente" : "Cobrada";
   const notas = typeof datos?.notas === "string" ? datos.notas : "";
+  const cliente = datos?.cliente && typeof datos.cliente === "object" ? (datos.cliente as ClienteTicket) : undefined;
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketManual>(
       "/v1/tickets-manuales/crear",
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, notas }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, notas, cliente }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, ticket: resultado.ticket });
   } catch (error) {

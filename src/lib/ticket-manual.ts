@@ -2,8 +2,9 @@
  * Detalle de un ticket manual (kelatos_app.tickets_manuales, migración
  * 055) — mapeo equivalente a factura-manual.ts, pero para "Ticket Manual"
  * (botón suelto, sin reparación ni venta asociada). A diferencia de una
- * factura manual, un ticket no tiene datos de cliente/forma de pago —
- * solo líneas libres.
+ * factura manual, no tiene forma de pago — solo líneas libres y cliente
+ * (nombre/dirección/DNI/teléfono/email, migración 059) para saber a quién
+ * pertenece y a qué correo se envía.
  */
 
 export interface LineaTicketManual {
@@ -34,6 +35,11 @@ interface FilaTicketManualRaw {
   total_ticket_corregida: string | number | null;
   fecha_ticket_corregida: string | null;
   estado_ticket_corregida: string | null;
+  cliente_nombre: string | null;
+  cliente_direccion: string | null;
+  cliente_dni: string | null;
+  cliente_telefono: string | null;
+  cliente_email: string | null;
 }
 
 export interface TicketManualDetalle {
@@ -48,6 +54,11 @@ export interface TicketManualDetalle {
   rectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   motivoRectificativa: string;
   corregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
+  clienteNombre: string;
+  clienteDireccion: string;
+  clienteDni: string;
+  clienteTelefono: string;
+  clienteEmail: string;
 }
 
 function numero(v: unknown): number {
@@ -87,5 +98,10 @@ export function mapTicketManualDetalle(row: FilaTicketManualRaw): TicketManualDe
     corregida: row.numero_ticket_corregida
       ? { numeroFactura: row.numero_ticket_corregida, urlFactura: row.url_ticket_corregida || "", totalFactura: numero(row.total_ticket_corregida), fechaFactura: fecha(row.fecha_ticket_corregida) }
       : null,
+    clienteNombre: row.cliente_nombre || "",
+    clienteDireccion: row.cliente_direccion || "",
+    clienteDni: row.cliente_dni || "",
+    clienteTelefono: row.cliente_telefono || "",
+    clienteEmail: row.cliente_email || "",
   };
 }

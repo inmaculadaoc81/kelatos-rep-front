@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Ticket, CloseCircle, Building, Add, Trash, ArrowRight2, Box1 } from "@/lib/icons";
+import { Ticket, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Box1 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { Venta } from "@/lib/ventas";
 import { StockPieza } from "@/lib/stock-piezas";
+import type { Cliente } from "@/lib/clientes";
+import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 
 const IVA_PCT = 0.21;
@@ -176,6 +178,9 @@ function CampoLectura({ label, valor }: { label: string; valor: string }) {
  *   Corregida. Petición del usuario, 2026-08-27: "haz que ya no sea de
  *   pruebas que sea manual normal de ticket" — antes este modo solo
  *   descargaba un PDF de /api/tickets/generar-prueba sin persistir nada.
+ *   Único modo con tarjeta de Cliente (nombre obligatorio, resto
+ *   opcional, migración 059) — un Ticket Rápido/de Ventas ya tiene
+ *   cliente vía la reparación/venta.
  */
 export function TicketManualDialog({
   open,
@@ -202,6 +207,25 @@ export function TicketManualDialog({
   const [generando, setGenerando] = useState(false);
   const [resultado, setResultado] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
   const [buscarPiezaAbierto, setBuscarPiezaAbierto] = useState(false);
+  // Cliente — solo aplica al modo suelto "Ticket Manual" (petición del
+  // usuario, 2026-08-27: "container de cliente... para saber a que
+  // cliente con que correo se enviara"). Un Ticket Rápido/de Ventas ya
+  // tiene su cliente vía la reparación/venta, así que no necesita esto.
+  const [clienteNombre, setClienteNombre] = useState("");
+  const [clienteDireccion, setClienteDireccion] = useState("");
+  const [clienteDni, setClienteDni] = useState("");
+  const [clienteTelefono, setClienteTelefono] = useState("");
+  const [clienteEmail, setClienteEmail] = useState("");
+  const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+
+  function seleccionarCliente(c: Cliente) {
+    setClienteNombre(c.nombre || "");
+    setClienteDireccion(c.direccion || "");
+    setClienteDni(c.dniCif || "");
+    setClienteTelefono(c.telefono || "");
+    setClienteEmail(c.email || "");
+    toast.success("Cliente cargado");
+  }
 
   useEffect(() => {
     if (open) {
@@ -280,10 +304,14 @@ export function TicketManualDialog({
 
   function cerrar(o: boolean) {
     if (generando) return;
+    if (!o && esManualStandalone) {
+      setClienteNombre(""); setClienteDireccion(""); setClienteDni(""); setClienteTelefono(""); setClienteEmail("");
+    }
     onOpenChange(o);
   }
 
   async function generar() {
+    if (esManualStandalone && !clienteNombre.trim()) return toast.error("El nombre del cliente es obligatorio");
     const lineasValidas = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0);
     if (lineasValidas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
     // El descuento global se envía como una línea propia negativa — igual
@@ -306,7 +334,13 @@ export function TicketManualDialog({
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineas: lineasValidas, estado }),
+        body: JSON.stringify({
+          lineas: lineasValidas,
+          estado,
+          ...(esManualStandalone
+            ? { cliente: { nombre: clienteNombre.trim(), direccion: clienteDireccion.trim(), dni: clienteDni.trim(), telefono: clienteTelefono.trim(), email: clienteEmail.trim() } }
+            : {}),
+        }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -368,6 +402,39 @@ export function TicketManualDialog({
                 <p className="text-muted-foreground">914 468 503</p>
               </div>
             </div>
+
+            {esManualStandalone && (
+              <div className="rounded-lg border bg-card shadow-sm">
+                <div className="flex items-center justify-between gap-1.5 rounded-t-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white">
+                  <span className="flex items-center gap-1.5"><Profile className="size-3.5" /> Cliente</span>
+                  <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setBuscarClienteAbierto(true)} disabled={!!resultado}>
+                    <SearchNormal1 className="size-3" /> Buscar
+                  </Button>
+                </div>
+                <div className="grid gap-2 p-3 sm:grid-cols-2">
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label htmlFor="tmNombre" className="text-xs text-muted-foreground">Nombre *</Label>
+                    <Input id="tmNombre" className="h-8 text-sm" value={clienteNombre} onChange={(e) => setClienteNombre(e.target.value)} disabled={!!resultado} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="tmEmail" className="text-xs text-muted-foreground">Email</Label>
+                    <Input id="tmEmail" type="email" className="h-8 text-sm" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} disabled={!!resultado} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="tmTelefono" className="text-xs text-muted-foreground">Teléfono</Label>
+                    <Input id="tmTelefono" className="h-8 text-sm" value={clienteTelefono} onChange={(e) => setClienteTelefono(e.target.value)} disabled={!!resultado} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="tmDni" className="text-xs text-muted-foreground">NIF / DNI</Label>
+                    <Input id="tmDni" className="h-8 text-sm" value={clienteDni} onChange={(e) => setClienteDni(e.target.value)} disabled={!!resultado} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="tmDireccion" className="text-xs text-muted-foreground">Dirección</Label>
+                    <Input id="tmDireccion" className="h-8 text-sm" value={clienteDireccion} onChange={(e) => setClienteDireccion(e.target.value)} disabled={!!resultado} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
@@ -477,6 +544,9 @@ export function TicketManualDialog({
       </DialogContent>
 
       <BuscarPiezaStockDialog open={buscarPiezaAbierto} onOpenChange={setBuscarPiezaAbierto} onSeleccionar={agregarPiezaDesdeCatalogo} />
+      {esManualStandalone && (
+        <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
+      )}
     </Dialog>
   );
 }
