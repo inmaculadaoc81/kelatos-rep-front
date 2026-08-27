@@ -369,6 +369,7 @@ function VistaConFactura({
 
   async function confirmar() {
     if (!esTicket && !nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    if (esTicket && !emailTicket.trim()) return toast.error("El correo del cliente es obligatorio");
     if (!metodo) return toast.error("Selecciona la forma de pago");
     if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
 
@@ -556,7 +557,7 @@ function VistaConFactura({
               </div>
               {esTicket ? (
                 <div className="space-y-1.5">
-                  <Label htmlFor="efEmailTicket">Correo del cliente (opcional)</Label>
+                  <Label htmlFor="efEmailTicket">Correo del cliente *</Label>
                   <Input id="efEmailTicket" type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} disabled={!!resultadoTicket} />
                 </div>
               ) : (
