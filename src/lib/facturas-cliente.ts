@@ -261,6 +261,13 @@ interface FilaReparacionFacturadaSql {
   fecha_factura_mensajeria: string | null;
   cliente_factura_mensajeria: ClienteFacturaJson | string | null;
 
+  numero_ticket_mensajeria: string | null;
+  url_ticket_mensajeria: string | null;
+  fecha_ticket_mensajeria: string | null;
+  total_ticket_mensajeria: string | number | null;
+  estado_ticket_mensajeria: string | null;
+  forma_pago_ticket_mensajeria: string | null;
+
   numero_factura_anticipo: string | null;
   url_factura_anticipo: string | null;
   anticipo_importe: string | number | null;
@@ -412,6 +419,29 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       banco: "",
       estadoFactura: "",
       tipo: "mensajeria",
+    });
+  }
+
+  // Pasada 3-bis: mensajería por ticket (Serie 4, ticket_venta_seq) — solo
+  // si no hay ya una factura real de mensajería (mutuamente excluyentes,
+  // igual que el ticket de anticipo/revisión frente a su factura real).
+  // Bug real reportado, 2026-08-27: un ticket de "Envío por Mensajería"
+  // generado ese día (resguardo 18726, 4-000015) no aparecía en Facturas
+  // de Clientes — faltaba tanto aquí como en el WHERE de
+  // /v1/lecturas/reparaciones-facturadas (server.js).
+  const numMensTicket = texto(row.numero_ticket_mensajeria);
+  if (!numMens3 && numMensTicket && numeroValido(numMensTicket)) {
+    facturas.push({
+      ...base,
+      numero: numMensTicket,
+      url: urlValida(texto(row.url_ticket_mensajeria)),
+      total: num(row.total_ticket_mensajeria),
+      fecha: row.fecha_ticket_mensajeria || row.fecha_factura || null,
+      formaPago: texto(row.forma_pago_ticket_mensajeria),
+      banco: "",
+      estadoFactura: row.estado_ticket_mensajeria === "Pendiente" ? "Pendiente" : "Cobrada",
+      tipo: "mensajeria",
+      esTicket: true,
     });
   }
 
