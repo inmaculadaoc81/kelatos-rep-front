@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, Category2, TickCircle, TimerStart, Setting2, SearchNormal1 } from "@/lib/icons";
+import { Refresh2, Category2, TickCircle, TimerStart, Setting2, SearchNormal1, Eye } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import { Equipo, EstadoEquipo } from "@/lib/equipos";
 import { NuevoEquipoDialog } from "./nuevo-equipo-dialog";
 import { NuevoAlquilerDialog } from "./alquiler-dialogs";
 import { DevolverAlquilerDialog } from "./devolver-alquiler-dialog";
+import { AlquilerDetalleDialog } from "./alquiler-detalle-dialog";
 
 const ETIQUETAS_ESTADO: Record<string, string> = {
   DISPONIBLE: "Disponible",
@@ -45,6 +46,7 @@ export default function EquiposPage() {
   const [filtroEstado, setFiltroEstado] = useState<string>("");
   const [alquilerAbierto, setAlquilerAbierto] = useState<Equipo | null>(null);
   const [devolverAbierto, setDevolverAbierto] = useState<Equipo | null>(null);
+  const [detalleAbierto, setDetalleAbierto] = useState<Equipo | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -241,10 +243,15 @@ export default function EquiposPage() {
                   </TableCell>
                   <TableCell className="text-sm">
                     {e.clienteActual ? (
-                      <>
-                        <div>{e.clienteActual.nombre}</div>
+                      <button
+                        type="button"
+                        className="text-left hover:underline"
+                        onClick={() => setDetalleAbierto(e)}
+                        title="Ver detalle del alquiler"
+                      >
+                        <div className="font-medium text-primary">{e.clienteActual.nombre}</div>
                         <div className="text-xs text-muted-foreground">{e.clienteActual.telefono}</div>
-                      </>
+                      </button>
                     ) : (
                       "-"
                     )}
@@ -267,9 +274,14 @@ export default function EquiposPage() {
                       </div>
                     )}
                     {e.estado === "ALQUILADO" && (
-                      <Button size="sm" variant="outline" className="h-7" onClick={() => setDevolverAbierto(e)}>
-                        Devolver
-                      </Button>
+                      <div className="flex flex-wrap gap-1">
+                        <Button size="icon-sm" variant="ghost" className="h-7 w-7" onClick={() => setDetalleAbierto(e)} title="Ver detalle">
+                          <Eye className="size-3.5" />
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => setDevolverAbierto(e)}>
+                          Devolver
+                        </Button>
+                      </div>
                     )}
                     {e.estado === "MANTENIMIENTO" && (
                       <Button size="sm" variant="outline" className="h-7" onClick={() => cambiarEstado(e, "DISPONIBLE")}>
@@ -298,6 +310,11 @@ export default function EquiposPage() {
         open={devolverAbierto !== null}
         onOpenChange={(o) => !o && setDevolverAbierto(null)}
         onDevuelto={cargar}
+      />
+      <AlquilerDetalleDialog
+        equipo={detalleAbierto}
+        open={detalleAbierto !== null}
+        onOpenChange={(o) => !o && setDetalleAbierto(null)}
       />
     </div>
   );
