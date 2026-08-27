@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2 } from "@/lib/icons";
+import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2, Send2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/confirm-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -232,11 +233,17 @@ function VistaGenerarTicket({
   const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [resultadoTicket, setResultadoTicket] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
+  const [enviandoTicket, setEnviandoTicket] = useState(false);
+  const confirmarEnvio = useConfirm();
 
   function cerrar(o: boolean, eventDetails?: { reason?: string; cancel?: () => void }) {
     if (enviando) return;
     if (eventDetails && esCierreAccidental(o, eventDetails)) return;
-    if (!o) setRequestId(null);
+    if (!o) {
+      setRequestId(null);
+      setResultadoTicket(null);
+    }
     onOpenChange(o);
   }
 
@@ -263,13 +270,40 @@ function VistaGenerarTicket({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Revisión marcada — Ticket ${data.numeroTicket} generado correctamente`);
-      setRequestId(null);
-      onOpenChange(false);
       onGenerada();
+      // Se queda abierto (a diferencia de antes) para poder ofrecer "Enviar
+      // al cliente" — petición del usuario, 2026-08-27: "En revision
+      // debería haber la opción de enviar también". Mismo patrón que el
+      // ticket de mensajería (entregar-con-factura-dialog.tsx).
+      setResultadoTicket({ numeroTicket: data.numeroTicket || "", urlTicket: data.urlTicket || "" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function enviarTicket() {
+    if (!resultadoTicket) return;
+    const destino = emailTicket.trim();
+    if (!destino) return toast.error("No hay ningún correo de destino disponible");
+    const ok = await confirmarEnvio(`¿Enviar el ticket ${resultadoTicket.numeroTicket} a ${destino}?`);
+    if (!ok) return;
+    setEnviandoTicket(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta/enviar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "ticket_revision", emailDestino: destino }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
+      toast.success(`Ticket enviado a ${destino}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoTicket(false);
     }
   }
 
@@ -286,7 +320,7 @@ function VistaGenerarTicket({
             </div>
             <div className="space-y-1.5">
               <Label>Estado</Label>
-              <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")}>
+              <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={!!resultadoTicket}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Cobrada">Cobrada</SelectItem>
@@ -297,7 +331,7 @@ function VistaGenerarTicket({
           </div>
           <div className="space-y-1.5">
             <Label>Método de pago *</Label>
-            <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
+            <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={!!resultadoTicket}>
               <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
               <SelectContent>
                 {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
@@ -307,7 +341,7 @@ function VistaGenerarTicket({
           {metodo === "tarjeta" && (
             <div className="space-y-1.5">
               <Label>Banco *</Label>
-              <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
+              <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultadoTicket}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
                 <SelectContent>
                   {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
@@ -317,15 +351,35 @@ function VistaGenerarTicket({
           )}
           <div className="space-y-1.5">
             <Label>Correo del cliente</Label>
-            <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} placeholder="correo@ejemplo.com" />
+            <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} placeholder="correo@ejemplo.com" disabled={!!resultadoTicket} />
             <p className="text-xs text-muted-foreground">Tomado del resguardo — edítalo si el ticket debe enviarse a otro correo.</p>
           </div>
+          {resultadoTicket && (
+            <div className="space-y-1 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+              <div className="flex items-center justify-between gap-2">
+                <span>Ticket <strong>{resultadoTicket.numeroTicket}</strong> generado correctamente.</span>
+                {resultadoTicket.urlTicket && (
+                  <a href={resultadoTicket.urlTicket} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver PDF</a>
+                )}
+              </div>
+              <p className="text-xs">
+                {emailTicket.trim() ? <>Se enviará a: <strong>{emailTicket.trim()}</strong></> : "Sin correo de destino — vuelve arriba para añadir uno."}
+              </p>
+            </div>
+          )}
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
-          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
-          <Button className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
-            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
-          </Button>
+          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>{resultadoTicket ? "Cerrar" : "Cancelar"}</Button>
+          {resultadoTicket && (
+            <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!emailTicket.trim() || enviandoTicket}>
+              <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+            </Button>
+          )}
+          {!resultadoTicket && (
+            <Button className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
+              <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
+            </Button>
+          )}
         </footer>
       </DialogContent>
     </Dialog>
