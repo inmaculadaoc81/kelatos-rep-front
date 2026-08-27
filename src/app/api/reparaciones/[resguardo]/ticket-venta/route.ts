@@ -42,8 +42,9 @@ export async function POST(
   // recibía en el body pero nunca se reenviaba al backend, así que el
   // ticket se generaba como Ticket Rápido normal (numero_ticket) en vez de
   // como ticket de revisión (numero_ticket_revision + revision_pagada =
-  // true) — bug real reportado, 2026-08-26.
-  const modo = datos?.modo === "revision" ? "revision" : undefined;
+  // true) — bug real reportado, 2026-08-26. "anticipo" añadido 2026-08-27,
+  // mismo mecanismo para el ticket de Anticipo.
+  const modo = datos?.modo === "revision" ? "revision" : datos?.modo === "anticipo" ? "anticipo" : undefined;
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketVenta>(

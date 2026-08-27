@@ -167,7 +167,11 @@ function describir(detalle: ReparacionDetalle): Accion | null {
         icono: Wallet,
         titulo: "Anticipo Registrado — Equipo con el Cliente",
         texto: `El cliente se llevó el equipo con un anticipo de ${importeFmt} €. Cuando esté lista la reparación, el cliente traerá el equipo para la factura final del resto.`,
-        nota: detalle.numeroFacturaAnticipo ? <>Factura {detalle.numeroFacturaAnticipo}</> : undefined,
+        nota: detalle.numeroFacturaAnticipo
+          ? <>Factura {detalle.numeroFacturaAnticipo}</>
+          : detalle.numeroTicketAnticipo
+            ? <>Ticket {detalle.numeroTicketAnticipo}</>
+            : undefined,
       };
     }
     return {

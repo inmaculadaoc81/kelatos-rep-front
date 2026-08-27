@@ -141,6 +141,11 @@ interface FilaReparacionSqlDetalle {
   anticipo_importe: string | number | null;
   numero_factura_anticipo: string | null;
   url_factura_anticipo: string | null;
+  numero_ticket_anticipo: string | null;
+  url_ticket_anticipo: string | null;
+  fecha_ticket_anticipo: string | null;
+  total_ticket_anticipo: string | number | null;
+  estado_ticket_anticipo: string | null;
   numero_factura_mensajeria: string | null;
   url_factura_mensajeria: string | null;
   total_factura_mensajeria: string | number | null;
@@ -365,6 +370,11 @@ export interface ReparacionDetalle {
   codigoCliente: string;
   anticipoImporte: number;
   numeroFacturaAnticipo: string;
+  numeroTicketAnticipo: string;
+  urlTicketAnticipo: string;
+  fechaTicketAnticipo: string | null;
+  totalTicketAnticipo: number;
+  estadoTicketAnticipo: string;
   urlFacturaAnticipo: string;
   numeroFacturaMensajeria: string;
   urlFacturaMensajeria: string;
@@ -570,6 +580,11 @@ export function mapearReparacionDetalle(
     anticipoImporte: numero(row.anticipo_importe),
     numeroFacturaAnticipo: row.numero_factura_anticipo || "",
     urlFacturaAnticipo: row.url_factura_anticipo || "",
+    numeroTicketAnticipo: row.numero_ticket_anticipo || "",
+    urlTicketAnticipo: row.url_ticket_anticipo || "",
+    fechaTicketAnticipo: fecha(row.fecha_ticket_anticipo),
+    totalTicketAnticipo: numero(row.total_ticket_anticipo),
+    estadoTicketAnticipo: row.estado_ticket_anticipo || "",
     numeroFacturaMensajeria: row.numero_factura_mensajeria || "",
     urlFacturaMensajeria: row.url_factura_mensajeria || "",
     totalFacturaMensajeria: numero(row.total_factura_mensajeria),

@@ -269,6 +269,12 @@ interface FilaReparacionFacturadaSql {
   forma_pago_anticipo: string | null;
   cliente_factura_anticipo: ClienteFacturaJson | string | null;
 
+  numero_ticket_anticipo: string | null;
+  url_ticket_anticipo: string | null;
+  fecha_ticket_anticipo: string | null;
+  total_ticket_anticipo: string | number | null;
+  estado_ticket_anticipo: string | null;
+
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
   total_factura_rectificativa: string | number | null;
@@ -428,6 +434,27 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       banco: "",
       estadoFactura: texto(row.estado_factura_anticipo),
       tipo: "anticipo",
+    });
+  }
+
+  // Pasada 4-bis: anticipo por ticket (Serie 1, ticket_venta_seq) — solo
+  // si no hay ya una factura real de anticipo (mutuamente excluyentes,
+  // igual que el ticket de revisión frente a su factura real). Sin ciclo
+  // de Devolución/Rectificativa/Corregida — decisión explícita del
+  // usuario: la factura real de anticipo tampoco lo tiene.
+  const numAnticTicket = texto(row.numero_ticket_anticipo);
+  if (!numAntic && numAnticTicket && numeroValido(numAnticTicket)) {
+    facturas.push({
+      ...base,
+      numero: numAnticTicket,
+      url: urlValida(texto(row.url_ticket_anticipo)),
+      total: num(row.total_ticket_anticipo) || num(row.anticipo_importe),
+      fecha: row.fecha_ticket_anticipo || row.fecha_factura || null,
+      formaPago: "",
+      banco: "",
+      estadoFactura: row.estado_ticket_anticipo === "Pendiente" ? "Pendiente" : "Cobrada",
+      tipo: "anticipo",
+      esTicket: true,
     });
   }
 

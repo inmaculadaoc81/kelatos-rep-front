@@ -136,10 +136,11 @@ function BadgeFactura({ numero, url, etiqueta }: { numero: string; url: string; 
     mismo color que el resto de badges "Ticket" de la app) e icono de
     ticket en vez de recibo, para distinguirlo de un documento fiscal
     real a simple vista. */
-function BadgeTicket({ numero, url }: { numero: string; url: string }) {
+function BadgeTicket({ numero, url, etiqueta }: { numero: string; url: string; etiqueta?: string }) {
   const contenido = (
     <>
       <Ticket className="size-3.5" /> {numero}
+      {etiqueta && <span className="opacity-80">· {etiqueta}</span>}
     </>
   );
   const clase = "inline-flex items-center gap-1 rounded-md bg-[#20c997] px-2 py-0.5 text-xs font-medium text-white";
@@ -162,6 +163,8 @@ function EstadoFactura({ detalle }: { detalle: ReparacionDetalle }) {
   const extras: ReactNode[] = [];
   if (detalle.numeroFacturaAnticipo) {
     extras.push(<BadgeFactura key="anticipo" numero={detalle.numeroFacturaAnticipo} url={detalle.urlFacturaAnticipo} etiqueta="Anticipo" />);
+  } else if (detalle.numeroTicketAnticipo) {
+    extras.push(<BadgeTicket key="anticipo" numero={detalle.numeroTicketAnticipo} url={detalle.urlTicketAnticipo} etiqueta="Anticipo" />);
   }
   if (detalle.numeroFacturaMensajeria) {
     extras.push(<BadgeFactura key="mensajeria" numero={detalle.numeroFacturaMensajeria} url={detalle.urlFacturaMensajeria} etiqueta="Mensajería" />);

@@ -251,9 +251,14 @@ export function derivarDatosFactura(detalle: ReparacionDetalle, tipoBase: TipoFa
     };
   }
   if (tipoBase === "anticipo") {
+    // El anticipo puede haberse resuelto con ticket en vez de factura real
+    // (petición del usuario, 2026-08-27) — mutuamente excluyentes, así que
+    // basta con caer al ticket si no hay número de factura real.
+    // anticipo_importe ya refleja el importe correcto en los dos casos (el
+    // ticket también lo marca al generarse).
     return {
-      numeroFactura: detalle.numeroFacturaAnticipo,
-      urlFactura: detalle.urlFacturaAnticipo,
+      numeroFactura: detalle.numeroFacturaAnticipo || detalle.numeroTicketAnticipo,
+      urlFactura: detalle.urlFacturaAnticipo || detalle.urlTicketAnticipo,
       totalConIva: detalle.anticipoImporte * 1.21,
       clienteNombre: detalle.cliente.nombre || "",
       clienteEmailDefault: detalle.cliente.email || "",

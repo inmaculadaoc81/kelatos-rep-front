@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Wallet, CloseCircle, Building, Profile, SearchNormal1, ArrowRight2 } from "@/lib/icons";
+import { Wallet, CloseCircle, Building, Profile, SearchNormal1, ArrowRight2, Receipt, Ticket, ArrowLeft2, TickCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,21 +72,14 @@ function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
 }
 
 /**
- * Reproduce clienteSeYLlevaConFactura()/_slAbrirVistaFactura() (Index.html)
- * — el cliente se lleva el equipo dejando un anticipo del 50% del
- * presupuesto aceptado. El original abre aquí el MISMO modal compartido
- * "Generar Factura" (Emisor/Cliente/Conceptos editable) que usa para
- * facturas normales, solo pre-rellenado al 50% y con el título "Anticipo —
- * Ref. {resguardo}" — no un formulario simplificado aparte, así que este
- * modal reutiliza el mismo diseño que NuevaFacturaManualDialog en vez de
- * una lista de solo lectura.
- *
- * A diferencia de una factura manual nueva: sin selector de "Tipo de
- * factura" (siempre serie 1, ligada a esta reparación) — sí tiene "Estado"
- * (Cobrada/Pendiente, columna estado_factura_anticipo, migración 028).
- * La tabla de Conceptos aquí es de solo lectura (a diferencia de una
- * factura manual): son líneas calculadas automáticamente al 50% del
- * presupuesto aceptado, no texto libre.
+ * Botón "Anticipo" (Reparaciones) — el cliente se lleva el equipo dejando
+ * un anticipo del 50% del presupuesto aceptado. Puede resolverse con
+ * factura real o con ticket (petición del usuario, 2026-08-27: "añade
+ * también en anticipo los tickets") — mismo patrón que "Marcar revisión
+ * pagada": se pregunta primero cuál de los dos antes de mostrar el
+ * formulario correspondiente. A propósito el ticket de anticipo NO tiene
+ * ciclo de Devolución/Rectificativa/Corregida — decisión explícita del
+ * usuario: la factura real de anticipo tampoco lo tiene hoy.
  */
 export function AnticipoDialog({
   detalle,
@@ -98,6 +91,72 @@ export function AnticipoDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCompletado: () => void;
+}) {
+  const [modo, setModo] = useState<"" | "factura" | "ticket">("");
+
+  useEffect(() => {
+    if (open) setModo("");
+  }, [open]);
+
+  if (modo === "factura") {
+    return <VistaGenerarFactura detalle={detalle} open={open} onOpenChange={onOpenChange} onCompletado={onCompletado} onVolver={() => setModo("")} />;
+  }
+  if (modo === "ticket") {
+    return <VistaGenerarTicket detalle={detalle} open={open} onOpenChange={onOpenChange} onCompletado={onCompletado} onVolver={() => setModo("")} />;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
+        <header className="flex items-center gap-2 rounded-t-xl bg-amber-600 px-4 py-3 text-white">
+          <Wallet className="size-4.5 shrink-0" />
+          <DialogTitle className="text-sm font-semibold text-white">Anticipo — Ref. {detalle.resguardo}</DialogTitle>
+          <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={() => onOpenChange(false)}>
+            <CloseCircle className="size-4" />
+          </Button>
+        </header>
+        <div className="space-y-3 p-4">
+          <p className="text-sm text-muted-foreground">¿Cómo se cobra el anticipo ({PORCENTAJE}%)?</p>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left hover:bg-muted"
+            onClick={() => setModo("factura")}
+          >
+            <Receipt className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-semibold">Factura</p>
+              <p className="text-xs text-muted-foreground">Documento fiscal completo, con datos del cliente.</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left hover:bg-muted"
+            onClick={() => setModo("ticket")}
+          >
+            <Ticket className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-semibold">Ticket</p>
+              <p className="text-xs text-muted-foreground">Recibo simple, sin datos de cliente.</p>
+            </div>
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function VistaGenerarFactura({
+  detalle,
+  open,
+  onOpenChange,
+  onCompletado,
+  onVolver,
+}: {
+  detalle: ReparacionDetalle;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCompletado: () => void;
+  onVolver: () => void;
 }) {
   const [nombre, setNombre] = useState(detalle.cliente.nombre || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
@@ -194,6 +253,11 @@ export function AnticipoDialog({
     <Dialog open={open} onOpenChange={cerrar}>
       <DialogContent className="max-w-6xl gap-0 p-0 sm:max-w-6xl" showCloseButton={false}>
         <header className="flex items-center gap-2 rounded-t-xl bg-amber-600 px-4 py-3 text-white">
+          {!enviando && (
+            <Button variant="ghost" size="icon-sm" className="text-white hover:bg-white/15 hover:text-white" onClick={onVolver}>
+              <ArrowLeft2 className="size-4" />
+            </Button>
+          )}
           <Wallet className="size-4.5 shrink-0" />
           <DialogTitle className="text-sm font-semibold text-white">Anticipo {PORCENTAJE}% — Ref. {detalle.resguardo}</DialogTitle>
           <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={() => cerrar(false)}>
@@ -361,6 +425,143 @@ export function AnticipoDialog({
       </DialogContent>
 
       <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
+    </Dialog>
+  );
+}
+
+/**
+ * Ticket de anticipo — mismas líneas calculadas automáticamente al 50%
+ * que la factura real (construirLineas), pero sin datos de cliente ni
+ * forma de pago. Al confirmar: modo:"anticipo" (POST .../ticket-venta)
+ * marca anticipo_importe + equipo_en_local='NO', igual que la factura
+ * real de anticipo — así "Anticipo Registrado" en accion-requerida.tsx
+ * se activa igual sea cual sea la vía elegida.
+ */
+function VistaGenerarTicket({
+  detalle,
+  open,
+  onOpenChange,
+  onCompletado,
+  onVolver,
+}: {
+  detalle: ReparacionDetalle;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCompletado: () => void;
+  onVolver: () => void;
+}) {
+  const [lineas] = useState<LineaFactura[]>(() => construirLineas(detalle));
+  const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [enviando, setEnviando] = useState(false);
+
+  const base = lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
+  const iva = base * IVA_PCT;
+  const total = base + iva;
+
+  function cerrar(o: boolean) {
+    if (enviando) return;
+    onOpenChange(o);
+  }
+
+  async function confirmar() {
+    const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
+    if (validas.length === 0) return toast.error("No hay presupuesto aceptado con importe para calcular el anticipo");
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo: "anticipo", estado, lineas: validas }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`Anticipo registrado — Ticket ${data.numeroTicket} generado correctamente`);
+      onOpenChange(false);
+      onCompletado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={cerrar}>
+      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
+        <header className="flex items-center gap-2 rounded-t-xl bg-amber-600 px-4 py-3 text-white">
+          {!enviando && (
+            <Button variant="ghost" size="icon-sm" className="text-white hover:bg-white/15 hover:text-white" onClick={onVolver}>
+              <ArrowLeft2 className="size-4" />
+            </Button>
+          )}
+          <Wallet className="size-4.5 shrink-0" />
+          <DialogTitle className="text-sm font-semibold text-white">Anticipo — Ticket</DialogTitle>
+          <Button variant="ghost" size="icon-sm" className="ml-auto text-white hover:bg-white/15 hover:text-white" onClick={() => cerrar(false)}>
+            <CloseCircle className="size-4" />
+          </Button>
+        </header>
+        <div className="space-y-3 p-4">
+          <p className="text-sm text-muted-foreground">Genera un ticket (sin datos de cliente) por el {PORCENTAJE}% del presupuesto aceptado.</p>
+
+          <div className="rounded-lg border bg-card shadow-sm">
+            <div className="rounded-t-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white">Conceptos</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-1.5 text-left font-medium">Descripción</th>
+                    <th className="w-14 px-2 py-1.5 text-center font-medium">Cant.</th>
+                    <th className="w-24 px-2 py-1.5 text-right font-medium">P. unit.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lineas.map((l, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="px-2 py-1.5">{l.descripcion || "—"}</td>
+                      <td className="px-2 py-1.5 text-center tabular-nums">{l.cantidad}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{euros(l.precio)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="text-sm">
+                  <tr className="border-t bg-muted/30">
+                    <td colSpan={1}></td>
+                    <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base</td>
+                    <td className="px-2 py-1 text-right font-medium">{euros(base)}</td>
+                  </tr>
+                  <tr className="bg-muted/30">
+                    <td colSpan={1}></td>
+                    <td className="px-2 py-1 text-right text-xs text-muted-foreground">IVA (21%)</td>
+                    <td className="px-2 py-1 text-right font-medium">{euros(iva)}</td>
+                  </tr>
+                  <tr className="border-t bg-primary/5">
+                    <td colSpan={1}></td>
+                    <td className="px-2 py-1.5 text-right text-xs font-semibold">TOTAL</td>
+                    <td className="px-2 py-1.5 text-right text-base font-bold">{euros(total)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-1 max-w-40">
+            <Label className="text-xs text-muted-foreground">Estado</Label>
+            <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={enviando}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Cobrada">Cobrada</SelectItem>
+                <SelectItem value="Pendiente">Pendiente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
+          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
+          <Button className="gap-1.5 bg-amber-600 text-white hover:bg-amber-700" onClick={confirmar} disabled={enviando}>
+            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
+          </Button>
+        </footer>
+      </DialogContent>
     </Dialog>
   );
 }
