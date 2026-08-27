@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket } from "@/lib/icons";
+import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket, Receipt } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -426,8 +426,19 @@ function VistaConFactura({
         <div className="space-y-4 p-4">
           <div className="space-y-3">
             <p className="flex items-center gap-1.5 border-b pb-2 text-sm font-semibold">
-              {esTicket ? <Ticket className="size-4 text-primary" /> : <DocumentText className="size-4 text-primary" />}
-              {esTicket ? "Ticket" : "Factura"}
+              {permiteTicket ? (
+                <>
+                  <Receipt className="size-4 text-primary" /> Documento
+                </>
+              ) : esTicket ? (
+                <>
+                  <Ticket className="size-4 text-primary" /> Ticket
+                </>
+              ) : (
+                <>
+                  <DocumentText className="size-4 text-primary" /> Factura
+                </>
+              )}
             </p>
             {permiteTicket && (
               <div className="flex gap-1.5">
