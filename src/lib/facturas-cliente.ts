@@ -1052,6 +1052,8 @@ interface FilaTicketManualSql {
   total_ticket_corregida: string | number | null;
   fecha_ticket_corregida: string | null;
   estado_ticket_corregida: string | null;
+  cliente_nombre: string | null;
+  cliente_email: string | null;
 }
 
 export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCliente[] {
@@ -1062,9 +1064,19 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
     if (!numT) continue;
     const idT = texto(row.id);
     const totalT = num(row.total_ticket);
+    // Cliente — un Ticket Manual solo pide el email (migración 059), sin
+    // campo de nombre propio (petición del usuario: "solo el mail solo el
+    // campo correo"), así que la columna "Cliente" del listado quedaba
+    // siempre vacía. Se muestra el nombre si existe (viene de "Buscar
+    // cliente"), y si no, el email — así nunca queda en blanco y se sabe
+    // a quién se le envió, aunque no se identificara por nombre. Petición
+    // del usuario, 2026-08-27: "que salga el correo para que no quede
+    // vacio... pero si eligieron un cliente que salga el nombre".
+    const clienteEmailT = texto(row.cliente_email);
+    const clienteNombreT = texto(row.cliente_nombre) || clienteEmailT;
     const base = {
       resguardo: idT,
-      cliente: "", telefono: "", email: "", dniCif: "",
+      cliente: clienteNombreT, telefono: "", email: clienteEmailT, dniCif: "",
       equipo: "", estadoEntrega: "",
       esTicketManual: true as const,
     };
