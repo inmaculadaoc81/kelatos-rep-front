@@ -397,7 +397,12 @@ export function TicketManualDialog({
   // reparación — Ticket de Ventas todavía no tiene endpoint de envío
   // (fuera de alcance, decisión previa del usuario).
   const emailParaEnviar = esManualStandalone ? clienteEmail.trim() : !esVenta ? emailTicket.trim() : "";
-  const puedeEnviar = !esVenta && !!resultado;
+  // El botón siempre está visible (petición del usuario, 2026-08-27:
+  // "mejor que el boton siempre este pero en gris, deshabilitado hasta
+  // que se genere la factura ya se habilite") — solo se oculta del todo
+  // para Ticket de Ventas, que no tiene endpoint de envío.
+  const mostrarBotonEnviar = !esVenta;
+  const puedeEnviar = mostrarBotonEnviar && !!resultado && !!emailParaEnviar;
 
   async function enviarTicket() {
     if (!resultado) return;
@@ -441,20 +446,13 @@ export function TicketManualDialog({
               <div className="space-y-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
                 <div className="flex items-center justify-between gap-2">
                   <span>Ticket <strong>{resultado.numeroTicket}</strong> generado correctamente.</span>
-                  <div className="flex gap-2">
-                    {resultado.urlTicket && (
-                      <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={resultado.urlTicket} target="_blank" rel="noreferrer" />}>
-                        Ver PDF
-                      </Button>
-                    )}
-                    {puedeEnviar && (
-                      <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={enviandoTicket}>
-                        <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
-                      </Button>
-                    )}
-                  </div>
+                  {resultado.urlTicket && (
+                    <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={resultado.urlTicket} target="_blank" rel="noreferrer" />}>
+                      Ver PDF
+                    </Button>
+                  )}
                 </div>
-                {puedeEnviar && (
+                {mostrarBotonEnviar && (
                   <p className="text-xs">
                     {emailParaEnviar ? <>Se enviará a: <strong>{emailParaEnviar}</strong></> : "Sin correo de destino — vuelve a Cliente/Correo para añadir uno."}
                   </p>
@@ -641,6 +639,11 @@ export function TicketManualDialog({
           {!resultado && (
             <Button className="gap-1.5" onClick={generar} disabled={generando}>
               <ArrowRight2 className="size-4" /> {generando ? "Generando…" : "Generar PDF"}
+            </Button>
+          )}
+          {mostrarBotonEnviar && (
+            <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!puedeEnviar || enviandoTicket}>
+              <Send2 className="size-4" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
             </Button>
           )}
         </footer>
