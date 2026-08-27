@@ -1202,7 +1202,7 @@ function FaseCorregidaTicket({
           <div className="rounded-lg border bg-card shadow-sm">
             <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
               <span>Conceptos</span>
-              <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((p) => (p.length < 8 ? [...p, lineaVaciaCorr()] : p))}>
+              <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((p) => (p.length < TICKET_MAX_LINEAS_CORR ? [...p, lineaVaciaCorr()] : p))}>
                 <Add className="size-3" /> Añadir línea
               </Button>
             </div>
@@ -1270,6 +1270,9 @@ function FaseCorregidaTicket({
 }
 
 const IVA_PCT = 0.21;
+// La plantilla de ticket se amplió de 8 a 16 filas, 2026-08-27 (ver
+// TICKET_MAX_LINEAS en server.js).
+const TICKET_MAX_LINEAS_CORR = 16;
 
 // Reproduce la cabecera azul de #modalVistaFactura (mismo estilo que
 // CabeceraAzul en factura-reparacion-dialog.tsx — duplicada aquí en vez de

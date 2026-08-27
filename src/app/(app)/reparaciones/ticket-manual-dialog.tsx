@@ -17,6 +17,11 @@ import { StockPieza } from "@/lib/stock-piezas";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 
 const IVA_PCT = 0.21;
+// La plantilla de Sheets se amplió de 8 a 16 filas, 2026-08-27 (ver
+// TICKET_MAX_LINEAS en server.js) — con los descuentos de revisión/
+// anticipo/mensajería ahora auto-añadidos, 8 se llenaba solo con las
+// líneas automáticas, sin dejar hueco para nada más.
+const TICKET_MAX_LINEAS = 16;
 
 interface LineaTicket {
   descripcion: string;
@@ -240,7 +245,7 @@ export function TicketManualDialog({
   }
 
   function agregarLinea() {
-    if (lineas.length >= 8) return toast.error("Máximo 8 líneas en la plantilla del ticket");
+    if (lineas.length >= TICKET_MAX_LINEAS) return toast.error(`Máximo ${TICKET_MAX_LINEAS} líneas en la plantilla del ticket`);
     setLineas((prev) => [...prev, lineaVacia()]);
   }
 
@@ -253,8 +258,8 @@ export function TicketManualDialog({
       const nueva = { descripcion: pieza.nombre, cantidad: 1, precio: pieza.precioCliente, descuento: 0 };
       const primeraVacia = prev.length === 1 && !prev[0].descripcion.trim() ? 0 : -1;
       if (primeraVacia === 0) return [nueva];
-      if (prev.length >= 8) {
-        toast.error("Máximo 8 líneas en la plantilla del ticket");
+      if (prev.length >= TICKET_MAX_LINEAS) {
+        toast.error(`Máximo ${TICKET_MAX_LINEAS} líneas en la plantilla del ticket`);
         return prev;
       }
       return [...prev, nueva];
@@ -287,7 +292,7 @@ export function TicketManualDialog({
     // descuento aparte de la de línea).
     const importeGlobalRedondeado = Math.round(descuentoGlobalImporte * 100) / 100;
     if (descuentoGlobalPct > 0 && importeGlobalRedondeado > 0) {
-      if (lineasValidas.length >= 8) return toast.error("No cabe la línea del descuento global — quita alguna línea (máximo 8)");
+      if (lineasValidas.length >= TICKET_MAX_LINEAS) return toast.error(`No cabe la línea del descuento global — quita alguna línea (máximo ${TICKET_MAX_LINEAS})`);
       lineasValidas.push({ descripcion: `Descuento global (${descuentoGlobalPct}%)`, cantidad: 1, precio: -importeGlobalRedondeado, descuento: 0 });
     }
 
@@ -372,7 +377,7 @@ export function TicketManualDialog({
                     <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setBuscarPiezaAbierto(true)}>
                       <Box1 className="size-3" /> Buscar en stock
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={agregarLinea} disabled={lineas.length >= 8}>
+                    <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={agregarLinea} disabled={lineas.length >= TICKET_MAX_LINEAS}>
                       <Add className="size-3" /> Añadir línea
                     </Button>
                   </div>
