@@ -40,7 +40,16 @@ export interface Venta {
   numeroFactura: string;
   numeroTicket: string;
   urlTicket: string;
+  totalTicket: number;
   estadoTicket: string;
+  /** Líneas reales usadas al generar el ticket vigente (se sobrescriben
+      en cada corregida) — permiten precargar el formulario de "Ticket
+      Corregido" y reproducir cada línea en la Devolución, en vez de un
+      resumen (migración 058). */
+  lineasTicket: { descripcion: string; cantidad: number; precio: number; descuento: number }[];
+  ticketRectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
+  motivoTicketRectificativa: string;
+  ticketCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   items: ItemVenta[];
 }
 
@@ -60,7 +69,19 @@ interface FilaVentaSql {
   numero_factura: string | null;
   numero_ticket: string | null;
   url_ticket: string | null;
+  total_ticket: string | number | null;
   estado_ticket: string | null;
+  lineas_ticket: unknown;
+  numero_ticket_rectificativa: string | null;
+  url_ticket_rectificativa: string | null;
+  total_ticket_rectificativa: string | number | null;
+  fecha_ticket_rectificativa: string | null;
+  motivo_ticket_rectificativa: string | null;
+  numero_ticket_corregida: string | null;
+  url_ticket_corregida: string | null;
+  total_ticket_corregida: string | number | null;
+  fecha_ticket_corregida: string | null;
+  estado_ticket_corregida: string | null;
 }
 
 interface FilaItemVentaSql {
@@ -118,7 +139,20 @@ export function mapearVenta(row: FilaVentaSql, items: FilaItemVentaSql[]): Venta
     numeroFactura: row.numero_factura || "",
     numeroTicket: row.numero_ticket || "",
     urlTicket: row.url_ticket || "",
+    totalTicket: Number(row.total_ticket) || 0,
     estadoTicket: row.estado_ticket || "",
+    lineasTicket: Array.isArray(row.lineas_ticket)
+      ? (row.lineas_ticket as Array<{ descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
+          descripcion: l.descripcion || "", cantidad: Number(l.cantidad) || 1, precio: Number(l.precio) || 0, descuento: Number(l.descuento) || 0,
+        }))
+      : [],
+    ticketRectificativa: row.numero_ticket_rectificativa
+      ? { numeroFactura: row.numero_ticket_rectificativa, urlFactura: row.url_ticket_rectificativa || "", totalFactura: Number(row.total_ticket_rectificativa) || 0, fechaFactura: row.fecha_ticket_rectificativa || null }
+      : null,
+    motivoTicketRectificativa: row.motivo_ticket_rectificativa || "",
+    ticketCorregida: row.numero_ticket_corregida
+      ? { numeroFactura: row.numero_ticket_corregida, urlFactura: row.url_ticket_corregida || "", totalFactura: Number(row.total_ticket_corregida) || 0, fechaFactura: row.fecha_ticket_corregida || null }
+      : null,
     items: items.map(mapearItem),
   };
 }

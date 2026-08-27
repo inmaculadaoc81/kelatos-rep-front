@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,6 +28,7 @@ import {
 import type { Proveedor } from "@/app/api/proveedores/route";
 import { esUrlValida } from "@/lib/validacion";
 import { TicketManualDialog } from "../reparaciones/ticket-manual-dialog";
+import { VentaTicketModalShell } from "./venta-ticket-modal-shell";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -82,6 +82,7 @@ export function DetalleVentaDialog({
   const esSuperadmin = useEsSuperadmin();
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [ticketAbierto, setTicketAbierto] = useState(false);
+  const [ticketDetalleAbierto, setTicketDetalleAbierto] = useState(false);
   const [venta, setVenta] = useState<Venta | null>(null);
   const [cargando, setCargando] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -360,13 +361,9 @@ export function DetalleVentaDialog({
                 <Ticket className="size-4 text-muted-foreground" />
                 <span className="font-semibold">Ticket:</span>{" "}
                 {venta.numeroTicket ? (
-                  venta.urlTicket ? (
-                    <Button variant="link" size="sm" className="h-auto p-0" nativeButton={false} render={<Link href={venta.urlTicket} target="_blank" rel="noreferrer" />}>
-                      {venta.numeroTicket}
-                    </Button>
-                  ) : (
-                    venta.numeroTicket
-                  )
+                  <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setTicketDetalleAbierto(true)}>
+                    {venta.numeroTicket}
+                  </Button>
                 ) : (
                   <Button size="sm" variant="outline" className="h-6 gap-1.5 px-2 text-xs" onClick={() => setTicketAbierto(true)}>
                     <Ticket className="size-3.5" /> Generar Ticket
@@ -559,6 +556,15 @@ export function DetalleVentaDialog({
           ventaId={venta.ventaId}
           venta={venta}
           onGenerado={actualizarTodo}
+        />
+      )}
+
+      {venta && venta.numeroTicket && (
+        <VentaTicketModalShell
+          venta={venta}
+          open={ticketDetalleAbierto}
+          onOpenChange={setTicketDetalleAbierto}
+          onActualizado={actualizarTodo}
         />
       )}
     </Dialog>
