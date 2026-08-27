@@ -46,16 +46,18 @@ const NOMBRES_TIPO_CINTA: Record<string, string> = {
 /**
  * Puerto simplificado de construirLineasIniciales() (factura-reparacion-
  * dialog.tsx) para el caso común: mano de obra + piezas de los
- * presupuestos aceptados. A propósito NO replica los casos especiales de
- * la factura real (remanente de anticipo, descuento de revisión) —
- * "Ticket Rápido" es la alternativa simple, no un sustituto completo de
- * Facturación.
- *
- * SÍ replica el caso de cintas (datos_cintas) y los portes de mensajería
- * — peticiones del usuario, 2026-08-27: antes una reparación de
- * conversión de cintas no tenía presupuestos con mano de obra/piezas
- * normales (salía vacío), y "Recogida"/"Envío por mensajería" (12,40€
- * fijos cada uno) no se añadían nunca, aunque estuvieran marcados.
+ * presupuestos aceptados. "Ticket Rápido" sigue siendo la alternativa
+ * simple (no agrupa por versión de presupuesto como sí hace la factura
+ * real con varios presupuestos aceptados a la vez), pero SÍ replica ya
+ * todos los casos especiales reales que afectan al IMPORTE final:
+ * - Cintas (datos_cintas) y portes de mensajería — peticiones del
+ *   usuario, 2026-08-27.
+ * - Descuento de revisión pagada (-20€) y remanente de anticipo (el % que
+ *   falta por cobrar tras descontar lo ya pagado como anticipo) —
+ *   petición del usuario, 2026-08-27: "no está descontando ni la
+ *   revisión ni el anticipo que se facturó previamente". anticipoImporte
+ *   ya refleja el importe correcto tanto si el anticipo se cobró con
+ *   factura real como con ticket (ver modo:"anticipo" del backend).
  */
 function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
   let datosCintas: { tipos?: Record<string, number>; precioUnitario?: number; precioPorCinta?: number; precioBobina?: number } | null = null;
@@ -78,19 +80,35 @@ function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
 
   if (lineas.length === 0) {
     const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
+
+    // Remanente de anticipo: mismo cálculo que construirLineasIniciales()
+    // — solo se aplica mientras el ticket todavía no existe (evita volver
+    // a descontar el anticipo dos veces al reabrir un ticket ya generado).
+    let sumItems = 0;
     for (const p of aceptados) {
-      if (p.manoObra > 0) lineas.push({ descripcion: "Mano de obra", cantidad: 1, precio: p.manoObra, descuento: 0 });
+      sumItems += p.manoObra || 0;
+      sumItems += p.piezas.length > 0 ? p.piezas.reduce((s, pz) => s + (pz.precio || pz.costo || 0), 0) : (p.precioPiezas || 0);
+    }
+    const totalPresBruto = aceptados.reduce((s, p) => s + (p.total || 0), 0);
+    const baseBruta = sumItems > 0 ? sumItems : totalPresBruto;
+    const anticipo = !detalle.numeroTicket && aceptados.length > 0 ? detalle.anticipoImporte || 0 : 0;
+    const remFactor = anticipo > 0 && baseBruta > 0 ? Math.max(0, 1 - anticipo / baseBruta) : 1;
+    const sufijo = remFactor < 1 ? ` (${Math.round(remFactor * 100)}% restante)` : "";
+
+    for (const p of aceptados) {
+      if (p.manoObra > 0) lineas.push({ descripcion: `Mano de obra${sufijo}`, cantidad: 1, precio: p.manoObra * remFactor, descuento: 0 });
       for (const pz of p.piezas) {
-        if (pz.precio > 0) lineas.push({ descripcion: pz.descripcion || "Pieza", cantidad: 1, precio: pz.precio, descuento: 0 });
+        const precioPieza = pz.precio || pz.costo || 0;
+        if (precioPieza > 0) lineas.push({ descripcion: `${pz.descripcion || "Pieza"}${sufijo}`, cantidad: 1, precio: precioPieza * remFactor, descuento: 0 });
       }
     }
   }
 
-  // Portes de mensajería (mismo importe fijo que la factura real,
-  // 12,40€) — solo si el ticket todavía no se generó, igual que la
-  // factura real solo los añade si !detalle.urlFactura (evita duplicarlos
-  // al reabrir un ticket ya existente).
+  // Los dos condicionados de abajo, igual que en construirLineasIniciales(),
+  // solo se aplican mientras el ticket todavía no existe (evitan
+  // duplicarse al reabrir un ticket ya generado).
   if (!detalle.numeroTicket) {
+    if (detalle.revisionPagada === "SI") lineas.push({ descripcion: "Descuento revisión pagada", cantidad: 1, precio: -20, descuento: 0 });
     if ((detalle.tipoRecepcion || "LOCAL") === "ENVIO") lineas.push({ descripcion: "Recogida por mensajería", cantidad: 1, precio: 12.4, descuento: 0 });
     if (detalle.entregaMensajeria === "SI") lineas.push({ descripcion: "Envío por mensajería", cantidad: 1, precio: 12.4, descuento: 0 });
   }
