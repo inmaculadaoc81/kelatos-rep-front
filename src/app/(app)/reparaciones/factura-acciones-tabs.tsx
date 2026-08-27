@@ -1083,10 +1083,17 @@ export interface LineaTicketCorr {
   descripcion: string;
   cantidad: number;
   precio: number;
+  descuento?: number;
 }
 
 function lineaVaciaCorr(): LineaTicketCorr {
-  return { descripcion: "", cantidad: 1, precio: 0 };
+  return { descripcion: "", cantidad: 1, precio: 0, descuento: 0 };
+}
+
+function totalLineaCorr(l: LineaTicketCorr): number {
+  const subtotal = (Number(l.cantidad) || 0) * (Number(l.precio) || 0);
+  const descuento = Math.min(100, Math.max(0, Number(l.descuento) || 0));
+  return subtotal * (1 - descuento / 100);
 }
 
 function FaseCorregidaTicket({
@@ -1118,12 +1125,21 @@ function FaseCorregidaTicket({
   // "no salen los datos cargados de el anterior en el corregido".
   useEffect(() => {
     if (open) {
-      setLineas(lineasIniciales && lineasIniciales.length > 0 ? lineasIniciales.map((l) => ({ ...l })) : [lineaVaciaCorr()]);
+      setLineas(
+        lineasIniciales && lineasIniciales.length > 0
+          ? lineasIniciales.map((l) => ({ descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio, descuento: l.descuento || 0 }))
+          : [lineaVaciaCorr()]
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const baseImponible = lineas.reduce((s, l) => s + (Number(l.cantidad) || 0) * (Number(l.precio) || 0), 0);
+  // Antes ignoraba l.descuento — un ticket con descuento por línea perdía
+  // ese % al corregirse (quedaba en 0%, aunque el dato SÍ llegaba
+  // precargado), dando un total distinto al PDF original. Bug real
+  // reportado por el usuario con captura de un "CAMBIO DE ANILLO DYSON
+  // V12 SLIM" con 10% en el ticket original y 0% en el corregido.
+  const baseImponible = lineas.reduce((s, l) => s + totalLineaCorr(l), 0);
   const iva = baseImponible * IVA_PCT;
   const total = baseImponible + iva;
 
@@ -1186,7 +1202,7 @@ function FaseCorregidaTicket({
           <div className="rounded-lg border bg-card shadow-sm">
             <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
               <span>Conceptos</span>
-              <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((p) => (p.length < 8 ? [...p, { descripcion: "", cantidad: 1, precio: 0 }] : p))}>
+              <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs text-white hover:bg-white/15 hover:text-white" onClick={() => setLineas((p) => (p.length < 8 ? [...p, lineaVaciaCorr()] : p))}>
                 <Add className="size-3" /> Añadir línea
               </Button>
             </div>
@@ -1196,6 +1212,7 @@ function FaseCorregidaTicket({
                   <th className="px-2 py-1.5 text-left font-medium">Descripción</th>
                   <th className="w-20 px-2 py-1.5 text-center font-medium">Cantidad</th>
                   <th className="w-28 px-2 py-1.5 text-right font-medium">Precio unidad</th>
+                  <th className="w-20 px-2 py-1.5 text-center font-medium">Descuento</th>
                   <th className="w-28 px-2 py-1.5 text-right font-medium">Total</th>
                   <th className="w-7 px-1 py-1.5"></th>
                 </tr>
@@ -1206,7 +1223,13 @@ function FaseCorregidaTicket({
                     <td className="p-1"><Input className="h-8 text-sm" placeholder="Descripción" value={l.descripcion} onChange={(e) => actualizarLinea(i, "descripcion", e.target.value)} /></td>
                     <td className="p-1"><Input type="number" min={0} step={1} className="h-8 text-center text-sm" value={l.cantidad} onChange={(e) => actualizarLinea(i, "cantidad", parseFloat(e.target.value) || 0)} /></td>
                     <td className="p-1"><Input type="number" step={0.01} className="h-8 text-right text-sm" value={l.precio} onChange={(e) => actualizarLinea(i, "precio", parseFloat(e.target.value) || 0)} /></td>
-                    <td className="px-2 py-1 text-right font-medium">{euros((Number(l.cantidad) || 0) * (Number(l.precio) || 0))}</td>
+                    <td className="p-1">
+                      <div className="relative">
+                        <Input type="number" min={0} max={100} step={1} className="h-8 pr-5 text-right text-sm" value={l.descuento || 0} onChange={(e) => actualizarLinea(i, "descuento", Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
+                        <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-1 text-right font-medium">{euros(totalLineaCorr(l))}</td>
                     <td className="p-1">
                       <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => setLineas((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p))} disabled={lineas.length === 1}>
                         <Trash className="size-3.5" />
@@ -1217,17 +1240,17 @@ function FaseCorregidaTicket({
               </tbody>
               <tfoot className="text-sm">
                 <tr className="border-t bg-muted/30">
-                  <td colSpan={3}></td>
+                  <td colSpan={4}></td>
                   <td className="px-2 py-1 text-right text-xs text-muted-foreground">Base imponible</td>
                   <td className="px-2 py-1 text-right font-medium">{euros(baseImponible)}</td>
                 </tr>
                 <tr className="bg-muted/30">
-                  <td colSpan={3}></td>
+                  <td colSpan={4}></td>
                   <td className="px-2 py-1 text-right text-xs text-muted-foreground">IVA (21%)</td>
                   <td className="px-2 py-1 text-right font-medium">{euros(iva)}</td>
                 </tr>
                 <tr className="border-t bg-primary/5">
-                  <td colSpan={3}></td>
+                  <td colSpan={4}></td>
                   <td className="px-2 py-1.5 text-right text-xs font-semibold">TOTAL</td>
                   <td className="px-2 py-1.5 text-right text-base font-bold">{euros(total)}</td>
                 </tr>

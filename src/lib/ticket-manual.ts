@@ -10,6 +10,7 @@ export interface LineaTicketManual {
   descripcion: string;
   cantidad: number;
   precio: number;
+  descuento: number;
 }
 
 interface FilaTicketManualRaw {
@@ -67,8 +68,13 @@ export function mapTicketManualDetalle(row: FilaTicketManualRaw): TicketManualDe
     id: row.id,
     numeroTicket: row.numero_ticket || "",
     fechaTicket: fecha(row.fecha_ticket),
-    lineasTicket: (items as Array<{ descripcion?: string; cantidad?: number; precio?: number }>).map((l) => ({
-      descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio),
+    // descuento (%) se guardaba en lineas_ticket pero este mapeo lo
+    // descartaba — bug real reportado por el usuario: al generar un
+    // Ticket Corregido, el descuento por línea del ticket original
+    // desaparecía (0% en vez del real), dando un total distinto al PDF
+    // original.
+    lineasTicket: (items as Array<{ descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
+      descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
     })),
     totalTicket: numero(row.total_ticket),
     urlTicket: row.url_ticket || "",
