@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2, Send2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/confirm-provider";
@@ -54,8 +54,25 @@ export function FacturaRevisionDialog({
   const yaGeneradaFactura = !!(detalle.numeroFacturaRevision || detalle.urlFacturaRevision);
   const yaGeneradaTicket = !!(detalle.numeroTicketRevision || detalle.urlTicketRevision);
 
-  if (yaGeneradaFactura) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
-  if (yaGeneradaTicket) return <VistaGeneradaTicket detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
+  // Congela la decisión al ABRIR el diálogo — generar el ticket aquí mismo
+  // llama a onGenerada() (refresca "detalle" en el padre), lo que
+  // recalculaba yaGeneradaTicket=true a media faena y conmutaba a
+  // VistaGeneradaTicket antes de que el usuario pudiera pulsar "Enviar al
+  // cliente" en VistaGenerarTicket — la vista cambiaba entera y esa
+  // pantalla (y su estado local) desaparecía. Bug real reportado,
+  // 2026-08-27: "solo se dio click a generar y luego no apareció el
+  // enviar al cliente" (sí vio el aviso de éxito, así que el ticket SÍ se
+  // generó bien — el problema era puramente de qué vista se mostraba
+  // después). Mismo patrón que sinNuevaFacturaAlAbrir en
+  // entregar-con-factura-dialog.tsx.
+  const estadoAlAbrir = useRef({ yaGeneradaFactura, yaGeneradaTicket });
+  useEffect(() => {
+    if (open) estadoAlAbrir.current = { yaGeneradaFactura, yaGeneradaTicket };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  if (estadoAlAbrir.current.yaGeneradaFactura) return <VistaGenerada detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
+  if (estadoAlAbrir.current.yaGeneradaTicket) return <VistaGeneradaTicket detalle={detalle} open={open} onOpenChange={onOpenChange} onActualizado={onGenerada} />;
   return (
     <VistaElegir
       detalle={detalle}
