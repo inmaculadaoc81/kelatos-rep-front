@@ -1187,7 +1187,7 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
       dniCif: "",
       equipo: "",
       estadoEntrega: "",
-      fecha: row.fecha_entrega || row.fecha,
+      fecha: row.fecha,
       total: num(row.monto_pagado),
       formaPago: "",
       banco: "",
