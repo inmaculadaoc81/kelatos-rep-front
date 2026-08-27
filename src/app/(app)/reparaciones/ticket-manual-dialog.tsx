@@ -482,12 +482,15 @@ export function TicketManualDialog({
                   </SelectContent>
                 </Select>
                 {metodo === "tarjeta" && (
-                  <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultado}>
-                    <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                    <SelectContent>
-                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <>
+                    <Label className="mt-1.5 block text-xs text-muted-foreground">Banco *</Label>
+                    <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultado}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                      <SelectContent>
+                        {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </>
                 )}
               </div>
             </div>

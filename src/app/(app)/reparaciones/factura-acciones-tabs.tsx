@@ -1030,7 +1030,7 @@ export function TabDevolucionTicket({
         <p className="text-xs text-muted-foreground">Registro interno. No se incluye en el PDF.</p>
       </div>
       <div className="space-y-1.5">
-        <Label>Forma de pago de la devolución</Label>
+        <Label>Forma de pago de la devolución *</Label>
         <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
           <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
           <SelectContent>
@@ -1038,12 +1038,15 @@ export function TabDevolucionTicket({
           </SelectContent>
         </Select>
         {metodo === "tarjeta" && (
-          <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-            <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-            <SelectContent>
-              {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <>
+            <Label className="mt-1.5 block">Banco *</Label>
+            <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+              <SelectContent>
+                {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </>
         )}
       </div>
       <Button className="w-full gap-1.5" variant="destructive" onClick={generar} disabled={enviando}>
@@ -1259,7 +1262,7 @@ function FaseCorregidaTicket({
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Forma de pago</Label>
+              <Label className="text-xs text-muted-foreground">Forma de pago *</Label>
               <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
                 <SelectContent>
@@ -1267,12 +1270,15 @@ function FaseCorregidaTicket({
                 </SelectContent>
               </Select>
               {metodo === "tarjeta" && (
-                <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-                  <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                  <SelectContent>
-                    {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Label className="mt-1.5 block text-xs text-muted-foreground">Banco *</Label>
+                  <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                    <SelectContent>
+                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </>
               )}
             </div>
           </div>

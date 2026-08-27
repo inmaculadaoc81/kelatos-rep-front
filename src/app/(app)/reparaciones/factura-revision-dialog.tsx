@@ -296,7 +296,7 @@ function VistaGenerarTicket({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Método de pago</Label>
+            <Label>Método de pago *</Label>
             <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
               <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
               <SelectContent>
@@ -306,7 +306,7 @@ function VistaGenerarTicket({
           </div>
           {metodo === "tarjeta" && (
             <div className="space-y-1.5">
-              <Label>Banco</Label>
+              <Label>Banco *</Label>
               <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
                 <SelectContent>
