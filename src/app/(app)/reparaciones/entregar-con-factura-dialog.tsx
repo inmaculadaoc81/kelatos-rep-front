@@ -35,13 +35,14 @@ function tituloEIcono(tipoEntrega: TipoEntregaModal) {
 }
 
 /** Reproduce el texto dinámico de btnEntregarConfirmar (guardarEntregarEquipo/abrirModalEntregarEquipo, Index.html). */
-function textoBoton(tipoEntrega: TipoEntregaModal, sinNuevaFactura: boolean): string {
+function textoBoton(tipoEntrega: TipoEntregaModal, sinNuevaFactura: boolean, doc: "factura" | "ticket" = "factura"): string {
   const esEnvio = tipoEntrega === "ENVIO";
   const esReciclaje = tipoEntrega === "RECICLAJE";
   if (sinNuevaFactura) {
     return esEnvio ? "Registrar envío" : esReciclaje ? "Enviar a punto limpio" : "Marcar como entregado";
   }
-  return esReciclaje ? "Emitir factura y enviar a punto limpio" : esEnvio ? "Emitir factura y registrar envío" : "Emitir factura y marcar entregado";
+  const verbo = doc === "ticket" ? "Emitir ticket" : "Emitir factura";
+  return esReciclaje ? `${verbo} y enviar a punto limpio` : esEnvio ? `${verbo} y registrar envío` : `${verbo} y marcar entregado`;
 }
 
 interface InfoEntrega {
@@ -49,6 +50,17 @@ interface InfoEntrega {
   mostrarEnvio: boolean;
   gastosEnvioDefault: number;
   totalBase: number;
+  /** "No tiene Reparación" / "Presupuesto Rechazado": nunca hay cargo de
+      reparación, solo (si aplica) el trayecto de mensajería — por eso aquí
+      también se puede elegir Ticket en vez de Factura. Petición del
+      usuario, 2026-08-27: "Cuando se da a Sin Reparación por falta de
+      pieza tampoco da la opción de generar ticket. Lo mismo... Ppto
+      Rechazado" — antes el ticket solo se ofrecía con tipoEntrega="ENVIO"
+      (el botón "Facturar y Enviar por Mensajería"), pero estos dos
+      estados también pasan por aquí con tipoEntrega="ENTREGADO"/
+      "RECICLAJE" cuando el equipo se recibió por mensajería y se recoge/
+      desecha en local. */
+  estadoSinFactura: boolean;
 }
 
 function calcularInfo(detalle: ReparacionDetalle, esEnvio: boolean): InfoEntrega {
@@ -67,7 +79,7 @@ function calcularInfo(detalle: ReparacionDetalle, esEnvio: boolean): InfoEntrega
       totalBase = Math.max(0, ppto.manoObra + ppto.precioPiezas - (detalle.revisionPagada === "SI" ? 20 : 0));
     }
   }
-  return { sinNuevaFactura, mostrarEnvio, gastosEnvioDefault, totalBase };
+  return { sinNuevaFactura, mostrarEnvio, gastosEnvioDefault, totalBase, estadoSinFactura };
 }
 
 /**
@@ -273,14 +285,19 @@ function VistaConFactura({
   onCompletado: () => void;
 }) {
   const esEnvio = tipoEntrega === "ENVIO";
-  // Solo en "Facturar y Enviar por Mensajería" (ENVIO) se puede elegir
-  // ticket en vez de factura — petición del usuario, 2026-08-27: "cuando
-  // el equipo no tiene reparación y hay un cobro de mensajería, solo da la
-  // opción para generar factura y no ticket". ENTREGADO/RECICLAJE siguen
-  // usando siempre factura (numero_factura general, no numero_factura_
-  // mensajeria), fuera del alcance de este cambio.
+  // Se puede elegir ticket en vez de factura siempre que el único cargo
+  // posible sea el de mensajería — "No tiene Reparación"/"Presupuesto
+  // Rechazado" (info.estadoSinFactura), sea cual sea tipoEntrega: petición
+  // del usuario, 2026-08-27. Al principio solo se ofrecía con
+  // tipoEntrega="ENVIO" ("Facturar y Enviar por Mensajería"), pero estos
+  // mismos estados también llegan aquí con "ENTREGADO"/"RECICLAJE" cuando
+  // el equipo se recibió por mensajería y se recoge/desecha en local — se
+  // reportó que ahí seguía faltando la opción. "Reparado"+Garantía (el
+  // tercer caso que sí ofrece el botón) se deja fuera a propósito: ese
+  // cargo de reparación si puede ser real, no solo mensajería.
+  const permiteTicket = info.estadoSinFactura;
   const [tipoDocumento, setTipoDocumento] = useState<"factura" | "ticket">("factura");
-  const esTicket = esEnvio && tipoDocumento === "ticket";
+  const esTicket = permiteTicket && tipoDocumento === "ticket";
   const [nombre, setNombre] = useState(detalle.cliente.nombre || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
   const [dni, setDni] = useState(detalle.dniCif || "");
@@ -412,7 +429,7 @@ function VistaConFactura({
               {esTicket ? <Ticket className="size-4 text-primary" /> : <DocumentText className="size-4 text-primary" />}
               {esTicket ? "Ticket" : "Factura"}
             </p>
-            {esEnvio && (
+            {permiteTicket && (
               <div className="flex gap-1.5">
                 <Button type="button" size="sm" variant={tipoDocumento === "factura" ? "default" : "outline"} className="gap-1.5" onClick={() => setTipoDocumento("factura")}>
                   <DocumentText className="size-3.5" /> Factura
@@ -424,7 +441,7 @@ function VistaConFactura({
             )}
             <p className="text-sm text-muted-foreground">
               {esTicket
-                ? "Ticket de envío únicamente — la reparación se factura por separado."
+                ? "Ticket del cobro de mensajería únicamente — no hay cargo de reparación."
                 : esEnvio
                   ? "Factura de envío únicamente — la reparación se factura por separado."
                   : info.totalBase > 0
@@ -514,7 +531,7 @@ function VistaConFactura({
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
           <Button className="gap-1.5" onClick={confirmar} disabled={enviando}>
-            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : esTicket ? "Emitir ticket y registrar envío" : textoBoton(tipoEntrega, false)}
+            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : textoBoton(tipoEntrega, false, esTicket ? "ticket" : "factura")}
           </Button>
         </footer>
       </DialogContent>
