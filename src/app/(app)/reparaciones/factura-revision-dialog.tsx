@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2, Send2 } from "@/lib/icons";
+import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
-import { useConfirm } from "@/components/confirm-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -250,28 +249,21 @@ function VistaGenerarTicket({
   const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
-  const [resultadoTicket, setResultadoTicket] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
-  const [enviandoTicket, setEnviandoTicket] = useState(false);
-  // Una vez generado, no se deja cerrar sin enviarlo primero — petición del
-  // usuario, 2026-08-27: "no debería dejar cerrar".
-  const [ticketEnviado, setTicketEnviado] = useState(false);
-  const confirmarEnvio = useConfirm();
 
   function cerrar(o: boolean, eventDetails?: { reason?: string; cancel?: () => void }) {
     if (enviando) return;
     if (eventDetails && esCierreAccidental(o, eventDetails)) return;
-    if (!o) {
-      if (resultadoTicket && !ticketEnviado) {
-        toast.error("Envía el ticket al cliente antes de cerrar");
-        return;
-      }
-      setRequestId(null);
-      setResultadoTicket(null);
-      setTicketEnviado(false);
-    }
+    if (!o) setRequestId(null);
     onOpenChange(o);
   }
 
+  // Generar y enviar en un solo paso — petición del usuario, 2026-08-27:
+  // dejar el diálogo abierto tras generar (para un botón "Enviar al
+  // cliente" aparte) resultó frágil: refrescar "detalle" al terminar
+  // conmutaba la vista antes de que el usuario pudiera pulsar enviar, y el
+  // diálogo se cerraba solo sin haber enviado. Más simple y sin ese bug:
+  // "Confirmar y generar ticket" genera y, si hay correo, envía en la
+  // misma acción — un fallo al enviar no deshace el ticket ya generado.
   async function confirmar() {
     if (!metodo) return toast.error("Selecciona el método de pago");
     if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
@@ -294,13 +286,30 @@ function VistaGenerarTicket({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`Revisión marcada — Ticket ${data.numeroTicket} generado correctamente`);
+      let mensaje = `Revisión marcada — Ticket ${data.numeroTicket} generado correctamente`;
+
+      const destino = emailTicket.trim();
+      if (destino) {
+        try {
+          const resEnviar = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta/enviar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tipo: "ticket_revision", emailDestino: destino }),
+          });
+          const dataEnviar = await resEnviar.json();
+          if (dataEnviar.ok && dataEnviar.enviado) {
+            mensaje += ` y enviado a ${destino}`;
+          } else {
+            toast.error(`Ticket generado, pero no se pudo enviar: ${dataEnviar.motivo || dataEnviar.error || "error desconocido"}`);
+          }
+        } catch (eEnviar) {
+          toast.error(`Ticket generado, pero no se pudo enviar: ${eEnviar instanceof Error ? eEnviar.message : "error desconocido"}`);
+        }
+      }
+
+      toast.success(mensaje);
       onGenerada();
-      // Se queda abierto (a diferencia de antes) para poder ofrecer "Enviar
-      // al cliente" — petición del usuario, 2026-08-27: "En revision
-      // debería haber la opción de enviar también". Mismo patrón que el
-      // ticket de mensajería (entregar-con-factura-dialog.tsx).
-      setResultadoTicket({ numeroTicket: data.numeroTicket || "", urlTicket: data.urlTicket || "" });
+      onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -308,35 +317,10 @@ function VistaGenerarTicket({
     }
   }
 
-  async function enviarTicket() {
-    if (!resultadoTicket) return;
-    const destino = emailTicket.trim();
-    if (!destino) return toast.error("No hay ningún correo de destino disponible");
-    const ok = await confirmarEnvio(`¿Enviar el ticket ${resultadoTicket.numeroTicket} a ${destino}?`);
-    if (!ok) return;
-    setEnviandoTicket(true);
-    try {
-      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta/enviar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "ticket_revision", emailDestino: destino }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
-      toast.success(`Ticket enviado a ${destino}`);
-      setTicketEnviado(true);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setEnviandoTicket(false);
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={cerrar}>
       <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
-        <CabeceraVerde titulo="Marcar revisión — Ticket" onClose={() => cerrar(false)} onVolver={enviando || (resultadoTicket && !ticketEnviado) ? undefined : onVolver} />
+        <CabeceraVerde titulo="Marcar revisión — Ticket" onClose={() => cerrar(false)} onVolver={enviando ? undefined : onVolver} />
         <div className="space-y-3 p-4">
           <p className="text-sm text-muted-foreground">Genera un ticket (sin datos fiscales de cliente) para la revisión técnica.</p>
           <div className="grid grid-cols-2 gap-3">
@@ -346,7 +330,7 @@ function VistaGenerarTicket({
             </div>
             <div className="space-y-1.5">
               <Label>Estado</Label>
-              <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={!!resultadoTicket}>
+              <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={enviando}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Cobrada">Cobrada</SelectItem>
@@ -357,7 +341,7 @@ function VistaGenerarTicket({
           </div>
           <div className="space-y-1.5">
             <Label>Método de pago *</Label>
-            <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={!!resultadoTicket}>
+            <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={enviando}>
               <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
               <SelectContent>
                 {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
@@ -367,7 +351,7 @@ function VistaGenerarTicket({
           {metodo === "tarjeta" && (
             <div className="space-y-1.5">
               <Label>Banco *</Label>
-              <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultadoTicket}>
+              <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={enviando}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
                 <SelectContent>
                   {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
@@ -377,30 +361,14 @@ function VistaGenerarTicket({
           )}
           <div className="space-y-1.5">
             <Label>Correo del cliente</Label>
-            <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} placeholder="correo@ejemplo.com" disabled={!!resultadoTicket} />
-            <p className="text-xs text-muted-foreground">Tomado del resguardo — edítalo si el ticket debe enviarse a otro correo.</p>
+            <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} placeholder="correo@ejemplo.com" disabled={enviando} />
+            <p className="text-xs text-muted-foreground">Tomado del resguardo — edítalo si el ticket debe enviarse a otro correo. Si lo dejas vacío, no se enviará ningún correo.</p>
           </div>
-          {resultadoTicket && (
-            <div className="space-y-1 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
-              <div className="flex items-center justify-between gap-2">
-                <span>Ticket <strong>{resultadoTicket.numeroTicket}</strong> generado correctamente.</span>
-                {resultadoTicket.urlTicket && (
-                  <a href={resultadoTicket.urlTicket} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver PDF</a>
-                )}
-              </div>
-              <p className="text-xs">
-                {emailTicket.trim() ? <>Se enviará a: <strong>{emailTicket.trim()}</strong></> : "Sin correo de destino — vuelve arriba para añadir uno."}
-              </p>
-            </div>
-          )}
         </div>
-        <footer className="flex flex-wrap justify-end gap-2 border-t bg-muted/50 px-4 py-3">
-          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>{resultadoTicket ? "Cerrar" : "Cancelar"}</Button>
-          <Button className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800" onClick={confirmar} disabled={enviando || !!resultadoTicket}>
+        <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
+          <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
+          <Button className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
             <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
-          </Button>
-          <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!resultadoTicket || !emailTicket.trim() || enviandoTicket}>
-            <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
           </Button>
         </footer>
       </DialogContent>
