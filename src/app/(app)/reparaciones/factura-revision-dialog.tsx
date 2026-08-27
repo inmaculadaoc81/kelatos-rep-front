@@ -396,16 +396,12 @@ function VistaGenerarTicket({
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>{resultadoTicket ? "Cerrar" : "Cancelar"}</Button>
-          {resultadoTicket && (
-            <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!emailTicket.trim() || enviandoTicket}>
-              <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
-            </Button>
-          )}
-          {!resultadoTicket && (
-            <Button className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5" onClick={confirmar} disabled={enviando}>
-              <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
-            </Button>
-          )}
+          <Button className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800" onClick={confirmar} disabled={enviando || !!resultadoTicket}>
+            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : "Confirmar y generar ticket"}
+          </Button>
+          <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!resultadoTicket || !emailTicket.trim() || enviandoTicket}>
+            <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+          </Button>
         </footer>
       </DialogContent>
     </Dialog>
