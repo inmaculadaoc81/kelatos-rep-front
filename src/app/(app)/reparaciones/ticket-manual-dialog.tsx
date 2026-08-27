@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Ticket, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Box1 } from "@/lib/icons";
+import { Ticket, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Send2, Box1 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import type { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import { METODOS_PAGO, BANCOS } from "./factura-acciones-tabs";
+import { useConfirm } from "@/components/confirm-provider";
 
 const IVA_PCT = 0.21;
 // La plantilla de Sheets se amplió de 8 a 16 filas, 2026-08-27 (ver
@@ -211,7 +212,7 @@ export function TicketManualDialog({
   const [descuentoGlobal, setDescuentoGlobal] = useState(0);
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [generando, setGenerando] = useState(false);
-  const [resultado, setResultado] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
+  const [resultado, setResultado] = useState<{ numeroTicket: string; urlTicket: string; id?: string } | null>(null);
   const [buscarPiezaAbierto, setBuscarPiezaAbierto] = useState(false);
   // Cliente — solo aplica al modo suelto "Ticket Manual" (petición del
   // usuario, 2026-08-27: "container de cliente... para saber a que
@@ -238,6 +239,14 @@ export function TicketManualDialog({
   // de la reparación, editable hasta generar; después queda fijo (mismo
   // patrón que el resto de campos, disabled={!!resultado}).
   const [emailTicket, setEmailTicket] = useState("");
+  // "Enviar al cliente" justo tras generar — petición del usuario,
+  // 2026-08-27: "deberia de luego generar pdf y botin alado de enviar al
+  // cliente y ahi doble confirmacion" — sin esto había que cerrar este
+  // modal y reabrir el ticket desde otro sitio (Facturas de Clientes)
+  // solo para enviarlo. Mismo mecanismo de doble confirmación que
+  // TabPdfEnviar (correo destacado + useConfirm), pero inline aquí.
+  const [enviandoTicket, setEnviandoTicket] = useState(false);
+  const confirmar = useConfirm();
 
   function seleccionarCliente(c: Cliente) {
     setClienteNombre(c.nombre || "");
@@ -375,12 +384,45 @@ export function TicketManualDialog({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
-      setResultado({ numeroTicket: data.numeroTicket, urlTicket: data.urlTicket });
+      setResultado({ numeroTicket: data.numeroTicket, urlTicket: data.urlTicket, id: data.ticket?.id });
       onGenerado?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setGenerando(false);
+    }
+  }
+
+  // Solo disponible para Ticket Manual suelto y Ticket Rápido de
+  // reparación — Ticket de Ventas todavía no tiene endpoint de envío
+  // (fuera de alcance, decisión previa del usuario).
+  const emailParaEnviar = esManualStandalone ? clienteEmail.trim() : !esVenta ? emailTicket.trim() : "";
+  const puedeEnviar = !esVenta && !!resultado;
+
+  async function enviarTicket() {
+    if (!resultado) return;
+    if (!emailParaEnviar) return toast.error("No hay ningún correo de destino disponible");
+    const ok = await confirmar(`¿Enviar el ticket ${resultado.numeroTicket} a ${emailParaEnviar}?`);
+    if (!ok) return;
+
+    setEnviandoTicket(true);
+    try {
+      const url = esManualStandalone
+        ? `/api/tickets-manuales/${resultado.id}/enviar`
+        : `/api/reparaciones/${resguardo}/ticket-venta/enviar`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "ticket", emailDestino: emailParaEnviar }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
+      toast.success(`Ticket enviado a ${emailParaEnviar}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoTicket(false);
     }
   }
 
@@ -396,12 +438,26 @@ export function TicketManualDialog({
         <ScrollArea className="max-h-[75vh]">
           <div className="space-y-4 bg-muted/30 p-4">
             {resultado && (
-              <div className="flex items-center justify-between gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
-                <span>Ticket <strong>{resultado.numeroTicket}</strong> generado correctamente.</span>
-                {resultado.urlTicket && (
-                  <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={resultado.urlTicket} target="_blank" rel="noreferrer" />}>
-                    Ver PDF
-                  </Button>
+              <div className="space-y-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <div className="flex items-center justify-between gap-2">
+                  <span>Ticket <strong>{resultado.numeroTicket}</strong> generado correctamente.</span>
+                  <div className="flex gap-2">
+                    {resultado.urlTicket && (
+                      <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={resultado.urlTicket} target="_blank" rel="noreferrer" />}>
+                        Ver PDF
+                      </Button>
+                    )}
+                    {puedeEnviar && (
+                      <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={enviandoTicket}>
+                        <Send2 className="size-3.5" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {puedeEnviar && (
+                  <p className="text-xs">
+                    {emailParaEnviar ? <>Se enviará a: <strong>{emailParaEnviar}</strong></> : "Sin correo de destino — vuelve a Cliente/Correo para añadir uno."}
+                  </p>
                 )}
               </div>
             )}
