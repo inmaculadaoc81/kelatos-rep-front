@@ -345,6 +345,7 @@ export function DetalleVentaDialog({
               <div><span className="font-semibold">Teléfono:</span> {venta.clienteTelefono || "-"}</div>
               <div><span className="font-semibold">Email:</span> {venta.clienteEmail || "-"}</div>
               <div><span className="font-semibold">Fecha:</span> {formatearFecha(venta.fecha)}</div>
+              <div><span className="font-semibold">Entrega:</span> {venta.fechaEntrega ? formatearFecha(venta.fechaEntrega) : "-"}</div>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-sm">
@@ -459,6 +460,8 @@ export function DetalleVentaDialog({
                     <TableHead>Precio</TableHead>
                     <TableHead>Proveedor</TableHead>
                     <TableHead>Nº Pedido</TableHead>
+                    <TableHead>Fecha Pedido</TableHead>
+                    <TableHead>Fecha Recibido</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Acciones</TableHead>
                     <TableHead>Enlace</TableHead>
@@ -467,7 +470,7 @@ export function DetalleVentaDialog({
                 <TableBody>
                   {venta.items.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">Sin piezas</TableCell>
+                      <TableCell colSpan={10} className="py-4 text-center text-muted-foreground">Sin piezas</TableCell>
                     </TableRow>
                   )}
                   {venta.items.map((item) => {
@@ -479,6 +482,8 @@ export function DetalleVentaDialog({
                         <TableCell className="text-sm">{euros(item.precio)}</TableCell>
                         <TableCell className="text-sm">{item.proveedorNombre || "-"}</TableCell>
                         <TableCell className="text-sm">{item.numeroPedido || "-"}</TableCell>
+                        <TableCell className="text-sm">{item.fechaPedido ? formatearFecha(item.fechaPedido) : "-"}</TableCell>
+                        <TableCell className="text-sm">{item.fechaRecepcion ? formatearFecha(item.fechaRecepcion) : "-"}</TableCell>
                         <TableCell><EstadoBadge estado={item.estadoPedido || "Pieza Pendiente"} estilo={estilo} /></TableCell>
                         <TableCell className="whitespace-nowrap">
                           {!finalizado && item.estadoPedido === "Pieza Pendiente" && (
