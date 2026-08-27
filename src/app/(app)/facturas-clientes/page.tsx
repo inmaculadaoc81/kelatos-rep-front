@@ -51,6 +51,8 @@ import {
 import { ColumnaFiltro } from "./columna-filtro";
 import { DetalleFacturaDialog } from "./detalle-factura-dialog";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
+import { AlquilerDetalleDialog } from "../equipos/alquiler-detalle-dialog";
+import type { Equipo } from "@/lib/equipos";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -292,16 +294,27 @@ function ResguardoCell({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: str
   );
 }
 
-function VerBoton({ f, onVer, onDetalle }: { f: FacturaCliente; onVer: (resguardo: string) => void; onDetalle: (f: FacturaCliente) => void }) {
+function VerBoton({
+  f,
+  onVer,
+  onVerAlquiler,
+  cargandoAlquiler,
+}: {
+  f: FacturaCliente;
+  onVer: (resguardo: string) => void;
+  onVerAlquiler: (f: FacturaCliente) => void;
+  cargandoAlquiler: boolean;
+}) {
   if (f.esManual || f.esTicketManual) return <span className="mr-1 inline-block size-7" />;
   if (f.esAlquiler) {
     // Antes llevaba a la vista general de Equipos (sin seleccionar nada) en
     // vez de abrir el detalle de ESTE alquiler — bug real reportado,
-    // 2026-08-27. El botón "Detalle de factura" de al lado ya abre el
-    // detalle correcto vía AlquilerModalShell (detalle-factura-dialog.tsx);
-    // este botón debe hacer lo mismo, no navegar a otra pantalla.
+    // 2026-08-27. Ahora abre el mismo AlquilerDetalleDialog que ya existe
+    // en Equipos de Alquiler (cliente/pago/factura/histórico) en vez del
+    // AlquilerModalShell del botón de al lado (ese está orientado a
+    // acciones — PDF/Enviar/Devolución/Rectificativo — no a solo consultar).
     return (
-      <Button variant="outline" size="icon-sm" className="mr-1" title="Ver alquiler" onClick={() => onDetalle(f)}>
+      <Button variant="outline" size="icon-sm" className="mr-1" title="Ver alquiler" onClick={() => onVerAlquiler(f)} disabled={cargandoAlquiler}>
         <Bank className="size-3.5" />
       </Button>
     );
@@ -341,6 +354,33 @@ export default function FacturasClientesPage() {
 
   const [facturaAcciones, setFacturaAcciones] = useState<FacturaCliente | null>(null);
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
+  const [alquilerEquipoAbierto, setAlquilerEquipoAbierto] = useState<Equipo | null>(null);
+  const [cargandoAlquilerEquipo, setCargandoAlquilerEquipo] = useState(false);
+
+  // "Ver alquiler" (VerBoton) — reproduce la misma vista de solo lectura
+  // que Equipos de Alquiler (AlquilerDetalleDialog), pero esta pantalla no
+  // trae cargado el equipo asociado a cada alquiler_id, así que hay que
+  // resolverlo: primero el equipoId real (GET /api/alquileres/:id), luego
+  // el Equipo completo con alquilerActivo/historicoAlquileres (GET
+  // /api/equipos) — no existe un GET de un solo equipo todavía.
+  async function abrirAlquilerEquipo(f: FacturaCliente) {
+    setCargandoAlquilerEquipo(true);
+    try {
+      const resAlq = await fetch(`/api/alquileres/${encodeURIComponent(f.resguardo)}`);
+      const dataAlq = await resAlq.json();
+      if (!dataAlq.ok || !dataAlq.detalle?.equipoId) throw new Error(dataAlq.error || "No se pudo obtener el alquiler");
+      const resEq = await fetch("/api/equipos");
+      const dataEq = await resEq.json();
+      if (!dataEq.ok) throw new Error(dataEq.error || "No se pudieron cargar los equipos");
+      const equipo = (dataEq.equipos as Equipo[]).find((e) => e.id === dataAlq.detalle.equipoId);
+      if (!equipo) throw new Error("Equipo no encontrado");
+      setAlquilerEquipoAbierto(equipo);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setCargandoAlquilerEquipo(false);
+    }
+  }
 
   async function cargar() {
     setCargando(true);
@@ -760,7 +800,7 @@ export default function FacturasClientesPage() {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{formaPagoLabel(f)}</TableCell>
                           <TableCell className="text-nowrap">
-                            <VerBoton f={f} onVer={setResguardoDetalle} onDetalle={setFacturaAcciones} />
+                            <VerBoton f={f} onVer={setResguardoDetalle} onVerAlquiler={abrirAlquilerEquipo} cargandoAlquiler={cargandoAlquilerEquipo} />
                             {!f.historica && (
                               <Button variant="outline" size="icon-sm" title="Detalle de factura" onClick={() => setFacturaAcciones(f)}>
                                 <DocumentText className="size-3.5" />
@@ -831,6 +871,7 @@ export default function FacturasClientesPage() {
 
       <DetalleFacturaDialog factura={facturaAcciones} onOpenChange={(o) => !o && setFacturaAcciones(null)} onCobrada={cargar} />
       <DetalleReparacionDialog resguardo={resguardoDetalle} onOpenChange={(o) => !o && setResguardoDetalle(null)} onActualizado={cargar} />
+      <AlquilerDetalleDialog equipo={alquilerEquipoAbierto} open={!!alquilerEquipoAbierto} onOpenChange={(o) => !o && setAlquilerEquipoAbierto(null)} />
     </div>
   );
 }
