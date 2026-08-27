@@ -43,8 +43,12 @@ export async function POST(
   // ticket se generaba como Ticket Rápido normal (numero_ticket) en vez de
   // como ticket de revisión (numero_ticket_revision + revision_pagada =
   // true) — bug real reportado, 2026-08-26. "anticipo" añadido 2026-08-27,
-  // mismo mecanismo para el ticket de Anticipo.
-  const modo = datos?.modo === "revision" ? "revision" : datos?.modo === "anticipo" ? "anticipo" : undefined;
+  // mismo mecanismo para el ticket de Anticipo. "mensajeria" añadido el
+  // mismo día para "Envío por Mensajería" — mismo bug exacto reportado de
+  // nuevo: el ticket se guardaba en numero_ticket en vez de
+  // numero_ticket_mensajeria, y luego "Enviar al cliente" fallaba con "No
+  // existe un ticket de tipo 'mensajeria'".
+  const modo = datos?.modo === "revision" ? "revision" : datos?.modo === "anticipo" ? "anticipo" : datos?.modo === "mensajeria" ? "mensajeria" : undefined;
   const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
   const banco = typeof datos?.banco === "string" ? datos.banco : "";
   const emailTicket = typeof datos?.emailTicket === "string" ? datos.emailTicket : "";
