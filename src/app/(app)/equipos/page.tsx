@@ -126,7 +126,7 @@ export default function EquiposPage() {
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("")}>
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Total</p>
@@ -134,7 +134,7 @@ export default function EquiposPage() {
             </div>
             <Category2 className="size-8 text-muted-foreground/40" />
           </div>
-        </div>
+        </button>
         <button className="rounded-xl border bg-card p-4 text-left shadow-sm" onClick={() => setFiltroEstado("DISPONIBLE")}>
           <div className="flex items-center justify-between">
             <div>
