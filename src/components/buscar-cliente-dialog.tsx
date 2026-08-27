@@ -5,7 +5,7 @@ import { SearchNormal1, UserAdd, Edit2, Call, Sms, Location } from "@/lib/icons"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Cliente } from "@/lib/clientes";
+import { Cliente, codigoClienteFormateado } from "@/lib/clientes";
 import { ClienteFormDialog } from "@/app/(app)/clientes/cliente-form-dialog";
 
 function FilaEsqueleto() {
@@ -122,7 +122,7 @@ export function BuscarClienteDialog({
                 ) : (
                   clientes.map((c) => (
                     <tr key={c.codigo} className="group cursor-pointer border-t hover:bg-muted/50" onClick={() => seleccionar(c)}>
-                      <td className="p-2 align-top"><span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{c.codigo}</span></td>
+                      <td className="p-2 align-top"><span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{codigoClienteFormateado(c.codigo)}</span></td>
                       <td className="p-2 align-top font-medium">{c.nombre || "-"}</td>
                       <td className="p-2 align-top text-muted-foreground">{c.dniCif || "-"}</td>
                       <td className="p-2 align-top text-xs text-muted-foreground">

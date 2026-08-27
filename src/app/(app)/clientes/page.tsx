@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Cliente } from "@/lib/clientes";
+import { Cliente, codigoClienteFormateado } from "@/lib/clientes";
 import { ClienteFormDialog } from "./cliente-form-dialog";
 import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
@@ -128,7 +128,7 @@ export default function ClientesPage() {
             {!cargando &&
               clientes.map((c) => (
                 <TableRow key={c.codigo}>
-                  <TableCell className="font-mono text-xs">{c.codigo}</TableCell>
+                  <TableCell className="font-mono text-xs">{codigoClienteFormateado(c.codigo)}</TableCell>
                   <TableCell className="font-medium">{c.nombre}</TableCell>
                   <TableCell className="text-sm">{c.dniCif || "-"}</TableCell>
                   <TableCell className="text-sm">{c.telefono || "-"}</TableCell>

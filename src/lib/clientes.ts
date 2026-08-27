@@ -46,6 +46,21 @@ interface FilaClienteSql {
   provincia: string | null;
 }
 
+/**
+ * kelatos_app.clientes.codigo es texto libre, sin longitud fija — los
+ * ~735 códigos migrados del Sheet original son números sin ceros a la
+ * izquierda (1-3 dígitos), mientras que los generados desde este sistema
+ * (nextval('cliente_codigo_seq')) ya vienen con 5 dígitos. Bug real
+ * reportado, 2026-08-28: "algunos salen con 2 ceros adelante y otros no".
+ * Se normaliza solo al MOSTRAR (nunca se toca el dato real, que sigue
+ * siendo la clave primaria y ya vive copiado sin padding en otras tablas
+ * — repadear la columna sería una migración de datos real, no un simple
+ * arreglo visual).
+ */
+export function codigoClienteFormateado(codigo: string): string {
+  return (codigo || "").padStart(5, "0");
+}
+
 export function mapearCliente(row: FilaClienteSql): Cliente {
   return {
     codigo: row.codigo,
