@@ -168,6 +168,13 @@ function EstadoFactura({ detalle }: { detalle: ReparacionDetalle }) {
   }
   if (detalle.numeroFacturaMensajeria) {
     extras.push(<BadgeFactura key="mensajeria" numero={detalle.numeroFacturaMensajeria} url={detalle.urlFacturaMensajeria} etiqueta="Mensajería" />);
+  } else if (detalle.numeroTicketMensajeria) {
+    // Mismo caso que el ticket de anticipo arriba — el ticket de
+    // mensajería es la alternativa al elegir "Ticket" en vez de "Factura"
+    // en "Facturar y Enviar por Mensajería"/"Entregado en Local"/"Enviar a
+    // Punto Limpio". Bug real reportado, 2026-08-27: la ficha seguía
+    // mostrando "—" en Factura pese a tener el ticket ya generado.
+    extras.push(<BadgeTicket key="mensajeria" numero={detalle.numeroTicketMensajeria} url={detalle.urlTicketMensajeria} etiqueta="Mensajería" />);
   }
 
   if (detalle.numeroFactura) {
