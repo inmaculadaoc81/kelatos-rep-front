@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Refresh2,
   SearchNormal1,
@@ -293,12 +292,16 @@ function ResguardoCell({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: str
   );
 }
 
-function VerBoton({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: string) => void }) {
-  const router = useRouter();
+function VerBoton({ f, onVer, onDetalle }: { f: FacturaCliente; onVer: (resguardo: string) => void; onDetalle: (f: FacturaCliente) => void }) {
   if (f.esManual || f.esTicketManual) return <span className="mr-1 inline-block size-7" />;
   if (f.esAlquiler) {
+    // Antes llevaba a la vista general de Equipos (sin seleccionar nada) en
+    // vez de abrir el detalle de ESTE alquiler — bug real reportado,
+    // 2026-08-27. El botón "Detalle de factura" de al lado ya abre el
+    // detalle correcto vía AlquilerModalShell (detalle-factura-dialog.tsx);
+    // este botón debe hacer lo mismo, no navegar a otra pantalla.
     return (
-      <Button variant="outline" size="icon-sm" className="mr-1" title="Ver alquiler" onClick={() => router.push("/equipos")}>
+      <Button variant="outline" size="icon-sm" className="mr-1" title="Ver alquiler" onClick={() => onDetalle(f)}>
         <Bank className="size-3.5" />
       </Button>
     );
@@ -757,7 +760,7 @@ export default function FacturasClientesPage() {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{formaPagoLabel(f)}</TableCell>
                           <TableCell className="text-nowrap">
-                            <VerBoton f={f} onVer={setResguardoDetalle} />
+                            <VerBoton f={f} onVer={setResguardoDetalle} onDetalle={setFacturaAcciones} />
                             {!f.historica && (
                               <Button variant="outline" size="icon-sm" title="Detalle de factura" onClick={() => setFacturaAcciones(f)}>
                                 <DocumentText className="size-3.5" />
