@@ -11,6 +11,41 @@ function fechaHoyEs(): string {
 }
 
 /**
+ * POST /v1/ventas nunca toca kelatos_app.clientes (a diferencia de
+ * /v1/reparaciones/altas/confirmar, que sí registra/actualiza el cliente
+ * como parte de la misma transacción) — un pedido de piezas para un
+ * cliente nuevo no dejaba ningún rastro en el directorio de clientes. Bug
+ * real reportado por el usuario, 2026-08-27: "los clientes registrados
+ * para los pedido de piezas no se están registrando en el listado de
+ * clientes". POST /v1/clientes/upsert ya existía para exactamente este
+ * caso ("cliente asociado a una operación que no lo crea por sí misma")
+ * pero no tenía ningún llamador — mismas reglas de coincidencia que el
+ * alta de reparación (por DNI, o ≥2 de teléfono/email/nombre), así que
+ * un cliente que ya existe se actualiza en vez de duplicarse. Best-effort:
+ * si falla, no bloquea la creación del pedido (el directorio de clientes
+ * es secundario respecto al pedido en sí).
+ */
+async function registrarClienteVenta(usuario: string, datos: { clienteNombre: string; clienteTelefono: string; clienteEmail: string; clienteDni?: string; clienteDireccion?: string }) {
+  const nombre = datos.clienteNombre.trim();
+  const telefono = datos.clienteTelefono.trim();
+  const email = datos.clienteEmail.trim();
+  const dniCif = (datos.clienteDni || "").trim();
+  const direccion = (datos.clienteDireccion || "").trim();
+  if (!nombre && !telefono && !email && !dniCif) return;
+  try {
+    const payloadHash = crypto.createHash("sha256").update(JSON.stringify({ nombre, telefono, email, dniCif, direccion })).digest("hex");
+    await kelatosApiPost("/v1/clientes/upsert", {
+      requestId: crypto.randomUUID(),
+      usuario,
+      payloadHash,
+      nombre, telefono, email, dniCif, direccion,
+    });
+  } catch (error) {
+    console.error("No se pudo registrar/actualizar el cliente del pedido en el directorio:", error);
+  }
+}
+
+/**
  * Orquesta generarFacturaPedido() del original — reproduce el saga
  * genérico /v1/facturas/entidades/* (preparar→iniciar→generar-pdf→
  * confirmar, ya existente sin ningún llamador) + POST /v1/ventas, en el
@@ -39,6 +74,7 @@ export async function POST(req: Request) {
   try {
     // ── Modo garantía: sin saga fiscal ──────────────────────────────────
     if (datos.esGarantia) {
+      await registrarClienteVenta(usuario, datos);
       const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: 0 }));
       const resVenta = await kelatosApiPost<{ ok: boolean; venta_id: string }>("/v1/ventas", {
         requestId,
@@ -57,6 +93,8 @@ export async function POST(req: Request) {
     // ── Modo normal: reservar número real + generar PDF + crear venta ───
     if (!datos.formaPago) return NextResponse.json({ ok: false, error: "Selecciona la forma de pago" }, { status: 400 });
     if (datos.formaPago === "tarjeta" && !datos.banco) return NextResponse.json({ ok: false, error: "Selecciona el banco" }, { status: 400 });
+
+    await registrarClienteVenta(usuario, datos);
 
     const descuentoPct = Math.min(100, Math.max(0, Number(datos.descuentoPct) || 0));
     const lineas = datos.items.map((it) => ({
