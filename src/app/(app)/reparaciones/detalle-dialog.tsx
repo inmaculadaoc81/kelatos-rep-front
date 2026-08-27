@@ -16,6 +16,7 @@ import {
   Profile2User,
   Hashtag,
   Calendar,
+  Ticket,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -131,6 +132,26 @@ function BadgeFactura({ numero, url, etiqueta }: { numero: string; url: string; 
   );
 }
 
+/** Igual que BadgeFactura pero para un Ticket Rápido — verde (#20c997,
+    mismo color que el resto de badges "Ticket" de la app) e icono de
+    ticket en vez de recibo, para distinguirlo de un documento fiscal
+    real a simple vista. */
+function BadgeTicket({ numero, url }: { numero: string; url: string }) {
+  const contenido = (
+    <>
+      <Ticket className="size-3.5" /> {numero}
+    </>
+  );
+  const clase = "inline-flex items-center gap-1 rounded-md bg-[#20c997] px-2 py-0.5 text-xs font-medium text-white";
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer" className={`${clase} hover:opacity-90`}>
+      {contenido}
+    </a>
+  ) : (
+    <span className={clase}>{contenido}</span>
+  );
+}
+
 /**
  * Número de la factura principal de reparación, más — el original nunca lo
  * hacía (`Index.html:13273-13294` solo mostraba rep.numeroFactura) — el
@@ -150,6 +171,20 @@ function EstadoFactura({ detalle }: { detalle: ReparacionDetalle }) {
     return (
       <div className="flex flex-wrap items-center gap-1.5">
         <BadgeFactura numero={detalle.numeroFactura} url={detalle.urlFactura} />
+        {extras}
+      </div>
+    );
+  }
+
+  // Un Ticket Rápido cumple el mismo papel que la factura de reparación
+  // (la resuelve como documento de cobro) cuando se eligió esa vía en vez
+  // de facturación real — sin esto, la ficha seguía mostrando "Pendiente"
+  // aunque el ticket ya estuviera generado. Bug real reportado por el
+  // usuario, 2026-08-27.
+  if (detalle.numeroTicket) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <BadgeTicket numero={detalle.numeroTicket} url={detalle.urlTicket} />
         {extras}
       </div>
     );
