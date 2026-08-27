@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1 } from "@/lib/icons";
+import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ interface InfoEntrega {
 function calcularInfo(detalle: ReparacionDetalle, esEnvio: boolean): InfoEntrega {
   const recibidoMensajeria = (detalle.tipoRecepcion || "LOCAL") === "ENVIO";
   const tieneFact = !!detalle.numeroFactura;
-  const tieneFactEnvio = !!detalle.numeroFacturaMensajeria;
+  const tieneFactEnvio = !!detalle.numeroFacturaMensajeria || !!detalle.numeroTicketMensajeria;
   const estadoSinFactura = ESTADOS_SIN_FACTURA.includes((detalle.estado || "").toLowerCase());
   const sinNuevaFactura = esEnvio ? tieneFactEnvio || tieneFact : tieneFact || (estadoSinFactura && !recibidoMensajeria);
   const mostrarEnvio = esEnvio || recibidoMensajeria;
@@ -191,9 +191,13 @@ function VistaSinFactura({
   const esEnvio = tipoEntrega === "ENVIO";
   const { titulo, icono } = tituloEIcono(tipoEntrega);
   // Reproduce entFacturaExistente: esEnvio usa numeroFacturaMensajeria si
-  // existe (si no, cae a numeroFactura); ENTREGADO/RECICLAJE usan siempre numeroFactura.
-  const facturaExistenteNum = esEnvio ? detalle.numeroFacturaMensajeria || detalle.numeroFactura : detalle.numeroFactura;
-  const facturaExistenteUrl = esEnvio ? detalle.urlFacturaMensajeria || detalle.urlFactura : detalle.urlFactura;
+  // existe (si no, cae al ticket de mensajería, y si tampoco a numeroFactura);
+  // ENTREGADO/RECICLAJE usan siempre numeroFactura. El ticket es una
+  // alternativa a la factura de mensajería (petición del usuario,
+  // 2026-08-27) — nunca coexisten para el mismo resguardo.
+  const esTicketExistente = esEnvio && !detalle.numeroFacturaMensajeria && !!detalle.numeroTicketMensajeria;
+  const facturaExistenteNum = esEnvio ? detalle.numeroFacturaMensajeria || detalle.numeroTicketMensajeria || detalle.numeroFactura : detalle.numeroFactura;
+  const facturaExistenteUrl = esEnvio ? detalle.urlFacturaMensajeria || detalle.urlTicketMensajeria || detalle.urlFactura : detalle.urlFactura;
 
   function cerrar(o: boolean) {
     if (enviando) return;
@@ -233,7 +237,7 @@ function VistaSinFactura({
         <div className="space-y-4 p-4">
           <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
             {facturaExistenteNum ? (
-              <>Factura ya generada: <strong className="text-foreground">{facturaExistenteNum}</strong>{facturaExistenteUrl && (
+              <>{esTicketExistente ? "Ticket ya generado" : "Factura ya generada"}: <strong className="text-foreground">{facturaExistenteNum}</strong>{facturaExistenteUrl && (
                 <a href={facturaExistenteUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline">Ver PDF</a>
               )}</>
             ) : (
@@ -269,6 +273,14 @@ function VistaConFactura({
   onCompletado: () => void;
 }) {
   const esEnvio = tipoEntrega === "ENVIO";
+  // Solo en "Facturar y Enviar por Mensajería" (ENVIO) se puede elegir
+  // ticket en vez de factura — petición del usuario, 2026-08-27: "cuando
+  // el equipo no tiene reparación y hay un cobro de mensajería, solo da la
+  // opción para generar factura y no ticket". ENTREGADO/RECICLAJE siguen
+  // usando siempre factura (numero_factura general, no numero_factura_
+  // mensajeria), fuera del alcance de este cambio.
+  const [tipoDocumento, setTipoDocumento] = useState<"factura" | "ticket">("factura");
+  const esTicket = esEnvio && tipoDocumento === "ticket";
   const [nombre, setNombre] = useState(detalle.cliente.nombre || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
   const [dni, setDni] = useState(detalle.dniCif || "");
@@ -304,7 +316,7 @@ function VistaConFactura({
   }
 
   async function confirmar() {
-    if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    if (!esTicket && !nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
     if (!metodo) return toast.error("Selecciona la forma de pago");
     if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
 
@@ -327,36 +339,59 @@ function VistaConFactura({
     }
     if (lineas.length === 0) return toast.error("No hay ningún importe que facturar");
 
-    const formaPago = metodo === "tarjeta" && banco ? `${banco} · tarjeta bancaria` : metodo;
-
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
     setRequestId(rid);
     try {
-      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/facturas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId: rid,
-          tipo: "mensajeria",
-          datos: {
-            cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email },
-            formaPago,
-            lineas,
-            // El cliente paga en el momento de confirmar este modal (misma
-            // razón que "revision": la forma de pago se elige aquí mismo) —
-            // sin esto, generarFacturaPdfDesdeSheet caía al valor por
-            // defecto "Pendiente" aunque ya se hubiera cobrado en efectivo.
-            estadoFactura: "Cobrada",
-          },
-          incluirEntrega: true,
-          entregaDatos: { fecha: hoyIso(), tipoEntrega, resena, observaciones },
-        }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      let data: { ok: boolean; error?: string; numeroFactura?: string; numeroTicket?: string };
+      if (esTicket) {
+        // El ticket-venta genérico no marca entrega por sí solo (igual que
+        // Facturación real) — aquí sí hace falta el segundo paso a
+        // /salidas, como ya hace VistaSinFactura. numeroFactura: "" porque
+        // este documento es un ticket, no una factura — no debe pisar
+        // reparaciones.numero_factura.
+        const resTicket = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lineas, estado: "Cobrada", formaPago: metodo, banco, modo: "mensajeria" }),
+        });
+        data = await resTicket.json();
+        if (!data.ok) throw new Error(data.error || "Error desconocido");
+        const resSalida = await fetch(`/api/reparaciones/${detalle.resguardo}/salidas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fechaRecogida: hoyIso(), tipoEntrega, numeroFactura: "", resena, observaciones }),
+        });
+        const dataSalida = await resSalida.json();
+        if (!dataSalida.ok) throw new Error(dataSalida.error || "Error desconocido");
+      } else {
+        const formaPago = metodo === "tarjeta" && banco ? `${banco} · tarjeta bancaria` : metodo;
+        const res = await fetch(`/api/reparaciones/${detalle.resguardo}/facturas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId: rid,
+            tipo: "mensajeria",
+            datos: {
+              cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email },
+              formaPago,
+              lineas,
+              // El cliente paga en el momento de confirmar este modal (misma
+              // razón que "revision": la forma de pago se elige aquí mismo) —
+              // sin esto, generarFacturaPdfDesdeSheet caía al valor por
+              // defecto "Pendiente" aunque ya se hubiera cobrado en efectivo.
+              estadoFactura: "Cobrada",
+            },
+            incluirEntrega: true,
+            entregaDatos: { fecha: hoyIso(), tipoEntrega, resena, observaciones },
+          }),
+        });
+        data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error desconocido");
+      }
       const accionTxt = esEnvio ? "Envío registrado" : tipoEntrega === "RECICLAJE" ? "Equipo enviado a punto limpio" : "Equipo entregado";
-      toast.success(`${accionTxt} — Factura ${data.numeroFactura} generada`);
+      const docTxt = esTicket ? `Ticket ${data.numeroTicket} generado` : `Factura ${data.numeroFactura} generada`;
+      toast.success(`${accionTxt} — ${docTxt}`);
       setRequestId(null);
       onOpenChange(false);
       onCompletado();
@@ -373,13 +408,28 @@ function VistaConFactura({
         <Cabecera titulo={titulo} icono={icono} onClose={() => cerrar(false)} />
         <div className="space-y-4 p-4">
           <div className="space-y-3">
-            <p className="flex items-center gap-1.5 border-b pb-2 text-sm font-semibold"><DocumentText className="size-4 text-primary" /> Factura</p>
+            <p className="flex items-center gap-1.5 border-b pb-2 text-sm font-semibold">
+              {esTicket ? <Ticket className="size-4 text-primary" /> : <DocumentText className="size-4 text-primary" />}
+              {esTicket ? "Ticket" : "Factura"}
+            </p>
+            {esEnvio && (
+              <div className="flex gap-1.5">
+                <Button type="button" size="sm" variant={tipoDocumento === "factura" ? "default" : "outline"} className="gap-1.5" onClick={() => setTipoDocumento("factura")}>
+                  <DocumentText className="size-3.5" /> Factura
+                </Button>
+                <Button type="button" size="sm" variant={tipoDocumento === "ticket" ? "default" : "outline"} className="gap-1.5" onClick={() => setTipoDocumento("ticket")}>
+                  <Ticket className="size-3.5" /> Ticket
+                </Button>
+              </div>
+            )}
             <p className="text-sm text-muted-foreground">
-              {esEnvio
-                ? "Factura de envío únicamente — la reparación se factura por separado."
-                : info.totalBase > 0
-                  ? "Verifica los datos del cliente y confirma el cobro pendiente de la reparación."
-                  : "Sin cargo de reparación — solo se facturarán gastos de envío si aplica."}
+              {esTicket
+                ? "Ticket de envío únicamente — la reparación se factura por separado."
+                : esEnvio
+                  ? "Factura de envío únicamente — la reparación se factura por separado."
+                  : info.totalBase > 0
+                    ? "Verifica los datos del cliente y confirma el cobro pendiente de la reparación."
+                    : "Sin cargo de reparación — solo se facturarán gastos de envío si aplica."}
             </p>
 
             {info.mostrarEnvio && (
@@ -407,10 +457,12 @@ function VistaConFactura({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="efEmail">Email para enviar factura (opcional)</Label>
-                <Input id="efEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
+              {!esTicket && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="efEmail">Email para enviar factura (opcional)</Label>
+                  <Input id="efEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+              )}
             </div>
 
             {metodo === "tarjeta" && (
@@ -425,32 +477,34 @@ function VistaConFactura({
               </div>
             )}
 
-            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-              <div className="flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-sm font-semibold"><Profile className="size-4 text-muted-foreground" /> Cliente en la factura</p>
-                <Button type="button" size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setBuscarClienteAbierto(true)}>
-                  <SearchNormal1 className="size-3" /> Buscar
-                </Button>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="efNombre">Nombre *</Label>
-                <Input id="efNombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="efDni">DNI / CIF</Label>
-                  <Input id="efDni" value={dni} onChange={(e) => setDni(e.target.value)} />
+            {!esTicket && (
+              <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold"><Profile className="size-4 text-muted-foreground" /> Cliente en la factura</p>
+                  <Button type="button" size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setBuscarClienteAbierto(true)}>
+                    <SearchNormal1 className="size-3" /> Buscar
+                  </Button>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="efTelefono">Teléfono</Label>
-                  <Input id="efTelefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+                  <Label htmlFor="efNombre">Nombre *</Label>
+                  <Input id="efNombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="efDni">DNI / CIF</Label>
+                    <Input id="efDni" value={dni} onChange={(e) => setDni(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="efTelefono">Teléfono</Label>
+                    <Input id="efTelefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="efDireccion">Dirección</Label>
+                  <Input id="efDireccion" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="efDireccion">Dirección</Label>
-                <Input id="efDireccion" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
-              </div>
-            </div>
+            )}
           </div>
 
           <hr />
@@ -460,7 +514,7 @@ function VistaConFactura({
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
           <Button className="gap-1.5" onClick={confirmar} disabled={enviando}>
-            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : textoBoton(tipoEntrega, false)}
+            <TickCircle className="size-3.5" /> {enviando ? "Procesando…" : esTicket ? "Emitir ticket y registrar envío" : textoBoton(tipoEntrega, false)}
           </Button>
         </footer>
       </DialogContent>

@@ -159,6 +159,11 @@ interface FilaReparacionSqlDetalle {
   url_factura_mensajeria: string | null;
   total_factura_mensajeria: string | number | null;
   cliente_factura_mensajeria: unknown;
+  numero_ticket_mensajeria: string | null;
+  url_ticket_mensajeria: string | null;
+  total_ticket_mensajeria: string | number | null;
+  forma_pago_ticket_mensajeria: string | null;
+  banco_ticket_mensajeria: string | null;
   lineas_factura: unknown;
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -405,6 +410,11 @@ export interface ReparacionDetalle {
   urlFacturaMensajeria: string;
   totalFacturaMensajeria: number;
   clienteFacturaMensajeria: { nombre: string; direccion: string; dni: string; telefono: string; email: string } | null;
+  numeroTicketMensajeria: string;
+  urlTicketMensajeria: string;
+  totalTicketMensajeria: number;
+  formaPagoTicketMensajeria: string;
+  bancoTicketMensajeria: string;
   lineasFactura: { referencia?: string; descripcion: string; cantidad: number; precio: number; descuento?: number }[];
   rectificativa: {
     numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null;
@@ -623,6 +633,11 @@ export function mapearReparacionDetalle(
     urlFacturaMensajeria: row.url_factura_mensajeria || "",
     totalFacturaMensajeria: numero(row.total_factura_mensajeria),
     clienteFacturaMensajeria: clienteFacturaObj(row.cliente_factura_mensajeria),
+    numeroTicketMensajeria: row.numero_ticket_mensajeria || "",
+    urlTicketMensajeria: row.url_ticket_mensajeria || "",
+    totalTicketMensajeria: numero(row.total_ticket_mensajeria),
+    formaPagoTicketMensajeria: row.forma_pago_ticket_mensajeria || "",
+    bancoTicketMensajeria: row.banco_ticket_mensajeria || "",
     lineasFactura: Array.isArray(row.lineas_factura)
       ? (row.lineas_factura as Array<{ referencia?: string; descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
           referencia: l.referencia || "", descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),

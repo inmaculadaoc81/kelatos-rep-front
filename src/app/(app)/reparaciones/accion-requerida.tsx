@@ -484,7 +484,8 @@ export function AccionRequerida({
     if (
       (estado === "No tiene Reparación" || estado === "Presupuesto Rechazado" || (estado === "Reparado" && detalle.tipoIngreso === "GARANTIA")) &&
       mensajeriaPendiente &&
-      !detalle.numeroFacturaMensajeria
+      !detalle.numeroFacturaMensajeria &&
+      !detalle.numeroTicketMensajeria
     ) {
       botones.push(
         <Button key="facturar-mensajeria" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onFacturarMensajeria}>
