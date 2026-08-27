@@ -392,6 +392,12 @@ function VistaConFactura({
   const [emailTicket, setEmailTicket] = useState(detalle.clienteEmailTicketMensajeria || detalle.cliente.email || "");
   const [resultadoTicket, setResultadoTicket] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
   const [enviandoTicket, setEnviandoTicket] = useState(false);
+  // Una vez generado, no se deja cerrar el diálogo sin enviarlo primero —
+  // petición del usuario, 2026-08-27: "no debería dejar cerrar". Solo
+  // aplica a la sesión de generación recién hecha, nunca a un ticket ya
+  // enviado en una apertura anterior (VistaSinFactura no tiene esta
+  // restricción — forzar un reenvío cada vez que se reabre sería peor).
+  const [ticketEnviado, setTicketEnviado] = useState(false);
   const confirmarEnvio = useConfirm();
   const [observaciones, setObservaciones] = useState("");
   const [resena, setResena] = useState<"SI" | "NO">("NO");
@@ -416,9 +422,14 @@ function VistaConFactura({
   function cerrar(o: boolean) {
     if (enviando) return;
     if (!o) {
+      if (resultadoTicket && !ticketEnviado) {
+        toast.error("Envía el ticket al cliente antes de cerrar");
+        return;
+      }
       setRequestId(null);
       setResultadoTicket(null);
       setTipoDocumento("factura");
+      setTicketEnviado(false);
     }
     onOpenChange(o);
   }
@@ -536,6 +547,7 @@ function VistaConFactura({
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
       toast.success(`Ticket enviado a ${destino}`);
+      setTicketEnviado(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {

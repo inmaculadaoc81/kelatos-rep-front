@@ -235,14 +235,22 @@ function VistaGenerarTicket({
   const [requestId, setRequestId] = useState<string | null>(null);
   const [resultadoTicket, setResultadoTicket] = useState<{ numeroTicket: string; urlTicket: string } | null>(null);
   const [enviandoTicket, setEnviandoTicket] = useState(false);
+  // Una vez generado, no se deja cerrar sin enviarlo primero — petición del
+  // usuario, 2026-08-27: "no debería dejar cerrar".
+  const [ticketEnviado, setTicketEnviado] = useState(false);
   const confirmarEnvio = useConfirm();
 
   function cerrar(o: boolean, eventDetails?: { reason?: string; cancel?: () => void }) {
     if (enviando) return;
     if (eventDetails && esCierreAccidental(o, eventDetails)) return;
     if (!o) {
+      if (resultadoTicket && !ticketEnviado) {
+        toast.error("Envía el ticket al cliente antes de cerrar");
+        return;
+      }
       setRequestId(null);
       setResultadoTicket(null);
+      setTicketEnviado(false);
     }
     onOpenChange(o);
   }
@@ -300,6 +308,7 @@ function VistaGenerarTicket({
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
       toast.success(`Ticket enviado a ${destino}`);
+      setTicketEnviado(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -310,7 +319,7 @@ function VistaGenerarTicket({
   return (
     <Dialog open={open} onOpenChange={cerrar}>
       <DialogContent className="gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
-        <CabeceraVerde titulo="Marcar revisión — Ticket" onClose={() => cerrar(false)} onVolver={enviando ? undefined : onVolver} />
+        <CabeceraVerde titulo="Marcar revisión — Ticket" onClose={() => cerrar(false)} onVolver={enviando || (resultadoTicket && !ticketEnviado) ? undefined : onVolver} />
         <div className="space-y-3 p-4">
           <p className="text-sm text-muted-foreground">Genera un ticket (sin datos fiscales de cliente) para la revisión técnica.</p>
           <div className="grid grid-cols-2 gap-3">
