@@ -6,6 +6,7 @@ import type { SolicitudFacturaAlquiler, ResultadoFacturaAlquiler, LineaFacturaAl
 
 interface FilaAlquilerSql {
   equipo_id: string | null;
+  cliente_codigo: string | null;
   envio_activado: boolean | string | null;
   recogida_activada: boolean | string | null;
   numero_factura: string | null;
@@ -158,7 +159,12 @@ export async function POST(
             numero: preparar.numeroFactura,
             fecha: fechaHoy,
             rectificaDe: opts.rectificaDe || "",
-            cliente: solicitud.cliente,
+            // Código real del cliente (kelatos_app.clientes, generado al
+            // crear el alquiler vía _upsertClienteTx) — antes nunca se
+            // mandaba, así que la factura de alquiler siempre salía con
+            // "CODIGO CLIENTE:" en blanco. Petición del usuario,
+            // 2026-08-27, con captura de una factura real sin código.
+            cliente: { ...solicitud.cliente, codigo: a.cliente_codigo || "" },
             formaPago: solicitud.formaPago,
             banco: solicitud.banco || "",
             lineas: opts.lineasParaPdf,

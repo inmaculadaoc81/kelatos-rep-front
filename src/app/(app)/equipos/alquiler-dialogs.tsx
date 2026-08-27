@@ -347,7 +347,7 @@ export function NuevoAlquilerDialog({
                 {factu.metodoPago === "Tarjeta bancaria" && (
                   <>
                     <div className="space-y-1.5">
-                      <Label>Banco</Label>
+                      <Label>Banco *</Label>
                       <Select value={factu.banco} onValueChange={(v) => actualizarFactu("banco", v || "")}>
                         <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
                         <SelectContent>
