@@ -68,7 +68,17 @@ function calcularInfo(detalle: ReparacionDetalle, esEnvio: boolean): InfoEntrega
   const tieneFact = !!detalle.numeroFactura;
   const tieneFactEnvio = !!detalle.numeroFacturaMensajeria || !!detalle.numeroTicketMensajeria;
   const estadoSinFactura = ESTADOS_SIN_FACTURA.includes((detalle.estado || "").toLowerCase());
-  const sinNuevaFactura = esEnvio ? tieneFactEnvio || tieneFact : tieneFact || (estadoSinFactura && !recibidoMensajeria);
+  // Si el equipo se recibió por mensajería (recibidoMensajeria), el cobro
+  // de "recogida" existe también fuera de tipoEntrega="ENVIO" —
+  // "Entregado en Local"/"Enviar a punto limpio" abren este mismo diálogo
+  // (tipoEntrega ENTREGADO/RECICLAJE) para No tiene Reparación/Presupuesto
+  // Rechazado. Antes solo comprobaba tieneFactEnvio cuando esEnvio era
+  // true: generar el ticket desde "Enviar a punto limpio" no bloqueaba
+  // luego volver a abrir "Entregado en Local" para el mismo resguardo y
+  // generar OTRO documento del mismo cobro. Bug real reportado, 2026-08-27.
+  const sinNuevaFactura = esEnvio
+    ? tieneFactEnvio || tieneFact
+    : tieneFact || (estadoSinFactura && (recibidoMensajeria ? tieneFactEnvio : true));
   const mostrarEnvio = esEnvio || recibidoMensajeria;
   const gastosEnvioDefault = esEnvio && recibidoMensajeria ? 24.8 : 12.4;
 
@@ -203,13 +213,24 @@ function VistaSinFactura({
   const esEnvio = tipoEntrega === "ENVIO";
   const { titulo, icono } = tituloEIcono(tipoEntrega);
   // Reproduce entFacturaExistente: esEnvio usa numeroFacturaMensajeria si
-  // existe (si no, cae al ticket de mensajería, y si tampoco a numeroFactura);
-  // ENTREGADO/RECICLAJE usan siempre numeroFactura. El ticket es una
-  // alternativa a la factura de mensajería (petición del usuario,
-  // 2026-08-27) — nunca coexisten para el mismo resguardo.
-  const esTicketExistente = esEnvio && !detalle.numeroFacturaMensajeria && !!detalle.numeroTicketMensajeria;
-  const facturaExistenteNum = esEnvio ? detalle.numeroFacturaMensajeria || detalle.numeroTicketMensajeria || detalle.numeroFactura : detalle.numeroFactura;
-  const facturaExistenteUrl = esEnvio ? detalle.urlFacturaMensajeria || detalle.urlTicketMensajeria || detalle.urlFactura : detalle.urlFactura;
+  // existe (si no, cae al ticket de mensajería, y si tampoco a numeroFactura).
+  // ENTREGADO/RECICLAJE usan numeroFactura si existe, y si no, también
+  // caen al ticket/factura de mensajería — necesario desde que
+  // sinNuevaFactura (arriba) también los tiene en cuenta ahí: sin esto, el
+  // ticket ya generado desde "Enviar a punto limpio" quedaba invisible al
+  // reabrir "Entregado en Local" ("No aplica factura en este caso" pese a
+  // existir un documento real). El ticket es una alternativa a la factura
+  // de mensajería (petición del usuario, 2026-08-27) — nunca coexisten
+  // para el mismo resguardo.
+  const esTicketExistente = esEnvio
+    ? !detalle.numeroFacturaMensajeria && !!detalle.numeroTicketMensajeria
+    : !detalle.numeroFactura && !detalle.numeroFacturaMensajeria && !!detalle.numeroTicketMensajeria;
+  const facturaExistenteNum = esEnvio
+    ? detalle.numeroFacturaMensajeria || detalle.numeroTicketMensajeria || detalle.numeroFactura
+    : detalle.numeroFactura || detalle.numeroFacturaMensajeria || detalle.numeroTicketMensajeria;
+  const facturaExistenteUrl = esEnvio
+    ? detalle.urlFacturaMensajeria || detalle.urlTicketMensajeria || detalle.urlFactura
+    : detalle.urlFactura || detalle.urlFacturaMensajeria || detalle.urlTicketMensajeria;
 
   function cerrar(o: boolean) {
     if (enviando) return;
