@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Add, Trash, ShoppingCart, ShieldTick, Building, Profile, Ticket } from "@/lib/icons";
+import { Add, Trash, ShoppingCart, ShieldTick, Building, Profile, Ticket, Send2 } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
 import { DatosNuevoPedido, ItemPedidoForm, FormaPagoPedido } from "@/lib/ventas";
 import { esEmailValido } from "@/lib/validacion";
 
@@ -65,15 +66,25 @@ function fechaHoyCorta(): string {
  * modo Garantía no hay factura ni cobro.
  */
 export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
+  const confirmar = useConfirm();
   const [open, setOpen] = useState(false);
   const [datos, setDatos] = useState<DatosNuevoPedido>(vacio());
   const [enviando, setEnviando] = useState(false);
   const [numeroPreview, setNumeroPreview] = useState("");
+  // Resultado del modo Ticket — a diferencia de Factura/Garantía, el
+  // diálogo NO se cierra al generar: se queda abierto con el botón
+  // "Enviar al cliente" deshabilitado hasta ese momento y habilitado en
+  // cuanto el ticket existe. Petición del usuario, 2026-08-28: "un boton
+  // para enviar, primero que este deshabilitado, cuando se genere el
+  // ticket se habilite".
+  const [resultadoTicket, setResultadoTicket] = useState<{ ventaId: string; numeroTicket: string; urlTicket: string } | null>(null);
+  const [enviandoTicket, setEnviandoTicket] = useState(false);
 
   useEffect(() => {
     if (open) {
       setDatos(vacio());
       setNumeroPreview("");
+      setResultadoTicket(null);
       fetch("/api/ventas/nuevo-pedido/peek")
         .then((r) => r.json())
         .then((data) => { if (data.ok) setNumeroPreview(data.numero); })
@@ -128,16 +139,15 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(
-        datos.esGarantia
-          ? `Garantía #${data.ventaId} registrada`
-          : datos.modoTicket
-            ? `Ticket ${data.numeroTicket} generado`
-            : `Factura ${data.numeroFactura} generada`
-      );
       if (data.urlPdf) window.open(data.urlPdf, "_blank");
-      setOpen(false);
       onCreado();
+      if (datos.modoTicket) {
+        toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
+        setResultadoTicket({ ventaId: data.ventaId, numeroTicket: data.numeroTicket, urlTicket: data.urlPdf });
+      } else {
+        toast.success(datos.esGarantia ? `Garantía #${data.ventaId} registrada` : `Factura ${data.numeroFactura} generada`);
+        setOpen(false);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -145,8 +155,33 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
     }
   }
 
+  async function enviarTicket() {
+    if (!resultadoTicket) return;
+    const email = datos.clienteEmail.trim();
+    if (!email) return toast.error("No hay ningún correo de destino disponible");
+    const ok = await confirmar(`¿Enviar el ticket ${resultadoTicket.numeroTicket} a ${email}?`);
+    if (!ok) return;
+
+    setEnviandoTicket(true);
+    try {
+      const res = await fetch(`/api/ventas/${resultadoTicket.ventaId}/ticket-venta/enviar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "ticket", emailDestino: email }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
+      toast.success(`Ticket enviado a ${email}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoTicket(false);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !enviando && setOpen(o)}>
+    <Dialog open={open} onOpenChange={(o) => !enviando && !enviandoTicket && setOpen(o)}>
       <DialogTrigger className={buttonVariants({ size: "sm", className: "gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" })}>
         <ShoppingCart className="size-4" /> Nuevo Pedido
       </DialogTrigger>
@@ -162,7 +197,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label>{datos.modoTicket ? "Nº Ticket" : "Nº Factura"}</Label>
-                  <Input value={datos.modoTicket ? "" : numeroPreview} disabled placeholder={datos.modoTicket ? "Se asignará al generar" : "1-000001"} className="bg-muted/50" />
+                  <Input value={datos.modoTicket ? resultadoTicket?.numeroTicket || "" : numeroPreview} disabled placeholder={datos.modoTicket ? "Se asignará al generar" : "1-000001"} className="bg-muted/50" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{datos.modoTicket ? "Fecha" : "Fecha de factura"}</Label>
@@ -188,9 +223,20 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
               </div>
             )}
 
-            {datos.modoTicket && (
+            {datos.modoTicket && !resultadoTicket && (
               <div className="flex items-center gap-1.5 rounded-md bg-sky-500/10 px-3 py-2 text-sm text-sky-800 dark:text-sky-400">
                 <Ticket className="size-4 shrink-0" /> <strong>Modo Ticket</strong> — Se generará un Ticket de Venta (Serie 4), sin factura fiscal, y se registrará el pago.
+              </div>
+            )}
+
+            {resultadoTicket && (
+              <div className="space-y-1 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <p>Ticket <strong>{resultadoTicket.numeroTicket}</strong> generado correctamente.</p>
+                <p className="text-xs">
+                  {datos.clienteEmail.trim()
+                    ? <>Se enviará a: <strong>{datos.clienteEmail.trim()}</strong></>
+                    : "Sin correo de destino — vuelve a Email para añadir uno."}
+                </p>
               </div>
             )}
 
@@ -316,28 +362,41 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
         </ScrollArea>
 
         <footer className="flex flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={enviando}>
-            Cancelar
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={enviando || enviandoTicket}>
+            {resultadoTicket ? "Cerrar" : "Cancelar"}
           </Button>
-          <Button
-            variant="outline"
-            className={datos.modoTicket ? "gap-1.5 bg-sky-600 text-white hover:bg-sky-700" : "gap-1.5 border-sky-500 text-sky-700 hover:bg-sky-50 dark:text-sky-400"}
-            onClick={toggleTicket}
-            disabled={enviando}
-          >
-            <Ticket className="size-3.5" /> Ticket
-          </Button>
-          <Button
-            variant="outline"
-            className={datos.esGarantia ? "gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" : "gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400"}
-            onClick={toggleGarantia}
-            disabled={enviando}
-          >
-            <ShieldTick className="size-3.5" /> Garantía
-          </Button>
-          <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={guardar} disabled={enviando}>
-            {enviando ? "Generando…" : datos.esGarantia ? "Registrar Garantía" : datos.modoTicket ? "Generar Ticket" : "Generar Factura"}
-          </Button>
+          {!resultadoTicket && (
+            <>
+              <Button
+                variant="outline"
+                className={datos.modoTicket ? "gap-1.5 bg-sky-600 text-white hover:bg-sky-700" : "gap-1.5 border-sky-500 text-sky-700 hover:bg-sky-50 dark:text-sky-400"}
+                onClick={toggleTicket}
+                disabled={enviando}
+              >
+                <Ticket className="size-3.5" /> Ticket
+              </Button>
+              <Button
+                variant="outline"
+                className={datos.esGarantia ? "gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" : "gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400"}
+                onClick={toggleGarantia}
+                disabled={enviando}
+              >
+                <ShieldTick className="size-3.5" /> Garantía
+              </Button>
+              <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={guardar} disabled={enviando}>
+                {enviando ? "Generando…" : datos.esGarantia ? "Registrar Garantía" : datos.modoTicket ? "Generar Ticket" : "Generar Factura"}
+              </Button>
+            </>
+          )}
+          {resultadoTicket && (
+            <Button
+              className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={enviarTicket}
+              disabled={enviandoTicket || !datos.clienteEmail.trim()}
+            >
+              <Send2 className="size-4" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+            </Button>
+          )}
         </footer>
       </DialogContent>
     </Dialog>

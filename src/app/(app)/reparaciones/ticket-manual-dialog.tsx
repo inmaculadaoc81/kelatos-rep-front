@@ -291,7 +291,9 @@ export function TicketManualDialog({
       const bancoPrevio = esVenta ? venta?.bancoTicket : detalle?.bancoTicket;
       setMetodo(metodoPrevio || "");
       setBanco(bancoPrevio || "");
-      if (!esVenta && !esManualStandalone && detalle) {
+      if (esVenta) {
+        setEmailTicket(venta?.clienteEmail || "");
+      } else if (!esManualStandalone && detalle) {
         setEmailTicket(yaGenerado ? detalle.clienteEmailTicket || detalle.cliente.email || "" : detalle.cliente.email || "");
       }
       if (esManualStandalone) { setClienteNombre(""); setClienteEmail(""); }
@@ -378,7 +380,7 @@ export function TicketManualDialog({
           ...(esManualStandalone
             ? { cliente: { nombre: clienteNombre.trim(), email: clienteEmail.trim() } }
             : {}),
-          ...(!esVenta && !esManualStandalone ? { emailTicket: emailTicket.trim() } : {}),
+          ...(!esManualStandalone ? { emailTicket: emailTicket.trim() } : {}),
         }),
       });
       const data = await res.json();
@@ -393,16 +395,14 @@ export function TicketManualDialog({
     }
   }
 
-  // Solo disponible para Ticket Manual suelto y Ticket Rápido de
-  // reparación — Ticket de Ventas todavía no tiene endpoint de envío
-  // (fuera de alcance, decisión previa del usuario).
-  const emailParaEnviar = esManualStandalone ? clienteEmail.trim() : !esVenta ? emailTicket.trim() : "";
+  // Disponible en los tres modos — Ticket de Ventas se sumó el
+  // 2026-08-28 (hasta entonces no tenía endpoint de envío).
+  const emailParaEnviar = esManualStandalone ? clienteEmail.trim() : emailTicket.trim();
   // El botón siempre está visible (petición del usuario, 2026-08-27:
   // "mejor que el boton siempre este pero en gris, deshabilitado hasta
-  // que se genere la factura ya se habilite") — solo se oculta del todo
-  // para Ticket de Ventas, que no tiene endpoint de envío.
-  const mostrarBotonEnviar = !esVenta;
-  const puedeEnviar = mostrarBotonEnviar && !!resultado && !!emailParaEnviar;
+  // que se genere la factura ya se habilite") — deshabilitado hasta que
+  // el ticket exista (resultado) y haya un correo de destino.
+  const puedeEnviar = !!resultado && !!emailParaEnviar;
 
   async function enviarTicket() {
     if (!resultado) return;
@@ -414,7 +414,9 @@ export function TicketManualDialog({
     try {
       const url = esManualStandalone
         ? `/api/tickets-manuales/${resultado.id}/enviar`
-        : `/api/reparaciones/${resguardo}/ticket-venta/enviar`;
+        : esVenta
+          ? `/api/ventas/${ventaId}/ticket-venta/enviar`
+          : `/api/reparaciones/${resguardo}/ticket-venta/enviar`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -452,11 +454,9 @@ export function TicketManualDialog({
                     </Button>
                   )}
                 </div>
-                {mostrarBotonEnviar && (
-                  <p className="text-xs">
-                    {emailParaEnviar ? <>Se enviará a: <strong>{emailParaEnviar}</strong></> : "Sin correo de destino — vuelve a Cliente/Correo para añadir uno."}
-                  </p>
-                )}
+                <p className="text-xs">
+                  {emailParaEnviar ? <>Se enviará a: <strong>{emailParaEnviar}</strong></> : "Sin correo de destino — vuelve a Cliente/Correo para añadir uno."}
+                </p>
               </div>
             )}
 
@@ -495,10 +495,12 @@ export function TicketManualDialog({
               </div>
             </div>
 
-            {!esVenta && !esManualStandalone && (
+            {!esManualStandalone && (
               <div className="space-y-1">
                 <Label htmlFor="tmEmailTicket" className="text-xs text-muted-foreground">
-                  Correo del cliente (tomado del resguardo — edítalo si el ticket debe enviarse a otro correo)
+                  {esVenta
+                    ? "Correo del cliente (tomado del pedido — edítalo si el ticket debe enviarse a otro correo)"
+                    : "Correo del cliente (tomado del resguardo — edítalo si el ticket debe enviarse a otro correo)"}
                 </Label>
                 <Input
                   id="tmEmailTicket"
@@ -644,11 +646,9 @@ export function TicketManualDialog({
               <ArrowRight2 className="size-4" /> {generando ? "Generando…" : "Generar PDF"}
             </Button>
           )}
-          {mostrarBotonEnviar && (
-            <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!puedeEnviar || enviandoTicket}>
-              <Send2 className="size-4" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
-            </Button>
-          )}
+          <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarTicket} disabled={!puedeEnviar || enviandoTicket}>
+            <Send2 className="size-4" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+          </Button>
         </footer>
       </DialogContent>
 
