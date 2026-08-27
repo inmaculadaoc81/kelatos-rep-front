@@ -46,7 +46,7 @@ export interface Venta {
       en cada corregida) — permiten precargar el formulario de "Ticket
       Corregido" y reproducir cada línea en la Devolución, en vez de un
       resumen (migración 058). */
-  lineasTicket: { descripcion: string; cantidad: number; precio: number; descuento: number }[];
+  lineasTicket: { descripcion: string; cantidad: number; precio: number; descuento: number; referencia?: string }[];
   ticketRectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   motivoTicketRectificativa: string;
   ticketCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
@@ -146,8 +146,8 @@ export function mapearVenta(row: FilaVentaSql, items: FilaItemVentaSql[]): Venta
     totalTicket: Number(row.total_ticket) || 0,
     estadoTicket: row.estado_ticket || "",
     lineasTicket: Array.isArray(row.lineas_ticket)
-      ? (row.lineas_ticket as Array<{ descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
-          descripcion: l.descripcion || "", cantidad: Number(l.cantidad) || 1, precio: Number(l.precio) || 0, descuento: Number(l.descuento) || 0,
+      ? (row.lineas_ticket as Array<{ descripcion?: string; cantidad?: number; precio?: number; descuento?: number; referencia?: string }>).map((l) => ({
+          descripcion: l.descripcion || "", cantidad: Number(l.cantidad) || 1, precio: Number(l.precio) || 0, descuento: Number(l.descuento) || 0, referencia: l.referencia || "",
         }))
       : [],
     ticketRectificativa: row.numero_ticket_rectificativa

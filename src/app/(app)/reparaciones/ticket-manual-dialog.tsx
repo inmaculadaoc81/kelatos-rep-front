@@ -35,6 +35,11 @@ interface LineaTicket {
       plantilla el 2026-08-26 (petición del usuario: descuentos por línea,
       y también "globales" poniéndolo en una única línea). */
   descuento: number;
+  /** Referencia de kelatos_app.stock_piezas — solo presente si la línea
+      viene de "Buscar en stock". El backend la usa para descontar
+      stock_disponible al generar el ticket (petición del usuario,
+      2026-08-27: "si se toma un stock... el stock debe disminuir"). */
+  referencia?: string;
 }
 
 function lineaVacia(): LineaTicket {
@@ -290,7 +295,7 @@ export function TicketManualDialog({
 
   function agregarPiezaDesdeCatalogo(pieza: StockPieza) {
     setLineas((prev) => {
-      const nueva = { descripcion: pieza.nombre, cantidad: 1, precio: pieza.precioCliente, descuento: 0 };
+      const nueva = { descripcion: pieza.nombre, cantidad: 1, precio: pieza.precioCliente, descuento: 0, referencia: pieza.referencia };
       const primeraVacia = prev.length === 1 && !prev[0].descripcion.trim() ? 0 : -1;
       if (primeraVacia === 0) return [nueva];
       if (prev.length >= TICKET_MAX_LINEAS) {

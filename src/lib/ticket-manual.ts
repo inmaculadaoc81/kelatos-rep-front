@@ -12,6 +12,7 @@ export interface LineaTicketManual {
   cantidad: number;
   precio: number;
   descuento: number;
+  referencia?: string;
 }
 
 interface FilaTicketManualRaw {
@@ -88,8 +89,8 @@ export function mapTicketManualDetalle(row: FilaTicketManualRaw): TicketManualDe
     // Ticket Corregido, el descuento por línea del ticket original
     // desaparecía (0% en vez del real), dando un total distinto al PDF
     // original.
-    lineasTicket: (items as Array<{ descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
-      descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento),
+    lineasTicket: (items as Array<{ descripcion?: string; cantidad?: number; precio?: number; descuento?: number; referencia?: string }>).map((l) => ({
+      descripcion: l.descripcion || "", cantidad: numero(l.cantidad) || 1, precio: numero(l.precio), descuento: numero(l.descuento), referencia: l.referencia || "",
     })),
     totalTicket: numero(row.total_ticket),
     urlTicket: row.url_ticket || "",
