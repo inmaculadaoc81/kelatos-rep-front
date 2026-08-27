@@ -380,9 +380,10 @@ export function FacturaAccionesTabs({
   const d = derivarDatosFactura(detalle, tipoBase);
   const esTicketRevision = tipoBase === "ticket_revision" || tipoBase === "rectificativa_ticket_revision" || tipoBase === "corregida_ticket_revision";
   const esTicket = tipoBase === "ticket" || tipoBase === "rectificativa_ticket" || tipoBase === "corregida_ticket" || esTicketRevision;
-  // Los tickets no tienen ruta de envío por correo (nunca la tuvieron, ni
-  // el ticket original) ni pasan por el saga de /facturas (endpoints
-  // propios, ver ticket-venta/rectificativa y ticket-venta/corregida). El
+  // Los tickets no pasan por el saga de /facturas (endpoints propios, ver
+  // ticket-venta/rectificativa y ticket-venta/corregida), pero desde
+  // 2026-08-27 sí tienen su propia ruta de envío por correo
+  // (ticket-venta/enviar), con doble confirmación en TabPdfEnviar. El
   // ticket de revisión usa su propia familia de endpoints
   // (ticket-venta/revision/...) — columnas propias (migración 054) para no
   // compartir ciclo con el Ticket Rápido general.
@@ -402,12 +403,13 @@ export function FacturaAccionesTabs({
 
       <TabsContent value="pdf" className="p-4">
         <TabPdfEnviar
-          enviarUrl={esTicket ? null : `${apiBase}/enviar`}
+          enviarUrl={esTicket ? `/api/reparaciones/${detalle.resguardo}/ticket-venta/enviar` : `${apiBase}/enviar`}
           tipo={tipoBase}
           numeroFactura={d.numeroFactura}
           urlFactura={d.urlFactura}
           totalFactura={d.totalConIva}
           clienteEmailDefault={d.clienteEmailDefault}
+          confirmarAntesDeEnviar={esTicket}
           motivoRectificativa={
             tipoBase === "rectificativa" || tipoBase === "rectificativa_revision"
               ? detalle.motivoRectificativa
@@ -503,6 +505,7 @@ export function TabPdfEnviar({
   totalFactura,
   clienteEmailDefault,
   motivoRectificativa,
+  confirmarAntesDeEnviar,
 }: {
   /** null/undefined = sin ruta de envío por correo todavía construida para
       este tipo de entidad (p.ej. facturas manuales) — se oculta el botón
@@ -514,13 +517,25 @@ export function TabPdfEnviar({
   totalFactura: number;
   clienteEmailDefault: string;
   motivoRectificativa: string;
+  /** Los tickets exigen doble confirmación (petición del usuario,
+      2026-08-27): el correo del cliente se muestra de forma destacada
+      antes de enviar (no solo como placeholder) y se pide una segunda
+      confirmación explícita justo antes de disparar el envío real. */
+  confirmarAntesDeEnviar?: boolean;
 }) {
   const [emailDestino, setEmailDestino] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const confirmar = useConfirm();
+  const emailFinal = emailDestino.trim() || clienteEmailDefault;
 
   async function enviar() {
     if (!enviarUrl) return;
     if (!esEmailValido(emailDestino)) return toast.error("El email no tiene un formato válido");
+    if (!emailFinal) return toast.error("No hay ningún correo de destino disponible");
+    if (confirmarAntesDeEnviar) {
+      const ok = await confirmar(`¿Enviar el ticket ${numeroFactura} a ${emailFinal}?`);
+      if (!ok) return;
+    }
     setEnviando(true);
     try {
       const res = await fetch(enviarUrl, {
@@ -531,7 +546,7 @@ export function TabPdfEnviar({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (!data.enviado) throw new Error(data.motivo === "facturas_deshabilitado" ? "El envío de facturas por correo está deshabilitado por ahora." : (data.motivo || "No se pudo enviar"));
-      toast.success(`Factura enviada a ${emailDestino.trim() || clienteEmailDefault}`);
+      toast.success(`${confirmarAntesDeEnviar ? "Ticket" : "Factura"} enviad${confirmarAntesDeEnviar ? "o" : "a"} a ${emailFinal}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -557,6 +572,12 @@ export function TabPdfEnviar({
         </div>
       )}
 
+      {enviarUrl && confirmarAntesDeEnviar && (
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
+          Se enviará a: <strong>{emailFinal || "—"}</strong>
+        </div>
+      )}
+
       <div className="flex gap-2">
         {urlFactura && (
           <Button variant="outline" className="flex-1 gap-1.5" nativeButton={false} render={<Link href={urlFactura} target="_blank" rel="noreferrer" />}>
@@ -564,7 +585,7 @@ export function TabPdfEnviar({
           </Button>
         )}
         {enviarUrl && (
-          <Button className="flex-1 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviar} disabled={enviando}>
+          <Button className="flex-1 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviar} disabled={enviando || !emailFinal}>
             <Send2 className="size-4" /> {enviando ? "Enviando…" : "Enviar al cliente"}
           </Button>
         )}
