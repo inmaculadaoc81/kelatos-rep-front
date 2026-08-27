@@ -211,18 +211,15 @@ export function TicketManualDialog({
   // usuario, 2026-08-27: "container de cliente... para saber a que
   // cliente con que correo se enviara"). Un Ticket Rápido/de Ventas ya
   // tiene su cliente vía la reparación/venta, así que no necesita esto.
+  // Solo nombre + email (petición del usuario: "aca mejor solo deja el
+  // campo de correo") — DNI/teléfono/dirección quedan sin usar aquí, la
+  // columna de la BD los sigue aceptando por si algún día hacen falta.
   const [clienteNombre, setClienteNombre] = useState("");
-  const [clienteDireccion, setClienteDireccion] = useState("");
-  const [clienteDni, setClienteDni] = useState("");
-  const [clienteTelefono, setClienteTelefono] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
 
   function seleccionarCliente(c: Cliente) {
     setClienteNombre(c.nombre || "");
-    setClienteDireccion(c.direccion || "");
-    setClienteDni(c.dniCif || "");
-    setClienteTelefono(c.telefono || "");
     setClienteEmail(c.email || "");
     toast.success("Cliente cargado");
   }
@@ -305,7 +302,7 @@ export function TicketManualDialog({
   function cerrar(o: boolean) {
     if (generando) return;
     if (!o && esManualStandalone) {
-      setClienteNombre(""); setClienteDireccion(""); setClienteDni(""); setClienteTelefono(""); setClienteEmail("");
+      setClienteNombre(""); setClienteEmail("");
     }
     onOpenChange(o);
   }
@@ -338,7 +335,7 @@ export function TicketManualDialog({
           lineas: lineasValidas,
           estado,
           ...(esManualStandalone
-            ? { cliente: { nombre: clienteNombre.trim(), direccion: clienteDireccion.trim(), dni: clienteDni.trim(), telefono: clienteTelefono.trim(), email: clienteEmail.trim() } }
+            ? { cliente: { nombre: clienteNombre.trim(), email: clienteEmail.trim() } }
             : {}),
         }),
       });
@@ -412,25 +409,13 @@ export function TicketManualDialog({
                   </Button>
                 </div>
                 <div className="grid gap-2 p-3 sm:grid-cols-2">
-                  <div className="space-y-1 sm:col-span-2">
+                  <div className="space-y-1">
                     <Label htmlFor="tmNombre" className="text-xs text-muted-foreground">Nombre *</Label>
                     <Input id="tmNombre" className="h-8 text-sm" value={clienteNombre} onChange={(e) => setClienteNombre(e.target.value)} disabled={!!resultado} />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="tmEmail" className="text-xs text-muted-foreground">Email</Label>
                     <Input id="tmEmail" type="email" className="h-8 text-sm" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} disabled={!!resultado} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="tmTelefono" className="text-xs text-muted-foreground">Teléfono</Label>
-                    <Input id="tmTelefono" className="h-8 text-sm" value={clienteTelefono} onChange={(e) => setClienteTelefono(e.target.value)} disabled={!!resultado} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="tmDni" className="text-xs text-muted-foreground">NIF / DNI</Label>
-                    <Input id="tmDni" className="h-8 text-sm" value={clienteDni} onChange={(e) => setClienteDni(e.target.value)} disabled={!!resultado} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="tmDireccion" className="text-xs text-muted-foreground">Dirección</Label>
-                    <Input id="tmDireccion" className="h-8 text-sm" value={clienteDireccion} onChange={(e) => setClienteDireccion(e.target.value)} disabled={!!resultado} />
                   </div>
                 </div>
               </div>
