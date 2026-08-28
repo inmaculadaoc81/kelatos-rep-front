@@ -26,6 +26,10 @@ export type Icon = ComponentType<IconProps>;
 
 export const Add = withDefaults(Iconsax.Add);
 export const AddCircle = withDefaults(Iconsax.AddCircle);
+export const Airplane = withDefaults(Iconsax.Airplane);
+export const CalendarRemove = withDefaults(Iconsax.CalendarRemove);
+export const Health = withDefaults(Iconsax.Health);
+export const SecuritySafe = withDefaults(Iconsax.SecuritySafe);
 export const Bank = withDefaults(Iconsax.Bank);
 export const Cd = withDefaults(Iconsax.Cd);
 export const ArrowDown2 = withDefaults(Iconsax.ArrowDown2);
