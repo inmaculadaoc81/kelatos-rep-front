@@ -107,7 +107,7 @@ export default function KioskPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-4">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
