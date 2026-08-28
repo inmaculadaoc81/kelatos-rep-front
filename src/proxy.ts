@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth, esDominioKelatos } from "@/auth";
 import { NextResponse } from "next/server";
 import { esSuperadmin } from "@/lib/superadmin";
 
@@ -23,6 +23,17 @@ export default auth((req) => {
   // (mismo conjunto que ya puede borrar registros en /admin/registros).
   if (req.nextUrl.pathname.startsWith("/transferencias") && !esSuperadmin(req.auth?.user?.email)) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+  // Dashboard de Asistencia (fichajes) — un empleado que ficha puede no
+  // tener cuenta @kelatos.com (login ampliado en src/auth.ts); esa cuenta
+  // solo puede entrar a /asistencia/kiosk, nunca al resto del dashboard.
+  // El panel /asistencia/admin sigue restringido a admins de verdad.
+  const esSoloAsistencia = req.auth?.user?.asistenciaEmpleadoId != null && !esDominioKelatos(req.auth?.user?.email || "");
+  if (esSoloAsistencia && !req.nextUrl.pathname.startsWith("/asistencia")) {
+    return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));
+  }
+  if (req.nextUrl.pathname.startsWith("/asistencia/admin") && req.auth?.user?.role !== "admin" && !esSuperadmin(req.auth?.user?.email)) {
+    return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));
   }
 });
 

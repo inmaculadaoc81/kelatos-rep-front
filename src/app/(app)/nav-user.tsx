@@ -42,10 +42,12 @@ export function NavUser({ session }: { session: Session | null }) {
   const email = session?.user?.email || "";
   const esAdmin = session?.user?.role === "admin";
   const puedeVerTransferencias = esSuperadmin(email);
+  const puedeVerAsistencia = esAdmin || esSuperadmin(email);
   // Este componente se reutiliza en el sidebar de Transferencias — el
   // enlace de cambio de dashboard debe apuntar siempre al OTRO, no siempre
   // a Transferencias.
   const enTransferencias = pathname?.startsWith("/transferencias") ?? false;
+  const enAsistencia = pathname?.startsWith("/asistencia") ?? false;
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -106,6 +108,11 @@ export function NavUser({ session }: { session: Session | null }) {
               {puedeVerTransferencias && (
                 <DropdownMenuItem render={<Link href={enTransferencias ? "/" : "/transferencias"} />}>
                   <ArrowSwapHorizontal /> {enTransferencias ? "Dashboard Reparaciones Kelatos" : "Dashboard Transferencias Kelatos"}
+                </DropdownMenuItem>
+              )}
+              {puedeVerAsistencia && (
+                <DropdownMenuItem render={<Link href={enAsistencia ? "/" : "/asistencia"} />}>
+                  <ArrowSwapHorizontal /> {enAsistencia ? "Dashboard Reparaciones Kelatos" : "Dashboard Asistencia Kelatos"}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
