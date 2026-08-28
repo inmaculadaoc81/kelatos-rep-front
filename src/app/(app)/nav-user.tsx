@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
+import { esDominioKelatos } from "@/lib/dominio-kelatos";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,6 +44,11 @@ export function NavUser({ session }: { session: Session | null }) {
   const esAdmin = session?.user?.role === "admin";
   const puedeVerTransferencias = esSuperadmin(email);
   const puedeVerAsistencia = esAdmin || esSuperadmin(email);
+  // Un empleado que solo ficha (sin cuenta @kelatos.com, ver src/auth.ts)
+  // no tiene acceso a nada fuera de /asistencia — "Mi perfil" y
+  // "Configuración" no le sirven de nada (proxy.ts lo rebotaría de vuelta
+  // al kiosco), así que se ocultan para esa cuenta.
+  const esSoloAsistencia = session?.user?.asistenciaEmpleadoId != null && !esDominioKelatos(email);
   // Este componente se reutiliza en el sidebar de Transferencias — el
   // enlace de cambio de dashboard debe apuntar siempre al OTRO, no siempre
   // a Transferencias.
@@ -91,19 +97,23 @@ export function NavUser({ session }: { session: Session | null }) {
                   </div>
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem render={<Link href="/mi-perfil" />}>
-                <Profile /> Mi perfil
-              </DropdownMenuItem>
-              {esAdmin ? (
-                <DropdownMenuItem render={<Link href="/configuracion" />}>
-                  <Setting2 /> Configuración
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem disabled>
-                  <Setting2 /> Configuración
-                  <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
-                </DropdownMenuItem>
+              {!esSoloAsistencia && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem render={<Link href="/mi-perfil" />}>
+                    <Profile /> Mi perfil
+                  </DropdownMenuItem>
+                  {esAdmin ? (
+                    <DropdownMenuItem render={<Link href="/configuracion" />}>
+                      <Setting2 /> Configuración
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem disabled>
+                      <Setting2 /> Configuración
+                      <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
+                    </DropdownMenuItem>
+                  )}
+                </>
               )}
               {puedeVerTransferencias && (
                 <DropdownMenuItem render={<Link href={enTransferencias ? "/" : "/transferencias"} />}>

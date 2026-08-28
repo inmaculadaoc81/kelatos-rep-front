@@ -2,26 +2,9 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import type { RolUsuario } from "@/types/next-auth";
 import { kelatosApiGet } from "@/lib/kelatos-api";
+import { esDominioKelatos, EMAILS_ADMIN } from "@/lib/dominio-kelatos";
 
-/**
- * Restricción de dominio equivalente a la de doGet() en Apps Script
- * (Code.js): `emailSesion.endsWith('@' + DOMINIO_ADMIN)`. Aquí se aplica
- * en signIn (bloquea el inicio de sesión) y otra vez en el callback de
- * sesión (por si un token viejo de otro dominio quedara en la cookie).
- *
- * El original no tenía roles (verificarPermisos() solo comprobaba el
- * dominio, sin distinguir usuarios) — esto es una capa nueva: dos roles,
- * Administrador y Usuario, determinados por email. kelatoscielo@gmail.com
- * y kelatosclaude2@gmail.com son las únicas cuentas fuera del dominio
- * @kelatos.com y ejercen de Administrador.
- */
-const DOMINIO_ADMIN = "kelatos.com";
-const EMAILS_ADMIN = new Set(["kelatoscielo@gmail.com", "kelatosclaude2@gmail.com"]);
-
-export function esDominioKelatos(email: string): boolean {
-  const e = email.toLowerCase();
-  return e.endsWith(`@${DOMINIO_ADMIN}`) || EMAILS_ADMIN.has(e);
-}
+export { esDominioKelatos };
 
 function rolPara(email: string): RolUsuario {
   return EMAILS_ADMIN.has(email.toLowerCase()) ? "admin" : "usuario";
