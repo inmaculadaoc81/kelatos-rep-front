@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { EstadoPill } from "../../pills";
 
 interface Vacacion {
   id: number;
@@ -16,16 +18,21 @@ interface Vacacion {
   state: string;
 }
 
+type ColumnaFiltrable = "empleado" | "state";
+
 function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-const ESTILO: Record<string, string> = { pendiente: "text-amber-600", aprobado: "text-emerald-600", rechazado: "text-destructive" };
+function valorColumna(v: Vacacion, col: ColumnaFiltrable): string {
+  return String(v[col] ?? "—");
+}
 
 export default function AdminVacacionesPage() {
   const [items, setItems] = useState<Vacacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState<number | null>(null);
+  const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
   async function cargar() {
     setCargando(true);
@@ -39,6 +46,39 @@ export default function AdminVacacionesPage() {
   }
 
   useEffect(() => { cargar(); }, []);
+
+  function aplicarFiltrosColumna(lista: Vacacion[], colExcluida?: ColumnaFiltrable): Vacacion[] {
+    let out = lista;
+    for (const col of ["empleado", "state"] as ColumnaFiltrable[]) {
+      if (col === colExcluida) continue;
+      const seleccion = filtrosColumna[col];
+      if (seleccion) out = out.filter((v) => seleccion.has(valorColumna(v, col)));
+    }
+    return out;
+  }
+
+  const listaFiltrada = useMemo(() => aplicarFiltrosColumna(items), [items, filtrosColumna]);
+
+  function opcionesColumna(col: ColumnaFiltrable): string[] {
+    const base = aplicarFiltrosColumna(items, col);
+    const vistos = new Set<string>();
+    const vals: string[] = [];
+    for (const v of base) {
+      const val = valorColumna(v, col);
+      if (!vistos.has(val)) { vistos.add(val); vals.push(val); }
+    }
+    vals.sort((a, b) => a.localeCompare(b, "es"));
+    return vals;
+  }
+
+  function aplicarFiltroColumna(col: ColumnaFiltrable, seleccion: Set<string> | null) {
+    setFiltrosColumna((prev) => {
+      const siguiente = { ...prev };
+      if (seleccion === null) delete siguiente[col];
+      else siguiente[col] = seleccion;
+      return siguiente;
+    });
+  }
 
   async function resolver(id: number, accion: "aprobar" | "rechazar") {
     setProcesando(id);
@@ -62,12 +102,22 @@ export default function AdminVacacionesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Empleado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Empleado
+                  <ColumnaFiltro opciones={opcionesColumna("empleado")} seleccion={filtrosColumna.empleado ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado", s)} />
+                </span>
+              </TableHead>
               <TableHead>Desde</TableHead>
               <TableHead>Hasta</TableHead>
               <TableHead>Días</TableHead>
               <TableHead>Motivo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Estado
+                  <ColumnaFiltro opciones={opcionesColumna("state")} seleccion={filtrosColumna.state ?? null} onAplicar={(s) => aplicarFiltroColumna("state", s)} />
+                </span>
+              </TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -75,15 +125,15 @@ export default function AdminVacacionesPage() {
             {cargando && Array.from({ length: 4 }).map((_, i) => (
               <TableRow key={i}>{Array.from({ length: 7 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
-            {!cargando && items.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
-            {!cargando && items.map((v) => (
+            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
+            {!cargando && listaFiltrada.map((v) => (
               <TableRow key={v.id}>
                 <TableCell className="font-medium">{v.empleado}</TableCell>
                 <TableCell className="text-sm">{fecha(v.fecha_inicio)}</TableCell>
                 <TableCell className="text-sm">{fecha(v.fecha_fin)}</TableCell>
                 <TableCell className="text-sm">{v.dias_totales}</TableCell>
                 <TableCell className="max-w-48 truncate text-sm" title={v.motivo}>{v.motivo}</TableCell>
-                <TableCell className={`text-sm font-medium ${ESTILO[v.state] || ""}`}>{v.state}</TableCell>
+                <TableCell><EstadoPill estado={v.state} /></TableCell>
                 <TableCell>
                   {v.state === "pendiente" && (
                     <div className="flex gap-1">

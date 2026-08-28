@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { EstadoPill, TipoFichajePill } from "../../pills";
 
 interface Marcacion {
   id: number;
@@ -16,8 +18,7 @@ interface Marcacion {
   state: string;
 }
 
-const TIPO_LABEL: Record<string, string> = { entrada: "Entrada", salida_comida: "Salida comida", vuelta_comida: "Vuelta comida", salida: "Salida" };
-const ESTILO: Record<string, string> = { pendiente: "text-amber-600", aprobado_auto: "text-emerald-600", aprobado_manual: "text-emerald-600", rechazado: "text-destructive" };
+type ColumnaFiltrable = "empleado" | "tipo_fichaje" | "state";
 
 function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -29,10 +30,15 @@ function horaFmt(horaFloat: string) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function valorColumna(m: Marcacion, col: ColumnaFiltrable): string {
+  return String(m[col] ?? "—");
+}
+
 export default function AdminMarcacionesOlvidadasPage() {
   const [items, setItems] = useState<Marcacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState<number | null>(null);
+  const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
   async function cargar() {
     setCargando(true);
@@ -46,6 +52,39 @@ export default function AdminMarcacionesOlvidadasPage() {
   }
 
   useEffect(() => { cargar(); }, []);
+
+  function aplicarFiltrosColumna(lista: Marcacion[], colExcluida?: ColumnaFiltrable): Marcacion[] {
+    let out = lista;
+    for (const col of ["empleado", "tipo_fichaje", "state"] as ColumnaFiltrable[]) {
+      if (col === colExcluida) continue;
+      const seleccion = filtrosColumna[col];
+      if (seleccion) out = out.filter((m) => seleccion.has(valorColumna(m, col)));
+    }
+    return out;
+  }
+
+  const listaFiltrada = useMemo(() => aplicarFiltrosColumna(items), [items, filtrosColumna]);
+
+  function opcionesColumna(col: ColumnaFiltrable): string[] {
+    const base = aplicarFiltrosColumna(items, col);
+    const vistos = new Set<string>();
+    const vals: string[] = [];
+    for (const m of base) {
+      const v = valorColumna(m, col);
+      if (!vistos.has(v)) { vistos.add(v); vals.push(v); }
+    }
+    vals.sort((a, b) => a.localeCompare(b, "es"));
+    return vals;
+  }
+
+  function aplicarFiltroColumna(col: ColumnaFiltrable, seleccion: Set<string> | null) {
+    setFiltrosColumna((prev) => {
+      const siguiente = { ...prev };
+      if (seleccion === null) delete siguiente[col];
+      else siguiente[col] = seleccion;
+      return siguiente;
+    });
+  }
 
   async function resolver(id: number, accion: "aprobar-manual" | "aprobar-auto" | "rechazar") {
     setProcesando(id);
@@ -74,12 +113,27 @@ export default function AdminMarcacionesOlvidadasPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Empleado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Empleado
+                  <ColumnaFiltro opciones={opcionesColumna("empleado")} seleccion={filtrosColumna.empleado ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado", s)} />
+                </span>
+              </TableHead>
               <TableHead>Fecha</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Tipo
+                  <ColumnaFiltro opciones={opcionesColumna("tipo_fichaje")} seleccion={filtrosColumna.tipo_fichaje ?? null} onAplicar={(s) => aplicarFiltroColumna("tipo_fichaje", s)} />
+                </span>
+              </TableHead>
               <TableHead>Hora</TableHead>
               <TableHead>Motivo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Estado
+                  <ColumnaFiltro opciones={opcionesColumna("state")} seleccion={filtrosColumna.state ?? null} onAplicar={(s) => aplicarFiltroColumna("state", s)} />
+                </span>
+              </TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -87,15 +141,15 @@ export default function AdminMarcacionesOlvidadasPage() {
             {cargando && Array.from({ length: 4 }).map((_, i) => (
               <TableRow key={i}>{Array.from({ length: 7 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
-            {!cargando && items.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
-            {!cargando && items.map((m) => (
+            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
+            {!cargando && listaFiltrada.map((m) => (
               <TableRow key={m.id}>
                 <TableCell className="font-medium">{m.empleado}</TableCell>
                 <TableCell className="text-sm">{fecha(m.fecha_marcacion)}</TableCell>
-                <TableCell className="text-sm">{TIPO_LABEL[m.tipo_fichaje] || m.tipo_fichaje}</TableCell>
+                <TableCell><TipoFichajePill tipo={m.tipo_fichaje} /></TableCell>
                 <TableCell className="text-sm">{horaFmt(m.hora_solicitada)}</TableCell>
                 <TableCell className="max-w-40 truncate text-sm" title={m.motivo}>{m.motivo}</TableCell>
-                <TableCell className={`text-sm font-medium ${ESTILO[m.state] || ""}`}>{m.state}</TableCell>
+                <TableCell><EstadoPill estado={m.state} /></TableCell>
                 <TableCell>
                   {m.state === "pendiente" && (
                     <div className="flex flex-wrap gap-1">

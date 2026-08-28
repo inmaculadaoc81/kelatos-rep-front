@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { TipoFichajePill } from "../../pills";
 
 interface Empleado {
   id: number;
@@ -22,9 +24,16 @@ interface Fichaje {
   observaciones: string | null;
 }
 
+type ColumnaFiltrable = "empleado_nombre" | "tipo_fichaje" | "firmado";
+
 function fechaHora(iso: string | null): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function valorColumna(f: Fichaje, col: ColumnaFiltrable): string {
+  if (col === "firmado") return f.firmado ? "Sí" : "No";
+  return String(f[col] ?? "—");
 }
 
 export default function AdminFichajesPage() {
@@ -32,6 +41,7 @@ export default function AdminFichajesPage() {
   const [fichajes, setFichajes] = useState<Fichaje[]>([]);
   const [empleadoId, setEmpleadoId] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
   async function cargar() {
     setCargando(true);
@@ -54,6 +64,39 @@ export default function AdminFichajesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empleadoId]);
 
+  function aplicarFiltrosColumna(lista: Fichaje[], colExcluida?: ColumnaFiltrable): Fichaje[] {
+    let out = lista;
+    for (const col of ["empleado_nombre", "tipo_fichaje", "firmado"] as ColumnaFiltrable[]) {
+      if (col === colExcluida) continue;
+      const seleccion = filtrosColumna[col];
+      if (seleccion) out = out.filter((f) => seleccion.has(valorColumna(f, col)));
+    }
+    return out;
+  }
+
+  const listaFiltrada = useMemo(() => aplicarFiltrosColumna(fichajes), [fichajes, filtrosColumna]);
+
+  function opcionesColumna(col: ColumnaFiltrable): string[] {
+    const base = aplicarFiltrosColumna(fichajes, col);
+    const vistos = new Set<string>();
+    const vals: string[] = [];
+    for (const f of base) {
+      const v = valorColumna(f, col);
+      if (!vistos.has(v)) { vistos.add(v); vals.push(v); }
+    }
+    vals.sort((a, b) => a.localeCompare(b, "es"));
+    return vals;
+  }
+
+  function aplicarFiltroColumna(col: ColumnaFiltrable, seleccion: Set<string> | null) {
+    setFiltrosColumna((prev) => {
+      const siguiente = { ...prev };
+      if (seleccion === null) delete siguiente[col];
+      else siguiente[col] = seleccion;
+      return siguiente;
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -74,11 +117,26 @@ export default function AdminFichajesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Empleado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Empleado
+                  <ColumnaFiltro opciones={opcionesColumna("empleado_nombre")} seleccion={filtrosColumna.empleado_nombre ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado_nombre", s)} />
+                </span>
+              </TableHead>
               <TableHead>Entrada</TableHead>
               <TableHead>Salida</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Firmado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Tipo
+                  <ColumnaFiltro opciones={opcionesColumna("tipo_fichaje")} seleccion={filtrosColumna.tipo_fichaje ?? null} onAplicar={(s) => aplicarFiltroColumna("tipo_fichaje", s)} />
+                </span>
+              </TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Firmado
+                  <ColumnaFiltro opciones={opcionesColumna("firmado")} seleccion={filtrosColumna.firmado ?? null} onAplicar={(s) => aplicarFiltroColumna("firmado", s)} />
+                </span>
+              </TableHead>
               <TableHead>IP</TableHead>
             </TableRow>
           </TableHeader>
@@ -86,16 +144,22 @@ export default function AdminFichajesPage() {
             {cargando && Array.from({ length: 5 }).map((_, i) => (
               <TableRow key={i}>{Array.from({ length: 6 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
-            {!cargando && fichajes.length === 0 && (
+            {!cargando && listaFiltrada.length === 0 && (
               <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Sin fichajes</TableCell></TableRow>
             )}
-            {!cargando && fichajes.map((f) => (
+            {!cargando && listaFiltrada.map((f) => (
               <TableRow key={f.id}>
                 <TableCell className="font-medium">{f.empleado_nombre}</TableCell>
                 <TableCell className="text-sm">{fechaHora(f.check_in)}</TableCell>
                 <TableCell className="text-sm">{fechaHora(f.check_out)}</TableCell>
-                <TableCell className="text-sm">{f.tipo_fichaje}</TableCell>
-                <TableCell className="text-sm">{f.firmado ? "✍️" : "-"}</TableCell>
+                <TableCell><TipoFichajePill tipo={f.tipo_fichaje} /></TableCell>
+                <TableCell className="text-sm">
+                  {f.firmado ? (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">✍️ Sí</span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">No</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{f.ip_registro || "-"}</TableCell>
               </TableRow>
             ))}

@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { EstadoPill } from "../../pills";
 
 interface Correccion {
   id: number;
@@ -16,18 +18,25 @@ interface Correccion {
   state: string;
 }
 
+type ColumnaFiltrable = "empleado" | "tipo_campo" | "state";
+
 const CAMPO_LABEL: Record<string, string> = { check_in: "Entrada", check_out: "Salida" };
-const ESTILO: Record<string, string> = { pendiente: "text-amber-600", aprobado: "text-emerald-600", rechazado: "text-destructive" };
 
 function fechaHora(iso: string | null) {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function valorColumna(c: Correccion, col: ColumnaFiltrable): string {
+  if (col === "tipo_campo") return CAMPO_LABEL[c.tipo_campo] || c.tipo_campo;
+  return String(c[col] ?? "—");
+}
+
 export default function AdminCorreccionesPage() {
   const [items, setItems] = useState<Correccion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState<number | null>(null);
+  const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
   async function cargar() {
     setCargando(true);
@@ -41,6 +50,39 @@ export default function AdminCorreccionesPage() {
   }
 
   useEffect(() => { cargar(); }, []);
+
+  function aplicarFiltrosColumna(lista: Correccion[], colExcluida?: ColumnaFiltrable): Correccion[] {
+    let out = lista;
+    for (const col of ["empleado", "tipo_campo", "state"] as ColumnaFiltrable[]) {
+      if (col === colExcluida) continue;
+      const seleccion = filtrosColumna[col];
+      if (seleccion) out = out.filter((c) => seleccion.has(valorColumna(c, col)));
+    }
+    return out;
+  }
+
+  const listaFiltrada = useMemo(() => aplicarFiltrosColumna(items), [items, filtrosColumna]);
+
+  function opcionesColumna(col: ColumnaFiltrable): string[] {
+    const base = aplicarFiltrosColumna(items, col);
+    const vistos = new Set<string>();
+    const vals: string[] = [];
+    for (const c of base) {
+      const v = valorColumna(c, col);
+      if (!vistos.has(v)) { vistos.add(v); vals.push(v); }
+    }
+    vals.sort((a, b) => a.localeCompare(b, "es"));
+    return vals;
+  }
+
+  function aplicarFiltroColumna(col: ColumnaFiltrable, seleccion: Set<string> | null) {
+    setFiltrosColumna((prev) => {
+      const siguiente = { ...prev };
+      if (seleccion === null) delete siguiente[col];
+      else siguiente[col] = seleccion;
+      return siguiente;
+    });
+  }
 
   async function resolver(id: number, accion: "aprobar" | "rechazar") {
     setProcesando(id);
@@ -64,12 +106,27 @@ export default function AdminCorreccionesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Empleado</TableHead>
-              <TableHead>Campo</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Empleado
+                  <ColumnaFiltro opciones={opcionesColumna("empleado")} seleccion={filtrosColumna.empleado ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado", s)} />
+                </span>
+              </TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Campo
+                  <ColumnaFiltro opciones={opcionesColumna("tipo_campo")} seleccion={filtrosColumna.tipo_campo ?? null} onAplicar={(s) => aplicarFiltroColumna("tipo_campo", s)} />
+                </span>
+              </TableHead>
               <TableHead>Original</TableHead>
               <TableHead>Solicitada</TableHead>
               <TableHead>Motivo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Estado
+                  <ColumnaFiltro opciones={opcionesColumna("state")} seleccion={filtrosColumna.state ?? null} onAplicar={(s) => aplicarFiltroColumna("state", s)} />
+                </span>
+              </TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -77,15 +134,15 @@ export default function AdminCorreccionesPage() {
             {cargando && Array.from({ length: 4 }).map((_, i) => (
               <TableRow key={i}>{Array.from({ length: 7 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
-            {!cargando && items.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
-            {!cargando && items.map((c) => (
+            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
+            {!cargando && listaFiltrada.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.empleado}</TableCell>
                 <TableCell className="text-sm">{CAMPO_LABEL[c.tipo_campo] || c.tipo_campo}</TableCell>
                 <TableCell className="text-sm">{fechaHora(c.hora_original)}</TableCell>
                 <TableCell className="text-sm">{fechaHora(c.hora_solicitada)}</TableCell>
                 <TableCell className="max-w-48 truncate text-sm" title={c.motivo}>{c.motivo}</TableCell>
-                <TableCell className={`text-sm font-medium ${ESTILO[c.state] || ""}`}>{c.state}</TableCell>
+                <TableCell><EstadoPill estado={c.state} /></TableCell>
                 <TableCell>
                   {c.state === "pendiente" && (
                     <div className="flex gap-1">

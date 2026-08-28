@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { EstadoPill } from "../../pills";
 
 interface Ausencia {
   id: number;
@@ -17,8 +19,9 @@ interface Ausencia {
   state: string;
 }
 
+type ColumnaFiltrable = "empleado" | "tipo_permiso" | "state";
+
 const TIPO_LABEL: Record<string, string> = { medico: "Médico", personal: "Asunto personal", familiar: "Familiar", otro: "Otro" };
-const ESTILO: Record<string, string> = { pendiente: "text-amber-600", aprobado: "text-emerald-600", rechazado: "text-destructive" };
 
 function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -30,10 +33,16 @@ function horaFmt(horaFloat: string) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function valorColumna(a: Ausencia, col: ColumnaFiltrable): string {
+  if (col === "tipo_permiso") return TIPO_LABEL[a.tipo_permiso] || a.tipo_permiso;
+  return String(a[col] ?? "—");
+}
+
 export default function AdminAusenciasParcialesPage() {
   const [items, setItems] = useState<Ausencia[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState<number | null>(null);
+  const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
   async function cargar() {
     setCargando(true);
@@ -47,6 +56,39 @@ export default function AdminAusenciasParcialesPage() {
   }
 
   useEffect(() => { cargar(); }, []);
+
+  function aplicarFiltrosColumna(lista: Ausencia[], colExcluida?: ColumnaFiltrable): Ausencia[] {
+    let out = lista;
+    for (const col of ["empleado", "tipo_permiso", "state"] as ColumnaFiltrable[]) {
+      if (col === colExcluida) continue;
+      const seleccion = filtrosColumna[col];
+      if (seleccion) out = out.filter((a) => seleccion.has(valorColumna(a, col)));
+    }
+    return out;
+  }
+
+  const listaFiltrada = useMemo(() => aplicarFiltrosColumna(items), [items, filtrosColumna]);
+
+  function opcionesColumna(col: ColumnaFiltrable): string[] {
+    const base = aplicarFiltrosColumna(items, col);
+    const vistos = new Set<string>();
+    const vals: string[] = [];
+    for (const a of base) {
+      const v = valorColumna(a, col);
+      if (!vistos.has(v)) { vistos.add(v); vals.push(v); }
+    }
+    vals.sort((a, b) => a.localeCompare(b, "es"));
+    return vals;
+  }
+
+  function aplicarFiltroColumna(col: ColumnaFiltrable, seleccion: Set<string> | null) {
+    setFiltrosColumna((prev) => {
+      const siguiente = { ...prev };
+      if (seleccion === null) delete siguiente[col];
+      else siguiente[col] = seleccion;
+      return siguiente;
+    });
+  }
 
   async function resolver(id: number, accion: "aprobar" | "rechazar") {
     setProcesando(id);
@@ -70,13 +112,28 @@ export default function AdminAusenciasParcialesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Empleado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Empleado
+                  <ColumnaFiltro opciones={opcionesColumna("empleado")} seleccion={filtrosColumna.empleado ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado", s)} />
+                </span>
+              </TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Desde</TableHead>
               <TableHead>Hasta</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Tipo
+                  <ColumnaFiltro opciones={opcionesColumna("tipo_permiso")} seleccion={filtrosColumna.tipo_permiso ?? null} onAplicar={(s) => aplicarFiltroColumna("tipo_permiso", s)} />
+                </span>
+              </TableHead>
               <TableHead>Motivo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Estado
+                  <ColumnaFiltro opciones={opcionesColumna("state")} seleccion={filtrosColumna.state ?? null} onAplicar={(s) => aplicarFiltroColumna("state", s)} />
+                </span>
+              </TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -84,8 +141,8 @@ export default function AdminAusenciasParcialesPage() {
             {cargando && Array.from({ length: 4 }).map((_, i) => (
               <TableRow key={i}>{Array.from({ length: 8 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
-            {!cargando && items.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
-            {!cargando && items.map((a) => (
+            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
+            {!cargando && listaFiltrada.map((a) => (
               <TableRow key={a.id}>
                 <TableCell className="font-medium">{a.empleado}</TableCell>
                 <TableCell className="text-sm">{fecha(a.fecha_ausencia)}</TableCell>
@@ -93,7 +150,7 @@ export default function AdminAusenciasParcialesPage() {
                 <TableCell className="text-sm">{horaFmt(a.hora_fin)}</TableCell>
                 <TableCell className="text-sm">{TIPO_LABEL[a.tipo_permiso] || a.tipo_permiso}</TableCell>
                 <TableCell className="max-w-40 truncate text-sm" title={a.motivo}>{a.motivo}</TableCell>
-                <TableCell className={`text-sm font-medium ${ESTILO[a.state] || ""}`}>{a.state}</TableCell>
+                <TableCell><EstadoPill estado={a.state} /></TableCell>
                 <TableCell>
                   {a.state === "pendiente" && (
                     <div className="flex gap-1">
