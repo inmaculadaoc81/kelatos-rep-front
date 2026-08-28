@@ -10,6 +10,7 @@ const SECCIONES = [
   { href: "/asistencia/admin/correcciones", label: "Correcciones" },
   { href: "/asistencia/admin/marcaciones-olvidadas", label: "Marcaciones olvidadas" },
   { href: "/asistencia/admin/ausencias-parciales", label: "Ausencias parciales" },
+  { href: "/asistencia/admin/auditoria", label: "Auditoría" },
 ];
 
 export default function AsistenciaAdminLayout({ children }: { children: React.ReactNode }) {
