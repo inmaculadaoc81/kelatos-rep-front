@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft2, ArrowRight2 } from "@/lib/icons";
+import { ArrowLeft2, ArrowRight2, DocumentDownload } from "@/lib/icons";
+import { exportarRegistrosPdf } from "../pdf-export";
 
 interface ItemMes {
   fecha: string;
@@ -26,7 +28,16 @@ export default function MesPage() {
   const [items, setItems] = useState<ItemMes[]>([]);
   const [totalMes, setTotalMes] = useState("");
   const [previstoMes, setPrevistoMes] = useState("");
+  const [nombreEmpleado, setNombreEmpleado] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [exportando, setExportando] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/asistencia/kiosk/mi-info")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setNombreEmpleado(d.nombre); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setCargando(true);
@@ -52,6 +63,24 @@ export default function MesPage() {
   }
 
   const nombreMes = new Date(year, month - 1, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+
+  async function exportarPdf() {
+    setExportando(true);
+    try {
+      const ok = await exportarRegistrosPdf({
+        nombreEmpleado: nombreEmpleado || "Empleado",
+        mesNombre: nombreMes,
+        totalMes,
+        previstoMes,
+        registros: items,
+      });
+      if (!ok) toast.error("No hay fichajes este mes para exportar");
+    } catch {
+      toast.error("No se pudo generar el PDF");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   return (
     <Card>
@@ -79,6 +108,12 @@ export default function MesPage() {
             </div>
           ))}
         </div>
+
+        {!cargando && items.length > 0 && (
+          <Button variant="outline" className="w-full gap-1.5" disabled={exportando} onClick={exportarPdf}>
+            <DocumentDownload className="size-4" /> {exportando ? "Generando…" : "Exportar PDF del mes"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
