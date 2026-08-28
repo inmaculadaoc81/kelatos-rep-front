@@ -25,6 +25,7 @@ import {
   CalendarRemove,
   Health,
   SecuritySafe,
+  DocumentDownload,
 } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
@@ -42,6 +43,7 @@ const ITEMS_ADMIN = [
   { href: "/asistencia/admin/marcaciones-olvidadas", label: "Marcaciones olvidadas", icon: CalendarRemove },
   { href: "/asistencia/admin/ausencias-parciales", label: "Ausencias parciales", icon: Health },
   { href: "/asistencia/admin/auditoria", label: "Auditoría", icon: SecuritySafe },
+  { href: "/asistencia/admin/informe", label: "Informe mensual", icon: DocumentDownload },
 ];
 
 /** Puerto del sidebar de la app (mismo componente Sidebar de shadcn ya

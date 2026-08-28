@@ -13,6 +13,7 @@ const TITULOS: Record<string, string> = {
   "/asistencia/admin/marcaciones-olvidadas": "Marcaciones olvidadas",
   "/asistencia/admin/ausencias-parciales": "Ausencias parciales",
   "/asistencia/admin/auditoria": "Auditoría",
+  "/asistencia/admin/informe": "Informe mensual",
 };
 
 export function AsistenciaHeader() {
