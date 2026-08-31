@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { EstadoPill } from "../../pills";
 
 interface Vacacion {
@@ -128,7 +130,14 @@ export default function AdminVacacionesPage() {
             {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
             {!cargando && listaFiltrada.map((v) => (
               <TableRow key={v.id}>
-                <TableCell className="font-medium">{v.empleado}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarFallback className={colorAvatar(v.empleado)}>{iniciales(v.empleado)}</AvatarFallback>
+                    </Avatar>
+                    {v.empleado}
+                  </span>
+                </TableCell>
                 <TableCell className="text-sm">{fecha(v.fecha_inicio)}</TableCell>
                 <TableCell className="text-sm">{fecha(v.fecha_fin)}</TableCell>
                 <TableCell className="text-sm">{v.dias_totales}</TableCell>

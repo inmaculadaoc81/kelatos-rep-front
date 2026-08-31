@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { EstadoPill, TipoFichajePill } from "../../pills";
 
 interface Marcacion {
@@ -144,7 +146,14 @@ export default function AdminMarcacionesOlvidadasPage() {
             {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
             {!cargando && listaFiltrada.map((m) => (
               <TableRow key={m.id}>
-                <TableCell className="font-medium">{m.empleado}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarFallback className={colorAvatar(m.empleado)}>{iniciales(m.empleado)}</AvatarFallback>
+                    </Avatar>
+                    {m.empleado}
+                  </span>
+                </TableCell>
                 <TableCell className="text-sm">{fecha(m.fecha_marcacion)}</TableCell>
                 <TableCell><TipoFichajePill tipo={m.tipo_fichaje} /></TableCell>
                 <TableCell className="text-sm">{horaFmt(m.hora_solicitada)}</TableCell>

@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { EstadoPill } from "../../pills";
 
 interface Correccion {
@@ -137,7 +139,14 @@ export default function AdminCorreccionesPage() {
             {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
             {!cargando && listaFiltrada.map((c) => (
               <TableRow key={c.id}>
-                <TableCell className="font-medium">{c.empleado}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarFallback className={colorAvatar(c.empleado)}>{iniciales(c.empleado)}</AvatarFallback>
+                    </Avatar>
+                    {c.empleado}
+                  </span>
+                </TableCell>
                 <TableCell className="text-sm">{CAMPO_LABEL[c.tipo_campo] || c.tipo_campo}</TableCell>
                 <TableCell className="text-sm">{fechaHora(c.hora_original)}</TableCell>
                 <TableCell className="text-sm">{fechaHora(c.hora_solicitada)}</TableCell>

@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 
 interface Evento {
   id: number;
@@ -113,8 +115,22 @@ export default function AdminAuditoriaPage() {
             {!cargando && eventosFiltrados.map((e) => (
               <TableRow key={e.id}>
                 <TableCell className="text-sm">{fechaHora(e.fecha)}</TableCell>
-                <TableCell className="text-sm">{e.usuario}</TableCell>
-                <TableCell className="text-sm">{e.empleado}</TableCell>
+                <TableCell className="text-sm">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarFallback className={colorAvatar(e.usuario || "?")}>{iniciales(e.usuario || "?")}</AvatarFallback>
+                    </Avatar>
+                    {e.usuario}
+                  </span>
+                </TableCell>
+                <TableCell className="text-sm">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarFallback className={colorAvatar(e.empleado || "?")}>{iniciales(e.empleado || "?")}</AvatarFallback>
+                    </Avatar>
+                    {e.empleado}
+                  </span>
+                </TableCell>
                 <TableCell className="text-sm">{e.fichaje_id ? `#${e.fichaje_id}` : "-"}</TableCell>
                 <TableCell className="text-sm">{e.campo}</TableCell>
                 <TableCell className="max-w-32 truncate text-xs text-muted-foreground" title={e.valor_anterior}>{e.valor_anterior || "-"}</TableCell>

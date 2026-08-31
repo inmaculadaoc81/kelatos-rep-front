@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
+import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { EstadoPill } from "../../pills";
 
 interface Ausencia {
@@ -144,7 +146,14 @@ export default function AdminAusenciasParcialesPage() {
             {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
             {!cargando && listaFiltrada.map((a) => (
               <TableRow key={a.id}>
-                <TableCell className="font-medium">{a.empleado}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarFallback className={colorAvatar(a.empleado)}>{iniciales(a.empleado)}</AvatarFallback>
+                    </Avatar>
+                    {a.empleado}
+                  </span>
+                </TableCell>
                 <TableCell className="text-sm">{fecha(a.fecha_ausencia)}</TableCell>
                 <TableCell className="text-sm">{horaFmt(a.hora_inicio)}</TableCell>
                 <TableCell className="text-sm">{horaFmt(a.hora_fin)}</TableCell>
