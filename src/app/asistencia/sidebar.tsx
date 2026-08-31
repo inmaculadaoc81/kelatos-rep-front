@@ -27,6 +27,7 @@ import {
   SecuritySafe,
   DocumentDownload,
   Setting2,
+  Profile2User,
 } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
@@ -39,6 +40,7 @@ const ITEMS_KIOSCO = [
 
 const ITEMS_ADMIN = [
   { href: "/asistencia/admin/fichajes", label: "Fichajes", icon: Clock },
+  { href: "/asistencia/admin/empleados", label: "Empleados", icon: Profile2User, soloSuperadmin: true },
   { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
   { href: "/asistencia/admin/vacaciones", label: "Vacaciones", icon: Airplane },
   { href: "/asistencia/admin/correcciones", label: "Correcciones", icon: Edit2 },
@@ -120,7 +122,7 @@ export function AsistenciaSidebar({ session }: { session: Session | null }) {
             <SidebarGroupLabel>Administración</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1.5">
-                {ITEMS_ADMIN.map((item) => {
+                {ITEMS_ADMIN.filter((item) => !item.soloSuperadmin || esSuperadmin(email)).map((item) => {
                   const Icon = item.icon;
                   return (
                     <SidebarMenuItem key={item.href}>
