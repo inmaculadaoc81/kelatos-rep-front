@@ -1,9 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
+import { signOut } from "next-auth/react";
 import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -25,7 +26,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { cerrarSesion } from "./acciones";
 
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
@@ -36,7 +36,7 @@ function iniciales(nombre: string): string {
 
 export function NavUser({ session }: { session: Session | null }) {
   const { isMobile } = useSidebar();
-  const [cerrando, startTransition] = useTransition();
+  const [cerrando, setCerrando] = useState(false);
   const pathname = usePathname();
 
   const nombre = session?.user?.name || session?.user?.email || "Usuario";
@@ -129,7 +129,7 @@ export function NavUser({ session }: { session: Session | null }) {
               <DropdownMenuItem
                 variant="destructive"
                 disabled={cerrando}
-                onClick={() => startTransition(() => cerrarSesion())}
+                onClick={() => { setCerrando(true); signOut({ redirectTo: "/login" }); }}
               >
                 <Logout /> {cerrando ? "Cerrando sesión..." : "Cerrar sesión"}
               </DropdownMenuItem>

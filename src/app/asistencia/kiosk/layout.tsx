@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { RgpdModal } from "./rgpd-modal";
 import { GuiaModal } from "./guia-modal";
-import { cerrarSesion } from "../../(app)/acciones";
 import { Button } from "@/components/ui/button";
 import { Clock, Calendar, ClipboardText, Logout, MessageQuestion } from "@/lib/icons";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,7 @@ const TABS = [
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
   const [necesitaRgpd, setNecesitaRgpd] = useState(false);
   const [guiaAbierta, setGuiaAbierta] = useState(false);
-  const [cerrando, startTransition] = useTransition();
+  const [cerrando, setCerrando] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Guía de uso" onClick={() => setGuiaAbierta(true)}>
               <MessageQuestion className="size-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" disabled={cerrando} onClick={() => startTransition(() => cerrarSesion())}>
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" disabled={cerrando} onClick={() => { setCerrando(true); signOut({ redirectTo: "/login" }); }}>
               <Logout className="size-4" /> {cerrando ? "Saliendo…" : "Salir"}
             </Button>
           </div>

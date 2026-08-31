@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "next-auth";
+import { signOut } from "next-auth/react";
 import {
   Personalcard,
   Sms,
@@ -16,7 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Empleado } from "@/app/api/empleados/route";
-import { cerrarSesion } from "../acciones";
 
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
@@ -48,7 +48,7 @@ function Fila({ icono: Icono, etiqueta, valor }: { icono: typeof Sms; etiqueta: 
  */
 export function PerfilContenido({ session }: { session: Session | null }) {
   const [empleado, setEmpleado] = useState<Empleado | null | undefined>(undefined);
-  const [cerrando, startTransition] = useTransition();
+  const [cerrando, setCerrando] = useState(false);
 
   const nombre = session?.user?.name || session?.user?.email || "Usuario";
   const email = session?.user?.email || "";
@@ -100,7 +100,7 @@ export function PerfilContenido({ session }: { session: Session | null }) {
               variant="outline"
               className="w-full gap-1.5 text-destructive hover:text-destructive"
               disabled={cerrando}
-              onClick={() => startTransition(() => cerrarSesion())}
+              onClick={() => { setCerrando(true); signOut({ redirectTo: "/login" }); }}
             >
               <Logout className="size-4" /> {cerrando ? "Cerrando sesión..." : "Cerrar sesión"}
             </Button>
