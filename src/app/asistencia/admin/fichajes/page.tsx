@@ -280,19 +280,7 @@ export default function AdminFichajesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Fichajes</h1>
-        <div className="flex items-center gap-2">
-          <Select value={empleadoId || "__todos"} onValueChange={(v) => setEmpleadoId(!v || v === "__todos" ? "" : v)}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Todos los empleados" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__todos">Todos los empleados</SelectItem>
-              {empleados.map((e) => <SelectItem key={e.id} value={String(e.id)}>{e.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm" onClick={cargar}>Actualizar</Button>
-        </div>
-      </div>
+      <h1 className="text-lg font-semibold">Fichajes</h1>
 
       <div className="flex flex-wrap items-center gap-2">
         <Popover>
@@ -363,6 +351,19 @@ export default function AdminFichajesPage() {
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Select value={empleadoId || "__todos"} onValueChange={(v) => setEmpleadoId(!v || v === "__todos" ? "" : v)}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Todos los empleados">
+              {(v: string) => (!v || v === "__todos" ? "Todos los empleados" : empleados.find((e) => String(e.id) === v)?.nombre || "Todos los empleados")}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__todos">Todos los empleados</SelectItem>
+            {empleados.map((e) => <SelectItem key={e.id} value={String(e.id)}>{e.nombre}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={cargar}>Actualizar</Button>
       </div>
 
       {!grupos ? (
