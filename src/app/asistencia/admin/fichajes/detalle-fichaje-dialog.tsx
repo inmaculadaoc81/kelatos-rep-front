@@ -184,7 +184,7 @@ export function DetalleFichajeDialog({
 
   return (
     <Dialog open={fichajeId != null} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Fichaje {fichaje ? `#${fichaje.id}` : ""}</DialogTitle>
         </DialogHeader>
