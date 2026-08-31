@@ -22,6 +22,7 @@ import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
 import { TipoFichajePill } from "../../pills";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { Filter, Category2, ArrowRight2 } from "@/lib/icons";
+import { DetalleFichajeDialog } from "./detalle-fichaje-dialog";
 
 interface Empleado {
   id: number;
@@ -169,6 +170,7 @@ export default function AdminFichajesPage() {
   const [agruparPor, setAgruparPor] = useState<AgruparPor>("ninguno");
   const [gruposAbiertos, setGruposAbiertos] = useState<Set<string>>(new Set());
   const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
+  const [fichajeAbierto, setFichajeAbierto] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
   const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
@@ -264,8 +266,8 @@ export default function AdminFichajesPage() {
 
   function filaFichaje(f: Fichaje) {
     return (
-      <TableRow key={f.id}>
-        <TableCell className="w-10">
+      <TableRow key={f.id} className="cursor-pointer hover:bg-muted/40" onClick={() => setFichajeAbierto(f.id)}>
+        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
           <Checkbox checked={seleccionados.has(f.id)} onCheckedChange={() => alternarFila(f.id)} />
         </TableCell>
         <TableCell className="font-medium">
@@ -446,6 +448,8 @@ export default function AdminFichajesPage() {
           </TableBody>
         </Table>
       </div>
+
+      <DetalleFichajeDialog fichajeId={fichajeAbierto} onClose={() => setFichajeAbierto(null)} onActualizado={cargar} />
     </div>
   );
 }
