@@ -19,6 +19,9 @@ export interface GrupoInforme {
   dni: string;
   firmaBase64: string | null;
   filas: FilaInforme[];
+  totalHorasTrabajadas: string;
+  totalHorasPrevistas: string | null;
+  diferenciaHoras: string | null;
 }
 
 const COLS = ["Fecha", "Tipo", "Entrada", "Salida", "Total horas", "Firmado"];
@@ -60,7 +63,19 @@ export async function exportarInformeMensualPdf(grupos: GrupoInforme[], periodoL
     doc.setFontSize(9);
     doc.text(`Periodo: ${periodoLabel}`, 18, 50);
 
-    let y = 60;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(82, 82, 91);
+    let resumen = `Horas trabajadas: ${grupo.totalHorasTrabajadas}`;
+    if (grupo.totalHorasPrevistas) {
+      resumen += `   |   Horas previstas (según horario): ${grupo.totalHorasPrevistas}   |   Diferencia: ${grupo.diferenciaHoras}`;
+    } else {
+      resumen += "   |   Sin horario asignado — no se puede calcular la diferencia";
+    }
+    doc.text(resumen, 18, 56);
+    doc.setTextColor(0, 0, 0);
+
+    let y = 66;
     let x = 14;
     doc.setFillColor(244, 244, 245);
     doc.rect(14, y - 5, 182, 8, "F");
