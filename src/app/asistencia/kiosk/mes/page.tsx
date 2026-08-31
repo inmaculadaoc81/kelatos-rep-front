@@ -22,6 +22,14 @@ interface ItemMes {
 
 const hoy = new Date();
 
+// it.fecha llega como "YYYY-MM-DD" — antes se cortaba con .slice(5) dando
+// "MM-DD" (p.ej. "08-31"), formato americano que no coincide con el
+// DD/MM que ya usa "Mis últimos fichajes" en la pantalla de Fichar.
+function fechaCorta(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
 export default function MesPage() {
   const [year, setYear] = useState(hoy.getFullYear());
   const [month, setMonth] = useState(hoy.getMonth() + 1);
@@ -101,8 +109,8 @@ export default function MesPage() {
           {!cargando && items.length === 0 && <p className="text-sm text-muted-foreground">Sin fichajes este mes.</p>}
           {items.map((it) => (
             <div key={it.id} className="flex items-center justify-between border-b pb-1.5 text-sm last:border-0">
-              <span className="w-16 text-muted-foreground">{it.fecha.slice(5)}</span>
-              <span className="w-24">{it.entrada} – {it.salida}</span>
+              <span className="w-16 text-muted-foreground">{fechaCorta(it.fecha)}</span>
+              <span className="flex-1 truncate px-1">{it.entrada} – {it.salida}</span>
               <span className="w-20 text-xs text-muted-foreground">{it.trabajadas}</span>
               <span className={`text-xs font-medium ${it.ok ? "text-emerald-600" : "text-destructive"}`}>{it.diferencia}</span>
             </div>
