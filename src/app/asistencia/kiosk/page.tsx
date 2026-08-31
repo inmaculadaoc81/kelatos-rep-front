@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Clock } from "@/lib/icons";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
+import { TipoFichajePill } from "../pills";
 import { FirmaPad } from "./firma-pad";
 
 interface MiInfo {
@@ -275,13 +276,23 @@ export default function KioskPage() {
           <CardTitle className="text-sm">Mis últimos fichajes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {!cargando && fichajes.length === 0 && <p className="text-sm text-muted-foreground">Sin fichajes en los últimos 7 días.</p>}
+          {!cargando && fichajes.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">Sin fichajes en los últimos 7 días.</p>}
           {fichajes.map((f) => (
-            <div key={f.id} className="flex items-center justify-between border-b pb-2 text-sm last:border-0 last:pb-0">
-              <span className="text-muted-foreground">{fechaCorta(f.check_in)}</span>
-              <span>{horaCorta(f.check_in)} – {f.check_out ? horaCorta(f.check_out) : "…"}</span>
-              <span className="text-xs font-medium">{ETIQUETA_TIPO[f.tipo_fichaje] || f.tipo_fichaje}</span>
-              {f.firmado && <span title="Firmado">✍️</span>}
+            <div key={f.id} className="rounded-lg border p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-2">
+                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">{fechaCorta(f.check_in)}</span>
+                  <TipoFichajePill tipo={f.tipo_fichaje} />
+                </span>
+                {f.firmado && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                    ✍️ Firmado
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="size-3" /> {horaCorta(f.check_in)} – {f.check_out ? horaCorta(f.check_out) : "En curso"}
+              </p>
             </div>
           ))}
         </CardContent>
