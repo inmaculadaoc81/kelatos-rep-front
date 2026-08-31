@@ -270,7 +270,7 @@ export function DetalleFichajeDialog({
                 <span className="text-muted-foreground">Firma del Empleado</span>
                 {fichaje.firma_empleado ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={fichaje.firma_empleado} alt="Firma del empleado" className="h-20 rounded border bg-white object-contain" />
+                  <img src={`/api/asistencia/admin/firma/${fichaje.firma_empleado}`} alt="Firma del empleado" className="h-20 rounded border bg-white object-contain" />
                 ) : (
                   <p className="text-xs text-muted-foreground">{fichaje.firmado ? "Firmado sin imagen de firma disponible" : "Sin firma"}</p>
                 )}
