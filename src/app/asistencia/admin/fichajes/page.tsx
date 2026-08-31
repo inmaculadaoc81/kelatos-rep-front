@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -13,12 +15,12 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
 import { TipoFichajePill } from "../../pills";
+import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { Filter, Category2, ArrowRight2 } from "@/lib/icons";
 
 interface Empleado {
@@ -40,10 +42,15 @@ interface Fichaje {
 type ColumnaFiltrable = "empleado_nombre" | "tipo_fichaje" | "firmado";
 type FiltroFecha = "todas" | "hoy" | "semana" | "mes" | "mes_anterior" | "personalizado";
 type AgruparPor = "ninguno" | "empleado" | "mes" | "semana" | "dia";
+const NUM_COLUMNAS = 7;
 
 function fechaHora(iso: string | null): string {
   if (!iso) return "-";
-  return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function formatHoras(h: number): string {
+  return h.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function valorColumna(f: Fichaje, col: ColumnaFiltrable): string {
@@ -160,6 +167,8 @@ export default function AdminFichajesPage() {
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>("todas");
   const [personalizado, setPersonalizado] = useState({ desde: "", hasta: "" });
   const [agruparPor, setAgruparPor] = useState<AgruparPor>("ninguno");
+  const [gruposAbiertos, setGruposAbiertos] = useState<Set<string>>(new Set());
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
   const [cargando, setCargando] = useState(true);
   const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
@@ -223,6 +232,28 @@ export default function AdminFichajesPage() {
     });
   }
 
+  function alternarGrupo(clave: string) {
+    setGruposAbiertos((prev) => {
+      const next = new Set(prev);
+      if (next.has(clave)) next.delete(clave);
+      else next.add(clave);
+      return next;
+    });
+  }
+
+  function alternarFila(id: number) {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function alternarTodas() {
+    setSeleccionados((prev) => (prev.size === listaFiltrada.length ? new Set() : new Set(listaFiltrada.map((f) => f.id))));
+  }
+
   const filtroFechaLabel = filtroFecha === "todas"
     ? "Todas las fechas"
     : filtroFecha === "personalizado"
@@ -231,49 +262,45 @@ export default function AdminFichajesPage() {
 
   const agruparLabel = OPCIONES_AGRUPAR.find((o) => o.valor === agruparPor)?.label || "Sin agrupar";
 
-  function encabezadosColumna() {
+  function filaFichaje(f: Fichaje) {
     return (
-      <TableRow>
-        <TableHead>
-          <span className="inline-flex items-center">
-            Empleado
-            <ColumnaFiltro opciones={opcionesColumna("empleado_nombre")} seleccion={filtrosColumna.empleado_nombre ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado_nombre", s)} />
+      <TableRow key={f.id}>
+        <TableCell className="w-10">
+          <Checkbox checked={seleccionados.has(f.id)} onCheckedChange={() => alternarFila(f.id)} />
+        </TableCell>
+        <TableCell className="font-medium">
+          <span className="inline-flex items-center gap-2">
+            <Avatar size="sm">
+              <AvatarFallback className={colorAvatar(f.empleado_nombre)}>{iniciales(f.empleado_nombre)}</AvatarFallback>
+            </Avatar>
+            {f.empleado_nombre}
           </span>
-        </TableHead>
-        <TableHead>Entrada</TableHead>
-        <TableHead>Salida</TableHead>
-        <TableHead>
-          <span className="inline-flex items-center">
-            Tipo
-            <ColumnaFiltro opciones={opcionesColumna("tipo_fichaje")} seleccion={filtrosColumna.tipo_fichaje ?? null} onAplicar={(s) => aplicarFiltroColumna("tipo_fichaje", s)} />
-          </span>
-        </TableHead>
-        <TableHead>
-          <span className="inline-flex items-center">
-            Firmado
-            <ColumnaFiltro opciones={opcionesColumna("firmado")} seleccion={filtrosColumna.firmado ?? null} onAplicar={(s) => aplicarFiltroColumna("firmado", s)} />
-          </span>
-        </TableHead>
-        <TableHead>IP</TableHead>
+        </TableCell>
+        <TableCell className="text-sm">{fechaHora(f.check_in)}</TableCell>
+        <TableCell className="text-sm">{fechaHora(f.check_out)}</TableCell>
+        <TableCell><TipoFichajePill tipo={f.tipo_fichaje} /></TableCell>
+        <TableCell className="text-right text-sm tabular-nums">{formatHoras(horasEntre(f))}</TableCell>
+        <TableCell>
+          <Checkbox checked={f.firmado} disabled />
+        </TableCell>
       </TableRow>
     );
   }
 
-  function filaFichaje(f: Fichaje) {
+  function filaGrupo(g: Grupo) {
+    const abierto = gruposAbiertos.has(g.clave);
+    const totalHoras = g.filas.reduce((acc, f) => acc + horasEntre(f), 0);
     return (
-      <TableRow key={f.id}>
-        <TableCell className="font-medium">{f.empleado_nombre}</TableCell>
-        <TableCell className="text-sm">{fechaHora(f.check_in)}</TableCell>
-        <TableCell className="text-sm">{fechaHora(f.check_out)}</TableCell>
-        <TableCell><TipoFichajePill tipo={f.tipo_fichaje} /></TableCell>
-        <TableCell className="text-sm">
-          {f.firmado ? (
-            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">✍️ Sí</span>
-          ) : (
-            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">No</span>
-          )}
+      <TableRow key={g.clave} className="cursor-pointer bg-muted/40 hover:bg-muted/60" onClick={() => alternarGrupo(g.clave)}>
+        <TableCell />
+        <TableCell colSpan={4} className="font-medium">
+          <span className="inline-flex items-center gap-2">
+            <ArrowRight2 className={cn("size-3.5 text-muted-foreground transition-transform", abierto && "rotate-90")} />
+            {g.label} ({g.filas.length})
+          </span>
         </TableCell>
-        <TableCell className="text-xs text-muted-foreground">{f.ip_registro || "-"}</TableCell>
+        <TableCell className="text-right text-sm font-medium tabular-nums">{formatHoras(totalHoras)}</TableCell>
+        <TableCell />
       </TableRow>
     );
   }
@@ -344,7 +371,7 @@ export default function AdminFichajesPage() {
             }
           />
           <DropdownMenuContent className="w-48">
-            <DropdownMenuRadioGroup value={agruparPor} onValueChange={(v) => setAgruparPor(v as AgruparPor)}>
+            <DropdownMenuRadioGroup value={agruparPor} onValueChange={(v) => { setAgruparPor(v as AgruparPor); setGruposAbiertos(new Set()); }}>
               {OPCIONES_AGRUPAR.map((o) => (
                 <DropdownMenuRadioItem key={o.valor} value={o.valor}>{o.label}</DropdownMenuRadioItem>
               ))}
@@ -366,51 +393,59 @@ export default function AdminFichajesPage() {
         <Button variant="outline" size="sm" onClick={cargar}>Actualizar</Button>
       </div>
 
-      {!grupos ? (
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <Table>
-            <TableHeader>{encabezadosColumna()}</TableHeader>
-            <TableBody>
-              {cargando && Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>{Array.from({ length: 6 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
-              ))}
-              {!cargando && listaFiltrada.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Sin fichajes</TableCell></TableRow>
-              )}
-              {!cargando && listaFiltrada.map(filaFichaje)}
-            </TableBody>
-          </Table>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {cargando && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-          {!cargando && grupos.length === 0 && (
-            <div className="rounded-lg border bg-card py-8 text-center text-muted-foreground">Sin fichajes</div>
-          )}
-          {!cargando && grupos.map((g) => {
-            const totalHoras = g.filas.reduce((acc, f) => acc + horasEntre(f), 0);
-            return (
-              <Collapsible key={g.clave} defaultOpen className="overflow-hidden rounded-lg border bg-card">
-                <CollapsibleTrigger className="group/trigger flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-muted/50">
-                  <span className="inline-flex items-center gap-2 text-sm font-medium">
-                    <ArrowRight2 className="size-3.5 text-muted-foreground transition-transform group-data-panel-open/trigger:rotate-90" />
-                    {g.label}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {g.filas.length} fichaje{g.filas.length !== 1 ? "s" : ""} · {totalHoras.toFixed(2)} h
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <Table>
-                    <TableHeader>{encabezadosColumna()}</TableHeader>
-                    <TableBody>{g.filas.map(filaFichaje)}</TableBody>
-                  </Table>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
-        </div>
-      )}
+      <div className="overflow-x-auto rounded-lg border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={listaFiltrada.length > 0 && seleccionados.size === listaFiltrada.length}
+                  onCheckedChange={alternarTodas}
+                />
+              </TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Empleado
+                  <ColumnaFiltro opciones={opcionesColumna("empleado_nombre")} seleccion={filtrosColumna.empleado_nombre ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado_nombre", s)} />
+                </span>
+              </TableHead>
+              <TableHead>Entrada</TableHead>
+              <TableHead>Salida</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Tipo de Fichaje
+                  <ColumnaFiltro opciones={opcionesColumna("tipo_fichaje")} seleccion={filtrosColumna.tipo_fichaje ?? null} onAplicar={(s) => aplicarFiltroColumna("tipo_fichaje", s)} />
+                </span>
+              </TableHead>
+              <TableHead className="text-right">Total Horas</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center">
+                  Firmado
+                  <ColumnaFiltro opciones={opcionesColumna("firmado")} seleccion={filtrosColumna.firmado ?? null} onAplicar={(s) => aplicarFiltroColumna("firmado", s)} />
+                </span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cargando && Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i}>{Array.from({ length: NUM_COLUMNAS }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+            ))}
+
+            {!cargando && !grupos && listaFiltrada.length === 0 && (
+              <TableRow><TableCell colSpan={NUM_COLUMNAS} className="py-8 text-center text-muted-foreground">Sin fichajes</TableCell></TableRow>
+            )}
+            {!cargando && !grupos && listaFiltrada.map(filaFichaje)}
+
+            {!cargando && grupos && grupos.length === 0 && (
+              <TableRow><TableCell colSpan={NUM_COLUMNAS} className="py-8 text-center text-muted-foreground">Sin fichajes</TableCell></TableRow>
+            )}
+            {!cargando && grupos && grupos.flatMap((g) => [
+              filaGrupo(g),
+              ...(gruposAbiertos.has(g.clave) ? g.filas.map(filaFichaje) : []),
+            ])}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
