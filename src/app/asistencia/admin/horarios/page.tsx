@@ -254,7 +254,7 @@ function CalendarioCard({
             {franjas.map((f, idx) => (
               <div key={idx} className="flex items-center gap-1.5">
                 <Select value={f.dayofweek} onValueChange={(v) => actualizarFranja(idx, { dayofweek: v || f.dayofweek })}>
-                  <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 w-28 text-xs"><SelectValue>{(v: string) => DIAS[Number(v)] || v}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {DIAS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
                   </SelectContent>
