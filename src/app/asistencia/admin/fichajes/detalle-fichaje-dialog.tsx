@@ -124,22 +124,42 @@ export function DetalleFichajeDialog({
   const [fichaje, setFichaje] = useState<FichajeDetalle | null>(null);
   const [eventos, setEventos] = useState<AuditoriaEvento[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [campos, setCampos] = useState({ check_in: "", check_out: "", tipo_fichaje: "", observaciones: "" });
 
   useEffect(() => {
-    if (!fichajeId) { setFichaje(null); setEventos([]); setEditando(false); return; }
+    if (!fichajeId) { setFichaje(null); setEventos([]); setEditando(false); setError(null); return; }
     setCargando(true);
-    Promise.all([
-      fetch(`/api/asistencia/admin/fichajes/${fichajeId}`).then((r) => r.json()),
-      fetch(`/api/asistencia/admin/auditoria?fichajeId=${fichajeId}`).then((r) => r.json()),
-    ])
-      .then(([dFichaje, dAuditoria]) => {
-        if (dFichaje.ok) setFichaje(dFichaje.fichaje); else toast.error(dFichaje.error || "No se pudo cargar el fichaje");
-        if (dAuditoria.ok) setEventos(dAuditoria.eventos);
+    setError(null);
+
+    // Antes iban en un solo Promise.all: si la petición de auditoría
+    // fallaba (aunque fuera un hipo de red pasajero, nada que ver con el
+    // fichaje en sí), el modal entero se quedaba vacío aunque el fichaje
+    // sí existiera y hubiera cargado bien. Se desacoplan para que cada
+    // una actualice su propio estado de forma independiente.
+    fetch(`/api/asistencia/admin/fichajes/${fichajeId}`)
+      .then((r) => r.json())
+      .then((dFichaje) => {
+        if (dFichaje.ok) setFichaje(dFichaje.fichaje);
+        else { setError(dFichaje.error || "No se pudo cargar el fichaje"); toast.error(dFichaje.error || "No se pudo cargar el fichaje"); }
+      })
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : "Error de red al cargar el fichaje";
+        setError(msg);
+        toast.error(msg);
       })
       .finally(() => setCargando(false));
+
+    fetch(`/api/asistencia/admin/auditoria?fichajeId=${fichajeId}`)
+      .then((r) => r.json())
+      .then((dAuditoria) => { if (dAuditoria.ok) setEventos(dAuditoria.eventos); })
+      .catch(() => {
+        // El historial es un extra — si falla, el fichaje sigue siendo
+        // usable, solo se queda sin este panel (ver HistorialFichaje: ya
+        // muestra "Sin actividad registrada" cuando eventos está vacío).
+      });
   }, [fichajeId]);
 
   function iniciarEdicion() {
@@ -193,6 +213,12 @@ export function DetalleFichajeDialog({
           <div className="space-y-3">
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-32 w-full" />
+          </div>
+        )}
+
+        {!cargando && !fichaje && (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            {error || "No se pudo cargar el fichaje."}
           </div>
         )}
 
