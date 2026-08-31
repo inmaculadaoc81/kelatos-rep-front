@@ -1,10 +1,7 @@
 import Image from "next/image";
-import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
-import { AuthError } from "next-auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { CredentialsForm } from "./credentials-form";
 
 function IconoGoogle() {
   return (
@@ -28,6 +25,14 @@ function IconoGoogle() {
  * solo para empleados del kiosco de Asistencia sin cuenta de Gmail real
  * asociada a su email @kelatos.com — pedido del usuario, 2026-08-31. Esa
  * vía nunca da acceso al resto del dashboard (ver proxy.ts/auth.ts).
+ *
+ * El formulario de credenciales vive en un componente cliente aparte
+ * (credentials-form.tsx): un Server Action redirigiendo a una ruta
+ * interna ("/") se rompe en este hosting (mismo síntoma que el cierre de
+ * sesión, "This page couldn't load") — signIn() de next-auth/react con
+ * redirect:false + navegación manual evita ese mecanismo. El botón de
+ * Google se deja como Server Action porque redirige a un dominio externo
+ * (accounts.google.com), donde nunca dio ese problema.
  */
 export default async function LoginPage({
   searchParams,
@@ -35,8 +40,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const errorCredenciales = error === "CredentialsSignin";
-  const errorDominio = !!error && !errorCredenciales;
+  const errorDominio = !!error;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
@@ -60,35 +64,7 @@ export default async function LoginPage({
           <h2 className="mb-6 text-xl font-semibold">Iniciar sesión</h2>
         )}
 
-        <form
-          className="space-y-3 text-left"
-          action={async (formData: FormData) => {
-            "use server";
-            try {
-              await signIn("credentials", {
-                email: formData.get("email"),
-                password: formData.get("password"),
-                redirectTo: "/",
-              });
-            } catch (e) {
-              if (e instanceof AuthError) {
-                redirect(`/login?error=${e.type}`);
-              }
-              throw e;
-            }
-          }}
-        >
-          <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required autoComplete="username" />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" name="password" type="password" required autoComplete="current-password" />
-          </div>
-          {errorCredenciales && <p className="text-xs text-destructive">Email o contraseña incorrectos.</p>}
-          <Button type="submit" className="w-full">Iniciar sesión</Button>
-        </form>
+        <CredentialsForm />
 
         <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
           <div className="h-px flex-1 bg-border" />
