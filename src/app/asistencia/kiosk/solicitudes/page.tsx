@@ -9,8 +9,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { TipoFichajePill } from "../../pills";
+import { ArrowDown2 } from "@/lib/icons";
+import { cn } from "@/lib/utils";
 
 interface Fichaje { id: number; check_in: string; check_out: string; tipo_fichaje: string; }
+
+const CAMPO_LABEL: Record<string, string> = { check_in: "Hora de entrada", check_out: "Hora de salida" };
+
+function etiquetaFichaje(f: Fichaje): string {
+  const fecha = new Date(f.check_in).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const hora = new Date(f.check_in).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  return `${fecha} · ${hora}`;
+}
 interface Solicitud { id: number; state_label: string; motivo: string; [key: string]: unknown }
 
 const ESTILO_ESTADO: Record<string, string> = {
@@ -35,6 +48,7 @@ export default function SolicitudesPage() {
 
   // Corrección
   const [corFichajeId, setCorFichajeId] = useState("");
+  const [corBuscadorAbierto, setCorBuscadorAbierto] = useState(false);
   const [corCampo, setCorCampo] = useState<"check_in" | "check_out">("check_in");
   const [corFecha, setCorFecha] = useState("");
   const [corHora, setCorHora] = useState("");
@@ -137,21 +151,52 @@ export default function SolicitudesPage() {
             <CardContent className="space-y-3 pt-4">
               <div className="space-y-1">
                 <Label>Fichaje a corregir</Label>
-                <Select value={corFichajeId} onValueChange={(v) => setCorFichajeId(v || "")}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona un fichaje" /></SelectTrigger>
-                  <SelectContent>
-                    {fichajes.map((f) => (
-                      <SelectItem key={f.id} value={String(f.id)}>
-                        {new Date(f.check_in).toLocaleDateString("es-ES")} — {f.tipo_fichaje}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={corBuscadorAbierto} onOpenChange={setCorBuscadorAbierto}>
+                  <PopoverTrigger
+                    render={
+                      <Button variant="outline" className="w-full justify-between font-normal">
+                        {corFichajeId ? (
+                          (() => {
+                            const f = fichajes.find((x) => String(x.id) === corFichajeId);
+                            return f ? (
+                              <span className="inline-flex items-center gap-2">
+                                {etiquetaFichaje(f)} <TipoFichajePill tipo={f.tipo_fichaje} />
+                              </span>
+                            ) : "Selecciona un fichaje";
+                          })()
+                        ) : (
+                          <span className="text-muted-foreground">Selecciona un fichaje</span>
+                        )}
+                        <ArrowDown2 className="size-3.5 text-muted-foreground" />
+                      </Button>
+                    }
+                  />
+                  <PopoverContent align="start" className="w-(--anchor-width) min-w-64 p-0">
+                    <Command>
+                      <CommandInput placeholder="Busca por fecha (dd/mm)…" />
+                      <CommandList>
+                        <CommandEmpty>Sin fichajes en los últimos 7 días.</CommandEmpty>
+                        <CommandGroup>
+                          {fichajes.map((f) => (
+                            <CommandItem
+                              key={f.id}
+                              value={`${etiquetaFichaje(f)} ${f.tipo_fichaje}`}
+                              onSelect={() => { setCorFichajeId(String(f.id)); setCorBuscadorAbierto(false); }}
+                            >
+                              <span className={cn("flex-1", String(f.id) === corFichajeId && "font-medium")}>{etiquetaFichaje(f)}</span>
+                              <TipoFichajePill tipo={f.tipo_fichaje} />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-1">
                 <Label>Campo</Label>
                 <Select value={corCampo} onValueChange={(v) => setCorCampo((v as "check_in" | "check_out") || "check_in")}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue>{(v: string) => CAMPO_LABEL[v] || v}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="check_in">Hora de entrada</SelectItem>
                     <SelectItem value="check_out">Hora de salida</SelectItem>
