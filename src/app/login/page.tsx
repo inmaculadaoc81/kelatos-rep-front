@@ -1,6 +1,10 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
+import { AuthError } from "next-auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function IconoGoogle() {
   return (
@@ -20,8 +24,10 @@ function IconoGoogle() {
  * callback signIn (src/auth.ts) — si Google rechaza el login por
  * dominio, NextAuth redirige aquí con ?error=AccessDenied.
  *
- * Solo Google está conectado (src/auth.ts no tiene proveedor de
- * credenciales) — no hay usuarios/contraseñas en el sistema todavía.
+ * Email+contraseña (Credentials) se añadió como alternativa a Google
+ * solo para empleados del kiosco de Asistencia sin cuenta de Gmail real
+ * asociada a su email @kelatos.com — pedido del usuario, 2026-08-31. Esa
+ * vía nunca da acceso al resto del dashboard (ver proxy.ts/auth.ts).
  */
 export default async function LoginPage({
   searchParams,
@@ -29,6 +35,8 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const errorCredenciales = error === "CredentialsSignin";
+  const errorDominio = !!error && !errorCredenciales;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
@@ -39,7 +47,7 @@ export default async function LoginPage({
           </div>
         </div>
 
-        {error ? (
+        {errorDominio ? (
           <>
             <div className="mb-4 text-4xl">⛔</div>
             <h2 className="mb-2 text-xl font-semibold">Sin acceso</h2>
@@ -51,6 +59,42 @@ export default async function LoginPage({
         ) : (
           <h2 className="mb-6 text-xl font-semibold">Iniciar sesión</h2>
         )}
+
+        <form
+          className="space-y-3 text-left"
+          action={async (formData: FormData) => {
+            "use server";
+            try {
+              await signIn("credentials", {
+                email: formData.get("email"),
+                password: formData.get("password"),
+                redirectTo: "/",
+              });
+            } catch (e) {
+              if (e instanceof AuthError) {
+                redirect(`/login?error=${e.type}`);
+              }
+              throw e;
+            }
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" name="email" type="email" required autoComplete="username" />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="password">Contraseña</Label>
+            <Input id="password" name="password" type="password" required autoComplete="current-password" />
+          </div>
+          {errorCredenciales && <p className="text-xs text-destructive">Email o contraseña incorrectos.</p>}
+          <Button type="submit" className="w-full">Iniciar sesión</Button>
+        </form>
+
+        <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="h-px flex-1 bg-border" />
+          o
+          <div className="h-px flex-1 bg-border" />
+        </div>
 
         <form
           action={async () => {

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
-import { Add, Edit2, SecuritySafe } from "@/lib/icons";
+import { Add, Edit2, SecuritySafe, Lock } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 interface Calendario { id: number; nombre: string; }
@@ -40,6 +40,9 @@ export default function EmpleadosPage() {
   const [editando, setEditando] = useState<Empleado | null>(null);
   const [form, setForm] = useState<FormEmpleado>(FORM_VACIO);
   const [guardando, setGuardando] = useState(false);
+  const [empleadoPass, setEmpleadoPass] = useState<Empleado | null>(null);
+  const [nuevaPassword, setNuevaPassword] = useState("");
+  const [guardandoPass, setGuardandoPass] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -105,6 +108,28 @@ export default function EmpleadosPage() {
       await cargar();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error desconocido");
+    }
+  }
+
+  async function guardarPassword() {
+    if (!empleadoPass) return;
+    if (nuevaPassword.length < 6) return toast.error("La contraseña debe tener al menos 6 caracteres");
+    setGuardandoPass(true);
+    try {
+      const res = await fetch(`/api/asistencia/admin/empleados/${empleadoPass.id}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: nuevaPassword }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Contraseña actualizada");
+      setEmpleadoPass(null);
+      setNuevaPassword("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setGuardandoPass(false);
     }
   }
 
@@ -179,6 +204,9 @@ export default function EmpleadosPage() {
                     <Button variant="ghost" size="icon-sm" title="Editar" onClick={() => abrirEditar(e)}>
                       <Edit2 className="size-3.5" />
                     </Button>
+                    <Button variant="ghost" size="icon-sm" title="Establecer contraseña" onClick={() => { setEmpleadoPass(e); setNuevaPassword(""); }}>
+                      <Lock className="size-3.5" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -217,6 +245,28 @@ export default function EmpleadosPage() {
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setDialogoAbierto(false)} disabled={guardando}>Cancelar</Button>
             <Button size="sm" onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!empleadoPass} onOpenChange={(o) => { if (!o) setEmpleadoPass(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Contraseña de {empleadoPass?.nombre}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Alternativa a Google para iniciar sesión en el kiosco — útil si <strong>{empleadoPass?.email}</strong> no
+              está asociado a una cuenta de Gmail real. Mínimo 6 caracteres.
+            </p>
+            <div className="space-y-1">
+              <Label>Nueva contraseña</Label>
+              <Input type="text" value={nuevaPassword} onChange={(ev) => setNuevaPassword(ev.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setEmpleadoPass(null)} disabled={guardandoPass}>Cancelar</Button>
+            <Button size="sm" onClick={guardarPassword} disabled={guardandoPass}>{guardandoPass ? "Guardando…" : "Guardar contraseña"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

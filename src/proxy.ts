@@ -34,7 +34,13 @@ export default auth((req) => {
   // 2026-08-28. El panel /asistencia/admin sigue restringido a admins.
   const enAsistencia = req.nextUrl.pathname.startsWith("/asistencia") || req.nextUrl.pathname.startsWith("/api/asistencia");
   const enAsistenciaAdmin = req.nextUrl.pathname.startsWith("/asistencia/admin") || req.nextUrl.pathname.startsWith("/api/asistencia/admin");
-  const esSoloAsistencia = req.auth?.user?.asistenciaEmpleadoId != null && !esDominioKelatos(req.auth?.user?.email || "");
+  // viaCredentials: el login por email+contraseña nunca cuenta como "del
+  // dominio" aunque el email tenga forma @kelatos.com (p.ej.
+  // ivan.gonzalez@kelatos.com sin cuenta de Gmail real) — es la vía
+  // pensada solo para el kiosco, así que confina igual que una cuenta
+  // ajena al dominio. 2026-08-31.
+  const esSoloAsistencia = req.auth?.user?.asistenciaEmpleadoId != null &&
+    (req.auth?.user?.viaCredentials || !esDominioKelatos(req.auth?.user?.email || ""));
   if (esSoloAsistencia && !enAsistencia) {
     return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));
   }
