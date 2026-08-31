@@ -4,12 +4,21 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Clock } from "@/lib/icons";
+import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { FirmaPad } from "./firma-pad";
 
 interface MiInfo {
   nombre: string;
+  horario_nombre: string;
   hora_entrada: string;
   hora_salida: string;
+}
+
+function fechaHoyLarga(): string {
+  const s = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 interface Fichaje {
@@ -110,11 +119,25 @@ export default function KioskPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">
-            {cargando ? "Cargando…" : info ? `Hola, ${info.nombre}` : "Fichaje"}
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <Avatar size="lg">
+              <AvatarFallback className={info ? colorAvatar(info.nombre) : undefined}>
+                {info ? iniciales(info.nombre) : "…"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <CardTitle className="text-lg">
+                {cargando ? "Cargando…" : info ? `Hola, ${info.nombre}` : "Fichaje"}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{fechaHoyLarga()}</p>
+            </div>
+          </div>
           {info?.hora_entrada && (
-            <p className="text-xs text-muted-foreground">Horario de hoy: {info.hora_entrada} – {info.hora_salida}</p>
+            <span className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+              <Clock className="size-3.5" />
+              {info.hora_entrada} – {info.hora_salida}
+              {info.horario_nombre && ` (${info.horario_nombre})`}
+            </span>
           )}
         </CardHeader>
         <CardContent>
