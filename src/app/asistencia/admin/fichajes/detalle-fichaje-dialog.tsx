@@ -24,6 +24,16 @@ interface FichajeDetalle {
   firmado: boolean;
   ip_registro: string | null;
   observaciones: string | null;
+  creado_en: string | null;
+}
+
+interface AuditoriaEvento {
+  id: number;
+  fecha: string;
+  usuario: string | null;
+  campo: string | null;
+  valor_anterior: string | null;
+  valor_nuevo: string | null;
 }
 
 const TIPOS_FICHAJE = [
@@ -62,6 +72,38 @@ function horasDecimal(desde: string | null, hasta: string | null): string {
   return h.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fechaDia(iso: string): string {
+  const d = new Date(iso);
+  const s = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function tiempoRelativo(iso: string): string {
+  const diffMin = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return "ahora mismo";
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `hace ${diffH} h`;
+  const diffD = Math.round(diffH / 24);
+  if (diffD < 30) return `hace ${diffD} día${diffD !== 1 ? "s" : ""}`;
+  const diffMes = Math.round(diffD / 30);
+  return `hace ${diffMes} mes${diffMes !== 1 ? "es" : ""}`;
+}
+
+const ETIQUETA_CAMPO: Record<string, string> = {
+  "Check In": "Entrada",
+  "Check Out": "Salida",
+  "Tipo de Fichaje": "Tipo de fichaje",
+  Observaciones: "Observaciones",
+};
+
+function formatValorAuditoria(valor: string | null): string {
+  if (!valor) return "Ninguno";
+  const d = new Date(valor);
+  if (!Number.isNaN(d.getTime()) && /^\d{4}-\d{2}-\d{2}T/.test(valor)) return fechaHoraLarga(valor);
+  return valor;
+}
+
 /** Modal de detalle de un fichaje — inspirado en la vista de hr.attendance
     de Odoo que enseñó el usuario (bloque "Datos legales España RDL 8/2019"
     con tipo/IP/firma + resumen de entrada-salida). No reproducimos el
@@ -80,17 +122,23 @@ export function DetalleFichajeDialog({
   onActualizado: () => void;
 }) {
   const [fichaje, setFichaje] = useState<FichajeDetalle | null>(null);
+  const [eventos, setEventos] = useState<AuditoriaEvento[]>([]);
   const [cargando, setCargando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [campos, setCampos] = useState({ check_in: "", check_out: "", tipo_fichaje: "", observaciones: "" });
 
   useEffect(() => {
-    if (!fichajeId) { setFichaje(null); setEditando(false); return; }
+    if (!fichajeId) { setFichaje(null); setEventos([]); setEditando(false); return; }
     setCargando(true);
-    fetch(`/api/asistencia/admin/fichajes/${fichajeId}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setFichaje(d.fichaje); else toast.error(d.error || "No se pudo cargar el fichaje"); })
+    Promise.all([
+      fetch(`/api/asistencia/admin/fichajes/${fichajeId}`).then((r) => r.json()),
+      fetch(`/api/asistencia/admin/auditoria?fichajeId=${fichajeId}`).then((r) => r.json()),
+    ])
+      .then(([dFichaje, dAuditoria]) => {
+        if (dFichaje.ok) setFichaje(dFichaje.fichaje); else toast.error(dFichaje.error || "No se pudo cargar el fichaje");
+        if (dAuditoria.ok) setEventos(dAuditoria.eventos);
+      })
       .finally(() => setCargando(false));
   }, [fichajeId]);
 
@@ -125,6 +173,7 @@ export function DetalleFichajeDialog({
       setFichaje((prev) => (prev ? { ...prev, ...data.fichaje } : data.fichaje));
       setEditando(false);
       toast.success("Fichaje actualizado");
+      fetch(`/api/asistencia/admin/auditoria?fichajeId=${fichaje.id}`).then((r) => r.json()).then((d) => { if (d.ok) setEventos(d.eventos); });
       onActualizado();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
@@ -135,7 +184,7 @@ export function DetalleFichajeDialog({
 
   return (
     <Dialog open={fichajeId != null} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Fichaje {fichaje ? `#${fichaje.id}` : ""}</DialogTitle>
         </DialogHeader>
@@ -148,6 +197,7 @@ export function DetalleFichajeDialog({
         )}
 
         {!cargando && fichaje && (
+          <div className="grid gap-4 md:grid-cols-[1fr_260px]">
           <div className="space-y-4">
             {/* Resumen */}
             <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
@@ -231,6 +281,13 @@ export function DetalleFichajeDialog({
               <p className="text-xs text-muted-foreground">Este fichaje está firmado y no puede modificarse.</p>
             )}
           </div>
+
+          {/* Historial */}
+          <div className="space-y-3 border-t pt-3 md:border-t-0 md:border-l md:pt-0 md:pl-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Historial</p>
+            <HistorialFichaje fichaje={fichaje} eventos={eventos} />
+          </div>
+          </div>
         )}
 
         <DialogFooter>
@@ -249,5 +306,60 @@ export function DetalleFichajeDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Historial tipo "chatter" de Odoo — quién y cuándo modificó este
+    fichaje. Usa asistencia.auditoria (ya registrada por
+    actualizarFichajeAdmin) más un evento sintético "Fichaje creado" con
+    creado_en, ya que la creación en sí no se audita todavía. Sin
+    attribution de usuario para ese primer evento cuando el fichaje viene
+    del kiosco (no hay "admin" que lo haya creado, lo ficha el propio
+    empleado). */
+function HistorialFichaje({ fichaje, eventos }: { fichaje: FichajeDetalle; eventos: AuditoriaEvento[] }) {
+  const grupos = new Map<string, { creado?: boolean; fecha: string; usuario: string | null; campo: string | null; valor_anterior: string | null; valor_nuevo: string | null }[]>();
+
+  function agregar(fecha: string, entrada: { usuario: string | null; campo: string | null; valor_anterior: string | null; valor_nuevo: string | null; creado?: boolean }) {
+    const dia = fechaDia(fecha);
+    if (!grupos.has(dia)) grupos.set(dia, []);
+    grupos.get(dia)!.push({ ...entrada, fecha });
+  }
+
+  for (const ev of eventos) agregar(ev.fecha, { usuario: ev.usuario, campo: ev.campo, valor_anterior: ev.valor_anterior, valor_nuevo: ev.valor_nuevo });
+  if (fichaje.creado_en) agregar(fichaje.creado_en, { usuario: null, campo: null, valor_anterior: null, valor_nuevo: null, creado: true });
+
+  const dias = Array.from(grupos.entries()).sort((a, b) => new Date(b[1][0].fecha).getTime() - new Date(a[1][0].fecha).getTime());
+  for (const [, entradas] of dias) entradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
+  if (dias.length === 0) return <p className="text-xs text-muted-foreground">Sin actividad registrada.</p>;
+
+  return (
+    <div className="max-h-96 space-y-4 overflow-y-auto pr-1">
+      {dias.map(([dia, entradas]) => (
+        <div key={dia} className="space-y-2">
+          <p className="text-[11px] font-medium text-muted-foreground">{dia}</p>
+          {entradas.map((e, i) => (
+            <div key={i} className="flex gap-2 text-xs">
+              <Avatar size="sm" className="mt-0.5 size-6 shrink-0">
+                <AvatarFallback className={colorAvatar(e.usuario || fichaje.empleado_nombre)}>{iniciales(e.usuario || fichaje.empleado_nombre)}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p>
+                  <span className="font-medium">{e.usuario || fichaje.empleado_nombre}</span>
+                  <span className="text-muted-foreground"> · {tiempoRelativo(e.fecha)}</span>
+                </p>
+                {e.creado ? (
+                  <p className="text-muted-foreground">Fichaje creado</p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    {ETIQUETA_CAMPO[e.campo || ""] || e.campo}: {formatValorAuditoria(e.valor_anterior)} → {formatValorAuditoria(e.valor_nuevo)}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }

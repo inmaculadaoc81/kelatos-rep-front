@@ -8,6 +8,7 @@ const TITULOS: Record<string, string> = {
   "/asistencia/kiosk/mes": "Mi mes",
   "/asistencia/kiosk/solicitudes": "Solicitudes",
   "/asistencia/admin/fichajes": "Fichajes",
+  "/asistencia/admin/horarios": "Horarios",
   "/asistencia/admin/vacaciones": "Vacaciones",
   "/asistencia/admin/correcciones": "Correcciones",
   "/asistencia/admin/marcaciones-olvidadas": "Marcaciones olvidadas",

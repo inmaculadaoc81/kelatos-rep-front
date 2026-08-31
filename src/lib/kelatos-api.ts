@@ -38,7 +38,7 @@ export async function kelatosApiGet<T>(path: string, params?: Record<string, str
 export async function kelatosApiPost<T>(
   path: string,
   data: unknown,
-  method: "POST" | "PATCH" | "DELETE" = "POST"
+  method: "POST" | "PATCH" | "PUT" | "DELETE" = "POST"
 ): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,

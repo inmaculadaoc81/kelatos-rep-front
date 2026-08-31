@@ -26,6 +26,7 @@ import {
   Health,
   SecuritySafe,
   DocumentDownload,
+  Setting2,
 } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
@@ -38,6 +39,7 @@ const ITEMS_KIOSCO = [
 
 const ITEMS_ADMIN = [
   { href: "/asistencia/admin/fichajes", label: "Fichajes", icon: Clock },
+  { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
   { href: "/asistencia/admin/vacaciones", label: "Vacaciones", icon: Airplane },
   { href: "/asistencia/admin/correcciones", label: "Correcciones", icon: Edit2 },
   { href: "/asistencia/admin/marcaciones-olvidadas", label: "Marcaciones olvidadas", icon: CalendarRemove },
