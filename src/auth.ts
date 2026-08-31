@@ -35,6 +35,14 @@ async function buscarEmpleadoAsistencia(email: string): Promise<number | null> {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Desplegado en Hostinger, no Vercel — sin esto, Auth.js v5 no confía
+  // en el host que le manda el proxy y puede generar mal la URL absoluta
+  // de redirección en flujos que no pasan por /api/auth/callback (el
+  // signOut() de un Server Action, sobre todo), lo que en el navegador
+  // se ve como "This page couldn't load" al pulsar "Salir" — el login
+  // normal no lo sufría porque ese flujo sí resuelve el host de otra
+  // forma. 2026-08-31.
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
