@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,12 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { TipoFichajePill } from "../../pills";
+import { DatePicker } from "../date-picker";
+import { TimePicker } from "../time-picker";
 import { ArrowDown2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 interface Fichaje { id: number; check_in: string; check_out: string; tipo_fichaje: string; }
 
 const CAMPO_LABEL: Record<string, string> = { check_in: "Hora de entrada", check_out: "Hora de salida" };
+const TIPO_FICHAJE_LABEL: Record<string, string> = { entrada: "Entrada", salida_comida: "Salida comida", vuelta_comida: "Vuelta comida", salida: "Salida" };
+const TIPO_PERMISO_LABEL: Record<string, string> = { medico: "Médico", personal: "Asunto personal", familiar: "Familiar", otro: "Otro" };
 
 function etiquetaFichaje(f: Fichaje): string {
   const fecha = new Date(f.check_in).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -119,8 +122,8 @@ export default function SolicitudesPage() {
           <Card>
             <CardContent className="space-y-3 pt-4">
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1"><Label>Desde</Label><Input type="date" value={vacFechaInicio} onChange={(e) => setVacFechaInicio(e.target.value)} /></div>
-                <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={vacFechaFin} onChange={(e) => setVacFechaFin(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Desde</Label><DatePicker value={vacFechaInicio} onChange={setVacFechaInicio} /></div>
+                <div className="space-y-1"><Label>Hasta</Label><DatePicker value={vacFechaFin} onChange={setVacFechaFin} /></div>
               </div>
               <div className="space-y-1"><Label>Motivo</Label><Textarea rows={2} value={vacMotivo} onChange={(e) => setVacMotivo(e.target.value)} /></div>
               <Button
@@ -204,8 +207,8 @@ export default function SolicitudesPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1"><Label>Fecha correcta</Label><Input type="date" value={corFecha} onChange={(e) => setCorFecha(e.target.value)} /></div>
-                <div className="space-y-1"><Label>Hora correcta</Label><Input type="time" value={corHora} onChange={(e) => setCorHora(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Fecha correcta</Label><DatePicker value={corFecha} onChange={setCorFecha} /></div>
+                <div className="space-y-1"><Label>Hora correcta</Label><TimePicker value={corHora} onChange={setCorHora} /></div>
               </div>
               <div className="space-y-1"><Label>Motivo</Label><Textarea rows={2} value={corMotivo} onChange={(e) => setCorMotivo(e.target.value)} /></div>
               <Button
@@ -237,13 +240,13 @@ export default function SolicitudesPage() {
           <Card>
             <CardContent className="space-y-3 pt-4">
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1"><Label>Fecha</Label><Input type="date" value={molFecha} onChange={(e) => setMolFecha(e.target.value)} /></div>
-                <div className="space-y-1"><Label>Hora</Label><Input type="time" value={molHora} onChange={(e) => setMolHora(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Fecha</Label><DatePicker value={molFecha} onChange={setMolFecha} /></div>
+                <div className="space-y-1"><Label>Hora</Label><TimePicker value={molHora} onChange={setMolHora} /></div>
               </div>
               <div className="space-y-1">
                 <Label>Tipo</Label>
                 <Select value={molTipo} onValueChange={(v) => setMolTipo(v || "entrada")}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue>{(v: string) => TIPO_FICHAJE_LABEL[v] || v}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="entrada">Entrada</SelectItem>
                     <SelectItem value="salida_comida">Salida comida</SelectItem>
@@ -279,15 +282,15 @@ export default function SolicitudesPage() {
         <TabsContent value="ausencia">
           <Card>
             <CardContent className="space-y-3 pt-4">
-              <div className="space-y-1"><Label>Fecha</Label><Input type="date" value={ausFecha} onChange={(e) => setAusFecha(e.target.value)} /></div>
+              <div className="space-y-1"><Label>Fecha</Label><DatePicker value={ausFecha} onChange={setAusFecha} /></div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1"><Label>Desde</Label><Input type="time" value={ausDesde} onChange={(e) => setAusDesde(e.target.value)} /></div>
-                <div className="space-y-1"><Label>Hasta</Label><Input type="time" value={ausHasta} onChange={(e) => setAusHasta(e.target.value)} /></div>
+                <div className="space-y-1"><Label>Desde</Label><TimePicker value={ausDesde} onChange={setAusDesde} /></div>
+                <div className="space-y-1"><Label>Hasta</Label><TimePicker value={ausHasta} onChange={setAusHasta} /></div>
               </div>
               <div className="space-y-1">
                 <Label>Tipo</Label>
                 <Select value={ausTipo} onValueChange={(v) => setAusTipo(v || "medico")}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue>{(v: string) => TIPO_PERMISO_LABEL[v] || v}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="medico">Médico</SelectItem>
                     <SelectItem value="personal">Asunto personal</SelectItem>
