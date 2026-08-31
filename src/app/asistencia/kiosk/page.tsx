@@ -29,6 +29,35 @@ interface Fichaje {
   firmado: boolean;
 }
 
+interface EstadoAusencia {
+  tiene_regreso_pendiente: boolean;
+  fichaje_id: number | null;
+  hora_regreso: string | null;
+  puede_confirmar: boolean;
+}
+
+const POLL_AUSENCIA_MS = 20000;
+
+// El registro regreso_ausencia NO se cierra al confirmar (queda abierto
+// "como nueva entrada", regla explícita) — así que el backend seguiría
+// diciendo "pendiente" para siempre tras confirmar. Se recuerda en el
+// propio navegador, por id de fichaje, para no volver a bloquear la
+// pantalla por el mismo regreso ya confirmado (sobrevive a un refresh).
+function regresoYaConfirmado(fichajeId: number): boolean {
+  try {
+    return localStorage.getItem(`asistencia_regreso_confirmado_${fichajeId}`) === "1";
+  } catch {
+    return false;
+  }
+}
+function marcarRegresoConfirmado(fichajeId: number) {
+  try {
+    localStorage.setItem(`asistencia_regreso_confirmado_${fichajeId}`, "1");
+  } catch {
+    // localStorage puede fallar en modo privado — sin bloqueo persistente no pasa nada grave
+  }
+}
+
 const ETIQUETA_TIPO: Record<string, string> = {
   entrada: "Entrada",
   salida_comida: "Salida comida",
@@ -53,6 +82,22 @@ export default function KioskPage() {
   const [cargando, setCargando] = useState(true);
   const [fichando, setFichando] = useState(false);
   const [mostrandoFirma, setMostrandoFirma] = useState(false);
+  const [estadoAusencia, setEstadoAusencia] = useState<EstadoAusencia | null>(null);
+
+  async function cargarEstadoAusencia() {
+    try {
+      const r = await fetch("/api/asistencia/kiosk/estado-ausencia-hoy").then((r) => r.json());
+      if (r.ok) {
+        if (r.tiene_regreso_pendiente && r.fichaje_id && regresoYaConfirmado(r.fichaje_id)) {
+          setEstadoAusencia({ ...r, tiene_regreso_pendiente: false });
+        } else {
+          setEstadoAusencia(r);
+        }
+      }
+    } catch {
+      // best-effort — si falla el poll, se reintenta en 20s
+    }
+  }
 
   async function cargar() {
     setCargando(true);
@@ -72,9 +117,36 @@ export default function KioskPage() {
 
   useEffect(() => {
     cargar();
+    cargarEstadoAusencia();
+    // Regla del sistema: mientras haya una ausencia con regreso pendiente,
+    // los botones normales se bloquean — se comprueba cada 20s para que
+    // la hora de vuelta se desbloquee sola sin que el empleado tenga que
+    // recargar la página.
+    const intervalo = setInterval(cargarEstadoAusencia, POLL_AUSENCIA_MS);
+    return () => clearInterval(intervalo);
   }, []);
 
   const abierto = fichajes.find((f) => !f.check_out);
+
+  async function confirmarRegreso() {
+    setFichando(true);
+    try {
+      const res = await fetch("/api/asistencia/kiosk/fichar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "regreso_ausencia" }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (estadoAusencia?.fichaje_id) marcarRegresoConfirmado(estadoAusencia.fichaje_id);
+      toast.success("Regreso confirmado");
+      await Promise.all([cargar(), cargarEstadoAusencia()]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setFichando(false);
+    }
+  }
 
   async function fichar(tipo: string) {
     setFichando(true);
@@ -141,7 +213,25 @@ export default function KioskPage() {
           )}
         </CardHeader>
         <CardContent>
-          {mostrandoFirma ? (
+          {estadoAusencia?.tiene_regreso_pendiente ? (
+            <div className="space-y-3 text-center">
+              <div className="rounded-lg bg-amber-50 p-4">
+                <p className="text-sm font-medium text-amber-900">Estás en ausencia</p>
+                <p className="text-xs text-amber-700">
+                  {estadoAusencia.puede_confirmar
+                    ? "Ya puedes fichar tu regreso"
+                    : `Podrás fichar tu regreso a las ${estadoAusencia.hora_regreso}`}
+                </p>
+              </div>
+              <Button
+                className="h-20 w-full flex-col gap-1 bg-sky-600 text-white hover:bg-sky-700"
+                disabled={fichando || !estadoAusencia.puede_confirmar}
+                onClick={confirmarRegreso}
+              >
+                <span className="text-lg">🔓</span> Regreso ausencia
+              </Button>
+            </div>
+          ) : mostrandoFirma ? (
             <FirmaPad onCancelar={() => setMostrandoFirma(false)} onConfirmar={confirmarSalida} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
