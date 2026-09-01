@@ -226,9 +226,11 @@ const FORMA_PAGO_LABEL: Record<string, string> = {
   redsys: "Redsys",
 };
 
-export function formaPagoLabel(f: Pick<FacturaCliente, "formaPago">): string {
+export function formaPagoLabel(f: Pick<FacturaCliente, "formaPago" | "banco">): string {
   const raw = (f.formaPago || "").toLowerCase();
-  return FORMA_PAGO_LABEL[raw] || f.formaPago || "—";
+  const label = FORMA_PAGO_LABEL[raw] || f.formaPago || "—";
+  const banco = (f.banco || "").trim();
+  return raw === "tarjeta" && banco ? `${label}: ${banco}` : label;
 }
 
 // ── Reparaciones (pasadas 1-6 del original) ─────────────────────────────
@@ -316,6 +318,8 @@ interface FilaReparacionFacturadaSql {
   fecha_ticket: string | null;
   total_ticket: string | number | null;
   estado_ticket: string | null;
+  forma_pago_ticket: string | null;
+  banco_ticket: string | null;
 
   numero_ticket_rectificativa: string | null;
   url_ticket_rectificativa: string | null;
@@ -596,8 +600,8 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       url: urlValida(texto(row.url_ticket)),
       total: num(row.total_ticket),
       fecha: row.fecha_ticket,
-      formaPago: "",
-      banco: "",
+      formaPago: texto(row.forma_pago_ticket),
+      banco: texto(row.banco_ticket),
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
     });
@@ -1094,6 +1098,8 @@ interface FilaTicketManualSql {
   total_ticket: string | number | null;
   url_ticket: string | null;
   estado_ticket: string | null;
+  forma_pago_ticket: string | null;
+  banco_ticket: string | null;
   numero_ticket_rectificativa: string | null;
   url_ticket_rectificativa: string | null;
   total_ticket_rectificativa: string | number | null;
@@ -1138,8 +1144,8 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
       url: urlValida(texto(row.url_ticket)),
       total: totalT,
       fecha: row.fecha_ticket || row.fecha_creacion,
-      formaPago: "",
-      banco: "",
+      formaPago: texto(row.forma_pago_ticket),
+      banco: texto(row.banco_ticket),
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
     });

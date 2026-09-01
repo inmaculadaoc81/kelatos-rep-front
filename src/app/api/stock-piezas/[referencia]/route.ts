@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearStockPieza, DatosStockPiezaForm } from "@/lib/stock-piezas";
+import { esSuperadmin } from "@/lib/superadmin";
 
 /** Reproduce actualizarStockPieza() (backend/StockPiezas.js) — la referencia
     no se puede cambiar (readOnly en el modal de edición del original). */
@@ -46,6 +47,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ refer
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  if (!esSuperadmin(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { referencia } = await params;
   try {

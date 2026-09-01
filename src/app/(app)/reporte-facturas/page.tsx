@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, CloseCircle, ExportSquare, DocumentDownload, ArrowLeft2, ArrowRight2, Clock } from "@/lib/icons";
+import { Refresh2, SearchNormal1, CloseCircle, ExportSquare, DocumentDownload, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, Clock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,7 +54,7 @@ function valorColumnaRf(f: FacturaConDesglose, col: ColumnaRf): string {
   }
 }
 
-const RF_FILAS = 20;
+const RF_FILAS_OPCIONES = ["15", "20", "50", "100", "0"];
 
 const ESTADOS_RF = ["Pendiente", "Cobrada", "Devolución"] as const;
 
@@ -84,6 +84,7 @@ export default function ReporteFacturasPage() {
   const [filtroTotal, setFiltroTotal] = useState<RangoFiltro | null>(null);
 
   const [pagina, setPagina] = useState(1);
+  const [filasPorPagina, setFilasPorPagina] = useState(20);
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
   async function cargar(desde: string, hasta: string) {
@@ -188,10 +189,10 @@ export default function ReporteFacturasPage() {
     setPagina(1);
   }
 
-  const totalPaginas = Math.max(1, Math.ceil(visibles.length / RF_FILAS));
+  const totalPaginas = filasPorPagina > 0 ? Math.max(1, Math.ceil(visibles.length / filasPorPagina)) : 1;
   const paginaSegura = Math.min(pagina, totalPaginas);
-  const inicio = (paginaSegura - 1) * RF_FILAS;
-  const fin = Math.min(inicio + RF_FILAS, visibles.length);
+  const inicio = filasPorPagina > 0 ? (paginaSegura - 1) * filasPorPagina : 0;
+  const fin = filasPorPagina > 0 ? Math.min(inicio + filasPorPagina, visibles.length) : visibles.length;
   const paginaActual = visibles.slice(inicio, fin);
 
   const totales = useMemo(
@@ -566,21 +567,54 @@ export default function ReporteFacturasPage() {
           </Table>
         </div>
 
-        {!cargando && visibles.length > RF_FILAS && (
-          <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
+        {!cargando && visibles.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
             <span>
               Filas {inicio + 1}–{fin} de {visibles.length}
             </span>
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon-sm" disabled={paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
-                <ArrowLeft2 className="size-3.5" />
-              </Button>
-              <span className="px-2">
-                Pág. {paginaSegura} / {totalPaginas}
-              </span>
-              <Button variant="outline" size="icon-sm" disabled={paginaSegura >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
-                <ArrowRight2 className="size-3.5" />
-              </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span>Filas por página:</span>
+                <Select
+                  value={String(filasPorPagina)}
+                  onValueChange={(v) => {
+                    if (!v) return;
+                    setFilasPorPagina(Number(v));
+                    setPagina(1);
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-20 text-xs">
+                    <SelectValue>{(v: string) => (v === "0" ? "Todas" : v)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RF_FILAS_OPCIONES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v === "0" ? "Todas" : v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {filasPorPagina > 0 && totalPaginas > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="icon-sm" disabled={paginaSegura <= 1} onClick={() => setPagina(1)}>
+                    <ArrowLeft3 className="size-3.5" />
+                  </Button>
+                  <Button variant="outline" size="icon-sm" disabled={paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
+                    <ArrowLeft2 className="size-3.5" />
+                  </Button>
+                  <span className="px-2">
+                    Pág. {paginaSegura} / {totalPaginas}
+                  </span>
+                  <Button variant="outline" size="icon-sm" disabled={paginaSegura >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
+                    <ArrowRight2 className="size-3.5" />
+                  </Button>
+                  <Button variant="outline" size="icon-sm" disabled={paginaSegura >= totalPaginas} onClick={() => setPagina(totalPaginas)}>
+                    <ArrowRight3 className="size-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
