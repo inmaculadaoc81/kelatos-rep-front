@@ -34,4 +34,11 @@ export const MOTIVO_LABELS: Record<string, string> = {
   EMPATE_PRECIO_MAXIMO: "Varios presupuestos con el mismo precio máximo",
   ACEPTACION_EXPLICITA: "Aceptación explícita del cliente",
   RECHAZO_EXPLICITO: "Rechazo explícito del cliente",
+  // Motivos propios del matching por resguardo/referencia legacy (backend,
+  // server.js: _resolverActualizarEstadoPorResguardo/ReferenciaLegacy).
+  DATOS_INCOMPLETOS: "Faltan datos (resguardo, email o importe) para localizar el presupuesto",
+  SIN_COINCIDENCIA: "Ningún presupuesto coincide con resguardo, email e importe (con IVA)",
+  MULTIPLES_COINCIDENCIAS: "Varios presupuestos coinciden con resguardo, email e importe",
+  ESTADO_INCOMPATIBLE: "El presupuesto ya no está en un estado que admita esta respuesta",
+  NUMERO_PRESUPUESTO_NO_ENCONTRADO: "La referencia citada por el cliente no identifica ningún presupuesto de forma inequívoca",
 };
