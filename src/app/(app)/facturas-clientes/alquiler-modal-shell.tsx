@@ -142,7 +142,20 @@ export function AlquilerModalShell({
                   clienteOriginal={clienteOriginal}
                   formaPagoOriginal={detalle.formaPago}
                   clienteEmailDefault={detalle.cliente.email}
-                  yaGenerada={detalle.rectificativa}
+                  // detalle.rectificativa viene de numero_factura_rectificativa,
+                  // un ÚNICO campo en kelatos_app.alquileres reutilizado para
+                  // todo el ciclo de vida del alquiler — tras un ajuste de
+                  // duración (detalle.inicial ya poblado: la factura activa
+                  // sustituyó a otra anterior), ese campo sigue apuntando a la
+                  // rectificativa de la factura VIEJA, no de la activa actual.
+                  // Mostrarlo bloqueaba "Devolución" en la factura nueva con la
+                  // rectificativa de otra factura ya sustituida (bug real,
+                  // alquiler ALQ-0043: factura 1-004881 bloqueada por la
+                  // rectificativa 3-000238 de la factura 1-004874 que
+                  // sustituyó). Mismo criterio "esPostAjuste" que ya usa
+                  // /api/alquileres/[id]/facturas/route.ts (rama
+                  // alquiler_rectificativa) para no bloquear en el backend.
+                  yaGenerada={detalle.inicial ? null : detalle.rectificativa}
                   corregida={detalle.corregida}
                   modoDevolucion
                   duracionAlquiler={duracionAlquiler}
