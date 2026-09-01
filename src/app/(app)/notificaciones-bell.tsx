@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Filter, Category2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
@@ -72,6 +73,7 @@ export function NotificacionesBell() {
   const [abierto, setAbierto] = useState(false);
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>("todas");
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
+  const [seleccionado, setSeleccionado] = useState<WebhookEvento | null>(null);
 
   const eventosFiltrados = useMemo(
     () => eventos.filter((e) => dentroDeRango(e.fecha, filtroFecha) && (filtroTipo === "todos" || e.estado === filtroTipo)),
@@ -206,17 +208,21 @@ export function NotificacionesBell() {
               <p className="py-10 text-center text-sm text-muted-foreground">Ninguna notificación coincide con estos filtros.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {eventosFiltrados.map((evento) => <TarjetaEvento key={evento.id} evento={evento} />)}
+                {eventosFiltrados.map((evento) => (
+                  <TarjetaEvento key={evento.id} evento={evento} onClick={() => setSeleccionado(evento)} />
+                ))}
               </div>
             )}
           </div>
         </SheetContent>
       </Sheet>
+
+      <DetalleNotificacionDialog evento={seleccionado} onClose={() => setSeleccionado(null)} />
     </>
   );
 }
 
-function TarjetaEvento({ evento }: { evento: WebhookEvento }) {
+function TarjetaEvento({ evento, onClick }: { evento: WebhookEvento; onClick: () => void }) {
   const esAviso = evento.estado === "Aviso";
   const esAceptado = evento.estado === "Aceptado";
 
@@ -231,48 +237,50 @@ function TarjetaEvento({ evento }: { evento: WebhookEvento }) {
     : "—";
 
   return (
-    <div className={`rounded-xl border bg-card p-3.5 ${!evento.leida ? "border-primary/30" : ""}`}>
-      <div className="flex items-start gap-2.5">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full min-w-0 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 ${!evento.leida ? "border-primary/30" : ""}`}
+    >
+      <div className="flex min-w-0 items-start gap-2.5">
         <Icono className={`mt-0.5 size-4 shrink-0 ${colorIcono}`} />
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-semibold">{esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "—"}</span>
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${colorBadge}`}>{evento.estado}</span>
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-sm font-semibold">{esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "—"}</span>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${colorBadge}`}>{evento.estado}</span>
           </div>
 
           {motivoLabel && (
-            <div className={`flex items-start gap-1 rounded-md px-2 py-1 text-xs ${esAviso ? "bg-amber-50 text-amber-800" : "text-muted-foreground"}`}>
+            <div className={`flex min-w-0 items-start gap-1 rounded-md px-2 py-1 text-xs ${esAviso ? "bg-amber-50 text-amber-800" : "text-muted-foreground"}`}>
               <InfoCircle className="mt-0.5 size-3.5 shrink-0" />
-              <span>{motivoLabel}</span>
+              <span className="min-w-0 line-clamp-2">{motivoLabel}</span>
             </div>
           )}
 
           {esAviso && evento.numero_presupuesto && evento.numero_presupuesto !== "(sin ref)" && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Hashtag className="size-3.5 shrink-0" /> Candidatos: {evento.numero_presupuesto}
+            <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+              <Hashtag className="size-3.5 shrink-0" /> <span className="min-w-0 truncate">Candidatos: {evento.numero_presupuesto}</span>
             </p>
           )}
 
           {evento.resguardo && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
               <Hashtag className="size-3.5 shrink-0" />
-              {evento.resguardo}
-              {evento.importe ? ` — ${evento.importe} €` : ""}
+              <span className="min-w-0 truncate">
+                {evento.resguardo}
+                {evento.importe ? ` — ${evento.importe} €` : ""}
+              </span>
             </p>
           )}
 
-          {(evento.nombre_cliente || evento.email_cliente) && (
-            <p className="flex items-center gap-3 text-xs text-muted-foreground">
-              {evento.nombre_cliente && (
-                <span className="flex items-center gap-1">
-                  <Profile className="size-3.5 shrink-0" /> {evento.nombre_cliente}
-                </span>
-              )}
-              {evento.email_cliente && (
-                <span className="flex items-center gap-1">
-                  <Sms className="size-3.5 shrink-0" /> {evento.email_cliente}
-                </span>
-              )}
+          {evento.nombre_cliente && (
+            <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+              <Profile className="size-3.5 shrink-0" /> <span className="min-w-0 truncate">{evento.nombre_cliente}</span>
+            </p>
+          )}
+          {evento.email_cliente && (
+            <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+              <Sms className="size-3.5 shrink-0" /> <span className="min-w-0 truncate">{evento.email_cliente}</span>
             </p>
           )}
 
@@ -283,6 +291,88 @@ function TarjetaEvento({ evento }: { evento: WebhookEvento }) {
           </p>
         </div>
       </div>
-    </div>
+    </button>
+  );
+}
+
+function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento | null; onClose: () => void }) {
+  const esAviso = evento?.estado === "Aviso";
+  const esAceptado = evento?.estado === "Aceptado";
+  const Icono = esAviso ? Warning2 : esAceptado ? TickCircle : Danger;
+  const colorIcono = esAviso ? "text-amber-600" : esAceptado ? "text-emerald-600" : "text-destructive";
+  const colorBadge = esAviso ? "bg-amber-100 text-amber-800" : esAceptado ? "bg-emerald-100 text-emerald-800" : "bg-destructive/10 text-destructive";
+  const motivoLabel = evento?.motivo ? MOTIVO_LABELS[evento.motivo] || evento.motivo : null;
+  const fechaStr = evento?.fecha
+    ? new Date(evento.fecha).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "—";
+
+  return (
+    <Dialog open={!!evento} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        {evento && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Icono className={`size-5 shrink-0 ${colorIcono}`} />
+                {esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "Notificación"}
+                <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${colorBadge}`}>{evento.estado}</span>
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3 text-sm">
+              {motivoLabel && (
+                <div className={`flex items-start gap-1.5 rounded-md px-2.5 py-1.5 text-sm ${esAviso ? "bg-amber-50 text-amber-800" : "bg-muted text-muted-foreground"}`}>
+                  <InfoCircle className="mt-0.5 size-4 shrink-0" />
+                  <span>{motivoLabel}</span>
+                </div>
+              )}
+
+              {esAviso && evento.numero_presupuesto && evento.numero_presupuesto !== "(sin ref)" && (
+                <div className="flex items-start gap-1.5 text-muted-foreground">
+                  <Hashtag className="mt-0.5 size-4 shrink-0" />
+                  <span><strong className="text-foreground">Candidatos:</strong> {evento.numero_presupuesto}</span>
+                </div>
+              )}
+
+              {evento.resguardo && (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Hashtag className="size-4 shrink-0" />
+                  <span>
+                    <strong className="text-foreground">Resguardo:</strong> {evento.resguardo}
+                    {evento.importe ? ` — ${evento.importe} €` : ""}
+                  </span>
+                </div>
+              )}
+
+              {evento.nombre_cliente && (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Profile className="size-4 shrink-0" /> {evento.nombre_cliente}
+                </div>
+              )}
+              {evento.email_cliente && (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Sms className="size-4 shrink-0" />
+                  <a href={`mailto:${evento.email_cliente}`} className="text-primary hover:underline">{evento.email_cliente}</a>
+                </div>
+              )}
+
+              {evento.respuesta_cliente && (
+                <div className="rounded-md border bg-muted/40 p-2.5 text-sm italic text-muted-foreground">
+                  &quot;{evento.respuesta_cliente}&quot;
+                </div>
+              )}
+
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="size-3.5 shrink-0" /> {fechaStr}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
