@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Refresh2,
   SearchNormal1,
@@ -18,6 +19,7 @@ import {
   DocumentDownload,
   Copy,
   CloseCircle,
+  Folder2,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +61,12 @@ function euros(n: number): string {
 }
 
 const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+
+// Misma carpeta que usa el backend para guardar TODOS los PDF generados
+// aquí (facturas Serie 1/3 y tickets Serie 4) — FACTURA_CARPETA_DRIVE_ID
+// en server.js (KELATOS.CARPETA_FACTURAS en Config.js). Los presupuestos
+// usan una carpeta distinta, no esta.
+const CARPETA_FACTURAS_DRIVE_URL = "https://drive.google.com/drive/folders/1cSOwHQoE3wWa7rWfftUdoUugtqKgjkZ_";
 
 type ColumnaFiltrable = "resguardo" | "numero" | "serie" | "cliente" | "equipo" | "suReferencia" | "fecha" | "total" | "tipo" | "formaPago";
 const COLUMNAS_FILTRABLES: ColumnaFiltrable[] = ["resguardo", "numero", "serie", "cliente", "equipo", "suReferencia", "fecha", "total", "tipo", "formaPago"];
@@ -532,9 +540,14 @@ export default function FacturasClientesPage() {
           <Receipt className="size-5 text-primary" />
           <h1 className="text-lg font-semibold">Facturas de Clientes</h1>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={actualizar}>
-          <Refresh2 className={cn("size-4", cargando && "animate-spin")} /> Actualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={CARPETA_FACTURAS_DRIVE_URL} target="_blank" rel="noreferrer" />}>
+            <Folder2 className="size-4" /> Carpeta de Drive
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={actualizar}>
+            <Refresh2 className={cn("size-4", cargando && "animate-spin")} /> Actualizar
+          </Button>
+        </div>
       </div>
 
       {error && (

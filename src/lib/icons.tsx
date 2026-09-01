@@ -69,6 +69,7 @@ export const MinusCirlce = withDefaults(Iconsax.MinusCirlce);
 export const ExportSquare = withDefaults(Iconsax.ExportSquare);
 export const Eye = withDefaults(Iconsax.Eye);
 export const Filter = withDefaults(Iconsax.Filter);
+export const Folder2 = withDefaults(Iconsax.Folder2);
 export const Gallery = withDefaults(Iconsax.Gallery);
 export const Gameboy = withDefaults(Iconsax.Gameboy);
 export const Hashtag = withDefaults(Iconsax.Hashtag);
