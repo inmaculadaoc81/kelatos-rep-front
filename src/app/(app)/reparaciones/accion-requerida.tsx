@@ -174,6 +174,23 @@ function describir(detalle: ReparacionDetalle): Accion | null {
             : undefined,
       };
     }
+    // El texto/botón de "pedido de pieza" solo aplica si el presupuesto
+    // aceptado realmente lleva una pieza por pedido — antes se mostraba
+    // siempre, aunque tipoPieza fuera "no" (bug real, resguardo 18805,
+    // 2026-09-01). Sin pieza, el paso es manual: un humano revisa y pulsa
+    // "Iniciar reparación" — el estado NO salta solo (pedido explícito del
+    // usuario, ver server.js: la rama webhook nunca salta a "En Reparación").
+    const pptoAceptado = detalle.presupuestos.find((p) => esPptoAceptado(p.estado));
+    const requierePieza = pptoAceptado ? pptoAceptado.tipoPieza === "pedido" || pptoAceptado.tipoPieza === "mixto" : false;
+
+    if (!requierePieza) {
+      return {
+        tono: "success",
+        icono: Setting2,
+        titulo: "Presupuesto Aceptado — Listo para Iniciar Reparación",
+        texto: "El presupuesto fue aceptado y no requiere pieza. Inicie la reparación cuando el técnico esté disponible.",
+      };
+    }
     return {
       tono: "success",
       icono: Box,
@@ -324,11 +341,25 @@ export function AccionRequerida({
   // No aplica a la rama de cintas (digitalización, sin piezas por pedido).
   if (estado === "Presupuesto Aceptado" && !detalle.datosCintas) {
     const anticipoRegistrado = detalle.equipoEnLocal === "NO" && detalle.anticipoImporte > 0;
-    botones.push(
-      <Button key="pedido-aceptado" size="sm" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
-        <Box1 className="size-3.5" /> Registrar pedido de pieza
-      </Button>
-    );
+    // Sin pieza por pedido (y sin anticipo en curso) no tiene sentido
+    // ofrecer "Registrar pedido de pieza" — el paso siguiente es que un
+    // humano pulse "Iniciar reparación" directamente (bug real, resguardo
+    // 18805, 2026-09-01: se ofrecía pedir una pieza que no existía).
+    const pptoAceptadoBtn = detalle.presupuestos.find((p) => esPptoAceptado(p.estado));
+    const requierePiezaBtn = pptoAceptadoBtn ? pptoAceptadoBtn.tipoPieza === "pedido" || pptoAceptadoBtn.tipoPieza === "mixto" : false;
+    if (requierePiezaBtn || anticipoRegistrado) {
+      botones.push(
+        <Button key="pedido-aceptado" size="sm" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
+          <Box1 className="size-3.5" /> Registrar pedido de pieza
+        </Button>
+      );
+    } else {
+      botones.push(
+        <Button key="iniciar-reparacion-directo" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onIniciarReparacion}>
+          <Setting2 className="size-3.5" /> Iniciar Reparación
+        </Button>
+      );
+    }
     // Reproduce clienteSeYLlevaConFactura() — solo disponible mientras no
     // haya ya un anticipo registrado para esta reparación.
     if (!anticipoRegistrado) {
