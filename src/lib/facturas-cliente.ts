@@ -820,9 +820,17 @@ interface FilaAlquilerSql {
   cliente_factura_inicial: ClienteFacturaJson | string | null;
 }
 
-export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
+export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<string, string> = {}): FacturaCliente[] {
   const { nombre, telefono } = repararNombreTelefono(texto(row.cliente_nombre), texto(row.cliente_telefono));
   const clienteRegistrado = { cliente: nombre, telefono, dniCif: texto(row.cliente_dni) };
+  // fecha_inicio es una única fecha por ALQUILER (cuándo empezó), no una
+  // fecha de emisión por DOCUMENTO — solo coincide con la fecha real de un
+  // documento si se generó el mismo día que empieza el alquiler. La fecha
+  // real de cada documento vive en factura_operaciones.confirmado_en
+  // (fechasFactura, indexado por numero_factura); fecha_inicio queda solo
+  // como último recurso para documentos sin operación registrada (datos
+  // legacy anteriores a factura_operaciones).
+  const fechaDe = (numero: string) => fechasFactura[numero] || row.fecha_inicio;
   const base = {
     resguardo: texto(row.alquiler_id),
     ...aplicarClienteFactura(clienteRegistrado, row.cliente_factura),
@@ -846,6 +854,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
       facturas.push({
         ...base,
         numero,
+        fecha: fechaDe(numero),
         url: urlValida(url),
         total: cobrado > 0 ? Math.round(cobrado * 100) / 100 : Math.round((previsto + fianza + envio) * 100) / 100,
         formaPago: texto(row.metodo_pago),
@@ -864,6 +873,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
       facturas.push({
         ...base,
         numero,
+        fecha: fechaDe(numero),
         url: urlValida(url),
         total: totalRect !== 0 ? totalRect : Math.round(-(previsto + fianza) * 100) / 100,
         formaPago: texto(row.metodo_pago),
@@ -880,6 +890,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
     facturas.push({
       ...base,
       numero: numCorr,
+      fecha: fechaDe(numCorr),
       url: urlValida(texto(row.url_factura_corregida)),
       total: num(row.total_factura_corregida),
       formaPago: texto(row.metodo_pago),
@@ -896,6 +907,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
       ...base,
       ...aplicarClienteFactura(clienteRegistrado, row.cliente_factura_anterior),
       numero: numAnt,
+      fecha: fechaDe(numAnt),
       url: urlValida(texto(row.url_factura_anterior)),
       total: num(row.total_factura_anterior),
       formaPago: texto(row.metodo_pago),
@@ -914,6 +926,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
     facturas.push({
       ...base,
       numero: numRectAnt,
+      fecha: fechaDe(numRectAnt),
       url: urlValida(texto(row.url_factura_rectificativa_anterior)),
       total: num(row.total_factura_rectificativa_anterior),
       formaPago: texto(row.metodo_pago),
@@ -929,6 +942,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
     facturas.push({
       ...base,
       numero: numRec,
+      fecha: fechaDe(numRec),
       url: urlValida(texto(row.url_factura_recogida)),
       total: PRECIO_RECOGIDA_CON_IVA,
       formaPago: texto(row.metodo_pago),
@@ -947,6 +961,7 @@ export function expandirAlquiler(row: FilaAlquilerSql): FacturaCliente[] {
         ...base,
         ...aplicarClienteFactura(clienteRegistrado, row.cliente_factura_inicial),
         numero,
+        fecha: fechaDe(numero),
         url: urlValida(url),
         total: totalInicial > 0 ? totalInicial : Math.round((previsto + fianza + envio) * 100) / 100,
         formaPago: texto(row.metodo_pago),

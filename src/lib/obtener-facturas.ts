@@ -53,10 +53,20 @@ export async function lookupCodigoCliente(): Promise<(dni: string, telefono: str
  * añade ventas encima de esta misma base, igual que el original).
  */
 export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
-  const [reparaciones, historicas, alquileres, manuales, ticketsManuales, lookup] = await Promise.all([
+  const [reparaciones, historicas, alquileres, fechasAlquiler, manuales, ticketsManuales, lookup] = await Promise.all([
     kelatosApiGet<RespuestaReparacionesFacturadas>("/v1/lecturas/reparaciones-facturadas"),
     kelatosApiGet<RespuestaFacturasHistoricas>("/v1/lecturas/reparaciones-facturas-historicas"),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirAlquiler>[0]>>("/v1/alquileres", { limit: 1000 }),
+    // kelatos_app.alquileres solo guarda fecha_inicio (una por alquiler,
+    // no una por documento) — la fecha real de cada factura de alquiler
+    // (principal/rectificativa/corregida/...) vive en
+    // factura_operaciones.confirmado_en, indexada por numero_factura. Sin
+    // esto, expandirAlquiler usaba fecha_inicio para TODO documento del
+    // alquiler, acertando solo por casualidad en el generado el mismo día
+    // que empieza el alquiler (bug real, 2026-09-01: ALQ-0043, factura
+    // 1-004881 y su rectificativa 3-000238, ambas del 1/9, mostradas como
+    // 31/8 en la lista).
+    kelatosApiGet<{ ok: boolean; fechas: Record<string, string> }>("/v1/lecturas/alquileres-fechas-factura").then((r) => r.fechas),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirManuales>[0][number]>>("/v1/facturas_manuales", { limit: 1000 }),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirTicketsManuales>[0][number]>>("/v1/tickets_manuales", { limit: 1000 }),
     lookupCodigoCliente(),
@@ -65,7 +75,7 @@ export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
   const facturas = [
     ...reparaciones.resultados.flatMap(expandirFacturas),
     ...historicas.resultados.map(expandirFacturaHistorica).filter((f): f is FacturaCliente => f !== null),
-    ...alquileres.rows.flatMap(expandirAlquiler),
+    ...alquileres.rows.flatMap((row) => expandirAlquiler(row, fechasAlquiler)),
     ...expandirManuales(manuales.rows),
     ...expandirTicketsManuales(ticketsManuales.rows),
   ];
