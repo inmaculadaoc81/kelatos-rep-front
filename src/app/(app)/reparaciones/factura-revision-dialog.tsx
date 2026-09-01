@@ -12,6 +12,7 @@ import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { FacturaModalShell } from "./factura-modal-shell";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -247,6 +248,7 @@ function VistaGenerarTicket({
   const [metodo, setMetodo] = useState(metodoPagoInicial || "");
   const [banco, setBanco] = useState(bancoInicial || "");
   const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
 
@@ -286,6 +288,7 @@ function VistaGenerarTicket({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
+      guardarSuReferencia(data.numeroTicket, suReferencia);
       let mensaje = `Revisión marcada — Ticket ${data.numeroTicket} generado correctamente`;
 
       const destino = emailTicket.trim();
@@ -364,6 +367,10 @@ function VistaGenerarTicket({
             <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} placeholder="correo@ejemplo.com" disabled={enviando} />
             <p className="text-xs text-muted-foreground">Tomado del resguardo — edítalo si el ticket debe enviarse a otro correo. Si lo dejas vacío, no se enviará ningún correo.</p>
           </div>
+          <div className="space-y-1.5">
+            <Label>Su Referencia</Label>
+            <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={enviando} />
+          </div>
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>
@@ -402,6 +409,7 @@ function VistaGenerar({
   const importe = "20";
   const [metodo, setMetodo] = useState(metodoPagoInicial || "");
   const [banco, setBanco] = useState(bancoInicial || "");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   // Se conserva el mismo requestId entre reintentos — un fallo de red no
   // debe reservar un segundo número fiscal para la misma operación.
@@ -452,6 +460,7 @@ function VistaGenerar({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Revisión marcada — Factura ${data.numeroFactura} generada correctamente`);
+      guardarSuReferencia(data.numeroFactura, suReferencia);
       setRequestId(null);
       onOpenChange(false);
       onGenerada();
@@ -522,6 +531,10 @@ function VistaGenerar({
               </Select>
             </div>
           )}
+          <div className="space-y-1.5">
+            <Label htmlFor="frSuReferencia">Su Referencia</Label>
+            <Input id="frSuReferencia" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
+          </div>
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">
           <Button variant="outline" onClick={() => cerrar(false)} disabled={enviando}>Cancelar</Button>

@@ -60,8 +60,8 @@ function euros(n: number): string {
 
 const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 
-type ColumnaFiltrable = "resguardo" | "numero" | "serie" | "cliente" | "equipo" | "fecha" | "total" | "tipo" | "formaPago";
-const COLUMNAS_FILTRABLES: ColumnaFiltrable[] = ["resguardo", "numero", "serie", "cliente", "equipo", "fecha", "total", "tipo", "formaPago"];
+type ColumnaFiltrable = "resguardo" | "numero" | "serie" | "cliente" | "equipo" | "suReferencia" | "fecha" | "total" | "tipo" | "formaPago";
+const COLUMNAS_FILTRABLES: ColumnaFiltrable[] = ["resguardo", "numero", "serie", "cliente", "equipo", "suReferencia", "fecha", "total", "tipo", "formaPago"];
 
 function valorColumna(f: FacturaCliente, columna: ColumnaFiltrable): string {
   switch (columna) {
@@ -77,6 +77,8 @@ function valorColumna(f: FacturaCliente, columna: ColumnaFiltrable): string {
       return f.cliente || "—";
     case "equipo":
       return f.equipo || "—";
+    case "suReferencia":
+      return f.suReferencia || "—";
     case "fecha":
       return formatearFecha(f.fecha) || "—";
     case "total": {
@@ -712,6 +714,7 @@ export default function FacturasClientesPage() {
                           ["serie", "Serie"],
                           ["cliente", "Cliente"],
                           ["equipo", "Equipo"],
+                          ["suReferencia", "Su Ref."],
                           ["fecha", "Fecha"],
                         ] as [ColumnaFiltrable, string][]
                       ).map(([col, label]) => (
@@ -748,7 +751,7 @@ export default function FacturasClientesPage() {
                     {cargando &&
                       Array.from({ length: 8 }).map((_, i) => (
                         <TableRow key={i}>
-                          {Array.from({ length: 11 }).map((__, j) => (
+                          {Array.from({ length: 12 }).map((__, j) => (
                             <TableCell key={j}>
                               <Skeleton className="h-4 w-full" />
                             </TableCell>
@@ -758,7 +761,7 @@ export default function FacturasClientesPage() {
 
                     {!cargando && paginaActual.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                        <TableCell colSpan={12} className="py-8 text-center text-muted-foreground">
                           Sin resultados
                         </TableCell>
                       </TableRow>
@@ -788,6 +791,7 @@ export default function FacturasClientesPage() {
                           </TableCell>
                           <TableCell className="text-sm">{f.cliente || "—"}</TableCell>
                           <TableCell className="max-w-40 truncate text-sm text-muted-foreground">{f.equipo || "—"}</TableCell>
+                          <TableCell className="max-w-32 truncate text-sm text-muted-foreground" title={f.suReferencia || undefined}>{f.suReferencia || "—"}</TableCell>
                           <TableCell className="text-sm whitespace-nowrap">{formatearFecha(f.fecha)}</TableCell>
                           <TableCell className="whitespace-nowrap">
                             <EstadoBadge f={f} onClick={tipoPermiteMarcarCobrada(f.tipo) ? () => marcarComoCobrada(f) : undefined} />

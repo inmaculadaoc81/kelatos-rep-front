@@ -53,7 +53,7 @@ export async function lookupCodigoCliente(): Promise<(dni: string, telefono: str
  * añade ventas encima de esta misma base, igual que el original).
  */
 export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
-  const [reparaciones, historicas, alquileres, fechasAlquiler, manuales, ticketsManuales, lookup] = await Promise.all([
+  const [reparaciones, historicas, alquileres, fechasAlquiler, manuales, ticketsManuales, lookup, suReferencias] = await Promise.all([
     kelatosApiGet<RespuestaReparacionesFacturadas>("/v1/lecturas/reparaciones-facturadas"),
     kelatosApiGet<RespuestaFacturasHistoricas>("/v1/lecturas/reparaciones-facturas-historicas"),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirAlquiler>[0]>>("/v1/alquileres", { limit: 1000 }),
@@ -70,6 +70,11 @@ export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirManuales>[0][number]>>("/v1/facturas_manuales", { limit: 1000 }),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirTicketsManuales>[0][number]>>("/v1/tickets_manuales", { limit: 1000 }),
     lookupCodigoCliente(),
+    // "Su Referencia" (PO del cliente, opcional, nunca en el PDF) — cada
+    // fila ya tiene su propio numero_factura/numero_ticket único, así que
+    // un único mapa global (por numero) basta para las 11 pasadas de
+    // arriba sin tocar cada expandir*() individualmente.
+    kelatosApiGet<{ ok: boolean; referencias: Record<string, string> }>("/v1/lecturas/documentos-su-referencia").then((r) => r.referencias),
   ]);
 
   const facturas = [
@@ -80,5 +85,5 @@ export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
     ...expandirTicketsManuales(ticketsManuales.rows),
   ];
 
-  return facturas.map((f) => ({ ...f, codigoCliente: lookup(f.dniCif, f.telefono) }));
+  return facturas.map((f) => ({ ...f, codigoCliente: lookup(f.dniCif, f.telefono), suReferencia: suReferencias[f.numero] || "" }));
 }

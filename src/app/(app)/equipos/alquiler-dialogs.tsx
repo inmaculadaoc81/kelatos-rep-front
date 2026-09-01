@@ -14,6 +14,7 @@ import { Equipo, DatosNuevoAlquiler } from "@/lib/equipos";
 import { Cliente } from "@/lib/clientes";
 import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const METODOS_PAGO = ["Efectivo", "Tarjeta bancaria", "Bizum", "Transferencia"];
 const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
@@ -58,6 +59,7 @@ interface FacturacionForm {
   observaciones: string;
   envioActivado: boolean;
   recogidaActivada: boolean;
+  suReferencia: string;
 }
 
 function duracionVacia(): DuracionForm {
@@ -72,7 +74,7 @@ function facturacionVacia(): FacturacionForm {
     // puede quedar pendiente), así que el estado por defecto es "Cobrada" —
     // se puede cambiar a "Pendiente" a mano si hiciera falta.
     metodoPago: "", banco: "", numeroOperacion: "", estadoFactura: "Cobrada", observaciones: "",
-    envioActivado: false, recogidaActivada: false,
+    envioActivado: false, recogidaActivada: false, suReferencia: "",
   };
 }
 
@@ -247,6 +249,7 @@ export function NuevoAlquilerDialog({
 
       toast.success(`Alquiler ${alquilerId} registrado · Factura ${dataFactura.numeroFactura} generada`);
       if (dataFactura.url) window.open(dataFactura.url, "_blank");
+      guardarSuReferencia(dataFactura.numeroFactura, factu.suReferencia);
       onOpenChange(false);
       onCreado();
     } catch (e) {
@@ -370,6 +373,10 @@ export function NuevoAlquilerDialog({
                       <SelectItem value="Cobrada">Cobrada</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="alqSuReferencia">Su Referencia</Label>
+                  <Input id="alqSuReferencia" placeholder="Opcional" value={factu.suReferencia} onChange={(e) => actualizarFactu("suReferencia", e.target.value)} />
                 </div>
               </div>
 

@@ -91,6 +91,12 @@ export interface FacturaCliente {
       factura_operaciones; para ciclos anteriores a esa fecha `total` viene
       en 0 y se muestra "—" (esa cifra ya no existe salvo en el PDF). */
   historica?: boolean;
+  /** "Su Referencia" — PO/referencia propia del cliente, texto libre y
+      opcional, nunca impreso en el PDF (kelatos_app.documentos_su_referencia,
+      migración 069). Se rellena aparte en obtenerTodasLasFacturas() por
+      `numero` — cada fila ya tiene un numero_factura/numero_ticket único,
+      así que no hace falta tocar cada expandir*() individualmente. */
+  suReferencia?: string;
 }
 
 function num(v: unknown): number {

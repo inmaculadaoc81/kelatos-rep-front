@@ -23,6 +23,7 @@ import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import type { StockPieza } from "@/lib/stock-piezas";
 import { useConfirm } from "@/components/confirm-provider";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 export type TipoFacturaBase =
   | "normal" | "revision" | "mensajeria" | "anticipo"
@@ -650,6 +651,7 @@ export function TabDevolucionRectificativo({
   const [emailDestino, setEmailDestino] = useState(clienteEmailDefault);
   const [metodo, setMetodo] = useState(formaPagoOriginal);
   const [banco, setBanco] = useState("");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [mostrarCorregidaEmergencia, setMostrarCorregidaEmergencia] = useState(false);
@@ -756,6 +758,7 @@ export function TabDevolucionRectificativo({
       // llegó a repetir la generación completa, quemando números fiscales
       // reales de más (bug real detectado en producción).
       if (data.url) window.open(data.url, "_blank");
+      guardarSuReferencia(data.numeroFactura, suReferencia);
       setRequestId(null);
       onGenerada();
     } catch (e) {
@@ -788,6 +791,11 @@ export function TabDevolucionRectificativo({
       <div className="space-y-1.5">
         <Label htmlFor="emailDevol">Email cliente</Label>
         <Input id="emailDevol" type="email" value={emailDestino} onChange={(e) => setEmailDestino(e.target.value)} />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="suReferenciaDevol">Su Referencia</Label>
+        <Input id="suReferenciaDevol" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional — referencia propia del cliente" />
+        <p className="text-xs text-muted-foreground">Opcional. No se incluye en el PDF, solo en el listado de Facturas de Clientes.</p>
       </div>
       <div className="space-y-1.5">
         <Label>{modoDevolucion ? "Forma de pago de la devolución *" : "Forma de pago *"}</Label>
@@ -954,6 +962,7 @@ export function TabDevolucionTicket({
   const [motivo, setMotivo] = useState("");
   const [metodo, setMetodo] = useState(formaPagoOriginal);
   const [banco, setBanco] = useState("");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [abrirCorregida, setAbrirCorregida] = useState(false);
 
@@ -1010,6 +1019,7 @@ export function TabDevolucionTicket({
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Rectificativa ${data.numeroTicket} generada`);
       if (data.urlTicket) window.open(data.urlTicket, "_blank");
+      guardarSuReferencia(data.numeroTicket, suReferencia);
       onGenerada();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
@@ -1028,6 +1038,10 @@ export function TabDevolucionTicket({
         <Label htmlFor="motivoTicket">Motivo *</Label>
         <Textarea id="motivoTicket" rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo interno — no aparece en el PDF…" />
         <p className="text-xs text-muted-foreground">Registro interno. No se incluye en el PDF.</p>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="suReferenciaTicket">Su Referencia</Label>
+        <Input id="suReferenciaTicket" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional — referencia propia del cliente" />
       </div>
       <div className="space-y-1.5">
         <Label>Forma de pago de la devolución *</Label>
@@ -1177,6 +1191,7 @@ function FaseCorregidaTicket({
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [metodo, setMetodo] = useState(formaPagoOriginal);
   const [banco, setBanco] = useState("");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
 
   // Precarga las líneas del documento original (si están disponibles,
@@ -1229,6 +1244,7 @@ function FaseCorregidaTicket({
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Ticket corregido ${data.numeroTicket} generado`);
       if (data.urlTicket) window.open(data.urlTicket, "_blank");
+      guardarSuReferencia(data.numeroTicket, suReferencia);
       onOpenChange(false);
       onGenerada();
     } catch (e) {
@@ -1248,9 +1264,13 @@ function FaseCorregidaTicket({
             Rectificativa: <strong>{numeroTicketRectificativa}</strong> — corrige a: <strong>{numeroTicketOriginal}</strong>
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-5 gap-3">
             <CampoLecturaCorr label="Serie / Código" valor="Se asignará al generar" />
             <CampoLecturaCorr label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Su Referencia</Label>
+              <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
+            </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Estado</Label>
               <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")}>
@@ -1459,6 +1479,7 @@ function FaseCorregida({
   // no enviar estadoFactura), así que ninguna factura corregida podía
   // marcarse cobrada al generarla.
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [suReferencia, setSuReferencia] = useState("");
   // El descuento global de la factura original se guarda como una línea más
   // ("Descuento global (X%)", precio negativo — ver nueva-factura-manual-
   // dialog.tsx/factura-reparacion-dialog.tsx), pero aquí llegaba tal cual,
@@ -1570,6 +1591,7 @@ function FaseCorregida({
       // mostrar nunca el PDF generado (data.url se descartaba), así que el
       // usuario no tenía forma de comprobar que sí se había generado.
       if (data.url) window.open(data.url, "_blank");
+      guardarSuReferencia(data.numeroFactura, suReferencia);
       setRequestId(null);
       onOpenChange(false);
       onGenerada();
@@ -1592,7 +1614,7 @@ function FaseCorregida({
               Rectificativa generada: <strong>{numeroFacturaRectificativa}</strong> — corrige: <strong>{numeroFacturaOriginal}</strong>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-6">
               <CampoLecturaCorr label="Tipo de factura" valor="Serie 1 — Cobros" />
               <CampoLecturaCorr label="N.º Factura" valor="Se asignará al generar" />
               <CampoLecturaCorr label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
@@ -1622,6 +1644,10 @@ function FaseCorregida({
                     <SelectItem value="Pendiente">Pendiente</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Su Referencia</Label>
+                <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
               </div>
             </div>
 

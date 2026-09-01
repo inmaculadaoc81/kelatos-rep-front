@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 export type TipoEntregaModal = "ENTREGADO" | "ENVIO" | "RECICLAJE";
 
@@ -392,6 +393,7 @@ function VistaConFactura({
   const [emailTicket, setEmailTicket] = useState(detalle.clienteEmailTicketMensajeria || detalle.cliente.email || "");
   const [observaciones, setObservaciones] = useState("");
   const [resena, setResena] = useState<"SI" | "NO">("NO");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
@@ -516,6 +518,7 @@ function VistaConFactura({
       }
       const accionTxt = esEnvio ? "Envío registrado" : tipoEntrega === "RECICLAJE" ? "Equipo enviado a punto limpio" : "Equipo entregado";
       const docTxt = esTicket ? `Ticket ${data.numeroTicket} generado y enviado a ${emailTicket.trim()}` : `Factura ${data.numeroFactura} generada`;
+      guardarSuReferencia((esTicket ? data.numeroTicket : data.numeroFactura) || "", suReferencia);
       toast.success(`${accionTxt} — ${docTxt}`);
       onCompletado();
       setRequestId(null);
@@ -619,6 +622,11 @@ function VistaConFactura({
                 </Select>
               </div>
             )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="efSuReferencia">Su Referencia</Label>
+              <Input id="efSuReferencia" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
+            </div>
 
             {!esTicket && (
               <div className="space-y-2 rounded-md border bg-muted/30 p-3">

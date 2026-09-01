@@ -19,6 +19,7 @@ import {
   calcularAjustePorDias,
   type ResultadoFacturaAlquiler,
 } from "@/lib/alquiler-factura";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -196,6 +197,7 @@ export function DevolverAlquilerDialog({
   // "Cobrada" — antes no había forma de elegirlo aquí y siempre quedaba en
   // "Pendiente" sin ningún selector para cambiarlo (bug real reportado).
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [suReferencia, setSuReferencia] = useState("");
   const [chkFianza, setChkFianza] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -328,6 +330,7 @@ export function DevolverAlquilerDialog({
         diasDiferencia: 0,
       });
 
+      if (doc.numeroFactura) guardarSuReferencia(doc.numeroFactura, suReferencia);
       toast.success(doc.numeroFactura ? `Devolución registrada — rectificativa ${doc.numeroFactura}` : "Devolución registrada");
       setResumen(doc);
       setPaso("resumen");
@@ -380,6 +383,7 @@ export function DevolverAlquilerDialog({
         diasDiferencia: 0,
       });
 
+      if (data.nueva?.numero) guardarSuReferencia(data.nueva.numero, suReferencia);
       toast.success(`Devolución registrada — rectificativa ${data.rectificativa?.numero} + nueva factura ${data.nueva?.numero}`);
       setResumen(data);
       setPaso("resumen");
@@ -533,6 +537,10 @@ export function DevolverAlquilerDialog({
                       </Select>
                     </div>
                   )}
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="suReferenciaPuntual">Su Referencia</Label>
+                    <Input id="suReferenciaPuntual" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
+                  </div>
                 </div>
               )}
             </div>
@@ -617,6 +625,10 @@ export function DevolverAlquilerDialog({
                       <SelectItem value="Pendiente">Pendiente</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="suReferenciaAjuste">Su Referencia</Label>
+                  <Input id="suReferenciaAjuste" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
                 </div>
               </div>
             </div>

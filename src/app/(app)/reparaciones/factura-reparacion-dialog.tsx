@@ -15,6 +15,7 @@ import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import type { StockPieza } from "@/lib/stock-piezas";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const METODOS_PAGO = [
   { value: "efectivo", label: "Efectivo" },
@@ -550,6 +551,7 @@ function VistaGenerar({
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
@@ -686,6 +688,7 @@ function VistaGenerar({
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Factura ${data.numeroFactura} generada correctamente`);
       if (data.url) window.open(data.url, "_blank");
+      guardarSuReferencia(data.numeroFactura, suReferencia);
       setRequestId(null);
       onOpenChange(false);
       onGenerada();
@@ -703,9 +706,13 @@ function VistaGenerar({
 
         <ScrollArea className="max-h-[75vh]">
           <div className="space-y-4 bg-muted/30 p-4">
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-5">
               <CampoLectura label="Nº Factura" valor={numeroPreview || "…"} />
               <CampoLectura label="Fecha de factura" valor={fechaHoyCorta()} />
+              <div className="space-y-1.5">
+                <Label htmlFor="suReferenciaFactura">Su Referencia</Label>
+                <Input id="suReferenciaFactura" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
+              </div>
               <div className="space-y-1.5">
                 <Label>Forma de pago *</Label>
                 <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>

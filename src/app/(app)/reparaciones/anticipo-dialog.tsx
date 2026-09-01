@@ -15,6 +15,7 @@ import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import type { LineaFactura } from "@/lib/factura";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { METODOS_PAGO, BANCOS, euros } from "./factura-acciones-tabs";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const IVA_PCT = 0.21;
 const PORCENTAJE = 50;
@@ -166,6 +167,7 @@ function VistaGenerarFactura({
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
+  const [suReferencia, setSuReferencia] = useState("");
   const [lineas, setLineas] = useState<LineaFactura[]>(() => construirLineas(detalle));
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -240,6 +242,7 @@ function VistaGenerarFactura({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Anticipo registrado — Factura ${data.numeroFactura} generada`);
+      guardarSuReferencia(data.numeroFactura, suReferencia);
       setResultado({ numeroFactura: data.numeroFactura, urlPdf: data.url });
       onCompletado();
     } catch (e) {
@@ -282,9 +285,13 @@ function VistaGenerarFactura({
               El cliente se lleva el equipo mientras llega la pieza, dejando un anticipo del {PORCENTAJE}% del presupuesto aceptado.
             </p>
 
-            <div className="grid gap-3 sm:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-6">
               <CampoLecturaAnticipo label="N.º Factura" valor={resultado?.numeroFactura || "Se asignará al generar"} />
               <CampoLecturaAnticipo label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Su Referencia</Label>
+                <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultado} />
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Forma de pago</Label>
                 <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={!!resultado}>
@@ -456,6 +463,7 @@ function VistaGenerarTicket({
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
   const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
 
   const base = lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
@@ -485,6 +493,7 @@ function VistaGenerarTicket({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
+      guardarSuReferencia(data.numeroTicket, suReferencia);
       let mensaje = `Anticipo registrado — Ticket ${data.numeroTicket} generado correctamente`;
 
       const destino = emailTicket.trim();
@@ -611,6 +620,10 @@ function VistaGenerarTicket({
             <Label className="text-xs text-muted-foreground">Correo del cliente</Label>
             <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} disabled={enviando} placeholder="correo@ejemplo.com" />
             <p className="text-xs text-muted-foreground">Tomado del resguardo — edítalo si el ticket debe enviarse a otro correo. Si lo dejas vacío, no se enviará ningún correo.</p>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Su Referencia</Label>
+            <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} disabled={enviando} placeholder="Opcional" />
           </div>
         </div>
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">

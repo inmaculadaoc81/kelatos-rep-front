@@ -19,6 +19,7 @@ import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import { METODOS_PAGO, BANCOS } from "./factura-acciones-tabs";
 import { useConfirm } from "@/components/confirm-provider";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const IVA_PCT = 0.21;
 // La plantilla de Sheets se amplió de 8 a 16 filas, 2026-08-27 (ver
@@ -211,6 +212,7 @@ export function TicketManualDialog({
   const [lineas, setLineas] = useState<LineaTicket[]>([lineaVacia()]);
   const [descuentoGlobal, setDescuentoGlobal] = useState(0);
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
+  const [suReferencia, setSuReferencia] = useState("");
   const [generando, setGenerando] = useState(false);
   const [resultado, setResultado] = useState<{ numeroTicket: string; urlTicket: string; id?: string } | null>(null);
   const [buscarPiezaAbierto, setBuscarPiezaAbierto] = useState(false);
@@ -386,6 +388,7 @@ export function TicketManualDialog({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
+      guardarSuReferencia(data.numeroTicket, suReferencia);
       setResultado({ numeroTicket: data.numeroTicket, urlTicket: data.urlTicket, id: data.ticket?.id });
       onGenerado?.();
     } catch (e) {
@@ -460,9 +463,13 @@ export function TicketManualDialog({
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-5">
               <CampoLectura label="Serie / Código" valor={resultado?.numeroTicket || "Se asignará al generar"} />
               <CampoLectura label="Fecha" valor={new Date().toLocaleDateString("es-ES")} />
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Su Referencia</Label>
+                <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultado} />
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Estado</Label>
                 <Select value={estado} onValueChange={(v) => setEstado(v === "Pendiente" ? "Pendiente" : "Cobrada")} disabled={!!resultado}>

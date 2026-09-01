@@ -16,6 +16,7 @@ import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import type { StockPieza } from "@/lib/stock-piezas";
 import type { LineaFactura } from "@/lib/factura";
 import { METODOS_PAGO, BANCOS, euros } from "./factura-acciones-tabs";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const IVA_PCT = 0.21;
 
@@ -69,6 +70,7 @@ export function NuevaFacturaManualDialog({
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
+  const [suReferencia, setSuReferencia] = useState("");
   const [lineas, setLineas] = useState<LineaFactura[]>([{ descripcion: "", cantidad: 1, precio: 0 }]);
   // Igual que factura-reparacion-dialog.tsx: solo afecta a la vista previa
   // en pantalla, se materializa como una línea negativa propia al generar
@@ -161,6 +163,7 @@ export function NuevaFacturaManualDialog({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Factura ${data.numeroFactura} generada correctamente`);
+      guardarSuReferencia(data.numeroFactura, suReferencia);
       setResultado({ numeroFactura: data.numeroFactura, urlPdf: data.urlPdf });
       onGenerada();
     } catch (e) {
@@ -188,7 +191,7 @@ export function NuevaFacturaManualDialog({
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-6">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Tipo de factura</Label>
                 <Select value={serie} onValueChange={(v) => setSerie((v as "1" | "3") || "1")} disabled={!!resultado}>
@@ -201,6 +204,10 @@ export function NuevaFacturaManualDialog({
               </div>
               <CampoLecturaManual label="N.º Factura" valor={resultado?.numeroFactura || "Se asignará al generar"} />
               <CampoLecturaManual label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Su Referencia</Label>
+                <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultado} />
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Forma de pago</Label>
                 <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={!!resultado}>
