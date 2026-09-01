@@ -74,6 +74,7 @@ export default function ReporteFacturasPage() {
   const [docHasta, setDocHasta] = useState(999999);
   const [serie1, setSerie1] = useState(true);
   const [serie3, setSerie3] = useState(true);
+  const [serie4, setSerie4] = useState(true);
   const [tipoFiltro, setTipoFiltro] = useState<TipoFactura | "">("");
   const [estadoFiltro, setEstadoFiltro] = useState<typeof ESTADOS_RF[number] | "">("");
   const [clienteFiltro, setClienteFiltro] = useState("");
@@ -121,6 +122,7 @@ export default function ReporteFacturasPage() {
     return datos.facturas.filter((f) => {
       if (f.serie === "1" && !serie1) return false;
       if (f.serie === "3" && !serie3) return false;
+      if (f.serie === "4" && !serie4) return false;
       const numDoc = numeroDocumento(f.numero);
       if (numDoc < docDesde || numDoc > docHasta) return false;
       if (tipoFiltro && f.tipo !== tipoFiltro) return false;
@@ -136,7 +138,7 @@ export default function ReporteFacturasPage() {
       }
       return true;
     });
-  }, [datos, serie1, serie3, docDesde, docHasta, tipoFiltro, estadoFiltro, clienteFiltro]);
+  }, [datos, serie1, serie3, serie4, docDesde, docHasta, tipoFiltro, estadoFiltro, clienteFiltro]);
 
   function pasaFiltrosColumna(f: FacturaConDesglose, excluir?: string): boolean {
     for (const col of COLUMNAS_RF) {
@@ -224,6 +226,7 @@ export default function ReporteFacturasPage() {
     (docHasta < 999999 ? 1 : 0) +
     (!serie1 ? 1 : 0) +
     (!serie3 ? 1 : 0) +
+    (!serie4 ? 1 : 0) +
     (tipoFiltro ? 1 : 0) +
     (estadoFiltro ? 1 : 0) +
     (clienteFiltro.trim() ? 1 : 0);
@@ -233,6 +236,7 @@ export default function ReporteFacturasPage() {
     setDocHasta(999999);
     setSerie1(true);
     setSerie3(true);
+    setSerie4(true);
     setTipoFiltro("");
     setEstadoFiltro("");
     setClienteFiltro("");
@@ -244,7 +248,8 @@ export default function ReporteFacturasPage() {
     const series: string[] = [];
     if (serie1) series.push("1");
     if (serie3) series.push("3");
-    const seriesFinal = series.length ? series : ["1", "3"];
+    if (serie4) series.push("4");
+    const seriesFinal = series.length ? series : ["1", "3", "4"];
     const csv = generarCsvReporte(visibles, {
       fechaDesde: datos.fechaDesde,
       fechaHasta: datos.fechaHasta,
@@ -360,6 +365,9 @@ export default function ReporteFacturasPage() {
           </label>
           <label className="flex items-center gap-1.5 text-sm">
             <Checkbox checked={serie3} onCheckedChange={(c) => setSerie3(c === true)} /> Serie 3
+          </label>
+          <label className="flex items-center gap-1.5 text-sm">
+            <Checkbox checked={serie4} onCheckedChange={(c) => setSerie4(c === true)} /> Serie 4
           </label>
         </div>
 

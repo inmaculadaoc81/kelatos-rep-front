@@ -5,7 +5,7 @@ function round2(n: number): number {
 }
 
 export interface FacturaConDesglose extends FacturaCliente {
-  serie: "1" | "3";
+  serie: "1" | "3" | "4";
   baseImponible: number;
   iva: number;
   /** Total CON IVA — sustituye a `total` (que en FacturaCliente es la base
@@ -21,11 +21,15 @@ export interface FacturaConDesglose extends FacturaCliente {
  * IVA; el resto (incluida "recogida", que en la lista de Facturas de
  * Clientes sí lo lleva ya incluido) se trata aquí como base sin IVA — es
  * una inconsistencia real del original, no un error de esta réplica.
- * "Ticket Rápido" (Serie 1/Serie 3, desde 2026-08-27) usa el mismo criterio
- * sin IVA incluido que el resto, salvo alquiler/venta.
+ * Los tickets (prefijo "4-", Serie 4 propia desde 2026-08-27 — antes
+ * compartían numeración con Serie 1/3) usan el mismo criterio sin IVA
+ * incluido que el resto. Antes de esta corrección, cualquier número que no
+ * empezara por "3-" se clasificaba como Serie 1 sin más — los tickets
+ * quedaban mezclados ahí, invisibles como categoría propia y sin forma de
+ * filtrarlos por separado (bug real reportado, 2026-09-01).
  */
 export function calcularDesglose(f: FacturaCliente): FacturaConDesglose {
-  const serie: "1" | "3" = /^3-/.test(f.numero) ? "3" : "1";
+  const serie: "1" | "3" | "4" = /^3-/.test(f.numero) ? "3" : /^4-/.test(f.numero) ? "4" : "1";
   const totalNum = Number(f.total) || 0;
   let baseImponible: number;
   let iva: number;
