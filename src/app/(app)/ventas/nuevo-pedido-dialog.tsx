@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
 import { DatosNuevoPedido, ItemPedidoForm, FormaPagoPedido } from "@/lib/ventas";
 import { esEmailValido } from "@/lib/validacion";
+import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const FORMAS_PAGO: { value: FormaPagoPedido; label: string }[] = [
   { value: "efectivo", label: "Efectivo" },
@@ -69,6 +70,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   const confirmar = useConfirm();
   const [open, setOpen] = useState(false);
   const [datos, setDatos] = useState<DatosNuevoPedido>(vacio());
+  const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [numeroPreview, setNumeroPreview] = useState("");
   // Resultado del modo Ticket — a diferencia de Factura/Garantía, el
@@ -83,6 +85,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   useEffect(() => {
     if (open) {
       setDatos(vacio());
+      setSuReferencia("");
       setNumeroPreview("");
       setResultadoTicket(null);
       fetch("/api/ventas/nuevo-pedido/peek")
@@ -143,9 +146,11 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       onCreado();
       if (datos.modoTicket) {
         toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
+        guardarSuReferencia(data.numeroTicket, suReferencia);
         setResultadoTicket({ ventaId: data.ventaId, numeroTicket: data.numeroTicket, urlTicket: data.urlPdf });
       } else {
         toast.success(datos.esGarantia ? `Garantía #${data.ventaId} registrada` : `Factura ${data.numeroFactura} generada`);
+        if (!datos.esGarantia) guardarSuReferencia(data.numeroFactura, suReferencia);
         setOpen(false);
       }
     } catch (e) {
@@ -194,7 +199,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
         <ScrollArea className="max-h-[75vh]">
           <div className="space-y-4 bg-muted/30 p-4">
             {!datos.esGarantia && (
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label>{datos.modoTicket ? "Nº Ticket" : "Nº Factura"}</Label>
                   <Input value={datos.modoTicket ? resultadoTicket?.numeroTicket || "" : numeroPreview} disabled placeholder={datos.modoTicket ? "Se asignará al generar" : "1-000001"} className="bg-muted/50" />
@@ -202,6 +207,10 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                 <div className="space-y-1.5">
                   <Label>{datos.modoTicket ? "Fecha" : "Fecha de factura"}</Label>
                   <Input value={fechaHoyCorta()} disabled className="bg-muted/50" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="npSuReferencia">Su Referencia</Label>
+                  <Input id="npSuReferencia" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultadoTicket} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Forma de pago *</Label>
