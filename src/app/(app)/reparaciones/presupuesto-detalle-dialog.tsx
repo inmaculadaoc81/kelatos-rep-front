@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DocumentText, Box, ShoppingCart, Calendar, Send2, InfoCircle, CloseCircle, Copy, TickCircle } from "@/lib/icons";
+import { DocumentText, Box, ShoppingCart, Calendar, Send2, InfoCircle, CloseCircle, Copy, TickCircle, Profile, Sms } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Pedido, Presupuesto } from "@/lib/reparacion-detalle";
+import { Pedido, Presupuesto, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { Proveedor } from "@/app/api/proveedores/route";
 import { esUrlValida } from "@/lib/validacion";
+import { limpiarRespuestaCliente } from "@/lib/texto";
 
 function euros(n: number): string {
   return (n || 0).toFixed(2) + " €";
@@ -90,12 +91,16 @@ export function PresupuestoDetalleDialog({
   resguardo,
   presupuesto: p,
   pedidos,
+  clienteNombre = "",
+  clienteEmail = "",
   open,
   onOpenChange,
 }: {
   resguardo: string;
   presupuesto: Presupuesto;
   pedidos: Pedido[];
+  clienteNombre?: string;
+  clienteEmail?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -137,6 +142,21 @@ export function PresupuestoDetalleDialog({
 
         <ScrollArea className="max-h-[65vh] p-4">
           <div className="space-y-4 pr-3">
+            {(clienteNombre || clienteEmail) && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                {clienteNombre && (
+                  <span className="flex items-center gap-1.5">
+                    <Profile className="size-3.5 shrink-0 text-muted-foreground" /> {clienteNombre}
+                  </span>
+                )}
+                {clienteEmail && (
+                  <a href={`mailto:${clienteEmail}`} className="flex items-center gap-1.5 text-primary hover:underline">
+                    <Sms className="size-3.5 shrink-0" /> {clienteEmail}
+                  </a>
+                )}
+              </div>
+            )}
+
             <div>
               <h3 className="mb-2 text-sm font-semibold text-primary">Responsable del Presupuesto</h3>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -258,8 +278,12 @@ export function PresupuestoDetalleDialog({
             </div>
 
             {p.motivoRechazo && (
-              <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <strong>Motivo:</strong> {p.motivoRechazo}
+              // Ver mismo comentario en presupuesto-card.tsx: este campo
+              // guarda la respuesta literal del cliente cuando la
+              // aceptación/rechazo vino por webhook, no siempre un "motivo".
+              <div className={`rounded-md px-3 py-2 text-sm ${esPptoAceptado(p.estado) ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+                <strong>{esPptoAceptado(p.estado) ? "Respuesta del cliente:" : "Motivo del rechazo:"}</strong>{" "}
+                {limpiarRespuestaCliente(p.motivoRechazo)}
               </div>
             )}
           </div>

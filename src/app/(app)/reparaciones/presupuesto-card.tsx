@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
 import { Pedido, Presupuesto, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { AccionCambioEstadoPresupuesto } from "@/lib/presupuesto-cambiar-estado";
+import { limpiarRespuestaCliente } from "@/lib/texto";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 import { PresupuestoDetalleDialog } from "./presupuesto-detalle-dialog";
 
@@ -59,6 +60,8 @@ export function PresupuestoCard({
   pedidos = [],
   revisionPagada = false,
   reparacionCerrada = false,
+  clienteNombre = "",
+  clienteEmail = "",
   onActualizado,
 }: {
   resguardo: string;
@@ -72,6 +75,10 @@ export function PresupuestoCard({
       sentido aceptar/rechazar/anular/editar un presupuesto de una
       reparación ya cerrada, solo queda "Ver detalles". */
   reparacionCerrada?: boolean;
+  /** Cliente de la reparación (no del presupuesto) — se muestra junto a la
+      respuesta del cliente para no tener que salir del modal a buscarlo. */
+  clienteNombre?: string;
+  clienteEmail?: string;
   onActualizado: () => void;
 }) {
   const [motivoAbierto, setMotivoAbierto] = useState<"rechazar" | "anular" | null>(null);
@@ -205,8 +212,15 @@ export function PresupuestoCard({
       </div>
 
       {p.motivoRechazo && (
-        <div className="border-t bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
-          <strong>Motivo:</strong> {p.motivoRechazo}
+        // Este campo (columna motivo_rechazo en BD) guarda cosas distintas
+        // según el estado: para un rechazo es el motivo real; para una
+        // aceptación por webhook es literalmente la respuesta del cliente
+        // (el email completo, incluida su cita "On ... wrote:" — se recorta
+        // aquí). Mostrarlo siempre como "Motivo:" en rojo confundía una
+        // aceptación con un rechazo (bug real, resguardo 18805, 2026-09-01).
+        <div className={`border-t px-3 py-1.5 text-xs ${esPptoAceptado(p.estado) ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+          <strong>{esPptoAceptado(p.estado) ? "Respuesta del cliente:" : "Motivo del rechazo:"}</strong>{" "}
+          {limpiarRespuestaCliente(p.motivoRechazo)}
         </div>
       )}
 
@@ -214,6 +228,8 @@ export function PresupuestoCard({
         resguardo={resguardo}
         presupuesto={p}
         pedidos={pedidos}
+        clienteNombre={clienteNombre}
+        clienteEmail={clienteEmail}
         open={detalleAbierto}
         onOpenChange={setDetalleAbierto}
       />

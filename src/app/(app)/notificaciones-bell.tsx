@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { MOTIVO_LABELS, type WebhookEvento } from "@/lib/webhook-eventos";
+import { limpiarRespuestaCliente } from "@/lib/texto";
 
 type FiltroFecha = "todas" | "hoy" | "semana" | "mes" | "mes_anterior";
 type FiltroTipo = "todos" | "Aviso" | "Aceptado" | "Rechazado";
@@ -284,7 +285,7 @@ function TarjetaEvento({ evento, onClick }: { evento: WebhookEvento; onClick: ()
             </p>
           )}
 
-          {evento.respuesta_cliente && <p className="truncate text-xs text-muted-foreground italic">&quot;{evento.respuesta_cliente}&quot;</p>}
+          {evento.respuesta_cliente && <p className="truncate text-xs text-muted-foreground italic">&quot;{limpiarRespuestaCliente(evento.respuesta_cliente)}&quot;</p>}
 
           <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Clock className="size-3 shrink-0" /> {fechaStr}
@@ -357,8 +358,11 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
               )}
 
               {evento.respuesta_cliente && (
-                <div className="rounded-md border bg-muted/40 p-2.5 text-sm italic text-muted-foreground">
-                  &quot;{evento.respuesta_cliente}&quot;
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-foreground">Respuesta del cliente:</p>
+                  <div className="rounded-md border bg-muted/40 p-2.5 text-sm italic text-muted-foreground">
+                    &quot;{limpiarRespuestaCliente(evento.respuesta_cliente)}&quot;
+                  </div>
                 </div>
               )}
 

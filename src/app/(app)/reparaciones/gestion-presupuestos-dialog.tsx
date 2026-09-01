@@ -90,7 +90,7 @@ export function GestionPresupuestosDialog({
               ) : (
                 <m.div className="space-y-2" variants={listaAnim} initial="inicial" animate="visible">
                   {detalle.presupuestos.map((p) => (
-                    <PresupuestoCard key={p.presupuestoId} resguardo={detalle.resguardo} presupuesto={p} pedidos={detalle.pedidos} revisionPagada={detalle.revisionPagada === "SI"} onActualizado={onActualizado} />
+                    <PresupuestoCard key={p.presupuestoId} resguardo={detalle.resguardo} presupuesto={p} pedidos={detalle.pedidos} revisionPagada={detalle.revisionPagada === "SI"} clienteNombre={detalle.cliente.nombre} clienteEmail={detalle.cliente.email} onActualizado={onActualizado} />
                   ))}
                 </m.div>
               )}

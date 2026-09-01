@@ -772,6 +772,8 @@ export function DetalleReparacionDialog({
                                 pedidos={detalle.pedidos}
                                 revisionPagada={detalle.revisionPagada === "SI"}
                                 reparacionCerrada={reparacionCerrada}
+                                clienteNombre={detalle.cliente.nombre}
+                                clienteEmail={detalle.cliente.email}
                                 onActualizado={actualizarTodo}
                               />
                             ))}
