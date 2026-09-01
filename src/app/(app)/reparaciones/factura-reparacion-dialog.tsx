@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ReparacionDetalle, Presupuesto } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, Presupuesto, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
@@ -102,7 +102,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
     // resto): cuando el flujo "hayMas" deja más de un presupuesto en
     // estado "aceptado" para la misma reparación, la factura debe sumar
     // mano de obra y piezas de TODOS ellos, no solo del primero.
-    const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
+    const aceptados = detalle.presupuestos.filter((p) => esPptoAceptado(p.estado));
     const pressBase = aceptados.length > 0
       ? aceptados
       : detalle.presupuestos.length > 0

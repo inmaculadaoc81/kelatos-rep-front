@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { m, lista as listaAnim, ProveedorAnimacion } from "@/lib/animacion";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { PresupuestoCard } from "./presupuesto-card";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 import { PresupuestosEnvioBar } from "./presupuestos-envio-bar";
@@ -36,7 +36,7 @@ export function GestionPresupuestosDialog({
   const [nuevoAbierto, setNuevoAbierto] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
 
-  const hayAceptados = detalle.presupuestos.some((p) => p.estado === "aceptado");
+  const hayAceptados = detalle.presupuestos.some((p) => esPptoAceptado(p.estado));
   const estadoBloqueado = ESTADOS_BLOQUEADOS_ACEPTACION.has(detalle.estado);
 
   async function finalizarAceptacion() {

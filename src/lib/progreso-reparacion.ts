@@ -5,7 +5,7 @@
  * HTML para poder renderizarla con componentes.
  */
 
-import { ReparacionDetalle } from "./reparacion-detalle";
+import { ReparacionDetalle, esPptoAceptado } from "./reparacion-detalle";
 
 export type EstadoFase = "completada" | "en-curso" | "pendiente" | "no-aplica";
 
@@ -72,7 +72,7 @@ export function calcularFases(
   // El original busca el aceptado y cae al primero: la fecha de respuesta
   // que interesa es la del presupuesto que el cliente contestó.
   const presupuestoRespondido =
-    detalle.presupuestos.find((p) => p.estado === "aceptado") || primerPresupuesto;
+    detalle.presupuestos.find((p) => esPptoAceptado(p.estado)) || primerPresupuesto;
   const primerPedido = detalle.pedidos[0];
   // Las conversiones de cintas no pasan por pedido de pieza: se dan por
   // superadas en cuanto el presupuesto está aceptado.

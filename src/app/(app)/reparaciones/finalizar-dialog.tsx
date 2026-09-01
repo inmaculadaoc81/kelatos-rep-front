@@ -16,13 +16,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { DatosFinalizarReparacion, ResultadoReparacion } from "@/lib/reparacion-finalizar";
 
 const TECNICOS_FINALIZAR = ["Iván", "Romer", "Daniela", "Repuesto"];
 
 function tienePieza(detalle: ReparacionDetalle): boolean {
-  const pptoAceptado = detalle.presupuestos.find((p) => p.estado === "aceptado") || detalle.presupuestos[0];
+  const pptoAceptado = detalle.presupuestos.find((p) => esPptoAceptado(p.estado)) || detalle.presupuestos[0];
   return (pptoAceptado?.costoPiezas ?? 0) > 0 || detalle.pedidos.length > 0;
 }
 

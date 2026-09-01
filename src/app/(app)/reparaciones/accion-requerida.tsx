@@ -27,7 +27,7 @@ import {
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
-import { ReparacionDetalle, Pedido } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, Pedido, esPptoAceptado } from "@/lib/reparacion-detalle";
 
 type Tono = "danger" | "warning" | "info" | "success" | "neutral";
 
@@ -406,7 +406,7 @@ export function AccionRequerida({
     // Reproduce tienePieza de renderizarAccion() (Index.html:13069-13070):
     // el presupuesto aceptado (o el primero, si ninguno lo está) llevaba
     // costoPiezas, o ya existe algún pedido registrado.
-    const pptoAceptadoRep = detalle.presupuestos.find((p) => p.estado === "aceptado") || detalle.presupuestos[0];
+    const pptoAceptadoRep = detalle.presupuestos.find((p) => esPptoAceptado(p.estado)) || detalle.presupuestos[0];
     const tienePieza = (pptoAceptadoRep?.costoPiezas ?? 0) > 0 || detalle.pedidos.length > 0;
     if (tienePieza) {
       botones.push(

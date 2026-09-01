@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { Venta } from "@/lib/ventas";
 import { StockPieza } from "@/lib/stock-piezas";
 import type { Cliente } from "@/lib/clientes";
@@ -93,7 +93,7 @@ function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
   }
 
   if (lineas.length === 0) {
-    const aceptados = detalle.presupuestos.filter((p) => p.estado === "aceptado");
+    const aceptados = detalle.presupuestos.filter((p) => esPptoAceptado(p.estado));
 
     // Remanente de anticipo: mismo cálculo que construirLineasIniciales()
     // — solo se aplica mientras el ticket todavía no existe (evita volver

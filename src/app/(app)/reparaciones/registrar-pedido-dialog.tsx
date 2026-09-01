@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import type { DatosRegistrarPedido, PiezaPedidoForm } from "@/app/api/reparaciones/[resguardo]/pedidos/route";
 import type { Empleado } from "@/app/api/empleados/route";
 import type { Proveedor } from "@/app/api/proveedores/route";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { usuarioIdentificado } from "@/lib/usuario-identificado";
 
 function hoyISO(): string {
@@ -33,7 +33,7 @@ function piezaVacia(): PiezaPedidoForm {
  */
 function piezasIniciales(detalle: ReparacionDetalle): PiezaPedidoForm[] {
   const pptosAceptados = detalle.presupuestos.filter(
-    (p) => p.estado === "aceptado" && (p.tipoPieza === "pedido" || p.tipoPieza === "mixto")
+    (p) => esPptoAceptado(p.estado) && (p.tipoPieza === "pedido" || p.tipoPieza === "mixto")
   );
   const piezas: PiezaPedidoForm[] = [];
   for (const ppto of pptosAceptados) {

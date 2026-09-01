@@ -293,6 +293,23 @@ export interface Presupuesto {
   piezas: Pieza[];
 }
 
+// Presupuesto.estado se escribe en dos grafías distintas según el origen:
+// el Dashboard escribe minúsculas ("aceptado"/"rechazado", ver
+// aceptarPresupuesto/rechazarPresupuesto en server.js) y el webhook de n8n
+// escribe capitalizado ("Aceptado"/"Rechazado", _webhookActualizarEstadoPpto)
+// — discrepancia real y preexistente en el backend. Un `p.estado ===
+// "aceptado"` literal aquí deja de reconocer presupuestos aceptados por el
+// cliente vía email (bug real, resguardo 18805, 2026-09-01: además de
+// pisar el estado de la reparación, invoicing/gestión de presupuestos no
+// veían el presupuesto ya aceptado). Usar siempre estas comprobaciones en
+// vez de comparar el string directamente.
+export function esPptoAceptado(estado: string | null | undefined): boolean {
+  return (estado || "").toLowerCase() === "aceptado";
+}
+export function esPptoRechazado(estado: string | null | undefined): boolean {
+  return (estado || "").toLowerCase() === "rechazado";
+}
+
 export interface Pedido {
   pedidoId: string;
   piezaId: string;

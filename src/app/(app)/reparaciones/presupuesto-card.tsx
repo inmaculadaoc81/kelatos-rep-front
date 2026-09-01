@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
-import { Pedido, Presupuesto } from "@/lib/reparacion-detalle";
+import { Pedido, Presupuesto, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { AccionCambioEstadoPresupuesto } from "@/lib/presupuesto-cambiar-estado";
 import { PresupuestoFormDialog } from "./presupuesto-form-dialog";
 import { PresupuestoDetalleDialog } from "./presupuesto-detalle-dialog";
@@ -144,7 +144,7 @@ export function PresupuestoCard({
           <CloseCircle className="size-3.5" /> Rechazar
         </Button>
       </>
-    ) : p.estado === "aceptado" ? (
+    ) : esPptoAceptado(p.estado) ? (
       <Button size="sm" variant="outline" className="h-7 gap-1 text-amber-600" disabled={enviando} onClick={() => setMotivoAbierto("anular")}>
         <CloseSquare className="size-3.5" /> Anular
       </Button>
