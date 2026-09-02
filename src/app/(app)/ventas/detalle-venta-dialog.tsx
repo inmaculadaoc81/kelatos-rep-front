@@ -327,7 +327,7 @@ export function DetalleVentaDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto gap-0 p-0 sm:max-w-5xl" showCloseButton={false}>
+      <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto gap-0 p-0 sm:max-w-6xl" showCloseButton={false}>
         <header className="flex items-center gap-2 rounded-t-xl bg-emerald-600 px-4 py-3 text-white">
           <ShoppingCart className="size-4.5 shrink-0" />
           <DialogTitle className="text-sm font-semibold text-white">Pedido #{ventaId}</DialogTitle>
@@ -463,8 +463,8 @@ export function DetalleVentaDialog({
                     <TableHead>Fecha Pedido</TableHead>
                     <TableHead>Fecha Recibido</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Acciones</TableHead>
                     <TableHead>Enlace</TableHead>
+                    <TableHead className="sticky right-0 z-10 bg-background">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -485,7 +485,10 @@ export function DetalleVentaDialog({
                         <TableCell className="text-sm">{item.fechaPedido ? formatearFecha(item.fechaPedido) : "-"}</TableCell>
                         <TableCell className="text-sm">{item.fechaRecepcion ? formatearFecha(item.fechaRecepcion) : "-"}</TableCell>
                         <TableCell><EstadoBadge estado={item.estadoPedido || "Pieza Pendiente"} estilo={estilo} /></TableCell>
-                        <TableCell className="whitespace-nowrap">
+                        <TableCell className="text-sm">
+                          <EnlaceOTexto valor={item.enlace} />
+                        </TableCell>
+                        <TableCell className="sticky right-0 z-10 whitespace-nowrap bg-background">
                           {!finalizado && item.estadoPedido === "Pieza Pendiente" && (
                             <>
                               <Button size="icon-sm" variant="outline" className="mr-1" title="Editar" onClick={() => abrirEditar(item)} disabled={enviando}>
@@ -509,9 +512,6 @@ export function DetalleVentaDialog({
                               </Button>
                             </>
                           )}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <EnlaceOTexto valor={item.enlace} />
                         </TableCell>
                       </TableRow>
                     );
