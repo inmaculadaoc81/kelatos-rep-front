@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Receipt, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Box1 } from "@/lib/icons";
+import { Receipt, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Send2, Box1 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import type { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import { useConfirm } from "@/components/confirm-provider";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import type { StockPieza } from "@/lib/stock-piezas";
 import type { LineaFactura } from "@/lib/factura";
@@ -80,7 +81,9 @@ export function NuevaFacturaManualDialog({
   const [descuentoGlobalPct, setDescuentoGlobalPct] = useState(0);
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<{ numeroFactura: string; urlPdf: string } | null>(null);
+  const [resultado, setResultado] = useState<{ numeroFactura: string; urlPdf: string; entidadId: string } | null>(null);
+  const [enviandoFactura, setEnviandoFactura] = useState(false);
+  const confirmar = useConfirm();
 
   const subtotal = lineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
   const pctGlobal = Math.min(100, Math.max(0, descuentoGlobalPct || 0));
@@ -166,12 +169,42 @@ export function NuevaFacturaManualDialog({
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Factura ${data.numeroFactura} generada correctamente`);
       guardarSuReferencia(data.numeroFactura, suReferencia);
-      setResultado({ numeroFactura: data.numeroFactura, urlPdf: data.urlPdf });
+      setResultado({ numeroFactura: data.numeroFactura, urlPdf: data.urlPdf, entidadId: data.entidadId });
       onGenerada();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);
+    }
+  }
+
+  // Botón siempre visible, deshabilitado hasta que exista la factura y haya
+  // un correo de destino — mismo patrón que Ticket Manual (ticket-manual-
+  // dialog.tsx), petición del usuario 2026-09-02.
+  const puedeEnviar = !!resultado && !!email.trim();
+
+  async function enviarFactura() {
+    if (!resultado) return;
+    const destino = email.trim();
+    if (!destino) return toast.error("No hay ningún correo de destino disponible");
+    const ok = await confirmar(`¿Enviar la factura ${resultado.numeroFactura} a ${destino}?`);
+    if (!ok) return;
+
+    setEnviandoFactura(true);
+    try {
+      const res = await fetch(`/api/facturas-manuales/${resultado.entidadId}/enviar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "manual", emailDestino: destino }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (!data.enviado) throw new Error(data.motivo || "No se pudo enviar");
+      toast.success(`Factura enviada a ${destino}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoFactura(false);
     }
   }
 
@@ -183,13 +216,18 @@ export function NuevaFacturaManualDialog({
         <ScrollArea className="max-h-[75vh]">
           <div className="space-y-4 bg-muted/30 p-4">
             {resultado && (
-              <div className="flex items-center justify-between gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
-                <span>Factura <strong>{resultado.numeroFactura}</strong> generada correctamente.</span>
-                {resultado.urlPdf && (
-                  <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={resultado.urlPdf} target="_blank" rel="noreferrer" />}>
-                    Ver PDF
-                  </Button>
-                )}
+              <div className="space-y-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <div className="flex items-center justify-between gap-2">
+                  <span>Factura <strong>{resultado.numeroFactura}</strong> generada correctamente.</span>
+                  {resultado.urlPdf && (
+                    <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={resultado.urlPdf} target="_blank" rel="noreferrer" />}>
+                      Ver PDF
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs">
+                  {email.trim() ? <>Se enviará a: <strong>{email.trim()}</strong></> : "Sin correo de destino — vuelve a Cliente/Email para añadir uno."}
+                </p>
               </div>
             )}
 
@@ -387,6 +425,9 @@ export function NuevaFacturaManualDialog({
               <ArrowRight2 className="size-4" /> {enviando ? "Generando…" : "Generar Factura"}
             </Button>
           )}
+          <Button className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={enviarFactura} disabled={!puedeEnviar || enviandoFactura}>
+            <Send2 className="size-4" /> {enviandoFactura ? "Enviando…" : "Enviar al cliente"}
+          </Button>
         </footer>
       </DialogContent>
 
