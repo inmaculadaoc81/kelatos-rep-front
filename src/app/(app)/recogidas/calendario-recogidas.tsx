@@ -25,6 +25,33 @@ const MESES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
+const URL_RE = /(https?:\/\/\S+)/g;
+
+/** Divide un texto en fragmentos de texto plano + enlaces reales clicables
+    — las notas de una cita Cal.com incluyen el enlace de reprogramar/
+    cancelar como texto suelto (p.ej. "Reprogramar/cancelar:\nhttps://cal.com/..."),
+    que antes se veía sin subrayar y sin poder hacer click. `break-all` (no
+    solo `wrap-break-word`) porque una URL de Cal.com es una sola palabra
+    larguísima sin espacios donde partir. */
+const ES_URL_RE = /^https?:\/\/\S+$/;
+
+function TextoConEnlaces({ texto }: { texto: string }) {
+  const partes = texto.split(URL_RE);
+  return (
+    <>
+      {partes.map((parte, i) =>
+        ES_URL_RE.test(parte) ? (
+          <a key={i} href={parte} target="_blank" rel="noreferrer" className="break-all text-primary underline hover:no-underline" onClick={(e) => e.stopPropagation()}>
+            {parte}
+          </a>
+        ) : (
+          <span key={i} className="whitespace-pre-line">{parte}</span>
+        )
+      )}
+    </>
+  );
+}
+
 // Clave "YYYY-MM-DD" a partir de componentes locales — nunca vía
 // toISOString() (eso convierte a UTC y puede saltar de día). Consistente
 // con r.fecha, que el backend siempre guarda como medianoche UTC del día
@@ -87,10 +114,32 @@ function EventoPopoverRecogida({ ev, onEditar }: { ev: Recogida; onEditar: (r: R
             <span className={`inline-flex items-center rounded-md px-2 py-0.5 font-medium ${COLOR_ESTADO_MINI[ev.estado] || "bg-muted text-muted-foreground"}`}>
               {ev.estado || "Sin estado"}
             </span>
-            {ev.cliente && ev.asunto && <p className="flex items-start gap-1.5"><DocumentText className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.asunto}</p>}
-            {ev.telefono && <p className="flex items-start gap-1.5"><Call className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.telefono}</p>}
-            {ev.direccion && <p className="flex items-start gap-1.5"><Location className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.direccion}</p>}
-            {ev.notas && <p className="flex items-start gap-1.5"><Tag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.notas}</p>}
+            {ev.cliente && ev.asunto && (
+              <p className="flex items-start gap-1.5">
+                <DocumentText className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 wrap-break-word">{ev.asunto}</span>
+              </p>
+            )}
+            {ev.telefono && (
+              <p className="flex items-start gap-1.5">
+                <Call className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 wrap-break-word">{ev.telefono}</span>
+              </p>
+            )}
+            {ev.direccion && (
+              <p className="flex items-start gap-1.5">
+                <Location className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 wrap-break-word">{ev.direccion}</span>
+              </p>
+            )}
+            {ev.notas && (
+              <p className="flex items-start gap-1.5">
+                <Tag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 wrap-break-word">
+                  <TextoConEnlaces texto={ev.notas} />
+                </span>
+              </p>
+            )}
           </div>
         </div>
       </PopoverContent>
@@ -141,12 +190,34 @@ export function CalendarioRecogidas({
     return resultado;
   }, [mesActual]);
 
+  const anioActual = new Date().getFullYear();
+  const anios = [anioActual - 1, anioActual, anioActual + 1, anioActual + 2];
+
   return (
     <div className="rounded-lg border bg-card">
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <h2 className="text-sm font-semibold">
-          {MESES[mesActual.getMonth()]} {mesActual.getFullYear()}
-        </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          <select
+            value={mesActual.getMonth()}
+            onChange={(e) => setMesActual((m) => new Date(m.getFullYear(), Number(e.target.value), 1))}
+            className="h-7 rounded-md border bg-transparent px-1.5 text-sm font-semibold outline-none"
+            aria-label="Mes"
+          >
+            {MESES.map((nombre, i) => (
+              <option key={nombre} value={i}>{nombre}</option>
+            ))}
+          </select>
+          <select
+            value={mesActual.getFullYear()}
+            onChange={(e) => setMesActual((m) => new Date(Number(e.target.value), m.getMonth(), 1))}
+            className="h-7 rounded-md border bg-transparent px-1.5 text-sm font-semibold outline-none"
+            aria-label="Año"
+          >
+            {anios.map((anio) => (
+              <option key={anio} value={anio}>{anio}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center gap-1">
           <Button
             size="sm"
