@@ -131,7 +131,7 @@ export function FacturaManualModalShell({
 
             <TabsContent value="pdf" className="p-4">
               <TabPdfEnviar
-                enviarUrl={null}
+                enviarUrl={`/api/facturas-manuales/${detalle.resguardo}/enviar`}
                 tipo={vistaRectificativa ? "manual_rectificativa" : "manual"}
                 numeroFactura={d.numeroFactura}
                 urlFactura={d.urlFactura}
