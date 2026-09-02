@@ -390,11 +390,11 @@ export default function ReparacionesPage() {
             <AddCircle className="size-4" /> Nueva Reparación
           </Button>
           <Button
-            className="h-8 w-8 bg-emerald-600 p-0 text-white hover:bg-emerald-700"
+            className="h-8 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
             onClick={() => setNuevaFacturaAbierta(true)}
             title="Nueva Factura Manual"
           >
-            <Receipt className="size-4" />
+            <Receipt className="size-4" /> Factura Manual
           </Button>
           <Button
             variant="outline"
