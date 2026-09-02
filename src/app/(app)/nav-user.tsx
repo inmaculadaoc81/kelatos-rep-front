@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock } from "@/lib/icons";
+import type { Icon } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,6 +27,14 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+
+function IconoDashboard({ icon: IconComp, className }: { icon: Icon; className: string }) {
+  return (
+    <span className={`flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-white ${className}`}>
+      <IconComp className="size-3.5" />
+    </span>
+  );
+}
 
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
@@ -79,7 +88,7 @@ export function NavUser({ session }: { session: Session | null }) {
             </SidebarMenuButton>
             <DropdownMenuContent
               className="min-w-56"
-              side={isMobile ? "bottom" : "top"}
+              side={isMobile ? "bottom" : "right"}
               align="end"
               sideOffset={4}
             >
@@ -117,12 +126,14 @@ export function NavUser({ session }: { session: Session | null }) {
               )}
               {puedeVerTransferencias && (
                 <DropdownMenuItem render={<Link href={enTransferencias ? "/" : "/transferencias"} />}>
-                  <ArrowSwapHorizontal /> {enTransferencias ? "Dashboard Reparaciones Kelatos" : "Dashboard Transferencias Kelatos"}
+                  <IconoDashboard icon={ArrowSwapHorizontal} className="from-sky-500 to-blue-600" />
+                  {enTransferencias ? "Reparaciones" : "Transferencias"}
                 </DropdownMenuItem>
               )}
               {puedeVerAsistencia && (
                 <DropdownMenuItem render={<Link href={enAsistencia ? "/" : "/asistencia"} />}>
-                  <ArrowSwapHorizontal /> {enAsistencia ? "Dashboard Reparaciones Kelatos" : "Dashboard Asistencia Kelatos"}
+                  <IconoDashboard icon={Clock} className="from-violet-500 to-purple-600" />
+                  {enAsistencia ? "Reparaciones" : "Asistencias"}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
