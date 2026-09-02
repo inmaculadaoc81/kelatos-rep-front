@@ -214,6 +214,16 @@ export async function POST(req: Request) {
     const metodoPagoFinal = datos.formaPago === "tarjeta" && datos.banco ? `${datos.banco} · Tarjeta bancaria` : LABELS_PAGO[datos.formaPago] || datos.formaPago;
     const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: it.cantidad * it.precioUnitario }));
 
+    // Cliente exactamente como se imprimió en el PDF — se guarda como foto
+    // (cliente_factura) para poder precargar el formulario de devolución/
+    // rectificativa más tarde con los mismos datos fiscales, sin depender
+    // de que el cliente_nombre/telefono/email de la venta (editables después
+    // desde el detalle del pedido) sigan siendo los mismos.
+    const clienteFactura = {
+      nombre: datos.clienteNombre.trim(), dni: datos.clienteDni.trim(),
+      telefono: datos.clienteTelefono.trim(), direccion: datos.clienteDireccion.trim(), email: datos.clienteEmail.trim(),
+    };
+
     let resVenta: { ok: boolean; venta_id: string };
     try {
       resVenta = await kelatosApiPost<{ ok: boolean; venta_id: string }>("/v1/ventas", {
@@ -227,6 +237,13 @@ export async function POST(req: Request) {
         numero_factura: preparar.numeroFactura,
         metodo_pago: metodoPagoFinal,
         items: itemsVenta,
+        url_factura: generado.url,
+        total_factura: generado.baseImponible,
+        estado_factura: datos.estadoFactura || "Cobrada",
+        forma_pago_factura: datos.formaPago,
+        banco_factura: datos.formaPago === "tarjeta" ? datos.banco : "",
+        lineas_factura: lineas,
+        cliente_factura: clienteFactura,
       });
     } catch (errorVenta) {
       const mensaje = errorVenta instanceof Error ? errorVenta.message : "Error desconocido creando la venta";

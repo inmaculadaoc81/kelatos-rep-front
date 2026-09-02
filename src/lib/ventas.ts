@@ -52,6 +52,23 @@ export interface Venta {
   ticketCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   formaPagoTicket: string;
   bancoTicket: string;
+  /** URL del PDF de la Factura real (Serie 1) — a diferencia del Ticket,
+      nunca se sobrescribe: la rectificativa/corregida viven en sus propias
+      columnas, la factura original sigue siendo consultable siempre. */
+  urlFactura: string;
+  fechaFactura: string | null;
+  totalFactura: number;
+  estadoFactura: string;
+  formaPagoFactura: string;
+  bancoFactura: string;
+  /** Foto de las líneas y del cliente tal como se imprimieron en la
+      Factura real vigente — permite reproducir la devolución exactamente,
+      sin depender del estado actual (editable) del pedido. */
+  lineasFactura: { descripcion: string; cantidad: number; precio: number; descuento: number }[];
+  clienteFactura: { nombre: string; dni: string; telefono: string; direccion: string; email: string } | null;
+  facturaRectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
+  motivoFacturaRectificativa: string;
+  facturaCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   items: ItemVenta[];
 }
 
@@ -86,6 +103,24 @@ interface FilaVentaSql {
   estado_ticket_corregida: string | null;
   forma_pago_ticket: string | null;
   banco_ticket: string | null;
+  url_factura: string | null;
+  fecha_factura: string | null;
+  total_factura: string | number | null;
+  estado_factura: string | null;
+  forma_pago_factura: string | null;
+  banco_factura: string | null;
+  lineas_factura: unknown;
+  cliente_factura: unknown;
+  numero_factura_rectificativa: string | null;
+  url_factura_rectificativa: string | null;
+  total_factura_rectificativa: string | number | null;
+  fecha_factura_rectificativa: string | null;
+  motivo_factura_rectificativa: string | null;
+  numero_factura_corregida: string | null;
+  url_factura_corregida: string | null;
+  total_factura_corregida: string | number | null;
+  fecha_factura_corregida: string | null;
+  estado_factura_corregida: string | null;
 }
 
 interface FilaItemVentaSql {
@@ -159,6 +194,30 @@ export function mapearVenta(row: FilaVentaSql, items: FilaItemVentaSql[]): Venta
       : null,
     formaPagoTicket: row.forma_pago_ticket || "",
     bancoTicket: row.banco_ticket || "",
+    urlFactura: row.url_factura || "",
+    fechaFactura: row.fecha_factura || null,
+    totalFactura: Number(row.total_factura) || 0,
+    estadoFactura: row.estado_factura || "",
+    formaPagoFactura: row.forma_pago_factura || "",
+    bancoFactura: row.banco_factura || "",
+    lineasFactura: Array.isArray(row.lineas_factura)
+      ? (row.lineas_factura as Array<{ descripcion?: string; cantidad?: number; precio?: number; descuento?: number }>).map((l) => ({
+          descripcion: l.descripcion || "", cantidad: Number(l.cantidad) || 1, precio: Number(l.precio) || 0, descuento: Number(l.descuento) || 0,
+        }))
+      : [],
+    clienteFactura: row.cliente_factura && typeof row.cliente_factura === "object"
+      ? (() => {
+          const c = row.cliente_factura as { nombre?: string; dni?: string; telefono?: string; direccion?: string; email?: string };
+          return { nombre: c.nombre || "", dni: c.dni || "", telefono: c.telefono || "", direccion: c.direccion || "", email: c.email || "" };
+        })()
+      : null,
+    facturaRectificativa: row.numero_factura_rectificativa
+      ? { numeroFactura: row.numero_factura_rectificativa, urlFactura: row.url_factura_rectificativa || "", totalFactura: Number(row.total_factura_rectificativa) || 0, fechaFactura: row.fecha_factura_rectificativa || null }
+      : null,
+    motivoFacturaRectificativa: row.motivo_factura_rectificativa || "",
+    facturaCorregida: row.numero_factura_corregida
+      ? { numeroFactura: row.numero_factura_corregida, urlFactura: row.url_factura_corregida || "", totalFactura: Number(row.total_factura_corregida) || 0, fechaFactura: row.fecha_factura_corregida || null }
+      : null,
     items: items.map(mapearItem),
   };
 }
@@ -247,9 +306,11 @@ export function numerosPedidoDeVenta(venta: Pick<Venta, "items">): string {
 }
 
 // ── Nuevo Pedido (modalNuevoPedido / generarFacturaPedido) ──────────────
-// DNI y dirección del cliente NUNCA se persisten en `ventas` (esa tabla no
-// tiene esas columnas) — solo viajan una vez, dentro de la factura PDF que
-// se genera al crear el pedido. Cada línea de "Conceptos" en el original
+// DNI y dirección del cliente no tienen su propia columna en `ventas` —
+// solo se guardan como parte de la foto `cliente_factura` (migración 075,
+// necesaria para poder rectificar/corregir la Factura real más tarde con
+// los mismos datos fiscales), nunca sueltas en columnas propias. Cada línea
+// de "Conceptos" en el original
 // (_npAddLinea) solo captura descripción/cantidad/precio unitario: NUNCA
 // proveedor ni enlace (el propio código de generarFacturaPedido() lee
 // `.np-prov`/`.np-enlace`, pero esos selectores no existen en el HTML que

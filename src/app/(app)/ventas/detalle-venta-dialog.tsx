@@ -30,6 +30,7 @@ import type { Proveedor } from "@/app/api/proveedores/route";
 import { esUrlValida } from "@/lib/validacion";
 import { TicketManualDialog } from "../reparaciones/ticket-manual-dialog";
 import { VentaTicketModalShell } from "./venta-ticket-modal-shell";
+import { VentaFacturaModalShell } from "./venta-factura-modal-shell";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -84,6 +85,7 @@ export function DetalleVentaDialog({
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [ticketAbierto, setTicketAbierto] = useState(false);
   const [ticketDetalleAbierto, setTicketDetalleAbierto] = useState(false);
+  const [facturaDetalleAbierto, setFacturaDetalleAbierto] = useState(false);
   const [venta, setVenta] = useState<Venta | null>(null);
   const [cargando, setCargando] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -357,7 +359,14 @@ export function DetalleVentaDialog({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
               <div className="flex items-center gap-1.5">
                 <DocumentText className="size-4 text-muted-foreground" />
-                <span className="font-semibold">Factura:</span> {venta.numeroFactura || "-"}
+                <span className="font-semibold">Factura:</span>{" "}
+                {venta.numeroFactura ? (
+                  <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setFacturaDetalleAbierto(true)}>
+                    {venta.numeroFactura}
+                  </Button>
+                ) : (
+                  "-"
+                )}
               </div>
               <div className="flex items-center gap-1.5">
                 <Ticket className="size-4 text-muted-foreground" />
@@ -570,6 +579,15 @@ export function DetalleVentaDialog({
           venta={venta}
           open={ticketDetalleAbierto}
           onOpenChange={setTicketDetalleAbierto}
+          onActualizado={actualizarTodo}
+        />
+      )}
+
+      {venta && venta.numeroFactura && (
+        <VentaFacturaModalShell
+          venta={venta}
+          open={facturaDetalleAbierto}
+          onOpenChange={setFacturaDetalleAbierto}
           onActualizado={actualizarTodo}
         />
       )}
