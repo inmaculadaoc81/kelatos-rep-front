@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Box } from "@/lib/icons";
+import { useEffect, useState } from "react";
+import { Box, Clock } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +58,18 @@ export function PiezaStockFormDialog({
   const [datos, setDatos] = useState<DatosStockPiezaForm>(() => (piezaExistente ? desdeExistente(piezaExistente) : { ...vacio(), ...valoresIniciales }));
   const [enviando, setEnviando] = useState(false);
   const esEdicion = piezaExistente !== null;
+
+  const [historial, setHistorial] = useState<{ id: number; fecha_hora: string; usuario: string | null; descripcion: string }[]>([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+
+  useEffect(() => {
+    if (!open || !esEdicion || !piezaExistente) return;
+    setCargandoHistorial(true);
+    fetch(`/api/stock-piezas/${encodeURIComponent(piezaExistente.referencia)}/historial`)
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setHistorial(data.historial); })
+      .finally(() => setCargandoHistorial(false));
+  }, [open, esEdicion, piezaExistente]);
 
   function actualizar<K extends keyof DatosStockPiezaForm>(campo: K, valor: DatosStockPiezaForm[K]) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
@@ -167,6 +179,30 @@ export function PiezaStockFormDialog({
               <Input id="spStockMin" type="number" min={0} step="1" value={datos.stockMinimo} onChange={(e) => actualizar("stockMinimo", parseInt(e.target.value) || 0)} />
             </div>
           </div>
+          {esEdicion && (
+            <div className="space-y-1.5 border-t pt-3">
+              <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="size-3.5" /> Historial de cambios
+              </Label>
+              {cargandoHistorial && <p className="text-xs text-muted-foreground">Cargando…</p>}
+              {!cargandoHistorial && historial.length === 0 && (
+                <p className="text-xs text-muted-foreground">Sin cambios registrados todavía.</p>
+              )}
+              {!cargandoHistorial && historial.length > 0 && (
+                <div className="max-h-32 space-y-1.5 overflow-y-auto rounded-md border bg-muted/30 p-2">
+                  {historial.map((h) => (
+                    <div key={h.id} className="text-xs">
+                      <span className="text-muted-foreground">
+                        {new Date(h.fecha_hora).toLocaleString("es-ES")}
+                        {h.usuario ? ` · ${h.usuario}` : ""}
+                      </span>
+                      <p>{h.descripcion}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
