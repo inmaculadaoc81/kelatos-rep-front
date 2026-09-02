@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "sonner";
 import { Recogida } from "@/lib/recogidas";
 import { EditarRecogidaDialog } from "./editar-recogida-dialog";
 
@@ -46,8 +47,24 @@ export default function RecogidasPage() {
     }
   }
 
+  const [sincronizando, setSincronizando] = useState(false);
+
+  async function actualizar() {
+    setSincronizando(true);
+    try {
+      const res = await fetch("/api/recogidas/sincronizar", { method: "POST" });
+      const data = await res.json();
+      if (data.ok && data.nuevos > 0) toast.success(`${data.nuevos} recogida${data.nuevos !== 1 ? "s" : ""} nueva${data.nuevos !== 1 ? "s" : ""} desde Calendar`);
+    } catch {
+      // best-effort: si falla la sincronización, igualmente recargamos lo que ya hay en Postgres
+    } finally {
+      setSincronizando(false);
+    }
+    await cargar();
+  }
+
   useEffect(() => {
-    cargar();
+    actualizar();
   }, []);
 
   return (
@@ -57,8 +74,8 @@ export default function RecogidasPage() {
           <h1 className="text-lg font-semibold">Recogidas a Domicilio</h1>
           <p className="text-sm text-muted-foreground">Recogidas registradas en Google Calendar</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={cargar}>
-          <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} /> Actualizar
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={actualizar} disabled={sincronizando}>
+          <Refresh2 className={`size-4 ${cargando || sincronizando ? "animate-spin" : ""}`} /> Actualizar
         </Button>
       </div>
 
