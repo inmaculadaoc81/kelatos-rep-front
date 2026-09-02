@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Truck, Calendar, Clock, Call, Sms, Location, DocumentText, Tag } from "@/lib/icons";
+import { Truck, Calendar, Clock, Call, Sms, Location, DocumentText, Tag, Personalcard } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import {
   Dialog,
@@ -112,6 +112,7 @@ export function EditarRecogidaDialog({
               <Fila icono={Call} valor={recogida.telefono} />
               <Fila icono={Sms} valor={recogida.email} />
               <Fila icono={Location} valor={recogida.direccion} />
+              <Fila icono={Personalcard} valor={recogida.dni} />
               {recogida.notas && <Fila icono={Tag} valor={recogida.notas} />}
             </div>
 

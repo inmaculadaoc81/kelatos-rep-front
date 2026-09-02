@@ -34,6 +34,8 @@ export interface Recogida {
   /** "recogida" (a domicilio) | "cita_tienda" (reserva Cal.com para traer
       el equipo al taller) — mismo calendario, dos tipos de evento. */
   tipo: string;
+  /** DNI/CIF/NIF — solo viene informado en citas de tienda (Cal.com). */
+  dni: string;
 }
 
 interface FilaRecogidaSql {
@@ -52,6 +54,7 @@ interface FilaRecogidaSql {
   actualizado_por: string | null;
   observaciones: string | null;
   tipo: string | null;
+  dni: string | null;
 }
 
 export function mapearRecogida(row: FilaRecogidaSql): Recogida {
@@ -71,6 +74,7 @@ export function mapearRecogida(row: FilaRecogidaSql): Recogida {
     actualizadoPor: row.actualizado_por || "",
     observaciones: row.observaciones || "",
     tipo: row.tipo || "recogida",
+    dni: row.dni || "",
   };
 }
 
