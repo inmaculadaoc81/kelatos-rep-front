@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash, Ticket } from "@/lib/icons";
+import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash, Ticket, Copy } from "@/lib/icons";
+import { toast } from "sonner";
 import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -537,7 +538,23 @@ export default function ReparacionesPage() {
                     <TableCell className="max-w-47.5">
                       <div className="truncate" title={rep.cliente.nombre || "N/A"}>{rep.cliente.nombre || "N/A"}</div>
                       <div className="truncate text-xs text-muted-foreground">{rep.cliente.telefono || "N/A"}</div>
-                      <div className="truncate text-xs text-muted-foreground" title={rep.cliente.email || ""}>{rep.cliente.email || ""}</div>
+                      {rep.cliente.email && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="truncate" title={rep.cliente.email}>{rep.cliente.email}</span>
+                          <button
+                            type="button"
+                            className="shrink-0 text-muted-foreground hover:text-foreground"
+                            title="Copiar email"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(rep.cliente.email);
+                              toast.success("Email copiado");
+                            }}
+                          >
+                            <Copy className="size-3" />
+                          </button>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-57.5">
                       <div className="truncate" title={rep.equipo.modelo || "N/A"}>{rep.equipo.modelo || "N/A"}</div>
