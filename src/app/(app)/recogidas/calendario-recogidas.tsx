@@ -1,9 +1,23 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft2, ArrowRight2 } from "@/lib/icons";
+import { ArrowLeft2, ArrowRight2, Edit2, CloseCircle, Calendar as CalendarioIcono, Clock, Call, Location, DocumentText, Tag } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Recogida } from "@/lib/recogidas";
+
+// Mismo mapa que page.tsx/editar-recogida-dialog.tsx — duplicado a
+// propósito (ya es el patrón existente para estos colores) en vez de
+// levantarlo a un módulo compartido, para no tocar esos dos archivos por
+// una vista de solo lectura.
+const COLOR_ESTADO_MINI: Record<string, string> = {
+  "Pedido de recogida": "bg-amber-500/10 text-amber-600",
+  "Recogida Pagada": "bg-green-500/10 text-green-600",
+  "Pago pendiente": "bg-red-500/10 text-red-600",
+  "No contesta": "bg-slate-500/10 text-slate-600",
+  "Recogida Realizada": "bg-blue-500/10 text-blue-600",
+  "Recibido en local": "bg-cyan-500/10 text-cyan-600",
+};
 
 const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MESES = [
@@ -23,6 +37,65 @@ function claveFecha(d: Date): string {
 function esHoy(d: Date): boolean {
   const hoy = new Date();
   return d.getFullYear() === hoy.getFullYear() && d.getMonth() === hoy.getMonth() && d.getDate() === hoy.getDate();
+}
+
+/** Vista previa grande al hacer click en un evento — mismo patrón que
+    Google Calendar (tooltip flotante junto al evento, con un icono para
+    abrir el detalle completo) en vez de saltar directo al modal de
+    edición. */
+function EventoPopoverRecogida({ ev, onEditar }: { ev: Recogida; onEditar: (r: Recogida) => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const esCita = ev.tipo === "cita_tienda";
+
+  return (
+    <Popover open={abierto} onOpenChange={setAbierto}>
+      <PopoverTrigger
+        className={`block w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] leading-tight hover:opacity-80 ${
+          esCita ? "bg-violet-500/15 text-violet-700 dark:text-violet-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+        }`}
+      >
+        {ev.hora && <span className="font-medium">{ev.hora} </span>}
+        {ev.cliente || ev.asunto || "Sin asunto"}
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" side="right" align="start" sideOffset={8}>
+        <div className="flex items-center justify-end gap-0.5 border-b px-1.5 py-1">
+          <Button size="icon-sm" variant="ghost" className="size-7" title="Editar" onClick={() => { setAbierto(false); onEditar(ev); }}>
+            <Edit2 className="size-4" />
+          </Button>
+          <Button size="icon-sm" variant="ghost" className="size-7" title="Cerrar" onClick={() => setAbierto(false)}>
+            <CloseCircle className="size-4" />
+          </Button>
+        </div>
+        <div className="space-y-2.5 p-3.5">
+          <div className="flex items-start gap-2.5">
+            <span className={`mt-1 size-3 shrink-0 rounded-full ${esCita ? "bg-violet-500" : "bg-sky-500"}`} />
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <p className="text-sm font-semibold">{ev.cliente || ev.asunto || "Sin asunto"}</p>
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CalendarioIcono className="size-3.5" />
+                {ev.fecha ? new Date(ev.fecha).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }) : "-"}
+              </p>
+              {ev.hora && (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="size-3.5" /> {ev.hora}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1.5 pl-5.5 text-xs">
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 font-medium ${COLOR_ESTADO_MINI[ev.estado] || "bg-muted text-muted-foreground"}`}>
+              {ev.estado || "Sin estado"}
+            </span>
+            {ev.cliente && ev.asunto && <p className="flex items-start gap-1.5"><DocumentText className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.asunto}</p>}
+            {ev.telefono && <p className="flex items-start gap-1.5"><Call className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.telefono}</p>}
+            {ev.direccion && <p className="flex items-start gap-1.5"><Location className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.direccion}</p>}
+            {ev.notas && <p className="flex items-start gap-1.5"><Tag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {ev.notas}</p>}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function CalendarioRecogidas({
@@ -119,18 +192,7 @@ export function CalendarioRecogidas({
               </div>
               <div className="space-y-0.5">
                 {eventos.map((ev) => (
-                  <button
-                    key={ev.idEvento}
-                    type="button"
-                    onClick={() => onSeleccionar(ev)}
-                    title={`${ev.hora ? ev.hora + " — " : ""}${ev.cliente || ev.asunto || "Sin asunto"}`}
-                    className={`block w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] leading-tight hover:opacity-80 ${
-                      ev.tipo === "cita_tienda" ? "bg-violet-500/15 text-violet-700 dark:text-violet-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
-                    }`}
-                  >
-                    {ev.hora && <span className="font-medium">{ev.hora} </span>}
-                    {ev.cliente || ev.asunto || "Sin asunto"}
-                  </button>
+                  <EventoPopoverRecogida key={ev.idEvento} ev={ev} onEditar={onSeleccionar} />
                 ))}
               </div>
             </div>
