@@ -173,12 +173,12 @@ function TipoBadge({ f }: { f: FacturaCliente }) {
   const tipoEfectivo: TipoFactura =
     f.tipo === "corregida"
       ? (f.tipoOriginal === "revision" || f.tipoOriginal === "ticket_revision" ? "revision"
-          : f.tipoOriginal === "ticket" ? "ticket"
+          : f.tipoOriginal === "ticket" || f.tipoOriginal === "venta_ticket" ? "ticket"
           : f.tipoOriginal === "venta" ? "venta"
           : "reparacion")
       : f.tipo;
   const estilo = TIPO_BADGE_ESTILO[tipoEfectivo] ?? { bg: "#e9ecef", color: "#6c757d" };
-  const esDocTicket = f.tipo === "ticket" || f.esTicket || (f.tipo === "corregida" && (f.tipoOriginal === "ticket" || f.tipoOriginal === "ticket_revision"));
+  const esDocTicket = f.tipo === "ticket" || f.esTicket || (f.tipo === "corregida" && (f.tipoOriginal === "ticket" || f.tipoOriginal === "ticket_revision" || f.tipoOriginal === "venta_ticket"));
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
       {f.tipo === "recogida" && <Box className="size-3" />}

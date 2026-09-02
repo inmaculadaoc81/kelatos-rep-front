@@ -46,7 +46,7 @@ function resolverTipoBase(factura: FacturaCliente): TipoFacturaBase | null {
   // que coincida por casualidad en el mismo id (ambas secuencias son
   // independientes). Se queda en DetalleFacturaSimple, igual que la fila
   // base "venta".
-  if (factura.tipoOriginal === "venta") return null;
+  if (factura.tipoOriginal === "venta" || factura.tipoOriginal === "venta_ticket") return null;
   switch (factura.tipo) {
     case "reparacion": return "normal";
     case "revision": return factura.esTicket ? "ticket_revision" : "revision";

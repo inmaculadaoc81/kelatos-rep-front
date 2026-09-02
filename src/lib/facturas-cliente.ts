@@ -71,7 +71,7 @@ export interface FacturaCliente {
       viene (reparación o revisión), para resolver a qué documento
       (numero_factura_rectificativa vs. ..._revision, etc.) corresponde
       realmente esta fila. */
-  tipoOriginal?: "reparacion" | "revision" | "ticket" | "ticket_revision" | "venta";
+  tipoOriginal?: "reparacion" | "revision" | "ticket" | "ticket_revision" | "venta" | "venta_ticket";
   esAlquiler?: boolean;
   esManual?: boolean;
   /** true = esta fila de tipo "revision" viene del ticket de revisión
@@ -1218,12 +1218,33 @@ interface FilaVentaSql {
   total_factura_corregida: string | number | null;
   fecha_factura_corregida: string | null;
   estado_factura_corregida: string | null;
+
+  // Ticket de venta (Serie 4, no fiscal) — alternativa excluyente a la
+  // Factura real de arriba (Nuevo Pedido de Piezas: Factura o Ticket, nunca
+  // ambos). Bug real reportado, 2026-09-03: un ticket generado por error
+  // (venta_id 55, 4-000046) no aparecía en ningún listado porque esta
+  // función nunca leyó numero_ticket — solo numero_factura.
+  numero_ticket: string | null;
+  url_ticket: string | null;
+  fecha_ticket: string | null;
+  total_ticket: string | number | null;
+  estado_ticket: string | null;
+  forma_pago_ticket: string | null;
+  banco_ticket: string | null;
+
+  numero_ticket_rectificativa: string | null;
+  url_ticket_rectificativa: string | null;
+  total_ticket_rectificativa: string | number | null;
+  fecha_ticket_rectificativa: string | null;
+
+  numero_ticket_corregida: string | null;
+  url_ticket_corregida: string | null;
+  total_ticket_corregida: string | number | null;
+  fecha_ticket_corregida: string | null;
+  estado_ticket_corregida: string | null;
 }
 
 export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
-  const numV = texto(row.numero_factura);
-  if (!numV || !numeroValido(numV)) return [];
-
   const clienteRegistrado = { cliente: texto(row.cliente_nombre), telefono: texto(row.cliente_telefono), dniCif: "" };
   const base = {
     resguardo: texto(row.venta_id),
@@ -1232,8 +1253,11 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
     equipo: "",
     estadoEntrega: "",
   };
-  const facturas: FacturaCliente[] = [
-    {
+  const facturas: FacturaCliente[] = [];
+
+  const numV = texto(row.numero_factura);
+  if (numV && numeroValido(numV)) {
+    facturas.push({
       ...base,
       numero: numV,
       url: urlValida(texto(row.url_factura)),
@@ -1243,39 +1267,86 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
       banco: texto(row.banco_factura),
       estadoFactura: texto(row.estado_factura),
       tipo: "venta",
-    },
-  ];
-
-  const numRect = texto(row.numero_factura_rectificativa);
-  if (numRect && numeroValido(numRect)) {
-    facturas.push({
-      ...base,
-      numero: numRect,
-      url: urlValida(texto(row.url_factura_rectificativa)),
-      total: num(row.total_factura_rectificativa),
-      fecha: row.fecha_factura_rectificativa,
-      formaPago: texto(row.forma_pago_factura),
-      banco: texto(row.banco_factura),
-      estadoFactura: "Devolución",
-      tipo: "rectificativa",
-      tipoOriginal: "venta",
     });
+
+    const numRect = texto(row.numero_factura_rectificativa);
+    if (numRect && numeroValido(numRect)) {
+      facturas.push({
+        ...base,
+        numero: numRect,
+        url: urlValida(texto(row.url_factura_rectificativa)),
+        total: num(row.total_factura_rectificativa),
+        fecha: row.fecha_factura_rectificativa,
+        formaPago: texto(row.forma_pago_factura),
+        banco: texto(row.banco_factura),
+        estadoFactura: "Devolución",
+        tipo: "rectificativa",
+        tipoOriginal: "venta",
+      });
+    }
+
+    const numCorr = texto(row.numero_factura_corregida);
+    if (numCorr && numeroValido(numCorr)) {
+      facturas.push({
+        ...base,
+        numero: numCorr,
+        url: urlValida(texto(row.url_factura_corregida)),
+        total: num(row.total_factura_corregida),
+        fecha: row.fecha_factura_corregida,
+        formaPago: texto(row.forma_pago_factura),
+        banco: texto(row.banco_factura),
+        estadoFactura: row.estado_factura_corregida || "",
+        tipo: "corregida",
+        tipoOriginal: "venta",
+      });
+    }
   }
 
-  const numCorr = texto(row.numero_factura_corregida);
-  if (numCorr && numeroValido(numCorr)) {
+  const numT = texto(row.numero_ticket);
+  if (numT && numeroValido(numT)) {
     facturas.push({
       ...base,
-      numero: numCorr,
-      url: urlValida(texto(row.url_factura_corregida)),
-      total: num(row.total_factura_corregida),
-      fecha: row.fecha_factura_corregida,
-      formaPago: texto(row.forma_pago_factura),
-      banco: texto(row.banco_factura),
-      estadoFactura: row.estado_factura_corregida || "",
-      tipo: "corregida",
-      tipoOriginal: "venta",
+      numero: numT,
+      url: urlValida(texto(row.url_ticket)),
+      total: num(row.total_ticket),
+      fecha: row.fecha_ticket,
+      formaPago: texto(row.forma_pago_ticket),
+      banco: texto(row.banco_ticket),
+      estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
+      tipo: "ticket",
     });
+
+    const numTRect = texto(row.numero_ticket_rectificativa);
+    if (numTRect && numeroValido(numTRect)) {
+      facturas.push({
+        ...base,
+        numero: numTRect,
+        url: urlValida(texto(row.url_ticket_rectificativa)),
+        total: num(row.total_ticket_rectificativa),
+        fecha: row.fecha_ticket_rectificativa,
+        formaPago: "",
+        banco: "",
+        estadoFactura: "Devolución",
+        tipo: "rectificativa",
+        tipoOriginal: "venta_ticket",
+      });
+    }
+
+    const numTCorr = texto(row.numero_ticket_corregida);
+    if (numTCorr && numeroValido(numTCorr)) {
+      facturas.push({
+        ...base,
+        numero: numTCorr,
+        url: urlValida(texto(row.url_ticket_corregida)),
+        total: num(row.total_ticket_corregida),
+        fecha: row.fecha_ticket_corregida,
+        formaPago: "",
+        banco: "",
+        estadoFactura: row.estado_ticket_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
+        tipo: "corregida",
+        tipoOriginal: "venta_ticket",
+      });
+    }
   }
 
   return facturas;
