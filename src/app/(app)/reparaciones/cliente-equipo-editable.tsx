@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Lock, Personalcard, Call, Sms, Location, TickCircle, CloseCircle } from "@/lib/icons";
+import { Edit2, Lock, Personalcard, Call, Sms, Location, TickCircle, CloseCircle, Copy } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,25 @@ import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { esEmailValido, corregirTypoDominioEmail } from "@/lib/validacion";
 
-function Linea({ icono: Icono, valor }: { icono: Icon; valor: string }) {
+function Linea({ icono: Icono, valor, copiable = false }: { icono: Icon; valor: string; copiable?: boolean }) {
   if (!valor) return null;
   return (
     <p className="flex items-start gap-2 text-sm">
       <Icono className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <span className="wrap-break-word">{valor}</span>
+      {copiable && (
+        <button
+          type="button"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+          title="Copiar"
+          onClick={() => {
+            navigator.clipboard.writeText(valor);
+            toast.success("Copiado");
+          }}
+        >
+          <Copy className="size-3.5" />
+        </button>
+      )}
     </p>
   );
 }
@@ -132,7 +145,7 @@ export function ClienteEditable({
       <p className="text-base font-semibold">{detalle.cliente.nombre || "-"}</p>
       <Linea icono={Personalcard} valor={detalle.dniCif} />
       <Linea icono={Call} valor={detalle.cliente.telefono} />
-      <Linea icono={Sms} valor={detalle.cliente.email} />
+      <Linea icono={Sms} valor={detalle.cliente.email} copiable />
       <Linea icono={Location} valor={detalle.cliente.direccion} />
       {bloqueado && (
         <p className="text-xs text-muted-foreground italic">Reparación entregada y facturada: no se pueden editar los datos del cliente.</p>
