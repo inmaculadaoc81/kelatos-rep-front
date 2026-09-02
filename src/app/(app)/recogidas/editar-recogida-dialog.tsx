@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Truck } from "@/lib/icons";
+import { useEffect, useState } from "react";
+import { Truck, Calendar, Clock, Call, Sms, Location, DocumentText, Tag } from "@/lib/icons";
+import type { Icon } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,16 @@ function desde(r: Recogida): DatosEditarRecogida {
   return { nuevoEstado: (r.estado as EstadoRecogida) || "Pedido de recogida", numeroSeguimiento: r.noSeguimiento, observaciones: r.observaciones };
 }
 
+function Fila({ icono: Icono, valor }: { icono: Icon; valor: string }) {
+  if (!valor) return null;
+  return (
+    <p className="flex items-start gap-2 text-sm">
+      <Icono className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <span className="wrap-break-word">{valor}</span>
+    </p>
+  );
+}
+
 export function EditarRecogidaDialog({
   recogida,
   open,
@@ -32,8 +43,18 @@ export function EditarRecogidaDialog({
   onOpenChange: (open: boolean) => void;
   onGuardado: () => void;
 }) {
-  const [datos, setDatos] = useState<DatosEditarRecogida | null>(recogida ? desde(recogida) : null);
+  const [datos, setDatos] = useState<DatosEditarRecogida | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  // El useState inicial solo captura `recogida` en el primer render de
+  // este componente (que se monta una sola vez en la página, con
+  // recogida=null) — sin este efecto, `datos` se quedaba null para
+  // siempre y el cuerpo del diálogo no llegaba a pintar nada (bug real
+  // reportado: el modal se abría vacío). Se sincroniza cada vez que
+  // cambia el evento seleccionado, no solo al abrir.
+  useEffect(() => {
+    if (recogida) setDatos(desde(recogida));
+  }, [recogida]);
 
   function actualizar<K extends keyof DatosEditarRecogida>(campo: K, valor: DatosEditarRecogida[K]) {
     setDatos((prev) => (prev ? { ...prev, [campo]: valor } : prev));
@@ -65,22 +86,35 @@ export function EditarRecogidaDialog({
       open={open}
       onOpenChange={(o) => {
         if (enviando) return;
-        if (o && recogida) setDatos(desde(recogida));
         onOpenChange(o);
       }}
     >
       <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Truck className="size-5" /> {recogida?.cliente || "Recogida"}
+            <Truck className="size-5" /> {recogida?.cliente || recogida?.asunto || "Recogida"}
           </DialogTitle>
         </DialogHeader>
 
-        {datos && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {recogida?.direccion} · {recogida?.telefono}
-            </p>
+        {datos && recogida && (
+          <div className="space-y-4">
+            <div className="space-y-1.5 rounded-md border bg-muted/30 p-3">
+              <span
+                className={`mb-1 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                  recogida.tipo === "cita_tienda" ? "bg-violet-500/10 text-violet-600" : "bg-sky-500/10 text-sky-600"
+                }`}
+              >
+                {recogida.tipo === "cita_tienda" ? "Cita en tienda" : "Recogida a domicilio"}
+              </span>
+              <Fila icono={Calendar} valor={recogida.fecha ? new Date(recogida.fecha).toLocaleDateString("es-ES") : ""} />
+              <Fila icono={Clock} valor={recogida.hora} />
+              <Fila icono={DocumentText} valor={recogida.asunto} />
+              <Fila icono={Call} valor={recogida.telefono} />
+              <Fila icono={Sms} valor={recogida.email} />
+              <Fila icono={Location} valor={recogida.direccion} />
+              {recogida.notas && <Fila icono={Tag} valor={recogida.notas} />}
+            </div>
+
             <div className="space-y-1.5">
               <Label>Estado</Label>
               <Select value={datos.nuevoEstado} onValueChange={(v) => actualizar("nuevoEstado", (v || datos.nuevoEstado) as EstadoRecogida)}>
