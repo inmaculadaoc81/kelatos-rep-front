@@ -65,6 +65,7 @@ export function NuevaFacturaManualDialog({
   const [direccion, setDireccion] = useState("");
   const [dni, setDni] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [email, setEmail] = useState("");
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
   const [buscarStockAbierto, setBuscarStockAbierto] = useState(false);
   const [metodo, setMetodo] = useState("");
@@ -115,11 +116,12 @@ export function NuevaFacturaManualDialog({
     setDireccion(c.direccion || "");
     setDni(c.dniCif || "");
     setTelefono(c.telefono || "");
+    setEmail(c.email || "");
     toast.success("Cliente cargado");
   }
 
   function reiniciar() {
-    setSerie("1"); setNombre(""); setDireccion(""); setDni(""); setTelefono("");
+    setSerie("1"); setNombre(""); setDireccion(""); setDni(""); setTelefono(""); setEmail("");
     setMetodo(""); setBanco(""); setEstadoFactura("Cobrada");
     setLineas([{ descripcion: "", cantidad: 1, precio: 0 }]);
     setDescuentoGlobalPct(0);
@@ -153,7 +155,7 @@ export function NuevaFacturaManualDialog({
         body: JSON.stringify({
           requestId: rid,
           serie,
-          cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim() },
+          cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: email.trim() },
           formaPago: metodo,
           banco: metodo === "tarjeta" ? banco : "",
           estadoFactura,
@@ -277,6 +279,10 @@ export function NuevaFacturaManualDialog({
                         <Label htmlFor="nfmTelefono" className="text-xs text-muted-foreground">Teléfono</Label>
                         <Input id="nfmTelefono" className="h-8 text-sm" value={telefono} onChange={(e) => setTelefono(e.target.value)} disabled={!!resultado} />
                       </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="nfmEmail" className="text-xs text-muted-foreground">Email</Label>
+                      <Input id="nfmEmail" type="email" className="h-8 text-sm" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!resultado} />
                     </div>
                   </div>
                 </div>
