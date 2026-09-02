@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft2, ArrowRight2, Edit2, CloseCircle, Calendar as CalendarioIcono, Clock, Call, Location, DocumentText, Tag } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Recogida } from "@/lib/recogidas";
 
 // Mismo mapa que page.tsx/editar-recogida-dialog.tsx — duplicado a
@@ -197,26 +198,26 @@ export function CalendarioRecogidas({
     <div className="rounded-lg border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
         <div className="flex items-center gap-1.5">
-          <select
-            value={mesActual.getMonth()}
-            onChange={(e) => setMesActual((m) => new Date(m.getFullYear(), Number(e.target.value), 1))}
-            className="h-7 rounded-md border bg-transparent px-1.5 text-sm font-semibold outline-none"
-            aria-label="Mes"
-          >
-            {MESES.map((nombre, i) => (
-              <option key={nombre} value={i}>{nombre}</option>
-            ))}
-          </select>
-          <select
-            value={mesActual.getFullYear()}
-            onChange={(e) => setMesActual((m) => new Date(Number(e.target.value), m.getMonth(), 1))}
-            className="h-7 rounded-md border bg-transparent px-1.5 text-sm font-semibold outline-none"
-            aria-label="Año"
-          >
-            {anios.map((anio) => (
-              <option key={anio} value={anio}>{anio}</option>
-            ))}
-          </select>
+          <Select value={String(mesActual.getMonth())} onValueChange={(v) => v && setMesActual((m) => new Date(m.getFullYear(), Number(v), 1))}>
+            <SelectTrigger className="h-7 w-32 text-sm font-semibold" aria-label="Mes">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MESES.map((nombre, i) => (
+                <SelectItem key={nombre} value={String(i)}>{nombre}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(mesActual.getFullYear())} onValueChange={(v) => v && setMesActual((m) => new Date(Number(v), m.getMonth(), 1))}>
+            <SelectTrigger className="h-7 w-20 text-sm font-semibold" aria-label="Año">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {anios.map((anio) => (
+                <SelectItem key={anio} value={String(anio)}>{anio}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-1">
           <Button
