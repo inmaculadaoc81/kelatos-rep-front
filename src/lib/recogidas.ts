@@ -31,6 +31,9 @@ export interface Recogida {
   fechaActualizacion: string | null;
   actualizadoPor: string;
   observaciones: string;
+  /** "recogida" (a domicilio) | "cita_tienda" (reserva Cal.com para traer
+      el equipo al taller) — mismo calendario, dos tipos de evento. */
+  tipo: string;
 }
 
 interface FilaRecogidaSql {
@@ -48,6 +51,7 @@ interface FilaRecogidaSql {
   fecha_actualizacion: string | null;
   actualizado_por: string | null;
   observaciones: string | null;
+  tipo: string | null;
 }
 
 export function mapearRecogida(row: FilaRecogidaSql): Recogida {
@@ -66,6 +70,7 @@ export function mapearRecogida(row: FilaRecogidaSql): Recogida {
     fechaActualizacion: row.fecha_actualizacion || null,
     actualizadoPor: row.actualizado_por || "",
     observaciones: row.observaciones || "",
+    tipo: row.tipo || "recogida",
   };
 }
 

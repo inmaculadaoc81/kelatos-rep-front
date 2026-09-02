@@ -89,6 +89,7 @@ export default function RecogidasPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Tipo</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Hora</TableHead>
               <TableHead>Cliente</TableHead>
@@ -103,7 +104,7 @@ export default function RecogidasPage() {
             {cargando &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
+                  {Array.from({ length: 9 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -113,7 +114,7 @@ export default function RecogidasPage() {
 
             {!cargando && recogidas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   Sin recogidas registradas
                 </TableCell>
               </TableRow>
@@ -122,6 +123,15 @@ export default function RecogidasPage() {
             {!cargando &&
               recogidas.map((r) => (
                 <TableRow key={r.idEvento}>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                        r.tipo === "cita_tienda" ? "bg-violet-500/10 text-violet-600" : "bg-sky-500/10 text-sky-600"
+                      }`}
+                    >
+                      {r.tipo === "cita_tienda" ? "Cita en tienda" : "Recogida"}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-sm">{r.fecha ? new Date(r.fecha).toLocaleDateString("es-ES") : "-"}</TableCell>
                   <TableCell className="text-sm">{r.hora || "-"}</TableCell>
                   <TableCell className="text-sm">{r.cliente || "-"}</TableCell>
