@@ -12,7 +12,8 @@ export type TonoMetrica =
   | "violet"
   | "blue"
   | "orange"
-  | "rose";
+  | "rose"
+  | "red";
 
 // Un tono por tarjeta, no una regla estricta de "verde=bien/rojo=mal": son
 // 11 contadores de naturaleza distinta (pipeline, envíos, formularios,
@@ -32,6 +33,7 @@ const TONOS: Record<TonoMetrica, { chip: string; barra: string }> = {
   blue: { chip: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400", barra: "bg-blue-500" },
   orange: { chip: "bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400", barra: "bg-orange-500" },
   rose: { chip: "bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400", barra: "bg-rose-500" },
+  red: { chip: "bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400", barra: "bg-red-500" },
 };
 
 export function MetricCard({

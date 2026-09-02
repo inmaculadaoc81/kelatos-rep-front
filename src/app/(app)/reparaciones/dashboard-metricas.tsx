@@ -13,6 +13,7 @@ import {
   Video,
   Verify,
   Chart,
+  CloseCircle,
 } from "@/lib/icons";
 import { MetricCard, AlertCard } from "../metric-card";
 import { MetricasDashboard, CardFiltroId } from "@/lib/metricas";
@@ -80,6 +81,7 @@ export function DashboardMetricas({
             <MetricCard titulo="Pieza Pendiente" valor={metricas.esperandoPieza} unidad="equipos" icon={Box} tono="amber" proporcion={prop(metricas.esperandoPieza)} onClick={() => onFiltrar("piezaPendiente")} activo={cardFiltro === "piezaPendiente"} />
             <MetricCard titulo="En Reparación" valor={metricas.enReparacion} unidad="equipos" icon={Setting2} tono="slate" proporcion={prop(metricas.enReparacion)} onClick={() => onFiltrar("enReparacion")} activo={cardFiltro === "enReparacion"} />
             <MetricCard titulo="Listos p/ Recoger" valor={metricas.listos} unidad="equipos" icon={TickCircle} tono="green" proporcion={prop(metricas.listos)} onClick={() => onFiltrar("listos")} activo={cardFiltro === "listos"} />
+            <MetricCard titulo="No tiene Reparación" valor={metricas.sinReparacion} unidad="equipos" icon={CloseCircle} tono="red" proporcion={prop(metricas.sinReparacion)} onClick={() => onFiltrar("sinReparacion")} activo={cardFiltro === "sinReparacion"} />
             <MetricCard titulo="Ppto. Enviado" valor={metricas.pptoEnviado} unidad="equipos" icon={Send2} tono="indigo" proporcion={prop(metricas.pptoEnviado)} onClick={() => onFiltrar("pptoEnviado")} activo={cardFiltro === "pptoEnviado"} />
             <MetricCard titulo="Ppto. Aceptado" valor={metricas.pptosAceptados} unidad="equipos" icon={Verify} tono="emerald" proporcion={prop(metricas.pptosAceptados)} onClick={() => onFiltrar("pptoAceptado")} activo={cardFiltro === "pptoAceptado"} />
             <MetricCard titulo="Pieza Entregada" valor={metricas.piezaEntregada} unidad="equipos" icon={Box1} tono="teal" proporcion={prop(metricas.piezaEntregada)} onClick={() => onFiltrar("piezaEntregada")} activo={cardFiltro === "piezaEntregada"} />

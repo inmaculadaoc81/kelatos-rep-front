@@ -35,6 +35,7 @@ export type CardFiltroId =
   | "piezaPendiente"
   | "enReparacion"
   | "listos"
+  | "sinReparacion"
   | "pptoEnviado"
   | "pptoAceptado"
   | "piezaEntregada"
@@ -62,6 +63,7 @@ export const CARD_FILTRO_ESTADOS: Record<CardFiltroId, string[] | null> = {
   cintasEnReparacion: null,
   mensajeriaActiva: null,
   listos: ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"],
+  sinReparacion: ["No tiene Reparación"],
   pptoEnviado: ["Presupuesto Enviado"],
   piezaEntregada: ["Pieza Entregada"],
   // Deliberadamente sin filtro de estado (a diferencia del resto de
@@ -88,6 +90,7 @@ export interface MetricasDashboard {
   cintasEnReparacion: number;
   mensajeriaActiva: number;
   listos: number;
+  sinReparacion: number;
   garantia: number;
   totalReparaciones: number;
   totalFinalizadas: number;
@@ -195,6 +198,7 @@ export function mapearMetricas(resp: RespuestaMetricasSql): MetricasDashboard {
     cintasEnReparacion: Number(c.cintas_en_reparacion) || 0,
     mensajeriaActiva: Number(c.mensajeria_activa) || 0,
     listos: Number(c.listos) || 0,
+    sinReparacion: Number(c.sin_reparacion) || 0,
     garantia: Number(c.garantia) || 0,
     totalReparaciones: Number(c.total_reparaciones) || 0,
     totalFinalizadas: Number(c.total_finalizadas) || 0,

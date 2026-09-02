@@ -47,6 +47,7 @@ const NOMBRE_CARD: Record<CardFiltroId, string> = {
   piezaPendiente: "Pieza Pendiente",
   enReparacion: "En Reparación",
   listos: "Listos p/ Recoger",
+  sinReparacion: "No tiene Reparación",
   pptoEnviado: "Ppto. Enviado",
   pptoAceptado: "Ppto. Aceptado",
   piezaEntregada: "Pieza Entregada",
