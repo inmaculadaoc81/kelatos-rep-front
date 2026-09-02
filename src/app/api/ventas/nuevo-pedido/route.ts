@@ -64,7 +64,9 @@ export async function POST(req: Request) {
   if (!requestId || !/^[0-9a-f-]{36}$/i.test(requestId)) {
     return NextResponse.json({ ok: false, error: "requestId inválido" }, { status: 400 });
   }
-  if (!datos.clienteNombre.trim()) return NextResponse.json({ ok: false, error: "El nombre del cliente es obligatorio" }, { status: 400 });
+  // El nombre nunca es obligatorio en modo Ticket (solo se pide correo,
+  // igual que Ticket Manual) — petición del usuario, 2026-09-02.
+  if (!datos.modoTicket && !datos.clienteNombre.trim()) return NextResponse.json({ ok: false, error: "El nombre del cliente es obligatorio" }, { status: 400 });
   if (datos.items.length === 0) return NextResponse.json({ ok: false, error: "Añade al menos una pieza" }, { status: 400 });
   for (const [i, it] of datos.items.entries()) {
     if (!it.descripcion.trim()) return NextResponse.json({ ok: false, error: `La descripción de la pieza ${i + 1} es obligatoria` }, { status: 400 });

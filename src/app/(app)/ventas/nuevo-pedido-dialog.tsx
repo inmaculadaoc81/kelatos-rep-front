@@ -151,7 +151,9 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   }
 
   async function guardar() {
-    if (!datos.clienteNombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    // El nombre nunca es obligatorio en modo Ticket — igual que Ticket
+    // Manual (reparaciones/ticket-manual-dialog.tsx), solo se pide correo.
+    if (!datos.modoTicket && !datos.clienteNombre.trim()) return toast.error("El nombre del cliente es obligatorio");
     if (!esEmailValido(datos.clienteEmail)) return toast.error("El email no es válido");
     if (datos.items.length === 0) return toast.error("Añade al menos una pieza");
     for (const [i, it] of datos.items.entries()) {
@@ -317,20 +319,31 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                       <SearchNormal1 className="size-3" /> Buscar
                     </Button>
                   </div>
-                  <div className="space-y-2 p-3">
-                    <div className="grid grid-cols-[5rem_1fr] items-center gap-2 text-sm">
-                      <Label htmlFor="npClienteDni" className="text-xs text-muted-foreground">DNI / CIF</Label>
-                      <Input id="npClienteDni" className="h-8 text-sm" placeholder="12345678A" value={datos.clienteDni} onChange={(e) => actualizar("clienteDni", e.target.value)} />
-                      <Label htmlFor="npClienteNombre" className="text-xs text-muted-foreground">Nombre *</Label>
-                      <Input id="npClienteNombre" className="h-8 text-sm" value={datos.clienteNombre} onChange={(e) => actualizar("clienteNombre", e.target.value)} />
-                      <Label htmlFor="npClienteTel" className="text-xs text-muted-foreground">Teléfono</Label>
-                      <Input id="npClienteTel" className="h-8 text-sm" placeholder="612345678" value={datos.clienteTelefono} onChange={(e) => actualizar("clienteTelefono", e.target.value)} />
+                  {datos.modoTicket ? (
+                    // Igual que Ticket Manual (reparaciones/ticket-manual-dialog.tsx):
+                    // solo el correo — el nombre nunca es obligatorio en un
+                    // ticket, solo se rellena si se usa "Buscar". Petición
+                    // del usuario, 2026-09-02.
+                    <div className="space-y-1 p-3">
                       <Label htmlFor="npClienteEmail" className="text-xs text-muted-foreground">Email</Label>
                       <Input id="npClienteEmail" className="h-8 text-sm" type="email" placeholder="cliente@email.com" value={datos.clienteEmail} onChange={(e) => actualizar("clienteEmail", e.target.value)} />
-                      <Label htmlFor="npClienteDir" className="text-xs text-muted-foreground">Dirección</Label>
-                      <Input id="npClienteDir" className="h-8 text-sm" placeholder="Calle, nº, ciudad" value={datos.clienteDireccion} onChange={(e) => actualizar("clienteDireccion", e.target.value)} />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-2 p-3">
+                      <div className="grid grid-cols-[5rem_1fr] items-center gap-2 text-sm">
+                        <Label htmlFor="npClienteDni" className="text-xs text-muted-foreground">DNI / CIF</Label>
+                        <Input id="npClienteDni" className="h-8 text-sm" placeholder="12345678A" value={datos.clienteDni} onChange={(e) => actualizar("clienteDni", e.target.value)} />
+                        <Label htmlFor="npClienteNombre" className="text-xs text-muted-foreground">Nombre *</Label>
+                        <Input id="npClienteNombre" className="h-8 text-sm" value={datos.clienteNombre} onChange={(e) => actualizar("clienteNombre", e.target.value)} />
+                        <Label htmlFor="npClienteTel" className="text-xs text-muted-foreground">Teléfono</Label>
+                        <Input id="npClienteTel" className="h-8 text-sm" placeholder="612345678" value={datos.clienteTelefono} onChange={(e) => actualizar("clienteTelefono", e.target.value)} />
+                        <Label htmlFor="npClienteEmail2" className="text-xs text-muted-foreground">Email</Label>
+                        <Input id="npClienteEmail2" className="h-8 text-sm" type="email" placeholder="cliente@email.com" value={datos.clienteEmail} onChange={(e) => actualizar("clienteEmail", e.target.value)} />
+                        <Label htmlFor="npClienteDir" className="text-xs text-muted-foreground">Dirección</Label>
+                        <Input id="npClienteDir" className="h-8 text-sm" placeholder="Calle, nº, ciudad" value={datos.clienteDireccion} onChange={(e) => actualizar("clienteDireccion", e.target.value)} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
