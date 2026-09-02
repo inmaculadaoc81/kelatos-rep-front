@@ -88,7 +88,7 @@ export default function AdminMarcacionesOlvidadasPage() {
     });
   }
 
-  async function resolver(id: number, accion: "aprobar-manual" | "aprobar-auto" | "rechazar") {
+  async function resolver(id: number, accion: "aprobar-auto" | "rechazar") {
     setProcesando(id);
     try {
       const res = await fetch(`/api/asistencia/admin/marcaciones-olvidadas/${id}/${accion}`, { method: "POST" });
@@ -108,7 +108,7 @@ export default function AdminMarcacionesOlvidadasPage() {
       <div>
         <h1 className="text-lg font-semibold">Marcaciones olvidadas</h1>
         <p className="text-xs text-muted-foreground">
-          &quot;Aprobar auto&quot; reconstruye el fichaje que falta automáticamente. &quot;Aprobar manual&quot; solo marca la solicitud como resuelta, sin tocar los fichajes.
+          Al aprobar, se reconstruye automáticamente el fichaje que falta.
         </p>
       </div>
       <div className="overflow-hidden rounded-lg border bg-card">
@@ -162,8 +162,7 @@ export default function AdminMarcacionesOlvidadasPage() {
                 <TableCell>
                   {m.state === "pendiente" && (
                     <div className="flex flex-wrap gap-1">
-                      <Button size="sm" className="h-7 bg-emerald-600 text-white hover:bg-emerald-700" disabled={procesando === m.id} onClick={() => resolver(m.id, "aprobar-auto")}>Aprobar auto</Button>
-                      <Button size="sm" variant="outline" className="h-7" disabled={procesando === m.id} onClick={() => resolver(m.id, "aprobar-manual")}>Aprobar manual</Button>
+                      <Button size="sm" className="h-7 bg-emerald-600 text-white hover:bg-emerald-700" disabled={procesando === m.id} onClick={() => resolver(m.id, "aprobar-auto")}>Aprobar</Button>
                       <Button size="sm" variant="outline" className="h-7 text-destructive" disabled={procesando === m.id} onClick={() => resolver(m.id, "rechazar")}>Rechazar</Button>
                     </div>
                   )}
