@@ -90,7 +90,7 @@ export function NavUser({ session }: { session: Session | null }) {
               className="min-w-56"
               side={isMobile ? "bottom" : "right"}
               align="end"
-              sideOffset={4}
+              sideOffset={12}
             >
               {/* MenuPrimitive.GroupLabel (base-ui) exige un Menu.Group como
                   ancestro — a diferencia de Radix, donde el Label suelto
