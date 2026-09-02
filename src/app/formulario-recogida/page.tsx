@@ -2,6 +2,8 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { FotoFormulario } from "@/lib/formulario-cliente";
+import { resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
 
 type Seccion = "cargando" | "error" | "yaEntregado" | "formulario" | "exito";
 
@@ -27,6 +29,45 @@ function FormularioRecogidaInterno() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dibujandoRef = useRef(false);
   const hayFirmaRef = useRef(false);
+
+  // Fotos del equipo al recogerlo — opcionales, petición del usuario,
+  // 2026-09-02: sirven de constancia del estado del equipo en el momento
+  // de la entrega. Mismo procesado (compresión + HEIC) que el formulario
+  // de recepción (formulario/page.tsx), vía lib/foto-captura.ts.
+  const [fotos, setFotos] = useState<FotoFormulario[]>([]);
+  const [procesandoFoto, setProcesandoFoto] = useState(false);
+  const [errorFoto, setErrorFoto] = useState("");
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+
+  async function onSeleccionarFotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivos = Array.from(e.target.files || []).filter(
+      (file) => !fotos.some((f) => f.name === file.name && f.size === file.size)
+    );
+    e.target.value = "";
+    if (archivos.length === 0) return;
+
+    setErrorFoto("");
+    setProcesandoFoto(true);
+    try {
+      const nuevas: FotoFormulario[] = [];
+      for (const file of archivos) {
+        try {
+          const blob = await resolverBlobImagen(file);
+          const { base64, mime } = await comprimirImagen(blob);
+          nuevas.push({ base64, mime, name: file.name, size: file.size });
+        } catch {
+          setErrorFoto(`No se pudo procesar "${file.name}" — prueba con otra foto.`);
+        }
+      }
+      if (nuevas.length > 0) setFotos((prev) => [...prev, ...nuevas]);
+    } finally {
+      setProcesandoFoto(false);
+    }
+  }
+
+  function eliminarFoto(i: number) {
+    setFotos((prev) => prev.filter((_, idx) => idx !== i));
+  }
 
   useEffect(() => {
     if (!resguardo || !token) {
@@ -121,7 +162,7 @@ function FormularioRecogidaInterno() {
       const res = await fetch("/api/formulario-recogida", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resguardo, token, nombre, firmaBase64 }),
+        body: JSON.stringify({ resguardo, token, nombre, firmaBase64, fotos }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo registrar la recogida.");
@@ -184,6 +225,45 @@ function FormularioRecogidaInterno() {
             />
 
             <label style={estilos.label}>
+              Fotos del equipo <span style={{ color: "#6b7280", fontWeight: "normal" }}>(opcional)</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => fotoInputRef.current?.click()}
+              disabled={procesandoFoto}
+              style={estilos.btnFoto}
+            >
+              <input
+                ref={fotoInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={onSeleccionarFotos}
+                style={{ display: "none" }}
+                disabled={procesandoFoto}
+              />
+              {procesandoFoto
+                ? "Procesando foto…"
+                : fotos.length === 0
+                  ? "Toca para hacer o seleccionar una foto"
+                  : `${fotos.length} foto${fotos.length !== 1 ? "s" : ""} seleccionada${fotos.length !== 1 ? "s" : ""}`}
+            </button>
+            {errorFoto && <p style={{ color: "#dc2626", fontSize: ".8rem", marginTop: 6 }}>{errorFoto}</p>}
+            {fotos.length > 0 && (
+              <div style={estilos.fotosGrid}>
+                {fotos.map((f, i) => (
+                  <div key={f.name + f.size} style={estilos.fotoThumb}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`data:${f.mime};base64,${f.base64}`} alt={`foto ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <button type="button" onClick={() => eliminarFoto(i)} style={estilos.fotoEliminar} title="Eliminar">
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <label style={{ ...estilos.label, marginTop: 20 }}>
               Firma <span style={{ color: "#6b7280", fontWeight: "normal" }}>(dibuje con el dedo o el ratón)</span>
             </label>
             <div style={estilos.sigWrap}>
@@ -249,6 +329,16 @@ const estilos: Record<string, React.CSSProperties> = {
   label: { display: "block", fontSize: ".85rem", fontWeight: "bold", color: "#374151", marginBottom: 6 },
   input: { width: "100%", border: "1.5px solid #d1d5db", borderRadius: 8, padding: "10px 14px", fontSize: "1rem", marginBottom: 20, outline: "none" },
   sigWrap: { border: "2px dashed #d1d5db", borderRadius: 8, background: "#fafafa", marginBottom: 8, cursor: "crosshair", overflow: "hidden" },
+  btnFoto: {
+    width: "100%", border: "2px dashed #d1d5db", borderRadius: 8, background: "#fafafa",
+    padding: "18px 12px", textAlign: "center", fontSize: ".9rem", color: "#6b7280", cursor: "pointer",
+  },
+  fotosGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10 },
+  fotoThumb: { position: "relative", aspectRatio: "1", borderRadius: 6, overflow: "hidden", border: "1px solid #e5e7eb" },
+  fotoEliminar: {
+    position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%",
+    background: "rgba(0,0,0,.6)", color: "#fff", border: "none", lineHeight: 1, cursor: "pointer", fontSize: "1rem",
+  },
   btnClear: { background: "none", border: "1px solid #d1d5db", borderRadius: 6, padding: "5px 14px", fontSize: ".8rem", color: "#6b7280", cursor: "pointer" },
   btnSubmit: { width: "100%", background: "#1768ea", color: "#fff", border: "none", borderRadius: 8, padding: 14, fontSize: "1rem", fontWeight: "bold", cursor: "pointer" },
 };

@@ -17,6 +17,7 @@ import {
   Hashtag,
   Calendar,
   Ticket,
+  Gallery,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -738,6 +739,37 @@ export function DetalleReparacionDialog({
                       {reparacionCerrada && (
                         <div className="mt-4">
                           <TarjetaResena resguardo={detalle.resguardo} resena={detalle.resena} onActualizado={actualizarTodo} />
+                        </div>
+                      )}
+                      {/* Firma y fotos del equipo tomadas por el cliente en el
+                          formulario público "Confirmar recogida" (formulario-
+                          recogida/page.tsx) — solo aparece si ya se completó. */}
+                      {(detalle.firmaRecogidaUrl || detalle.fotosRecogida.length > 0) && (
+                        <div className="mt-4">
+                          <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                            <Gallery className="size-4" /> Recogida
+                          </h4>
+                          <div className="flex flex-wrap gap-2 rounded-xl border p-3">
+                            {detalle.firmaRecogidaUrl && (
+                              <a href={`/api/formulario-cliente/archivo/${detalle.firmaRecogidaUrl}`} target="_blank" rel="noreferrer" className="block">
+                                <img
+                                  src={`/api/formulario-cliente/archivo/${detalle.firmaRecogidaUrl}`}
+                                  alt="Firma de recogida"
+                                  title="Firma de recogida"
+                                  className="h-20 w-32 rounded-md border bg-white object-contain"
+                                />
+                              </a>
+                            )}
+                            {detalle.fotosRecogida.map((id) => (
+                              <a key={id} href={`/api/formulario-cliente/archivo/${id}`} target="_blank" rel="noreferrer" className="block">
+                                <img
+                                  src={`/api/formulario-cliente/archivo/${id}`}
+                                  alt="Foto del equipo (recogida)"
+                                  className="size-20 rounded-md border object-cover"
+                                />
+                              </a>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </section>

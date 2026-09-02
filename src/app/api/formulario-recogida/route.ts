@@ -30,8 +30,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { resguardo, token, nombre, firmaBase64 } = (await req.json()) as {
+  const { resguardo, token, nombre, firmaBase64, fotos } = (await req.json()) as {
     resguardo: string; token: string; nombre: string; firmaBase64?: string;
+    fotos?: { base64: string; mime: string }[];
   };
 
   const validacion = validarTokenRecogida(resguardo, token);
@@ -44,12 +45,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Sube la firma a la misma carpeta de Drive que usa el formulario de
-    // recepción (fotos/firmas de clientes) — devuelve el fileId real, no
-    // un marcador, para que firma_recogida_url apunte a un archivo real.
-    const archivos = await kelatosApiPost<{ ok: boolean; firmaUrl: string }>(
+    // Sube la firma (y las fotos del equipo, opcionales) a la misma carpeta
+    // de Drive que usa el formulario de recepción (fotos/firmas de
+    // clientes) — devuelve fileIds reales, no marcadores, para que
+    // firma_recogida_url/fotos_recogida apunten a archivos reales.
+    const archivos = await kelatosApiPost<{ ok: boolean; firmaUrl: string; fotoUrl: string }>(
       `/v1/formulario/${encodeURIComponent(resguardo)}/archivos`,
-      { firmaBase64 }
+      { firmaBase64, fotos: Array.isArray(fotos) ? fotos : [] }
     );
     if (!archivos.firmaUrl) {
       return NextResponse.json({ ok: false, error: "No se pudo guardar la firma" }, { status: 502 });
@@ -61,6 +63,7 @@ export async function POST(req: Request) {
         requestId: crypto.randomUUID(),
         usuario: "formulario-publico",
         firmaUrl: archivos.firmaUrl,
+        fotosUrl: archivos.fotoUrl || "",
         fecha: new Date().toISOString().slice(0, 10),
       }
     );

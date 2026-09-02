@@ -115,6 +115,7 @@ interface FilaReparacionSqlDetalle {
   fecha_entrega: string | null;
   estado_entrega: string | null;
   firma_recogida_url: string | null;
+  fotos_recogida: string | null;
   tipo_recepcion: string | null;
   equipo_en_local: string | null;
   entrega_mensajeria: string | null;
@@ -377,6 +378,9 @@ export interface ReparacionDetalle {
   fechaEntrega: string | null;
   estadoEntrega: string;
   firmaRecogidaUrl: string;
+  /** IDs de archivo de Drive separados por ";" — mismo formato que foto_url
+      (ver _subirOReutilizarArchivoDrive en server.js). */
+  fotosRecogida: string[];
   tipoRecepcion: string;
   equipoEnLocal: string;
   entregaMensajeria: string;
@@ -608,6 +612,7 @@ export function mapearReparacionDetalle(
     fechaEntrega: fecha(row.fecha_entrega),
     estadoEntrega: row.estado_entrega || "PENDIENTE",
     firmaRecogidaUrl: row.firma_recogida_url || "",
+    fotosRecogida: String(row.fotos_recogida || "").split(";").map((s) => s.trim()).filter(Boolean),
     tipoRecepcion: row.tipo_recepcion || "LOCAL",
     equipoEnLocal: row.equipo_en_local || "SI",
     entregaMensajeria: row.entrega_mensajeria || "NO",
