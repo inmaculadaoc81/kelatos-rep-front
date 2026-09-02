@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Refresh2, Edit2, Calendar, ClipboardText } from "@/lib/icons";
+import { useEffect, useMemo, useState } from "react";
+import { Refresh2, Edit2, Calendar, ClipboardText, SearchNormal1, CloseCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -14,9 +16,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Recogida } from "@/lib/recogidas";
+import { Recogida, ESTADOS_RECOGIDA } from "@/lib/recogidas";
 import { EditarRecogidaDialog } from "./editar-recogida-dialog";
 import { CalendarioRecogidas } from "./calendario-recogidas";
+
+const TIPOS_RECOGIDA = [
+  { valor: "recogida", etiqueta: "Recogida", color: "bg-sky-500/10 text-sky-600" },
+  { valor: "cita_tienda", etiqueta: "Cita en tienda", color: "bg-violet-500/10 text-violet-600" },
+] as const;
 
 const COLOR_ESTADO: Record<string, string> = {
   "Pedido de recogida": "bg-amber-500/10 text-amber-600",
@@ -33,6 +40,52 @@ export default function RecogidasPage() {
   const [error, setError] = useState<string | null>(null);
   const [editando, setEditando] = useState<Recogida | null>(null);
   const [vista, setVista] = useState<"calendario" | "lista">("calendario");
+
+  const [busqueda, setBusqueda] = useState("");
+  const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set(TIPOS_RECOGIDA.map((t) => t.valor)));
+  const [estadosActivos, setEstadosActivos] = useState<Set<string>>(new Set(ESTADOS_RECOGIDA));
+
+  function toggleTipo(valor: string) {
+    setTiposActivos((prev) => {
+      const siguiente = new Set(prev);
+      if (siguiente.has(valor)) siguiente.delete(valor);
+      else siguiente.add(valor);
+      return siguiente;
+    });
+  }
+  function toggleEstado(valor: string) {
+    setEstadosActivos((prev) => {
+      const siguiente = new Set(prev);
+      if (siguiente.has(valor)) siguiente.delete(valor);
+      else siguiente.add(valor);
+      return siguiente;
+    });
+  }
+
+  const hayFiltrosActivos =
+    busqueda.trim() !== "" || tiposActivos.size !== TIPOS_RECOGIDA.length || estadosActivos.size !== ESTADOS_RECOGIDA.length;
+
+  function limpiarFiltros() {
+    setBusqueda("");
+    setTiposActivos(new Set(TIPOS_RECOGIDA.map((t) => t.valor)));
+    setEstadosActivos(new Set(ESTADOS_RECOGIDA));
+  }
+
+  const recogidasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return recogidas.filter((r) => {
+      if (!tiposActivos.has(r.tipo)) return false;
+      if (!estadosActivos.has(r.estado)) return false;
+      if (!q) return true;
+      return (
+        r.cliente.toLowerCase().includes(q) ||
+        r.telefono.toLowerCase().includes(q) ||
+        r.direccion.toLowerCase().includes(q) ||
+        r.asunto.toLowerCase().includes(q) ||
+        r.email.toLowerCase().includes(q)
+      );
+    });
+  }, [recogidas, busqueda, tiposActivos, estadosActivos]);
 
   async function cargar() {
     setCargando(true);
@@ -107,8 +160,54 @@ export default function RecogidasPage() {
         </div>
       )}
 
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
+        <div className="relative min-w-48 flex-1">
+          <SearchNormal1 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por cliente, teléfono, dirección o asunto…"
+            className="h-8 pl-8 text-sm"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {TIPOS_RECOGIDA.map((t) => (
+            <label
+              key={t.valor}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                tiposActivos.has(t.valor) ? t.color : "text-muted-foreground"
+              }`}
+            >
+              <Checkbox checked={tiposActivos.has(t.valor)} onCheckedChange={() => toggleTipo(t.valor)} className="size-3.5" />
+              {t.etiqueta}
+            </label>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {ESTADOS_RECOGIDA.map((e) => (
+            <label
+              key={e}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                estadosActivos.has(e) ? COLOR_ESTADO[e] || "" : "text-muted-foreground"
+              }`}
+            >
+              <Checkbox checked={estadosActivos.has(e)} onCheckedChange={() => toggleEstado(e)} className="size-3.5" />
+              {e}
+            </label>
+          ))}
+        </div>
+
+        {hayFiltrosActivos && (
+          <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={limpiarFiltros}>
+            <CloseCircle className="size-3.5" /> Limpiar filtros
+          </Button>
+        )}
+      </div>
+
       {vista === "calendario" && !cargando && (
-        <CalendarioRecogidas recogidas={recogidas} onSeleccionar={setEditando} />
+        <CalendarioRecogidas recogidas={recogidasFiltradas} onSeleccionar={setEditando} />
       )}
 
       {vista === "lista" && (
@@ -139,16 +238,16 @@ export default function RecogidasPage() {
                 </TableRow>
               ))}
 
-            {!cargando && recogidas.length === 0 && (
+            {!cargando && recogidasFiltradas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-                  Sin recogidas registradas
+                  {hayFiltrosActivos ? "Sin resultados para estos filtros" : "Sin recogidas registradas"}
                 </TableCell>
               </TableRow>
             )}
 
             {!cargando &&
-              recogidas.map((r) => (
+              recogidasFiltradas.map((r) => (
                 <TableRow key={r.idEvento}>
                   <TableCell>
                     <span
@@ -183,7 +282,7 @@ export default function RecogidasPage() {
       )}
 
       <Badge variant="outline" className="mt-3">
-        {recogidas.length} recogidas
+        {hayFiltrosActivos ? `${recogidasFiltradas.length} de ${recogidas.length} recogidas` : `${recogidas.length} recogidas`}
       </Badge>
 
       <EditarRecogidaDialog recogida={editando} open={editando !== null} onOpenChange={(o) => !o && setEditando(null)} onGuardado={cargar} />

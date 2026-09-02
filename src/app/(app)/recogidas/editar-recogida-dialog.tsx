@@ -27,7 +27,7 @@ function Fila({ icono: Icono, valor }: { icono: Icon; valor: string }) {
   return (
     <p className="flex items-start gap-2 text-sm">
       <Icono className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <span className="wrap-break-word">{valor}</span>
+      <span className="min-w-0 wrap-break-word">{valor}</span>
     </p>
   );
 }
