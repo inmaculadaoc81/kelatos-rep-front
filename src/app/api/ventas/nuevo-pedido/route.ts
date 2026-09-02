@@ -129,7 +129,7 @@ export async function POST(req: Request) {
             requestId: crypto.randomUUID(),
             usuario,
             lineas: lineasTicket,
-            estado: "Cobrada",
+            estado: datos.estadoFactura || "Cobrada",
             formaPago: datos.formaPago,
             banco: datos.formaPago === "tarjeta" ? datos.banco : "",
           }
@@ -193,6 +193,7 @@ export async function POST(req: Request) {
           },
           formaPago: datos.formaPago,
           banco: datos.formaPago === "tarjeta" ? datos.banco : "",
+          estadoFactura: datos.estadoFactura || "Cobrada",
           lineas,
         },
       });

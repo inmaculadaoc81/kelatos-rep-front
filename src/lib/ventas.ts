@@ -280,6 +280,7 @@ export interface DatosNuevoPedido {
   clienteDireccion: string;
   formaPago: FormaPagoPedido | "";
   banco: string;
+  estadoFactura: string;
   descuentoPct: number;
   observaciones: string;
   items: ItemPedidoForm[];

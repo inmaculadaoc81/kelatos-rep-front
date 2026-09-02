@@ -46,6 +46,7 @@ function vacio(): DatosNuevoPedido {
     clienteDireccion: "",
     formaPago: "",
     banco: "",
+    estadoFactura: "Cobrada",
     descuentoPct: 0,
     observaciones: "",
     items: [itemVacio()],
@@ -228,7 +229,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
         <ScrollArea className="max-h-[75vh]">
           <div className="space-y-4 bg-muted/30 p-4">
             {!datos.esGarantia && (
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-5">
                 <div className="space-y-1.5">
                   <Label>{datos.modoTicket ? "Nº Ticket" : "Nº Factura"}</Label>
                   <Input value={datos.modoTicket ? resultadoTicket?.numeroTicket || "" : numeroPreview} disabled placeholder={datos.modoTicket ? "Se asignará al generar" : "1-000001"} className="bg-muted/50" />
@@ -257,6 +258,16 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                       </SelectContent>
                     </Select>
                   )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Estado</Label>
+                  <Select value={datos.estadoFactura} onValueChange={(v) => actualizar("estadoFactura", v || "Cobrada")} disabled={!!resultadoTicket}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cobrada">Cobrada</SelectItem>
+                      <SelectItem value="Pendiente">Pendiente</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
