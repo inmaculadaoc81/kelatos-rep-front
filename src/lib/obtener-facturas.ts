@@ -1,5 +1,5 @@
 import { kelatosApiGet } from "@/lib/kelatos-api";
-import { FacturaCliente, expandirFacturas, expandirFacturaHistorica, expandirAlquiler, expandirManuales, expandirTicketsManuales } from "@/lib/facturas-cliente";
+import { FacturaCliente, expandirFacturas, expandirFacturaHistorica, expandirAlquiler, expandirManuales, expandirTicketsManuales, expandirVenta } from "@/lib/facturas-cliente";
 
 interface RespuestaReparacionesFacturadas {
   ok: boolean;
@@ -47,13 +47,16 @@ export async function lookupCodigoCliente(): Promise<(dni: string, telefono: str
 
 /**
  * Reproduce la base común de apiObtenerFacturasClientes() (pasadas 1-11:
- * reparaciones + alquileres + facturas manuales, más el lookup de
- * codigoCliente que se aplica al final a TODAS las filas) — usada tanto
- * por "Facturas de Clientes" como por "Reporte de Facturas" (que además
- * añade ventas encima de esta misma base, igual que el original).
+ * reparaciones + alquileres + facturas manuales) — desde la migración 075
+ * (ciclo completo de Ver/Devolución/Rectificativo para la Factura real de
+ * un pedido) también incluye ventas aquí mismo, no solo en "Reporte de
+ * Facturas": petición del usuario, 2026-09-03, poder filtrar/identificar
+ * desde "Facturas de Clientes" qué facturas vienen de un pedido de piezas
+ * (la columna "Tipo" ya es filtrable de forma genérica, así que basta con
+ * que la fila "venta" exista aquí para que aparezca como opción).
  */
 export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
-  const [reparaciones, historicas, alquileres, fechasAlquiler, manuales, ticketsManuales, lookup, suReferencias] = await Promise.all([
+  const [reparaciones, historicas, alquileres, fechasAlquiler, manuales, ticketsManuales, ventas, lookup, suReferencias] = await Promise.all([
     kelatosApiGet<RespuestaReparacionesFacturadas>("/v1/lecturas/reparaciones-facturadas"),
     kelatosApiGet<RespuestaFacturasHistoricas>("/v1/lecturas/reparaciones-facturas-historicas"),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirAlquiler>[0]>>("/v1/alquileres", { limit: 1000 }),
@@ -69,6 +72,7 @@ export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
     kelatosApiGet<{ ok: boolean; fechas: Record<string, string> }>("/v1/lecturas/alquileres-fechas-factura").then((r) => r.fechas),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirManuales>[0][number]>>("/v1/facturas_manuales", { limit: 1000 }),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirTicketsManuales>[0][number]>>("/v1/tickets_manuales", { limit: 1000 }),
+    kelatosApiGet<RespuestaTabla<Parameters<typeof expandirVenta>[0]>>("/v1/ventas", { limit: 1000 }),
     lookupCodigoCliente(),
     // "Su Referencia" (PO del cliente, opcional, nunca en el PDF) — cada
     // fila ya tiene su propio numero_factura/numero_ticket único, así que
@@ -83,6 +87,7 @@ export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
     ...alquileres.rows.flatMap((row) => expandirAlquiler(row, fechasAlquiler)),
     ...expandirManuales(manuales.rows),
     ...expandirTicketsManuales(ticketsManuales.rows),
+    ...ventas.rows.flatMap(expandirVenta),
   ];
 
   return facturas.map((f) => ({ ...f, codigoCliente: lookup(f.dniCif, f.telefono), suReferencia: suReferencias[f.numero] || "" }));

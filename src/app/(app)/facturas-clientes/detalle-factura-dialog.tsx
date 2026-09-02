@@ -39,6 +39,14 @@ import { AlquilerModalShell } from "./alquiler-modal-shell";
  */
 function resolverTipoBase(factura: FacturaCliente): TipoFacturaBase | null {
   if (factura.esAlquiler || factura.esManual || factura.esTicketManual) return null;
+  // Una rectificativa/corregida de venta comparte "resguardo" con el
+  // venta_id, no con un resguardo de reparación real — dejarla caer en las
+  // ramas de abajo intentaría leer /api/reparaciones/:resguardo con ese
+  // mismo número, arriesgando mostrar el detalle de OTRA reparación real
+  // que coincida por casualidad en el mismo id (ambas secuencias son
+  // independientes). Se queda en DetalleFacturaSimple, igual que la fila
+  // base "venta".
+  if (factura.tipoOriginal === "venta") return null;
   switch (factura.tipo) {
     case "reparacion": return "normal";
     case "revision": return factura.esTicket ? "ticket_revision" : "revision";

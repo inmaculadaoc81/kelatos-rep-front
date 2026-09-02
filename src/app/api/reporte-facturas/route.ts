@@ -1,14 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { kelatosApiGet } from "@/lib/kelatos-api";
-import { expandirVenta } from "@/lib/facturas-cliente";
-import { obtenerTodasLasFacturas, lookupCodigoCliente } from "@/lib/obtener-facturas";
+import { obtenerTodasLasFacturas } from "@/lib/obtener-facturas";
 import { calcularDesglose } from "@/lib/reporte-facturas";
 import { fechaMadrid } from "@/lib/reportes";
-
-interface RespuestaTabla<T> {
-  ok: boolean;
-  rows: T[];
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -19,20 +12,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [base, ventas, lookupCodigo] = await Promise.all([
-      obtenerTodasLasFacturas(),
-      kelatosApiGet<RespuestaTabla<Parameters<typeof expandirVenta>[0]>>("/v1/ventas", { limit: 1000 }),
-      lookupCodigoCliente(),
-    ]);
-
-    // Las ventas no pasan por obtenerTodasLasFacturas(), así que necesitan
-    // su propio paso de lookup — igual que "Añadir codigoCliente a ventas"
-    // en el original.
-    const ventasFacturas = ventas.rows.flatMap(expandirVenta).map((f) => ({ ...f, codigoCliente: lookupCodigo(f.dniCif, f.telefono) }));
-    // "Ticket Rápido" (Serie 1/Serie 3 desde 2026-08-27) usa el mismo
-    // formato "serie-correlativo" que el resto (numeroValido/
-    // calcularDesglose/numeroDocumento), así que no hace falta excluirlo.
-    const todas = [...base, ...ventasFacturas];
+    // Ventas ya viene incluida en obtenerTodasLasFacturas() desde la
+    // migración 075 (antes se pedía y expandía aparte solo aquí, porque
+    // "Facturas de Clientes" no las mostraba todavía).
+    const todas = await obtenerTodasLasFacturas();
 
     // f.fecha es timestamptz (ISO en UTC) para reparación/revisión/etc. —
     // truncar con slice(0,10) se queda con el día UTC, no el de Madrid, y

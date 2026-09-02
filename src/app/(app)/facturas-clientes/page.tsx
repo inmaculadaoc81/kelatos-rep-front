@@ -164,6 +164,7 @@ const TIPO_BADGE_ESTILO: Partial<Record<TipoFactura, { bg: string; color: string
   alquiler: { bg: "#198754", color: "#fff" },
   manual: { bg: "#6f42c1", color: "#fff" },
   ticket: { bg: "#20c997", color: "#fff" },
+  venta: { bg: "#d63384", color: "#fff" },
 };
 
 function TipoBadge({ f }: { f: FacturaCliente }) {
@@ -171,7 +172,10 @@ function TipoBadge({ f }: { f: FacturaCliente }) {
   // de tener uno propio — así se ve en el original (tipoBadge()).
   const tipoEfectivo: TipoFactura =
     f.tipo === "corregida"
-      ? (f.tipoOriginal === "revision" || f.tipoOriginal === "ticket_revision" ? "revision" : f.tipoOriginal === "ticket" ? "ticket" : "reparacion")
+      ? (f.tipoOriginal === "revision" || f.tipoOriginal === "ticket_revision" ? "revision"
+          : f.tipoOriginal === "ticket" ? "ticket"
+          : f.tipoOriginal === "venta" ? "venta"
+          : "reparacion")
       : f.tipo;
   const estilo = TIPO_BADGE_ESTILO[tipoEfectivo] ?? { bg: "#e9ecef", color: "#6c757d" };
   const esDocTicket = f.tipo === "ticket" || f.esTicket || (f.tipo === "corregida" && (f.tipoOriginal === "ticket" || f.tipoOriginal === "ticket_revision"));

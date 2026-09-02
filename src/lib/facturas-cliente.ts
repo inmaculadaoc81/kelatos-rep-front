@@ -71,7 +71,7 @@ export interface FacturaCliente {
       viene (reparación o revisión), para resolver a qué documento
       (numero_factura_rectificativa vs. ..._revision, etc.) corresponde
       realmente esta fila. */
-  tipoOriginal?: "reparacion" | "revision" | "ticket" | "ticket_revision";
+  tipoOriginal?: "reparacion" | "revision" | "ticket" | "ticket_revision" | "venta";
   esAlquiler?: boolean;
   esManual?: boolean;
   /** true = esta fila de tipo "revision" viene del ticket de revisión
@@ -1186,40 +1186,97 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
   return facturas;
 }
 
-// ── Ventas (solo usadas por Reporte de Facturas, no por la lista de
-// Facturas de Clientes — el original tampoco las incluye ahí) ──────────
+// ── Ventas (pasada única + rectificativa/corregida — igual patrón que
+// facturas manuales) — hasta la migración 075 esta lista nunca incluía
+// ventas (el original tampoco lo hacía; solo "Reporte de Facturas" las
+// mostraba, en modo solo lectura, con url/formaPago siempre vacíos porque
+// esas columnas ni existían todavía). Ahora que la Factura real de un
+// pedido sí guarda su URL/ciclo completo (ver venta-factura-modal-shell.tsx),
+// se refleja aquí igual que cualquier otro origen — petición del usuario,
+// 2026-09-03: poder filtrar/identificar facturas de pedidos de venta desde
+// esta misma lista.
 
 interface FilaVentaSql {
   venta_id: string;
   numero_factura: string | null;
-  fecha: string | null;
-  fecha_entrega: string | null;
+  url_factura: string | null;
+  fecha_factura: string | null;
+  total_factura: string | number | null;
+  estado_factura: string | null;
+  forma_pago_factura: string | null;
+  banco_factura: string | null;
   cliente_nombre: string | null;
   cliente_telefono: string | null;
   cliente_email: string | null;
-  monto_pagado: string | number | null;
+  cliente_factura: ClienteFacturaJson | string | null;
+  numero_factura_rectificativa: string | null;
+  url_factura_rectificativa: string | null;
+  total_factura_rectificativa: string | number | null;
+  fecha_factura_rectificativa: string | null;
+  numero_factura_corregida: string | null;
+  url_factura_corregida: string | null;
+  total_factura_corregida: string | number | null;
+  fecha_factura_corregida: string | null;
+  estado_factura_corregida: string | null;
 }
 
 export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
   const numV = texto(row.numero_factura);
-  if (!numV) return [];
-  return [
+  if (!numV || !numeroValido(numV)) return [];
+
+  const clienteRegistrado = { cliente: texto(row.cliente_nombre), telefono: texto(row.cliente_telefono), dniCif: "" };
+  const base = {
+    resguardo: texto(row.venta_id),
+    ...aplicarClienteFactura(clienteRegistrado, row.cliente_factura),
+    email: texto(row.cliente_email),
+    equipo: "",
+    estadoEntrega: "",
+  };
+  const facturas: FacturaCliente[] = [
     {
-      resguardo: texto(row.venta_id),
+      ...base,
       numero: numV,
-      url: "",
-      cliente: texto(row.cliente_nombre),
-      telefono: texto(row.cliente_telefono),
-      email: texto(row.cliente_email),
-      dniCif: "",
-      equipo: "",
-      estadoEntrega: "",
-      fecha: row.fecha,
-      total: num(row.monto_pagado),
-      formaPago: "",
-      banco: "",
-      estadoFactura: "",
+      url: urlValida(texto(row.url_factura)),
+      total: num(row.total_factura),
+      fecha: row.fecha_factura,
+      formaPago: texto(row.forma_pago_factura),
+      banco: texto(row.banco_factura),
+      estadoFactura: texto(row.estado_factura),
       tipo: "venta",
     },
   ];
+
+  const numRect = texto(row.numero_factura_rectificativa);
+  if (numRect && numeroValido(numRect)) {
+    facturas.push({
+      ...base,
+      numero: numRect,
+      url: urlValida(texto(row.url_factura_rectificativa)),
+      total: num(row.total_factura_rectificativa),
+      fecha: row.fecha_factura_rectificativa,
+      formaPago: texto(row.forma_pago_factura),
+      banco: texto(row.banco_factura),
+      estadoFactura: "Devolución",
+      tipo: "rectificativa",
+      tipoOriginal: "venta",
+    });
+  }
+
+  const numCorr = texto(row.numero_factura_corregida);
+  if (numCorr && numeroValido(numCorr)) {
+    facturas.push({
+      ...base,
+      numero: numCorr,
+      url: urlValida(texto(row.url_factura_corregida)),
+      total: num(row.total_factura_corregida),
+      fecha: row.fecha_factura_corregida,
+      formaPago: texto(row.forma_pago_factura),
+      banco: texto(row.banco_factura),
+      estadoFactura: row.estado_factura_corregida || "",
+      tipo: "corregida",
+      tipoOriginal: "venta",
+    });
+  }
+
+  return facturas;
 }
