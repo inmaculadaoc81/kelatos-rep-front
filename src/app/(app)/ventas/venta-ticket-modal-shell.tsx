@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Venta } from "@/lib/ventas";
-import { TabPdfEnviar, TabDevolucionTicket, TabRectificativoTicket, euros, type DocTicket } from "../reparaciones/factura-acciones-tabs";
+import { TabPdfEnviar, TabDevolucionTicket, TabRectificativoTicket, euros, RECTIFICATIVA_TICKETS_HABILITADA, type DocTicket } from "../reparaciones/factura-acciones-tabs";
 
 interface DatosVentaTicketDerivados {
   numeroTicket: string;
@@ -83,8 +83,12 @@ export function VentaTicketModalShell({
           <Tabs defaultValue="pdf" className="w-full">
             <TabsList className="w-full">
               <TabsTrigger value="pdf">PDF / Enviar</TabsTrigger>
-              <TabsTrigger value="devolucion" disabled={!d.permiteDevolucion}>Devolución</TabsTrigger>
-              <TabsTrigger value="rectificativo" disabled={!d.permiteDevolucion}>Rectificativo</TabsTrigger>
+              {RECTIFICATIVA_TICKETS_HABILITADA && (
+                <>
+                  <TabsTrigger value="devolucion" disabled={!d.permiteDevolucion}>Devolución</TabsTrigger>
+                  <TabsTrigger value="rectificativo" disabled={!d.permiteDevolucion}>Rectificativo</TabsTrigger>
+                </>
+              )}
             </TabsList>
 
             <TabsContent value="pdf" className="p-4">
@@ -99,7 +103,7 @@ export function VentaTicketModalShell({
               />
             </TabsContent>
 
-            {d.permiteDevolucion && (
+            {d.permiteDevolucion && RECTIFICATIVA_TICKETS_HABILITADA && (
               <>
                 <TabsContent value="devolucion" className="p-4">
                   <TabDevolucionTicket

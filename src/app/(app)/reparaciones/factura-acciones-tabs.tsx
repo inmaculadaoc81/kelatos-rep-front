@@ -31,6 +31,13 @@ export type TipoFacturaBase =
   | "ticket" | "rectificativa_ticket" | "corregida_ticket"
   | "ticket_revision" | "rectificativa_ticket_revision" | "corregida_ticket_revision";
 
+// Rectificativas/correcciones de ticket desactivadas en la UI a petición
+// del usuario, 2026-09-02 — toda la lógica (endpoints, TabDevolucionTicket/
+// TabRectificativoTicket, permiteDevolucion) se conserva intacta, solo se
+// oculta el acceso desde la interfaz. Volver a poner en `true` reactiva las
+// 3 pantallas (aquí, ventas y ticket manual) sin tocar nada más.
+export const RECTIFICATIVA_TICKETS_HABILITADA = false;
+
 // vfPago (#modalVistaFactura, usado por FaseCorregida): 4 opciones, sin
 // Redsys. mfaRectFormaPago/mfaRtvFormaPago (tabs Devolución/Rectificativo):
 // 5 opciones, con Redsys — son selects distintos en el original, no el
@@ -398,8 +405,12 @@ export function FacturaAccionesTabs({
     <Tabs defaultValue="pdf" className="w-full">
       <TabsList className="w-full">
         <TabsTrigger value="pdf">PDF / Enviar</TabsTrigger>
-        <TabsTrigger value="devolucion" disabled={!d.permiteDevolucion}>Devolución</TabsTrigger>
-        <TabsTrigger value="rectificativo" disabled={!d.permiteDevolucion}>Rectificativo</TabsTrigger>
+        {!(esTicket && !RECTIFICATIVA_TICKETS_HABILITADA) && (
+          <>
+            <TabsTrigger value="devolucion" disabled={!d.permiteDevolucion}>Devolución</TabsTrigger>
+            <TabsTrigger value="rectificativo" disabled={!d.permiteDevolucion}>Rectificativo</TabsTrigger>
+          </>
+        )}
       </TabsList>
 
       <TabsContent value="pdf" className="p-4">
@@ -423,7 +434,7 @@ export function FacturaAccionesTabs({
         />
       </TabsContent>
 
-      {d.permiteDevolucion && esTicket && (
+      {d.permiteDevolucion && esTicket && RECTIFICATIVA_TICKETS_HABILITADA && (
         <>
           <TabsContent value="devolucion" className="p-4">
             <TabDevolucionTicket
