@@ -81,7 +81,7 @@ export function BuscarClienteDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[85vh] flex-col gap-3 sm:max-w-2xl">
+        <DialogContent className="flex max-h-[85vh] flex-col gap-3 sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Buscar cliente
@@ -99,10 +99,10 @@ export function BuscarClienteDialog({
               <thead className="sticky top-0 bg-muted/70 text-left text-xs text-muted-foreground backdrop-blur-sm">
                 <tr>
                   <th className="w-16 p-2">Código</th>
-                  <th className="p-2">Nombre</th>
-                  <th className="p-2">DNI / CIF</th>
-                  <th className="p-2">Contacto</th>
-                  <th className="w-8 p-2" />
+                  <th className="w-48 p-2">Nombre</th>
+                  <th className="w-28 p-2">DNI / CIF</th>
+                  <th className="w-56 p-2">Contacto</th>
+                  <th className="sticky right-0 w-8 bg-muted/70 p-2" />
                 </tr>
               </thead>
               <tbody>
@@ -123,14 +123,14 @@ export function BuscarClienteDialog({
                   clientes.map((c) => (
                     <tr key={c.codigo} className="group cursor-pointer border-t hover:bg-muted/50" onClick={() => seleccionar(c)}>
                       <td className="p-2 align-top"><span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{codigoClienteFormateado(c.codigo)}</span></td>
-                      <td className="p-2 align-top font-medium">{c.nombre || "-"}</td>
-                      <td className="p-2 align-top text-muted-foreground">{c.dniCif || "-"}</td>
-                      <td className="p-2 align-top text-xs text-muted-foreground">
-                        {c.telefono && <p className="flex items-center gap-1"><Call className="size-3 shrink-0" /> {c.telefono}</p>}
+                      <td className="max-w-48 truncate p-2 align-top font-medium">{c.nombre || "-"}</td>
+                      <td className="max-w-28 truncate p-2 align-top text-muted-foreground">{c.dniCif || "-"}</td>
+                      <td className="max-w-56 p-2 align-top text-xs text-muted-foreground">
+                        {c.telefono && <p className="flex items-center gap-1 truncate"><Call className="size-3 shrink-0" /> {c.telefono}</p>}
                         {c.email && <p className="flex items-center gap-1 truncate"><Sms className="size-3 shrink-0" /> {c.email}</p>}
                         {c.direccion && <p className="flex items-center gap-1 truncate"><Location className="size-3 shrink-0" /> {c.direccion}</p>}
                       </td>
-                      <td className="p-2 align-top text-right">
+                      <td className="sticky right-0 bg-background p-2 text-right align-top group-hover:bg-muted/50">
                         <Button
                           size="icon-sm"
                           variant="ghost"
