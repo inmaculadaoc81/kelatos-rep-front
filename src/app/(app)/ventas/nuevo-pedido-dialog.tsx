@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Add, Trash, ShoppingCart, ShieldTick, Building, Profile, Ticket, Send2 } from "@/lib/icons";
+import { Add, Trash, ShoppingCart, ShieldTick, Building, Profile, Ticket, Send2, SearchNormal1, Refresh2 } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-provider";
+import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
+import type { Cliente } from "@/lib/clientes";
 import { DatosNuevoPedido, ItemPedidoForm, FormaPagoPedido } from "@/lib/ventas";
 import { esEmailValido } from "@/lib/validacion";
 import { guardarSuReferencia } from "@/lib/su-referencia";
@@ -81,6 +83,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   // ticket se habilite".
   const [resultadoTicket, setResultadoTicket] = useState<{ ventaId: string; numeroTicket: string; urlTicket: string } | null>(null);
   const [enviandoTicket, setEnviandoTicket] = useState(false);
+  const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -111,6 +114,32 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
     const ivaCalc = (baseDesc * 21) / 100;
     return { base: baseCalc, descuentoAmt: descAmt, iva: ivaCalc, total: baseDesc + ivaCalc };
   }, [datos.items, datos.descuentoPct]);
+
+  function seleccionarCliente(c: Cliente) {
+    setDatos((prev) => ({
+      ...prev,
+      clienteDni: c.dniCif || "",
+      clienteNombre: c.nombre || "",
+      clienteTelefono: c.telefono || "",
+      clienteEmail: c.email || "",
+      clienteDireccion: c.direccion || "",
+    }));
+    toast.success("Cliente cargado");
+  }
+
+  // Tras generar un Ticket, el pie solo ofrecía "Cerrar"/"Enviar al
+  // cliente" — para volver a la vista de Factura había que cerrar el
+  // diálogo entero y reabrirlo (queja real del usuario, 2026-09-02).
+  // Reinicia el formulario sin cerrar el diálogo.
+  function nuevoPedido() {
+    setDatos(vacio());
+    setSuReferencia("");
+    setResultadoTicket(null);
+    fetch("/api/ventas/nuevo-pedido/peek")
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setNumeroPreview(data.numero); })
+      .catch(() => {});
+  }
 
   function toggleGarantia() {
     setDatos((prev) => ({ ...prev, esGarantia: !prev.esGarantia, modoTicket: false }));
@@ -271,8 +300,11 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                 </div>
 
                 <div className="rounded-lg border bg-card shadow-sm">
-                  <div className="flex items-center gap-1.5 rounded-t-lg bg-muted-foreground/80 px-3 py-2 text-xs font-semibold text-white">
-                    <Profile className="size-3.5" /> Cliente
+                  <div className="flex items-center justify-between gap-1.5 rounded-t-lg bg-muted-foreground/80 px-3 py-2 text-xs font-semibold text-white">
+                    <span className="flex items-center gap-1.5"><Profile className="size-3.5" /> Cliente</span>
+                    <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setBuscarClienteAbierto(true)} disabled={!!resultadoTicket}>
+                      <SearchNormal1 className="size-3" /> Buscar
+                    </Button>
                   </div>
                   <div className="space-y-2 p-3">
                     <div className="grid grid-cols-[5rem_1fr] items-center gap-2 text-sm">
@@ -398,16 +430,23 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
             </>
           )}
           {resultadoTicket && (
-            <Button
-              className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
-              onClick={enviarTicket}
-              disabled={enviandoTicket || !datos.clienteEmail.trim()}
-            >
-              <Send2 className="size-4" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
-            </Button>
+            <>
+              <Button variant="outline" className="gap-1.5" onClick={nuevoPedido} disabled={enviandoTicket}>
+                <Refresh2 className="size-3.5" /> Nuevo pedido
+              </Button>
+              <Button
+                className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={enviarTicket}
+                disabled={enviandoTicket || !datos.clienteEmail.trim()}
+              >
+                <Send2 className="size-4" /> {enviandoTicket ? "Enviando…" : "Enviar al cliente"}
+              </Button>
+            </>
           )}
         </footer>
       </DialogContent>
+
+      <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
     </Dialog>
   );
 }
