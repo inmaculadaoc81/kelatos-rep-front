@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Refresh2, Edit2 } from "@/lib/icons";
+import { Refresh2, Edit2, Calendar, ClipboardText } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Recogida } from "@/lib/recogidas";
 import { EditarRecogidaDialog } from "./editar-recogida-dialog";
+import { CalendarioRecogidas } from "./calendario-recogidas";
 
 const COLOR_ESTADO: Record<string, string> = {
   "Pedido de recogida": "bg-amber-500/10 text-amber-600",
@@ -31,6 +32,7 @@ export default function RecogidasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editando, setEditando] = useState<Recogida | null>(null);
+  const [vista, setVista] = useState<"calendario" | "lista">("calendario");
 
   async function cargar() {
     setCargando(true);
@@ -74,9 +76,29 @@ export default function RecogidasPage() {
           <h1 className="text-lg font-semibold">Recogidas a Domicilio</h1>
           <p className="text-sm text-muted-foreground">Recogidas registradas en Google Calendar</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={actualizar} disabled={sincronizando}>
-          <Refresh2 className={`size-4 ${cargando || sincronizando ? "animate-spin" : ""}`} /> Actualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border p-0.5">
+            <Button
+              size="sm"
+              variant={vista === "calendario" ? "default" : "ghost"}
+              className="h-7 gap-1.5 px-2 text-xs"
+              onClick={() => setVista("calendario")}
+            >
+              <Calendar className="size-3.5" /> Calendario
+            </Button>
+            <Button
+              size="sm"
+              variant={vista === "lista" ? "default" : "ghost"}
+              className="h-7 gap-1.5 px-2 text-xs"
+              onClick={() => setVista("lista")}
+            >
+              <ClipboardText className="size-3.5" /> Lista
+            </Button>
+          </div>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={actualizar} disabled={sincronizando}>
+            <Refresh2 className={`size-4 ${cargando || sincronizando ? "animate-spin" : ""}`} /> Actualizar
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -85,6 +107,11 @@ export default function RecogidasPage() {
         </div>
       )}
 
+      {vista === "calendario" && !cargando && (
+        <CalendarioRecogidas recogidas={recogidas} onSeleccionar={setEditando} />
+      )}
+
+      {vista === "lista" && (
       <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
           <TableHeader>
@@ -153,6 +180,7 @@ export default function RecogidasPage() {
           </TableBody>
         </Table>
       </div>
+      )}
 
       <Badge variant="outline" className="mt-3">
         {recogidas.length} recogidas
