@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -57,6 +58,30 @@ const COLOR_ESTADO: Record<string, string> = {
   VENDIDO: "bg-slate-500/10 text-slate-600",
 };
 
+const TEXTOS_CONFIRMACION: Record<EstadoEquipo, { titulo: string; boton: string; descripcion: string }> = {
+  DISPONIBLE: {
+    titulo: "Marcar como disponible",
+    boton: "Marcar disponible",
+    descripcion: "quedará disponible para alquilar de inmediato.",
+  },
+  MANTENIMIENTO: {
+    titulo: "Enviar a mantenimiento",
+    boton: "A mantenimiento",
+    descripcion: "dejará de estar disponible para alquilar hasta que lo marques disponible de nuevo.",
+  },
+  VENDIDO: {
+    titulo: "Marcar equipo como vendido",
+    boton: "Vender",
+    descripcion: "dejará de aparecer como disponible para alquilar. Esta acción no tiene un botón para deshacerla desde aquí.",
+  },
+  FUERA_SERVICIO: {
+    titulo: "Dar de baja el equipo",
+    boton: "Dar de baja",
+    descripcion: "dejará de aparecer como disponible para alquilar hasta que lo reactives.",
+  },
+  ALQUILADO: { titulo: "", boton: "", descripcion: "" }, // no se usa: ALQUILADO se gestiona con Alquilar/Devolver, no con este diálogo
+};
+
 export default function EquiposPage() {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -66,7 +91,8 @@ export default function EquiposPage() {
   const [alquilerAbierto, setAlquilerAbierto] = useState<Equipo | null>(null);
   const [devolverAbierto, setDevolverAbierto] = useState<Equipo | null>(null);
   const [detalleAbierto, setDetalleAbierto] = useState<Equipo | null>(null);
-  const [confirmarAccion, setConfirmarAccion] = useState<{ equipo: Equipo; estado: "VENDIDO" | "FUERA_SERVICIO" } | null>(null);
+  const [confirmarAccion, setConfirmarAccion] = useState<{ equipo: Equipo; estado: EstadoEquipo } | null>(null);
+  const [confirmado, setConfirmado] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
   async function cargar() {
@@ -131,8 +157,13 @@ export default function EquiposPage() {
     }
   }
 
+  function pedirConfirmacion(equipo: Equipo, estado: EstadoEquipo) {
+    setConfirmado(false);
+    setConfirmarAccion({ equipo, estado });
+  }
+
   async function confirmarCambioEstado() {
-    if (!confirmarAccion) return;
+    if (!confirmarAccion || !confirmado) return;
     setConfirmando(true);
     try {
       await cambiarEstado(confirmarAccion.equipo, confirmarAccion.estado);
@@ -322,7 +353,7 @@ export default function EquiposPage() {
                           <Button size="sm" variant="outline" className="h-7" onClick={() => setAlquilerAbierto(e)}>
                             Alquilar
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7" onClick={() => cambiarEstado(e, "MANTENIMIENTO")}>
+                          <Button size="sm" variant="ghost" className="h-7" onClick={() => pedirConfirmacion(e, "MANTENIMIENTO")}>
                             A mantenimiento
                           </Button>
                         </>
@@ -338,7 +369,7 @@ export default function EquiposPage() {
                         </>
                       )}
                       {e.estado === "MANTENIMIENTO" && (
-                        <Button size="sm" variant="outline" className="h-7" onClick={() => cambiarEstado(e, "DISPONIBLE")}>
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => pedirConfirmacion(e, "DISPONIBLE")}>
                           Marcar disponible
                         </Button>
                       )}
@@ -352,11 +383,11 @@ export default function EquiposPage() {
                             }
                           />
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setConfirmarAccion({ equipo: e, estado: "VENDIDO" })}>
+                            <DropdownMenuItem onClick={() => pedirConfirmacion(e, "VENDIDO")}>
                               <Wallet className="size-3.5" />
                               Marcar como vendido
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setConfirmarAccion({ equipo: e, estado: "FUERA_SERVICIO" })}>
+                            <DropdownMenuItem onClick={() => pedirConfirmacion(e, "FUERA_SERVICIO")}>
                               <BoxRemove className="size-3.5" />
                               Dar de baja
                             </DropdownMenuItem>
@@ -364,7 +395,7 @@ export default function EquiposPage() {
                         </DropdownMenu>
                       )}
                       {e.estado === "FUERA_SERVICIO" && (
-                        <Button size="sm" variant="outline" className="h-7" onClick={() => cambiarEstado(e, "DISPONIBLE")}>
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => pedirConfirmacion(e, "DISPONIBLE")}>
                           Reactivar
                         </Button>
                       )}
@@ -401,39 +432,39 @@ export default function EquiposPage() {
 
       <Dialog open={confirmarAccion !== null} onOpenChange={(o) => !o && setConfirmarAccion(null)}>
         <DialogContent className="sm:max-w-sm">
-          <DialogTitle>
-            {confirmarAccion?.estado === "VENDIDO" ? "Marcar equipo como vendido" : "Dar de baja el equipo"}
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {confirmarAccion?.estado === "VENDIDO" ? (
-              <>
+          {confirmarAccion && (
+            <>
+              <DialogTitle>{TEXTOS_CONFIRMACION[confirmarAccion.estado].titulo}</DialogTitle>
+              <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">
                   {confirmarAccion.equipo.marca} {confirmarAccion.equipo.modelo}
                 </span>{" "}
-                dejará de aparecer como disponible para alquilar. Esta acción no tiene un botón para deshacerla
-                desde aquí.
-              </>
-            ) : (
-              <>
-                <span className="font-medium text-foreground">
-                  {confirmarAccion?.equipo.marca} {confirmarAccion?.equipo.modelo}
-                </span>{" "}
-                dejará de aparecer como disponible para alquilar hasta que lo reactives.
-              </>
-            )}
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => setConfirmarAccion(null)} disabled={confirmando}>
-              Cancelar
-            </Button>
-            <Button
-              variant={confirmarAccion?.estado === "VENDIDO" ? "default" : "outline"}
-              onClick={confirmarCambioEstado}
-              disabled={confirmando}
-            >
-              {confirmando ? "Aplicando..." : confirmarAccion?.estado === "VENDIDO" ? "Vender" : "Dar de baja"}
-            </Button>
-          </div>
+                ({confirmarAccion.equipo.id}) {TEXTOS_CONFIRMACION[confirmarAccion.estado].descripcion}
+              </p>
+
+              <label className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                <Checkbox
+                  checked={confirmado}
+                  onCheckedChange={(v) => setConfirmado(v === true)}
+                  className="mt-0.5"
+                />
+                Confirmo que quiero hacer este cambio en {confirmarAccion.equipo.id}
+              </label>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="ghost" onClick={() => setConfirmarAccion(null)} disabled={confirmando}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant={confirmarAccion.estado === "VENDIDO" ? "default" : "outline"}
+                  onClick={confirmarCambioEstado}
+                  disabled={confirmando || !confirmado}
+                >
+                  {confirmando ? "Aplicando..." : TEXTOS_CONFIRMACION[confirmarAccion.estado].boton}
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
