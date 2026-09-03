@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2 } from "@/lib/icons";
+import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2, Copy } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -395,6 +395,17 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Sms className="size-4 shrink-0" />
                   <a href={`mailto:${evento.email_cliente}`} className="text-primary hover:underline">{evento.email_cliente}</a>
+                  <button
+                    type="button"
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    title="Copiar email"
+                    onClick={() => {
+                      navigator.clipboard.writeText(evento.email_cliente as string);
+                      toast.success("Email copiado");
+                    }}
+                  >
+                    <Copy className="size-3" />
+                  </button>
                 </div>
               )}
 
