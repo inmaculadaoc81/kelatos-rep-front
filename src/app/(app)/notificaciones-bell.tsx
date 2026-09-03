@@ -93,9 +93,18 @@ export function NotificacionesBell() {
     }
   }
 
+  // Sin un canal real (WebSocket/SSE) desde el backend, se sondea el
+  // contador de no-leídas cada 25s — antes solo se cargaba una vez al
+  // montar el componente, así que un evento nuevo del workflow no se veía
+  // hasta recargar la página a mano (petición del usuario, 2026-09-03).
+  // Se pausa mientras el panel está abierto (no tiene sentido, ya se
+  // marcan como leídas al abrir) y arranca de nuevo al cerrarlo.
   useEffect(() => {
     cargarBadge();
-  }, []);
+    if (abierto) return;
+    const id = setInterval(cargarBadge, 25_000);
+    return () => clearInterval(id);
+  }, [abierto]);
 
   async function abrir() {
     setAbierto(true);
