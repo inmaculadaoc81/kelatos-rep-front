@@ -12,10 +12,17 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { MOTIVO_LABELS, type WebhookEvento } from "@/lib/webhook-eventos";
 import { limpiarRespuestaCliente } from "@/lib/texto";
 import { toast } from "sonner";
+
+interface PresupuestoPendiente {
+  presupuestoId: string;
+  numeroPresupuesto: string;
+  estado: string;
+}
 
 type FiltroFecha = "todas" | "hoy" | "ayer" | "semana" | "mes" | "mes_anterior";
 type FiltroTipo = "todos" | "Aviso" | "Aceptado" | "Rechazado";
@@ -348,6 +355,61 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
     ? new Date(evento.fecha).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : "—";
 
+  // Rechazar el presupuesto pendiente de un "Aviso" (revisión manual) —
+  // petición del usuario, 2026-09-04. Reutiliza POST
+  // /api/presupuestos/cambiar-estado (el mismo que usa la ficha de la
+  // reparación para rechazar) para que quede en el mismo historial real de
+  // la reparación (kelatos_app.historial vía server.js) — no se reinventa
+  // el registro aparte. Solo se ofrece el botón cuando hay EXACTAMENTE un
+  // presupuesto "enviado" para el resguardo del aviso — con 0 o varios no
+  // se adivina cuál, se manda al usuario a la ficha de la reparación.
+  const [presupuestosPendientes, setPresupuestosPendientes] = useState<PresupuestoPendiente[]>([]);
+  const [cargandoPptos, setCargandoPptos] = useState(false);
+  const [motivoAbierto, setMotivoAbierto] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    setPresupuestosPendientes([]);
+    setMotivoAbierto(false);
+    setMotivo("");
+    if (!evento || evento.estado !== "Aviso" || !evento.resguardo) return;
+    const resguardo = evento.resguardo;
+    setCargandoPptos(true);
+    fetch(`/api/reparaciones/${resguardo}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.ok) return;
+        const todos = (data.detalle?.presupuestos || []) as PresupuestoPendiente[];
+        setPresupuestosPendientes(todos.filter((p) => p.estado === "enviado"));
+      })
+      .catch(() => {})
+      .finally(() => setCargandoPptos(false));
+  }, [evento]);
+
+  async function rechazar() {
+    if (presupuestosPendientes.length !== 1) return;
+    if (!motivo.trim()) return toast.error("El motivo del rechazo es obligatorio");
+    setEnviando(true);
+    try {
+      const res = await fetch("/api/presupuestos/cambiar-estado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presupuestoId: presupuestosPendientes[0].presupuestoId, accion: "rechazar", motivo }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Presupuesto rechazado");
+      setMotivoAbierto(false);
+      setMotivo("");
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
     <Dialog open={!!evento} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-lg">
@@ -421,11 +483,61 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Clock className="size-3.5 shrink-0" /> {fechaStr}
               </div>
+
+              {esAviso && evento.resguardo && (
+                <div className="border-t pt-3">
+                  {cargandoPptos ? (
+                    <p className="text-xs text-muted-foreground">Comprobando presupuestos pendientes...</p>
+                  ) : presupuestosPendientes.length === 1 ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-destructive hover:bg-destructive/10"
+                      onClick={() => setMotivoAbierto(true)}
+                    >
+                      <CloseCircle className="size-3.5" />
+                      Rechazar presupuesto {presupuestosPendientes[0].numeroPresupuesto || ""}
+                    </Button>
+                  ) : presupuestosPendientes.length > 1 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Hay {presupuestosPendientes.length} presupuestos pendientes de respuesta para este resguardo — ve a la ficha
+                      de la reparación #{evento.resguardo} para rechazar el que corresponda.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No hay ningún presupuesto pendiente de respuesta para este resguardo.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <DialogFooter>
               <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
             </DialogFooter>
+
+            <Dialog open={motivoAbierto} onOpenChange={(o) => { if (!enviando) setMotivoAbierto(o); }}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogTitle>Rechazar presupuesto</DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  Vas a rechazar <strong className="text-foreground">{presupuestosPendientes[0]?.numeroPresupuesto}</strong> del
+                  resguardo {evento.resguardo}. Indica el motivo:
+                </p>
+                <Textarea
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Motivo del rechazo..."
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="ghost" onClick={() => setMotivoAbierto(false)} disabled={enviando}>
+                    Cancelar
+                  </Button>
+                  <Button variant="destructive" onClick={rechazar} disabled={enviando || !motivo.trim()}>
+                    {enviando ? "Rechazando..." : "Confirmar rechazo"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </>
         )}
       </DialogContent>
