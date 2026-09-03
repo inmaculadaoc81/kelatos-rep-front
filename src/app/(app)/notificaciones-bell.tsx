@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MOTIVO_LABELS, type WebhookEvento } from "@/lib/webhook-eventos";
 import { limpiarRespuestaCliente } from "@/lib/texto";
+import { toast } from "sonner";
 
 type FiltroFecha = "todas" | "hoy" | "ayer" | "semana" | "mes" | "mes_anterior";
 type FiltroTipo = "todos" | "Aviso" | "Aceptado" | "Rechazado";
@@ -86,11 +87,39 @@ export function NotificacionesBell() {
   );
   const filtroTipoLabel = FILTROS_TIPO.find((f) => f.valor === filtroTipo)?.label || "Todos los tipos";
 
+  // null = todavía no se hizo la primera carga (no avisar sobre "nuevas"
+  // que en realidad ya estaban ahí desde antes de abrir la página).
+  const noLeidasPrevRef = useRef<number | null>(null);
+
+  function avisarNuevaNotificacion(evento: WebhookEvento | undefined, cuantasNuevas: number) {
+    if (!evento) {
+      toast.info(cuantasNuevas === 1 ? "1 notificación nueva" : `${cuantasNuevas} notificaciones nuevas`);
+      return;
+    }
+    const esAviso = evento.estado === "Aviso";
+    const motivoLabel = evento.motivo ? MOTIVO_LABELS[evento.motivo] || evento.motivo : null;
+    const titulo = esAviso ? "Revisión manual requerida" : `Presupuesto ${evento.estado?.toLowerCase()}`;
+    const detalle = [evento.nombre_cliente, esAviso ? motivoLabel : evento.numero_presupuesto].filter(Boolean).join(" — ");
+    const resto = cuantasNuevas - 1;
+
+    toast.info(titulo, {
+      description: resto > 0 ? `${detalle}${detalle ? " " : ""}(y ${resto} más)` : detalle || undefined,
+      duration: 5000,
+    });
+  }
+
   async function cargarBadge() {
     try {
       const res = await fetch("/api/webhook-eventos?leida=false&porPagina=1");
       const data = await res.json();
-      if (data.ok) setNoLeidas(data.noLeidas as number);
+      if (!data.ok) return;
+      const nuevoConteo = data.noLeidas as number;
+      const anterior = noLeidasPrevRef.current;
+      if (anterior !== null && nuevoConteo > anterior) {
+        avisarNuevaNotificacion((data.eventos as WebhookEvento[])[0], nuevoConteo - anterior);
+      }
+      noLeidasPrevRef.current = nuevoConteo;
+      setNoLeidas(nuevoConteo);
     } catch {
       /* silencioso: el badge es solo un aviso rápido, el panel siempre puede reintentar */
     }
@@ -124,6 +153,10 @@ export function NotificacionesBell() {
         if (pendientes.length > 0) {
           await Promise.all(pendientes.map((e) => fetch(`/api/webhook-eventos/${e.id}`, { method: "PATCH" })));
           setNoLeidas(0);
+          // Si no se resetea aquí también, el sondeo periódico compara contra
+          // el conteo viejo (de antes de abrir) y una notificación realmente
+          // nueva más tarde no dispara el aviso porque "no supera" ese valor.
+          noLeidasPrevRef.current = 0;
         }
       }
     } catch {
