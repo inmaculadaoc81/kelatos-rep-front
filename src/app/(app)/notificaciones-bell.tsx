@@ -422,7 +422,11 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
       const res = await fetch("/api/presupuestos/cambiar-estado", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presupuestoId: presupuestosPendientes[0].presupuestoId, accion: "aceptar", hayMas }),
+        // mantenerEnAceptado: este botón (panel de Notificaciones) nunca debe
+        // pasar la reparación a "En Reparación" por su cuenta, aunque el
+        // presupuesto no necesite pieza — el técnico inicia la reparación
+        // manualmente desde la ficha. El botón de la ficha no manda esto.
+        body: JSON.stringify({ presupuestoId: presupuestosPendientes[0].presupuestoId, accion: "aceptar", hayMas, mantenerEnAceptado: true }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
