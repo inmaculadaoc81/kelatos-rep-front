@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Filter, Category2 } from "@/lib/icons";
+import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,14 +16,15 @@ import { cn } from "@/lib/utils";
 import { MOTIVO_LABELS, type WebhookEvento } from "@/lib/webhook-eventos";
 import { limpiarRespuestaCliente } from "@/lib/texto";
 
-type FiltroFecha = "todas" | "hoy" | "semana" | "mes" | "mes_anterior";
+type FiltroFecha = "todas" | "hoy" | "ayer" | "semana" | "mes" | "mes_anterior";
 type FiltroTipo = "todos" | "Aviso" | "Aceptado" | "Rechazado";
 
 const FILTROS_FECHA: { valor: FiltroFecha; label: string }[] = [
-  { valor: "todas", label: "Todas las fechas" },
+  { valor: "todas", label: "Todas" },
   { valor: "hoy", label: "Hoy" },
-  { valor: "semana", label: "Esta semana" },
-  { valor: "mes", label: "Este mes" },
+  { valor: "ayer", label: "Ayer" },
+  { valor: "semana", label: "Semana" },
+  { valor: "mes", label: "Mes" },
   { valor: "mes_anterior", label: "Mes anterior" },
 ];
 
@@ -44,6 +44,10 @@ function dentroDeRango(fechaIso: string | null, filtro: FiltroFecha): boolean {
   const hoy = new Date();
   if (filtro === "hoy") {
     return fecha.toDateString() === hoy.toDateString();
+  }
+  if (filtro === "ayer") {
+    const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1);
+    return fecha.toDateString() === ayer.toDateString();
   }
   if (filtro === "semana") {
     const diaSemana = (hoy.getDay() + 6) % 7;
@@ -80,7 +84,6 @@ export function NotificacionesBell() {
     () => eventos.filter((e) => dentroDeRango(e.fecha, filtroFecha) && (filtroTipo === "todos" || e.estado === filtroTipo)),
     [eventos, filtroFecha, filtroTipo]
   );
-  const filtroFechaLabel = FILTROS_FECHA.find((f) => f.valor === filtroFecha)?.label || "Todas las fechas";
   const filtroTipoLabel = FILTROS_TIPO.find((f) => f.valor === filtroTipo)?.label || "Todos los tipos";
 
   async function cargarBadge() {
@@ -165,27 +168,23 @@ export function NotificacionesBell() {
           </header>
 
           <div className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2.5">
-            <Popover>
-              <PopoverTrigger
-                render={
-                  <Button variant="outline" size="sm" className={cn("gap-1.5", filtroFecha !== "todas" && "border-primary text-primary")}>
-                    <Filter className="size-3.5" /> {filtroFechaLabel}
-                  </Button>
-                }
-              />
-              <PopoverContent align="start" className="w-56 p-1">
-                {FILTROS_FECHA.map((f) => (
-                  <button
-                    key={f.valor}
-                    type="button"
-                    className={cn("w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted", filtroFecha === f.valor && "bg-primary/10 font-medium text-primary")}
-                    onClick={() => setFiltroFecha(f.valor)}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
+            <div className="flex flex-wrap items-center gap-1 rounded-md border bg-muted/40 p-0.5">
+              {FILTROS_FECHA.map((f) => (
+                <button
+                  key={f.valor}
+                  type="button"
+                  onClick={() => setFiltroFecha(f.valor)}
+                  className={cn(
+                    "rounded-[5px] px-2.5 py-1 text-xs font-medium transition-colors",
+                    filtroFecha === f.valor
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-background hover:text-foreground"
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger
