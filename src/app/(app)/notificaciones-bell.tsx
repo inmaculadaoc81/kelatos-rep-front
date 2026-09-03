@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2, Copy } from "@/lib/icons";
+import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2, Copy, AddCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { MOTIVO_LABELS, type WebhookEvento } from "@/lib/webhook-eventos";
@@ -367,12 +368,16 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
   const [cargandoPptos, setCargandoPptos] = useState(false);
   const [motivoAbierto, setMotivoAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const [aceptarAbierto, setAceptarAbierto] = useState(false);
+  const [hayMas, setHayMas] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     setPresupuestosPendientes([]);
     setMotivoAbierto(false);
     setMotivo("");
+    setAceptarAbierto(false);
+    setHayMas(false);
     if (!evento || evento.estado !== "Aviso" || !evento.resguardo) return;
     const resguardo = evento.resguardo;
     setCargandoPptos(true);
@@ -402,6 +407,28 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
       toast.success("Presupuesto rechazado");
       setMotivoAbierto(false);
       setMotivo("");
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function aceptar() {
+    if (presupuestosPendientes.length !== 1) return;
+    setEnviando(true);
+    try {
+      const res = await fetch("/api/presupuestos/cambiar-estado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presupuestoId: presupuestosPendientes[0].presupuestoId, accion: "aceptar", hayMas }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Presupuesto aceptado");
+      setAceptarAbierto(false);
+      setHayMas(false);
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
@@ -489,15 +516,25 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
                   {cargandoPptos ? (
                     <p className="text-xs text-muted-foreground">Comprobando presupuestos pendientes...</p>
                   ) : presupuestosPendientes.length === 1 ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 text-destructive hover:bg-destructive/10"
-                      onClick={() => setMotivoAbierto(true)}
-                    >
-                      <CloseCircle className="size-3.5" />
-                      Rechazar presupuesto {presupuestosPendientes[0].numeroPresupuesto || ""}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                        onClick={() => setAceptarAbierto(true)}
+                      >
+                        <TickCircle className="size-3.5" />
+                        Aceptar presupuesto {presupuestosPendientes[0].numeroPresupuesto || ""}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-destructive hover:bg-destructive/10"
+                        onClick={() => setMotivoAbierto(true)}
+                      >
+                        <CloseCircle className="size-3.5" />
+                        Rechazar
+                      </Button>
+                    </div>
                   ) : presupuestosPendientes.length > 1 ? (
                     <p className="text-xs text-muted-foreground">
                       Hay {presupuestosPendientes.length} presupuestos pendientes de respuesta para este resguardo — ve a la ficha
@@ -513,6 +550,34 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
             <DialogFooter>
               <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
             </DialogFooter>
+
+            <Dialog open={aceptarAbierto} onOpenChange={(o) => { if (!enviando) { setAceptarAbierto(o); if (!o) setHayMas(false); } }}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogTitle>¿El cliente aceptó el presupuesto {presupuestosPendientes[0]?.numeroPresupuesto}?</DialogTitle>
+                <p className="text-sm text-muted-foreground">Resguardo {evento.resguardo}.</p>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">¿Habrá más presupuestos a aceptar en esta reparación?</p>
+                  <RadioGroup value={hayMas ? "si" : "no"} onValueChange={(v) => setHayMas(v === "si")} className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <RadioGroupItem value="no" />
+                      <TickCircle className="size-4 text-emerald-600" /> No, es el único o último
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <RadioGroupItem value="si" />
+                      <AddCircle className="size-4 text-primary" /> Sí, se aceptarán más presupuestos
+                    </label>
+                  </RadioGroup>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="ghost" onClick={() => setAceptarAbierto(false)} disabled={enviando}>
+                    Cancelar
+                  </Button>
+                  <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={aceptar} disabled={enviando}>
+                    {enviando ? "Guardando..." : "Confirmar"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <Dialog open={motivoAbierto} onOpenChange={(o) => { if (!enviando) setMotivoAbierto(o); }}>
               <DialogContent className="sm:max-w-sm">
