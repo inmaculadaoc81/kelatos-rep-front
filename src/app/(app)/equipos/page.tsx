@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, Category2, TickCircle, TimerStart, Setting2, SearchNormal1, Eye } from "@/lib/icons";
+import {
+  Refresh2,
+  Category2,
+  TickCircle,
+  TimerStart,
+  Setting2,
+  SearchNormal1,
+  Eye,
+  MoreCircle,
+  Wallet,
+  BoxRemove,
+  Warning2,
+} from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +27,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Equipo, EstadoEquipo } from "@/lib/equipos";
 import { NuevoEquipoDialog } from "./nuevo-equipo-dialog";
@@ -47,6 +66,8 @@ export default function EquiposPage() {
   const [alquilerAbierto, setAlquilerAbierto] = useState<Equipo | null>(null);
   const [devolverAbierto, setDevolverAbierto] = useState<Equipo | null>(null);
   const [detalleAbierto, setDetalleAbierto] = useState<Equipo | null>(null);
+  const [confirmarAccion, setConfirmarAccion] = useState<{ equipo: Equipo; estado: "VENDIDO" | "FUERA_SERVICIO" } | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -103,11 +124,26 @@ export default function EquiposPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(`Equipo ${equipo.id} → ${nuevoEstado}`);
+      toast.success(`Equipo ${equipo.id} → ${ETIQUETAS_ESTADO[nuevoEstado] ?? nuevoEstado}`);
       cargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     }
+  }
+
+  async function confirmarCambioEstado() {
+    if (!confirmarAccion) return;
+    setConfirmando(true);
+    try {
+      await cambiarEstado(confirmarAccion.equipo, confirmarAccion.estado);
+      setConfirmarAccion(null);
+    } finally {
+      setConfirmando(false);
+    }
+  }
+
+  function estaVencido(e: Equipo): boolean {
+    return e.estado === "ALQUILADO" && !!e.fechaFinPrevista && new Date(e.fechaFinPrevista) < new Date();
   }
 
   return (
@@ -238,7 +274,7 @@ export default function EquiposPage() {
                   <TableCell className="text-sm">{e.serie || "-"}</TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${COLOR_ESTADO[e.estado] || ""}`}>
-                      {e.estado}
+                      {ETIQUETAS_ESTADO[e.estado] ?? e.estado}
                     </span>
                   </TableCell>
                   <TableCell className="text-sm">
@@ -253,41 +289,86 @@ export default function EquiposPage() {
                         <div className="text-xs text-muted-foreground">{e.clienteActual.telefono}</div>
                       </button>
                     ) : (
-                      "-"
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {e.fechaFinPrevista ? new Date(e.fechaFinPrevista).toLocaleDateString("es-ES") : "-"}
+                    {e.fechaFinPrevista ? (
+                      <div className="flex items-center gap-1">
+                        <span className={estaVencido(e) ? "font-medium text-destructive" : ""}>
+                          {new Date(e.fechaFinPrevista).toLocaleDateString("es-ES")}
+                        </span>
+                        {estaVencido(e) && (
+                          <span
+                            className="flex items-center gap-0.5 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive"
+                            title="La fecha de devolución prevista ya pasó"
+                          >
+                            <Warning2 className="size-3" />
+                            Vencido
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-muted-foreground tabular-nums">
                     {e.precioDia}€/d · {e.precioSemana}€/s · {e.precioMes}€/m
                   </TableCell>
                   <TableCell>
-                    {e.estado === "DISPONIBLE" && (
-                      <div className="flex flex-wrap gap-1">
-                        <Button size="sm" variant="outline" className="h-7" onClick={() => setAlquilerAbierto(e)}>
-                          Alquilar
+                    <div className="flex flex-wrap items-center gap-1">
+                      {e.estado === "DISPONIBLE" && (
+                        <>
+                          <Button size="sm" variant="outline" className="h-7" onClick={() => setAlquilerAbierto(e)}>
+                            Alquilar
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7" onClick={() => cambiarEstado(e, "MANTENIMIENTO")}>
+                            A mantenimiento
+                          </Button>
+                        </>
+                      )}
+                      {e.estado === "ALQUILADO" && (
+                        <>
+                          <Button size="icon-sm" variant="ghost" className="h-7 w-7" onClick={() => setDetalleAbierto(e)} title="Ver detalle">
+                            <Eye className="size-3.5" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7" onClick={() => setDevolverAbierto(e)}>
+                            Devolver
+                          </Button>
+                        </>
+                      )}
+                      {e.estado === "MANTENIMIENTO" && (
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => cambiarEstado(e, "DISPONIBLE")}>
+                          Marcar disponible
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7" onClick={() => cambiarEstado(e, "MANTENIMIENTO")}>
-                          A mantenimiento
+                      )}
+                      {(e.estado === "DISPONIBLE" || e.estado === "MANTENIMIENTO") && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button size="icon-sm" variant="ghost" className="h-7 w-7" title="Más acciones">
+                                <MoreCircle className="size-3.5" />
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setConfirmarAccion({ equipo: e, estado: "VENDIDO" })}>
+                              <Wallet className="size-3.5" />
+                              Marcar como vendido
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setConfirmarAccion({ equipo: e, estado: "FUERA_SERVICIO" })}>
+                              <BoxRemove className="size-3.5" />
+                              Dar de baja
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      {e.estado === "FUERA_SERVICIO" && (
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => cambiarEstado(e, "DISPONIBLE")}>
+                          Reactivar
                         </Button>
-                      </div>
-                    )}
-                    {e.estado === "ALQUILADO" && (
-                      <div className="flex flex-wrap gap-1">
-                        <Button size="icon-sm" variant="ghost" className="h-7 w-7" onClick={() => setDetalleAbierto(e)} title="Ver detalle">
-                          <Eye className="size-3.5" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7" onClick={() => setDevolverAbierto(e)}>
-                          Devolver
-                        </Button>
-                      </div>
-                    )}
-                    {e.estado === "MANTENIMIENTO" && (
-                      <Button size="sm" variant="outline" className="h-7" onClick={() => cambiarEstado(e, "DISPONIBLE")}>
-                        Marcar disponible
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -315,7 +396,46 @@ export default function EquiposPage() {
         equipo={detalleAbierto}
         open={detalleAbierto !== null}
         onOpenChange={(o) => !o && setDetalleAbierto(null)}
+        onActualizado={cargar}
       />
+
+      <Dialog open={confirmarAccion !== null} onOpenChange={(o) => !o && setConfirmarAccion(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogTitle>
+            {confirmarAccion?.estado === "VENDIDO" ? "Marcar equipo como vendido" : "Dar de baja el equipo"}
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {confirmarAccion?.estado === "VENDIDO" ? (
+              <>
+                <span className="font-medium text-foreground">
+                  {confirmarAccion.equipo.marca} {confirmarAccion.equipo.modelo}
+                </span>{" "}
+                dejará de aparecer como disponible para alquilar. Esta acción no tiene un botón para deshacerla
+                desde aquí.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-foreground">
+                  {confirmarAccion?.equipo.marca} {confirmarAccion?.equipo.modelo}
+                </span>{" "}
+                dejará de aparecer como disponible para alquilar hasta que lo reactives.
+              </>
+            )}
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setConfirmarAccion(null)} disabled={confirmando}>
+              Cancelar
+            </Button>
+            <Button
+              variant={confirmarAccion?.estado === "VENDIDO" ? "default" : "outline"}
+              onClick={confirmarCambioEstado}
+              disabled={confirmando}
+            >
+              {confirmando ? "Aplicando..." : confirmarAccion?.estado === "VENDIDO" ? "Vender" : "Dar de baja"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

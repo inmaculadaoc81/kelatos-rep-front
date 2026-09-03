@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Bank, Calendar, CloseCircle, DocumentText, Hashtag, Money, Profile, Wallet } from "@/lib/icons";
+import { Bank, Calendar, CloseCircle, DocumentText, Edit2, Hashtag, Money, Profile, Wallet } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { Equipo } from "@/lib/equipos";
+import { EditarClienteAlquilerDialog } from "./editar-cliente-alquiler-dialog";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -48,11 +50,16 @@ export function AlquilerDetalleDialog({
   equipo,
   open,
   onOpenChange,
+  onActualizado,
 }: {
   equipo: Equipo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Se llama cuando se editan los datos del cliente, para refrescar la lista de equipos del padre. */
+  onActualizado?: () => void;
 }) {
+  const [editarAbierto, setEditarAbierto] = useState(false);
+
   if (!equipo) return null;
   const al = equipo.alquilerActivo;
 
@@ -86,13 +93,26 @@ export function AlquilerDetalleDialog({
                 </span>
               </div>
 
-              <Tarjeta titulo="Cliente" icono={<Profile className="size-3.5" />}>
-                <Fila etiqueta="Nombre" valor={al.clienteNombre || "—"} />
-                <Fila etiqueta="Teléfono" valor={al.clienteTelefono || "—"} />
-                <Fila etiqueta="Email" valor={al.clienteEmail || "—"} />
-                <Fila etiqueta="DNI / NIF" valor={al.clienteDNI || "—"} />
-                <Fila etiqueta="Dirección" valor={al.clienteDireccion || "—"} />
-              </Tarjeta>
+              <div className="rounded-lg border bg-card shadow-sm">
+                <div className="flex items-center gap-1.5 rounded-t-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white">
+                  <Profile className="size-3.5" /> Cliente
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-auto h-6 gap-1 px-2 text-white hover:bg-white/15 hover:text-white"
+                    onClick={() => setEditarAbierto(true)}
+                  >
+                    <Edit2 className="size-3" /> Editar
+                  </Button>
+                </div>
+                <dl className="divide-y px-3">
+                  <Fila etiqueta="Nombre" valor={al.clienteNombre || "—"} />
+                  <Fila etiqueta="Teléfono" valor={al.clienteTelefono || "—"} />
+                  <Fila etiqueta="Email" valor={al.clienteEmail || "—"} />
+                  <Fila etiqueta="DNI / NIF" valor={al.clienteDNI || "—"} />
+                  <Fila etiqueta="Dirección" valor={al.clienteDireccion || "—"} />
+                </dl>
+              </div>
 
               <Tarjeta titulo="Alquiler y pago" icono={<Bank className="size-3.5" />}>
                 <Fila etiqueta="Duración" valor={`${al.meses}m ${al.semanas}s ${al.dias}d`} />
@@ -140,6 +160,16 @@ export function AlquilerDetalleDialog({
           <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>
         </footer>
       </DialogContent>
+
+      <EditarClienteAlquilerDialog
+        alquiler={al}
+        open={editarAbierto}
+        onOpenChange={setEditarAbierto}
+        onActualizado={() => {
+          onActualizado?.();
+          onOpenChange(false);
+        }}
+      />
     </Dialog>
   );
 }

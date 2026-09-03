@@ -103,6 +103,15 @@ export interface DatosNuevoAlquiler {
   recogidaActivada: boolean;
 }
 
+export interface DatosClienteAlquiler {
+  clienteNombre: string;
+  clienteTelefono: string;
+  clienteDNI: string;
+  clienteEmail: string;
+  clienteDireccion: string;
+  reenviarEmail: boolean;
+}
+
 export type EstadoDevolucionEquipo = "BUENO" | "DAÑOS_MENORES" | "ROTO";
 
 export interface DatosDevolucion {
