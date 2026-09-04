@@ -55,6 +55,84 @@ function numero(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+export interface EnlaceCompra {
+  id: number;
+  referencia: string;
+  proveedor: string;
+  costo: number | null;
+  enlace: string;
+  fechaCreacion: string | null;
+  usuario: string | null;
+}
+
+export type EstadoPedidoStock = "pendiente" | "recibido" | "cancelado";
+
+export interface PedidoStock {
+  id: number;
+  referencia: string;
+  enlaceId: number | null;
+  proveedor: string;
+  enlace: string;
+  cantidad: number;
+  fechaPedido: string | null;
+  fechaEstimadaLlegada: string | null;
+  estado: EstadoPedidoStock;
+  fechaRecibido: string | null;
+  usuario: string | null;
+}
+
+interface FilaEnlaceCompraSql {
+  id: number;
+  referencia: string;
+  proveedor: string | null;
+  costo: string | number | null;
+  enlace: string;
+  fecha_creacion: string | null;
+  usuario: string | null;
+}
+
+interface FilaPedidoStockSql {
+  id: number;
+  referencia: string;
+  enlace_id: number | null;
+  proveedor: string | null;
+  enlace: string | null;
+  cantidad: number;
+  fecha_pedido: string | null;
+  fecha_estimada_llegada: string | null;
+  estado: EstadoPedidoStock;
+  fecha_recibido: string | null;
+  usuario: string | null;
+}
+
+export function mapearEnlaceCompra(row: FilaEnlaceCompraSql): EnlaceCompra {
+  return {
+    id: row.id,
+    referencia: row.referencia,
+    proveedor: row.proveedor || "",
+    costo: row.costo === null || row.costo === undefined ? null : numero(row.costo),
+    enlace: row.enlace,
+    fechaCreacion: row.fecha_creacion,
+    usuario: row.usuario,
+  };
+}
+
+export function mapearPedidoStock(row: FilaPedidoStockSql): PedidoStock {
+  return {
+    id: row.id,
+    referencia: row.referencia,
+    enlaceId: row.enlace_id,
+    proveedor: row.proveedor || "",
+    enlace: row.enlace || "",
+    cantidad: numero(row.cantidad),
+    fechaPedido: row.fecha_pedido,
+    fechaEstimadaLlegada: row.fecha_estimada_llegada,
+    estado: row.estado,
+    fechaRecibido: row.fecha_recibido,
+    usuario: row.usuario,
+  };
+}
+
 export function mapearStockPieza(row: FilaStockPiezaSql): StockPieza {
   const precioCliente = numero(row.precio_cliente);
   const manoObra = numero(row.mano_obra);
