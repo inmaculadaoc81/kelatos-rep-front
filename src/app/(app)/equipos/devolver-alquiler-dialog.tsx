@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatearFecha } from "@/lib/dias-entrega";
@@ -203,6 +204,16 @@ export function DevolverAlquilerDialog({
   const [requestId, setRequestId] = useState<string | null>(null);
   const [resumen, setResumen] = useState<ResultadoFacturaAlquiler | null>(null);
 
+  // "Devolver sin factura" — petición del usuario, 2026-09-04: para casos
+  // excepcionales (p.ej. un alquiler que quedó activo por error de
+  // migración y en realidad ya se devolvió), cerrar el alquiler y liberar
+  // el equipo sin pasar por ningún cálculo de fianza/facturación. Exige
+  // motivo (doble confirmación: abrir el diálogo + escribir motivo y
+  // confirmar), y queda registrado en el historial de ese alquiler.
+  const [sinFacturaAbierto, setSinFacturaAbierto] = useState(false);
+  const [motivoSinFactura, setMotivoSinFactura] = useState("");
+  const [enviandoSinFactura, setEnviandoSinFactura] = useState(false);
+
   const alq = equipo?.alquilerActivo ?? null;
 
   useEffect(() => {
@@ -217,6 +228,8 @@ export function DevolverAlquilerDialog({
       setChkFianza(true);
       setRequestId(null);
       setResumen(null);
+      setSinFacturaAbierto(false);
+      setMotivoSinFactura("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, alq?.alquilerId]);
@@ -395,6 +408,28 @@ export function DevolverAlquilerDialog({
     }
   }
 
+  async function confirmarDevolucionSinFactura() {
+    if (!motivoSinFactura.trim()) return toast.error("El motivo es obligatorio");
+    setEnviandoSinFactura(true);
+    try {
+      const res = await fetch(`/api/alquileres/${alquilerId}/devolver-sin-factura`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ equipoId: equipo!.id, motivo: motivoSinFactura.trim() }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Devolución registrada sin factura");
+      setSinFacturaAbierto(false);
+      onDevuelto();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoSinFactura(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={cerrar}>
       <DialogContent className="gap-0 max-w-lg p-0 sm:max-w-lg" showCloseButton={false}>
@@ -425,6 +460,14 @@ export function DevolverAlquilerDialog({
                   <CloseCircle className="size-4" /> No
                 </Button>
               </div>
+              <Button
+                variant="link"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setSinFacturaAbierto(true)}
+              >
+                Devolver sin factura (caso excepcional)
+              </Button>
             </div>
           )}
 
@@ -706,6 +749,35 @@ export function DevolverAlquilerDialog({
           )}
         </footer>
       </DialogContent>
+
+      <Dialog open={sinFacturaAbierto} onOpenChange={(o) => { if (!enviandoSinFactura) setSinFacturaAbierto(o); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogTitle>Devolver sin factura</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Se cerrará el alquiler de <strong className="text-foreground">{equipoNombre}</strong> (cliente {alq.clienteNombre || "—"}) y el equipo quedará
+            disponible, sin generar ningún documento ni calcular fianza. Indica el motivo:
+          </p>
+          <Textarea
+            value={motivoSinFactura}
+            onChange={(e) => setMotivoSinFactura(e.target.value)}
+            placeholder="Motivo de la devolución sin factura..."
+            rows={3}
+            autoFocus
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setSinFacturaAbierto(false)} disabled={enviandoSinFactura}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={confirmarDevolucionSinFactura}
+              disabled={enviandoSinFactura || !motivoSinFactura.trim()}
+            >
+              {enviandoSinFactura ? "Registrando..." : "Confirmar devolución sin factura"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
