@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket } from "@/lib/icons";
+import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket, ScanBarcode } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import { esUrlValida } from "@/lib/validacion";
 import { TicketManualDialog } from "../reparaciones/ticket-manual-dialog";
 import { VentaTicketModalShell } from "./venta-ticket-modal-shell";
 import { VentaFacturaModalShell } from "./venta-factura-modal-shell";
+import { QrEntregaVentaDialog } from "./qr-entrega-dialog";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -86,6 +87,7 @@ export function DetalleVentaDialog({
   const [ticketAbierto, setTicketAbierto] = useState(false);
   const [ticketDetalleAbierto, setTicketDetalleAbierto] = useState(false);
   const [facturaDetalleAbierto, setFacturaDetalleAbierto] = useState(false);
+  const [qrEntregaAbierto, setQrEntregaAbierto] = useState(false);
   const [venta, setVenta] = useState<Venta | null>(null);
   const [cargando, setCargando] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -387,6 +389,23 @@ export function DetalleVentaDialog({
               <div className="text-sm"><span className="font-semibold">Observaciones:</span> {venta.observaciones}</div>
             )}
 
+            {venta.dniEntrega && (
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
+                <div><span className="font-semibold">DNI/NIE/Pasaporte de entrega:</span> {venta.dniEntrega}</div>
+                {venta.firmaEntregaUrl && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Firma:</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/formulario-cliente/archivo/${venta.firmaEntregaUrl}`}
+                      alt="Firma de entrega"
+                      className="h-10 rounded border bg-white"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Piezas</h3>
               {!finalizado && (
@@ -534,9 +553,14 @@ export function DetalleVentaDialog({
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/50 px-4 py-3">
           <div className="flex flex-wrap gap-2">
             {venta && !finalizado && todasRecibidas && (
-              <Button size="sm" variant="outline" className="gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400" onClick={marcarEntregada} disabled={enviando}>
-                <TickCircle className="size-3.5" /> Marcar Entregada
-              </Button>
+              <>
+                <Button size="sm" variant="outline" className="gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400" onClick={marcarEntregada} disabled={enviando}>
+                  <TickCircle className="size-3.5" /> Marcar Entregada
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setQrEntregaAbierto(true)} disabled={enviando}>
+                  <ScanBarcode className="size-3.5" /> Ver QR de entrega
+                </Button>
+              </>
             )}
             {venta && !finalizado && (
               <Button size="sm" variant="outline" className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10" onClick={cancelarVenta} disabled={enviando}>
@@ -590,6 +614,10 @@ export function DetalleVentaDialog({
           onOpenChange={setFacturaDetalleAbierto}
           onActualizado={actualizarTodo}
         />
+      )}
+
+      {venta && (
+        <QrEntregaVentaDialog ventaId={venta.ventaId} open={qrEntregaAbierto} onOpenChange={setQrEntregaAbierto} />
       )}
     </Dialog>
   );

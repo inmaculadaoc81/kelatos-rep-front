@@ -51,6 +51,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!login|api/auth|formulario|api/formulario-cliente|api/formulario-recogida|_next/static|_next/image|favicon.ico|logos).*)",
+    "/((?!login|api/auth|formulario|api/formulario-cliente|api/formulario-recogida|api/formulario-entrega-venta|_next/static|_next/image|favicon.ico|logos).*)",
   ],
 };

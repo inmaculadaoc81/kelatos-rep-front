@@ -69,6 +69,11 @@ export interface Venta {
   facturaRectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   motivoFacturaRectificativa: string;
   facturaCorregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
+  /** DNI/NIE/Pasaporte y firma (ID de Drive) registrados al confirmar la
+      entrega vía el formulario público de QR — petición del usuario,
+      2026-09-04. */
+  dniEntrega: string;
+  firmaEntregaUrl: string;
   items: ItemVenta[];
 }
 
@@ -121,6 +126,8 @@ interface FilaVentaSql {
   total_factura_corregida: string | number | null;
   fecha_factura_corregida: string | null;
   estado_factura_corregida: string | null;
+  dni_entrega: string | null;
+  firma_entrega_url: string | null;
 }
 
 interface FilaItemVentaSql {
@@ -218,6 +225,8 @@ export function mapearVenta(row: FilaVentaSql, items: FilaItemVentaSql[]): Venta
     facturaCorregida: row.numero_factura_corregida
       ? { numeroFactura: row.numero_factura_corregida, urlFactura: row.url_factura_corregida || "", totalFactura: Number(row.total_factura_corregida) || 0, fechaFactura: row.fecha_factura_corregida || null }
       : null,
+    dniEntrega: row.dni_entrega || "",
+    firmaEntregaUrl: row.firma_entrega_url || "",
     items: items.map(mapearItem),
   };
 }
