@@ -28,6 +28,11 @@ interface PresupuestoPendiente {
 type FiltroFecha = "todas" | "hoy" | "ayer" | "semana" | "mes" | "mes_anterior";
 type FiltroTipo = "todos" | "Aviso" | "Aceptado" | "Rechazado";
 
+// Apagado temporalmente a petición del usuario, 2026-09-05 — el backend
+// (POST /v1/webhook-eventos/:id/responder) sigue desplegado y probado,
+// solo se oculta el composer en el panel hasta que se reactive.
+const RESPONDER_CONSULTA_HABILITADO = false;
+
 const FILTROS_FECHA: { valor: FiltroFecha; label: string }[] = [
   { valor: "todas", label: "Todas" },
   { valor: "hoy", label: "Hoy" },
@@ -542,7 +547,7 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
                 </div>
               )}
 
-              {esConsultaCliente(evento.motivo) && evento.email_cliente && (
+              {RESPONDER_CONSULTA_HABILITADO && esConsultaCliente(evento.motivo) && evento.email_cliente && (
                 <div className="space-y-1.5 rounded-md border border-primary/30 bg-primary/5 p-2.5">
                   <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                     <Send2 className="size-3.5" /> Responder consulta
