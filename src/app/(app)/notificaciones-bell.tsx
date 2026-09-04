@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2, Copy, AddCircle } from "@/lib/icons";
+import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2, Copy, AddCircle, Send2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -15,7 +15,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { MOTIVO_LABELS, type WebhookEvento } from "@/lib/webhook-eventos";
+import { MOTIVO_LABELS, esConsultaCliente, type WebhookEvento } from "@/lib/webhook-eventos";
 import { limpiarRespuestaCliente } from "@/lib/texto";
 import { toast } from "sonner";
 
@@ -372,12 +372,22 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
   const [hayMas, setHayMas] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
+  // Responder consulta — petición del usuario, 2026-09-04: cuando el
+  // cliente responde a un presupuesto y de paso hace una pregunta (motivo
+  // CONSULTA/ACEPTACION_CON_CONSULTA), poder contestarle por correo desde
+  // el propio panel, sin entrar al buzón.
+  const [respuestaTexto, setRespuestaTexto] = useState("");
+  const [enviandoRespuesta, setEnviandoRespuesta] = useState(false);
+  const [respuestaEnviada, setRespuestaEnviada] = useState(false);
+
   useEffect(() => {
     setPresupuestosPendientes([]);
     setMotivoAbierto(false);
     setMotivo("");
     setAceptarAbierto(false);
     setHayMas(false);
+    setRespuestaTexto("");
+    setRespuestaEnviada(false);
     if (!evento || evento.estado !== "Aviso" || !evento.resguardo) return;
     const resguardo = evento.resguardo;
     setCargandoPptos(true);
@@ -438,6 +448,27 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function responderConsulta() {
+    if (!evento || !respuestaTexto.trim()) return;
+    setEnviandoRespuesta(true);
+    try {
+      const res = await fetch(`/api/webhook-eventos/${evento.id}/responder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensaje: respuestaTexto.trim() }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Respuesta enviada al cliente");
+      setRespuestaEnviada(true);
+      setRespuestaTexto("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoRespuesta(false);
     }
   }
 
@@ -508,6 +539,39 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
                   <div className="rounded-md border bg-muted/40 p-2.5 text-sm italic text-muted-foreground">
                     &quot;{limpiarRespuestaCliente(evento.respuesta_cliente)}&quot;
                   </div>
+                </div>
+              )}
+
+              {esConsultaCliente(evento.motivo) && evento.email_cliente && (
+                <div className="space-y-1.5 rounded-md border border-primary/30 bg-primary/5 p-2.5">
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                    <Send2 className="size-3.5" /> Responder consulta
+                  </p>
+                  {respuestaEnviada ? (
+                    <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+                      <TickCircle className="size-3.5" /> Respuesta enviada a {evento.email_cliente}
+                    </p>
+                  ) : (
+                    <>
+                      <Textarea
+                        value={respuestaTexto}
+                        onChange={(e) => setRespuestaTexto(e.target.value)}
+                        placeholder={`Escribe la respuesta para ${evento.nombre_cliente || evento.email_cliente}...`}
+                        rows={3}
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={responderConsulta}
+                          disabled={enviandoRespuesta || !respuestaTexto.trim()}
+                        >
+                          <Send2 className="size-3.5" />
+                          {enviandoRespuesta ? "Enviando..." : "Enviar respuesta"}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

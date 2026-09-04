@@ -41,4 +41,24 @@ export const MOTIVO_LABELS: Record<string, string> = {
   MULTIPLES_COINCIDENCIAS: "Varios presupuestos coinciden con resguardo, email e importe",
   ESTADO_INCOMPATIBLE: "El presupuesto ya no está en un estado que admita esta respuesta",
   NUMERO_PRESUPUESTO_NO_ENCONTRADO: "La referencia citada por el cliente no identifica ningún presupuesto de forma inequívoca",
+  // Motivos del clasificador de IA (n8n) que faltaban en este diccionario —
+  // se mostraban como el enum en bruto en el panel.
+  CONSULTA: "El cliente hace una consulta",
+  ACEPTACION_CON_CONSULTA: "Acepta el presupuesto y además hace una consulta",
+  NUMERO_DE_PRESUPUESTO_NO_EXISTE: "El número de presupuesto citado no existe",
+  ORIGINAL_RECUPERADO_SIN_REFERENCIA_PRESUPUESTO: "Se recuperó el correo original pero sin referencia al presupuesto",
+  SIN_AUTORIZACION_EXPLICITA_JS: "Falta una autorización explícita del cliente",
+  RESPUESTA_NO_CLARA: "La respuesta del cliente no es clara",
+  OPCION_NO_EXISTE: "La opción de presupuesto citada no existe",
+  RECHAZO_PARA_REVISION: "Rechazo que requiere revisión manual",
+  SIN_REFERENCIAS_DE_RESPUESTA: "El correo no tiene referencias suficientes para identificar la respuesta",
+  APLAZAMIENTO: "El cliente pide aplazar su decisión",
+  ERROR_CLASIFICACION_IA: "Error al clasificar la respuesta automáticamente",
+  ACEPTACION_CONDICIONADA: "Acepta el presupuesto de forma condicionada",
 };
+
+/** Motivos en los que el cliente formuló una pregunta junto a su respuesta
+    — habilitan el composer de "Responder consulta" en el panel. */
+export function esConsultaCliente(motivo: string | null): boolean {
+  return !!motivo && motivo.includes("CONSULTA");
+}
