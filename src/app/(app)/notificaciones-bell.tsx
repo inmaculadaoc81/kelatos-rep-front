@@ -462,7 +462,7 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Respuesta enviada al cliente");
+      toast.success(data.enHilo ? "Respuesta enviada dentro del hilo original" : "Respuesta enviada (como correo nuevo — no se encontró el hilo original)");
       setRespuestaEnviada(true);
       setRespuestaTexto("");
     } catch (e) {

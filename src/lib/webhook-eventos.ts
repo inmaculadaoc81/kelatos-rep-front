@@ -18,6 +18,10 @@ export interface WebhookEvento {
   importe: string | number | null;
   motivo: string | null;
   leida: boolean;
+  /** Message-ID del correo original (lo aporta n8n) — cuando está presente,
+      "Responder consulta" contesta DENTRO del mismo hilo en vez de mandar
+      un correo nuevo. */
+  message_id_original?: string | null;
 }
 
 /** Mismo diccionario que MOTIVO_LABELS en Index.html, para que el motivo del aviso sea legible. */

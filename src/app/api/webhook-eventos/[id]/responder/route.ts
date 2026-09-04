@@ -13,8 +13,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!mensaje?.trim()) return NextResponse.json({ ok: false, error: "El mensaje es obligatorio" }, { status: 400 });
 
   try {
-    await kelatosApiPost(`/v1/webhook-eventos/${encodeURIComponent(id)}/responder`, { usuario, mensaje: mensaje.trim() });
-    return NextResponse.json({ ok: true });
+    const resultado = await kelatosApiPost<{ ok: boolean; enHilo: boolean }>(
+      `/v1/webhook-eventos/${encodeURIComponent(id)}/responder`,
+      { usuario, mensaje: mensaje.trim() }
+    );
+    return NextResponse.json({ ok: true, enHilo: resultado.enHilo });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
