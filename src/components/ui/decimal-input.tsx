@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 
-function sanear(texto: string): string {
+function sanear(texto: string, permitirNegativo: boolean): string {
+  const negativo = permitirNegativo && texto.trim().startsWith("-");
   let v = texto.replace(",", ".").replace(/[^0-9.]/g, "");
   const primerPunto = v.indexOf(".");
   if (primerPunto !== -1) v = v.slice(0, primerPunto + 1) + v.slice(primerPunto + 1).replace(/\./g, "");
-  return v;
+  return (negativo ? "-" : "") + v;
 }
 
 function aNumero(texto: string): number {
@@ -29,10 +30,16 @@ function aNumero(texto: string): number {
 export function DecimalInput({
   value,
   onChange,
+  permitirNegativo = false,
   ...props
 }: {
   value: number;
   onChange: (n: number) => void;
+  /** Permite escribir un signo "-" inicial — desactivado por defecto porque
+      la inmensa mayoría de usos (cantidades, stock, precios de catálogo...)
+      nunca deben admitir negativos. Activar solo donde de verdad tenga
+      sentido (p.ej. una línea de descuento/abono en un ticket). */
+  permitirNegativo?: boolean;
 } & Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "type">) {
   const [texto, setTexto] = useState(value === 0 ? "" : String(value));
 
@@ -48,7 +55,7 @@ export function DecimalInput({
       inputMode="decimal"
       value={texto}
       onChange={(e) => {
-        const v = sanear(e.target.value);
+        const v = sanear(e.target.value, permitirNegativo);
         setTexto(v);
         onChange(aNumero(v));
       }}

@@ -581,7 +581,7 @@ export function TicketManualDialog({
                       <tr key={i} className="border-t">
                         <td className="p-1"><Input className="h-8 text-sm" placeholder="Descripción" value={l.descripcion} onChange={(e) => actualizarLinea(i, "descripcion", e.target.value)} disabled={!!resultado} /></td>
                         <td className="p-1"><DecimalInput className="h-8 text-center text-sm" value={l.cantidad} onChange={(n) => actualizarLinea(i, "cantidad", n)} disabled={!!resultado} /></td>
-                        <td className="p-1"><DecimalInput className="h-8 text-right text-sm" value={l.precio} onChange={(n) => actualizarLinea(i, "precio", n)} disabled={!!resultado} /></td>
+                        <td className="p-1"><DecimalInput className="h-8 text-right text-sm" value={l.precio} onChange={(n) => actualizarLinea(i, "precio", n)} disabled={!!resultado} permitirNegativo /></td>
                         <td className="px-2 py-1 text-right text-muted-foreground">{euros((Number(l.cantidad) || 0) * (Number(l.precio) || 0))}</td>
                         <td className="p-1">
                           <div className="relative">
