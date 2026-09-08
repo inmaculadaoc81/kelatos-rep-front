@@ -56,6 +56,7 @@ export interface CallbacksAccion {
   onMarcarEntregado: () => void;
   onEntregadoLocal: () => void;
   onFacturarMensajeria: () => void;
+  onTicketMensajeria: () => void;
   onNoCubiertoPorGarantia: () => void;
   onClienteSeLlevaAnticipo: () => void;
   onClienteSeLoLlevo: () => void;
@@ -540,9 +541,18 @@ export function AccionRequerida({
       !detalle.numeroFacturaMensajeria &&
       !detalle.numeroTicketMensajeria
     ) {
+      // Dos botones separados (Factura / Ticket) en vez de uno solo con el
+      // documento elegido dentro — mismo patrón que "Facturación"/"Ticket
+      // Rápido" para "Reparado", petición del usuario, 2026-09-09: "se
+      // quiere que sean botones separados, así lo entienden más".
       botones.push(
         <Button key="facturar-mensajeria" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onFacturarMensajeria}>
-          <Truck className="size-3.5" /> Facturar y Enviar por Mensajería
+          <Truck className="size-3.5" /> Factura y Enviar por Mensajería
+        </Button>
+      );
+      botones.push(
+        <Button key="ticket-mensajeria" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onTicketMensajeria}>
+          <Ticket className="size-3.5" /> Ticket y Enviar por Mensajería
         </Button>
       );
     }

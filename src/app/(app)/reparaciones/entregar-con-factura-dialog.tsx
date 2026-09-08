@@ -111,12 +111,19 @@ function calcularInfo(detalle: ReparacionDetalle, esEnvio: boolean): InfoEntrega
 export function EntregarConFacturaDialog({
   detalle,
   tipoEntrega,
+  tipoDocumentoForzado,
   open,
   onOpenChange,
   onCompletado,
 }: {
   detalle: ReparacionDetalle;
   tipoEntrega: TipoEntregaModal;
+  /** Cuando viene informado, el diálogo se abre ya decidido a Factura o
+      Ticket (sin el selector interno) — petición del usuario, 2026-09-09:
+      "Facturar y Enviar por Mensajería" pasó a ser dos botones separados
+      (Factura / Ticket), igual que "Facturación"/"Ticket Rápido" para
+      "Reparado", en vez de un único botón con el documento elegido dentro. */
+  tipoDocumentoForzado?: "factura" | "ticket";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCompletado: () => void;
@@ -152,6 +159,7 @@ export function EntregarConFacturaDialog({
     <VistaConFactura
       detalle={detalle}
       tipoEntrega={tipoEntrega}
+      tipoDocumentoForzado={tipoDocumentoForzado}
       info={info}
       open={open}
       onOpenChange={onOpenChange}
@@ -352,6 +360,7 @@ function VistaSinFactura({
 function VistaConFactura({
   detalle,
   tipoEntrega,
+  tipoDocumentoForzado,
   info,
   open,
   onOpenChange,
@@ -359,6 +368,7 @@ function VistaConFactura({
 }: {
   detalle: ReparacionDetalle;
   tipoEntrega: TipoEntregaModal;
+  tipoDocumentoForzado?: "factura" | "ticket";
   info: InfoEntrega;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -376,7 +386,15 @@ function VistaConFactura({
   // ticket, así que se ofrece igual que en los otros dos casos.
   const esGarantiaReparado = detalle.estado === "Reparado" && detalle.tipoIngreso === "GARANTIA";
   const permiteTicket = info.estadoSinFactura || esGarantiaReparado;
-  const [tipoDocumento, setTipoDocumento] = useState<"factura" | "ticket">("factura");
+  const [tipoDocumento, setTipoDocumento] = useState<"factura" | "ticket">(tipoDocumentoForzado ?? "factura");
+  // El botón exterior ("Factura y Enviar por Mensajería" / "Ticket y
+  // Enviar por Mensajería") ya decide el documento — re-sincroniza cada
+  // vez que se abre, porque este diálogo permanece montado entre aperturas
+  // (igual patrón que sinNuevaFacturaAlAbrir, más arriba).
+  useEffect(() => {
+    if (open) setTipoDocumento(tipoDocumentoForzado ?? "factura");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tipoDocumentoForzado]);
   const esTicket = permiteTicket && tipoDocumento === "ticket";
   const [nombre, setNombre] = useState(detalle.cliente.nombre || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
@@ -417,7 +435,7 @@ function VistaConFactura({
     if (enviando) return;
     if (!o) {
       setRequestId(null);
-      setTipoDocumento("factura");
+      setTipoDocumento(tipoDocumentoForzado ?? "factura");
     }
     onOpenChange(o);
   }
@@ -538,7 +556,7 @@ function VistaConFactura({
         <div className="space-y-4 p-4">
           <div className="space-y-3">
             <p className="flex items-center gap-1.5 border-b pb-2 text-sm font-semibold">
-              {permiteTicket ? (
+              {permiteTicket && !tipoDocumentoForzado ? (
                 <>
                   <Receipt className="size-4 text-primary" /> Documento
                 </>
@@ -552,7 +570,7 @@ function VistaConFactura({
                 </>
               )}
             </p>
-            {permiteTicket && (
+            {permiteTicket && !tipoDocumentoForzado && (
               <div className="flex gap-1.5">
                 <Button type="button" size="sm" variant={tipoDocumento === "factura" ? "default" : "outline"} className="gap-1.5" onClick={() => setTipoDocumento("factura")}>
                   <DocumentText className="size-3.5" /> Factura
