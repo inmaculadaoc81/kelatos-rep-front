@@ -498,7 +498,6 @@ export default function FormularioClientePage() {
                 </Select>
                 <Input
                   className="h-11 flex-1 text-base"
-                  placeholder="612345678"
                   value={datos.telefono}
                   onChange={(e) =>
                     actualizar("telefono", normalizarNumeroLocal(datos.telPrefijo, e.target.value.replace(/[^\d]/g, "")))
@@ -647,7 +646,6 @@ export default function FormularioClientePage() {
                     className="min-h-24 text-base"
                     value={datos.sintoma}
                     onChange={(e) => actualizar("sintoma", e.target.value)}
-                    placeholder="Explica qué le ocurre al equipo con el mayor detalle posible…"
                   />
                 </Campo>
                 <Campo label="Contraseña/PIN del equipo (opcional)">
