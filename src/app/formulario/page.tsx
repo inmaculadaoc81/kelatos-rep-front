@@ -979,7 +979,7 @@ function PantallaCodigoAcceso({ onAcceso }: { onAcceso: (codigo: string) => void
           inputMode="numeric"
           autoFocus
           className="h-14 text-center text-2xl font-bold tracking-[0.3em]"
-          placeholder="000000"
+          placeholder="------"
         />
         {error && (
           <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-destructive">
