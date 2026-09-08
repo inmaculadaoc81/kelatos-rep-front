@@ -26,6 +26,7 @@ import { guardarSuReferencia } from "@/lib/su-referencia";
 const FORMAS_PAGO: { value: FormaPagoPedido; label: string }[] = [
   { value: "efectivo", label: "Efectivo" },
   { value: "tarjeta", label: "Tarjeta bancaria" },
+  { value: "tarjeta_virtual", label: "Tarjeta virtual" },
   { value: "transferencia", label: "Transferencia bancaria" },
   { value: "bizum", label: "Bizum" },
 ];

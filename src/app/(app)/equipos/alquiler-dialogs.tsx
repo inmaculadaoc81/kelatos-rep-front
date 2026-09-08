@@ -16,7 +16,7 @@ import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { guardarSuReferencia } from "@/lib/su-referencia";
 
-const METODOS_PAGO = ["Efectivo", "Tarjeta bancaria", "Bizum", "Transferencia"];
+const METODOS_PAGO = ["Efectivo", "Tarjeta bancaria", "Tarjeta virtual", "Bizum", "Transferencia"];
 const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 const PORTE_MENSAJERIA = 12.4;
 

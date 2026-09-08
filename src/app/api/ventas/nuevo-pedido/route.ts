@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import type { DatosNuevoPedido, ResultadoNuevoPedido } from "@/lib/ventas";
 
-const LABELS_PAGO: Record<string, string> = { efectivo: "Efectivo", tarjeta: "Tarjeta bancaria", transferencia: "Transferencia bancaria", bizum: "Bizum" };
+const LABELS_PAGO: Record<string, string> = { efectivo: "Efectivo", tarjeta: "Tarjeta bancaria", tarjeta_virtual: "Tarjeta virtual", transferencia: "Transferencia bancaria", bizum: "Bizum" };
 
 function fechaHoyEs(): string {
   return new Date().toLocaleDateString("es-ES", { timeZone: "Europe/Madrid" });

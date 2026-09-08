@@ -328,7 +328,7 @@ export function numerosPedidoDeVenta(venta: Pick<Venta, "items">): string {
 // se reproduce ese comportamiento real, no el que el código sugiere que
 // "debería" hacer.
 
-export type FormaPagoPedido = "efectivo" | "tarjeta" | "transferencia" | "bizum";
+export type FormaPagoPedido = "efectivo" | "tarjeta" | "tarjeta_virtual" | "transferencia" | "bizum";
 
 export interface ItemPedidoForm {
   descripcion: string;

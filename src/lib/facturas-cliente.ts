@@ -221,6 +221,7 @@ export function tipoPermiteMarcarCobrada(tipo: TipoFactura): boolean {
 const FORMA_PAGO_LABEL: Record<string, string> = {
   efectivo: "Efectivo",
   tarjeta: "Tarjeta bancaria",
+  tarjeta_virtual: "Tarjeta virtual",
   transferencia: "Transferencia",
   bizum: "Bizum",
   redsys: "Redsys",
