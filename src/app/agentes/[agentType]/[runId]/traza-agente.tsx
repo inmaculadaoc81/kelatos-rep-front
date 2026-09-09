@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Search, CircleX } from "lucide-react";
+import { Search, CircleX, CircleCheck, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
-import { AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import { AgentRun, AgentStep, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import {
   ChainOfThought,
   ChainOfThoughtHeader,
@@ -87,6 +87,16 @@ function tokensCompacto(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
+function tiempoRelativo(iso: string): string {
+  const diffMin = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return "justo ahora";
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `hace ${diffH} h`;
+  const diffD = Math.round(diffH / 24);
+  return `hace ${diffD} día${diffD !== 1 ? "s" : ""}`;
+}
+
 /** Último razonamiento real disponible (analysis.reason del paso
     deep_analysis más reciente completado) — no hay stream de tokens en
     vivo todavía, así que esto es lo más cercano a "en qué está pensando"
@@ -103,7 +113,6 @@ function ultimoRazonamiento(steps: AgentStep[]): string | null {
 
 export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: AgentStep[]; tipoLabel: string }) {
   const grupos = agruparPasos(steps);
-  const color = ESTADO_RUN_COLOR[run.status];
   const tokensTotal = run.totalTokensInput + run.totalTokensOutput;
   const razonamiento = ultimoRazonamiento(steps);
   const enCurso = run.status === "queued" || run.status === "running";
@@ -112,18 +121,29 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
   const empresasRestantes = empresas.length - empresasVisibles.length;
 
   return (
-    <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl border p-4 text-sm">
+    <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl p-4 text-sm">
       <Link href="/agentes" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft2 className="size-3" /> Agentes / {tipoLabel}
       </Link>
 
       <div>
-        <div className="mb-1.5 flex items-center gap-1.5 font-medium">
-          <span>Run</span>
-          <PillBadge bg="#e8edfc" color="#2451c4" className="text-[11px] font-normal">{tipoLabel}</PillBadge>
-          <PillBadge bg={color.bg} color={color.color} className="ml-auto">{ESTADO_RUN_LABEL[run.status]}</PillBadge>
+        <div className="flex items-center justify-between gap-2 rounded-2xl bg-muted/50 px-3 py-2">
+          <p className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-medium">Run</span>
+            <PillBadge bg="#e8edfc" color="#2451c4" className="text-[11px] font-normal">{tipoLabel}</PillBadge>
+            <span className="text-muted-foreground">{ESTADO_RUN_LABEL[run.status]} · {tiempoRelativo(run.createdAt)}</span>
+          </p>
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background">
+            {enCurso ? (
+              <Loader2 className="size-3.5 animate-spin text-blue-600" />
+            ) : run.status === "failed" || run.status === "cancelled" ? (
+              <CircleX className="size-3.5 text-destructive" />
+            ) : (
+              <CircleCheck className="size-3.5 text-emerald-600" />
+            )}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
+        <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
 
       <ChainOfThought defaultOpen>
