@@ -36,6 +36,7 @@ export const Cpu = withDefaults(Iconsax.Cpu);
 export const UserSearch = withDefaults(Iconsax.UserSearch);
 export const Flash = withDefaults(Iconsax.Flash);
 export const SearchZoomIn = withDefaults(Iconsax.SearchZoomIn);
+export const Magicpen = withDefaults(Iconsax.Magicpen);
 export const ArrowDown2 = withDefaults(Iconsax.ArrowDown2);
 export const ArrowLeft2 = withDefaults(Iconsax.ArrowLeft2);
 export const ArrowLeft3 = withDefaults(Iconsax.ArrowLeft3);

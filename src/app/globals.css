@@ -174,3 +174,30 @@
     display: none !important;
   }
 }
+
+/*
+ * Texto "pensando" de los agentes IA (Agentes → detalle de run) — un
+ * brillo que recorre el texto en bucle, mismo lenguaje visual que
+ * Claude/ChatGPT mientras generan. Solo se aplica mientras el run sigue
+ * activo; respeta prefers-reduced-motion.
+ */
+@keyframes text-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.text-shimmer {
+  background-image: linear-gradient(90deg, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 2.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: unset;
+    color: var(--muted-foreground);
+  }
+}

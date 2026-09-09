@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft2, TickCircle, CloseCircle, Clock, Timer1, SearchNormal1, Filter, Flash, SearchZoomIn, Sms } from "@/lib/icons";
+import { ArrowLeft2, TickCircle, CloseCircle, Timer1, SearchNormal1, Filter, Flash, SearchZoomIn, Sms, Magicpen } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
 import { AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
@@ -55,7 +55,7 @@ function agruparPasos(steps: AgentStep[]): GrupoPaso[] {
 function IconoEstado({ estado }: { estado: GrupoPaso["estado"] }) {
   if (estado === "completed") return <TickCircle className="size-3.5 shrink-0 text-emerald-600" />;
   if (estado === "failed") return <CloseCircle className="size-3.5 shrink-0 text-destructive" />;
-  return <Clock className="size-3.5 shrink-0 animate-pulse text-blue-600" />;
+  return <span className="size-3 shrink-0 animate-spin rounded-full border-[1.5px] border-blue-600 border-t-transparent" />;
 }
 
 function tiempoTranscurrido(run: AgentRun): string {
@@ -90,6 +90,7 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
   const color = ESTADO_RUN_COLOR[run.status];
   const tokensTotal = run.totalTokensInput + run.totalTokensOutput;
   const razonamiento = ultimoRazonamiento(steps);
+  const enCurso = run.status === "queued" || run.status === "running";
 
   return (
     <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl border p-4 text-sm">
@@ -107,7 +108,12 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
       </div>
 
       {razonamiento && (
-        <p className="rounded-lg bg-muted/40 p-3 text-xs leading-relaxed text-foreground/80">{razonamiento}</p>
+        <div className="rounded-r-lg border-l-2 border-violet-400/60 bg-muted/40 py-2 pr-3 pl-3">
+          <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-violet-600 uppercase">
+            <Magicpen className="size-3.5" /> Razonamiento
+          </div>
+          <p className="text-xs leading-relaxed text-foreground/80 italic">{razonamiento}</p>
+        </div>
       )}
 
       <div className="relative">
@@ -117,7 +123,11 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
             const Icono = g.icon;
             return (
               <div key={g.step} className="relative flex items-start gap-3">
-                <span className="relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-muted-foreground">
+                <span
+                  className={`relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-muted-foreground ${
+                    g.estado === "running" ? "border-blue-500 text-blue-600 ring-4 ring-blue-500/15" : ""
+                  }`}
+                >
                   <Icono className="size-3.5" />
                 </span>
                 <div className="flex min-w-0 flex-1 items-start justify-between gap-2 pt-1">
@@ -141,8 +151,11 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{run.error}</p>
       )}
 
-      <div className="flex items-center gap-1.5 border-t pt-3 text-xs text-muted-foreground">
-        <Timer1 className="size-3.5" /> Pensando · {tiempoTranscurrido(run)} · {tokensCompacto(tokensTotal)} tokens
+      <div className="flex items-center gap-1.5 border-t pt-3 text-xs">
+        <Timer1 className={`size-3.5 shrink-0 ${enCurso ? "text-blue-600" : "text-muted-foreground"}`} />
+        <span className={enCurso ? "text-shimmer font-medium" : "text-muted-foreground"}>
+          {enCurso ? "Pensando" : "Pensó durante"} · {tiempoTranscurrido(run)} · {tokensCompacto(tokensTotal)} tokens
+        </span>
       </div>
     </div>
   );
