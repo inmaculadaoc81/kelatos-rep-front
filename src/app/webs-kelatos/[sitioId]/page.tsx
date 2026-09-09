@@ -68,6 +68,7 @@ export default function SitioWebPage() {
   const [webNombre, setWebNombre] = useState("");
   const [webUrl, setWebUrl] = useState("");
   const [webSlug, setWebSlug] = useState("");
+  const [webTipo, setWebTipo] = useState("");
   const [guardandoWeb, setGuardandoWeb] = useState(false);
 
   async function cargar() {
@@ -100,6 +101,7 @@ export default function SitioWebPage() {
     setWebNombre(sitio?.nombre || "");
     setWebUrl(sitio?.url || "");
     setWebSlug(sitio?.slug || "");
+    setWebTipo(sitio?.tipo || "");
     setEditarWebAbierto(true);
   }
 
@@ -110,7 +112,7 @@ export default function SitioWebPage() {
       const res = await fetch(`/api/sitios-web/${sitioId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: webNombre.trim(), url: webUrl.trim(), slug: webSlug.trim() }),
+        body: JSON.stringify({ nombre: webNombre.trim(), url: webUrl.trim(), slug: webSlug.trim(), tipo: webTipo.trim() }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -360,6 +362,11 @@ export default function SitioWebPage() {
             <div className="space-y-1.5">
               <Label htmlFor="webUrl">URL</Label>
               <Input id="webUrl" placeholder="https://..." value={webUrl} onChange={(e) => setWebUrl(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="webTipo">Marca / tipo</Label>
+              <Input id="webTipo" placeholder="Ej: Lenovo, Dyson..." value={webTipo} onChange={(e) => setWebTipo(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">Agrupa esta web con otras del mismo tipo en el sidebar.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="webSlug">Identificador (slug) para el endpoint público</Label>

@@ -12,6 +12,9 @@ export interface SitioWeb {
   /** Identificador para GET /publico/productos/:slug — cada web en Vercel
       consulta sus productos con esto, sin el Bearer interno. */
   slug: string;
+  /** Marca/categoría — agrupa el sidebar en secciones colapsables, p.ej.
+      varias webs "Lenovo" bajo un mismo grupo desplegable. */
+  tipo: string;
   totalProductos: number;
 }
 
@@ -34,6 +37,7 @@ interface FilaSitioWebSql {
   nombre: string;
   url: string | null;
   slug: string | null;
+  tipo: string | null;
   total_productos: number | string;
 }
 
@@ -57,6 +61,7 @@ export function mapearSitioWeb(row: FilaSitioWebSql): SitioWeb {
     nombre: row.nombre,
     url: row.url || "",
     slug: row.slug || "",
+    tipo: row.tipo || "",
     totalProductos: Number(row.total_productos) || 0,
   };
 }

@@ -16,13 +16,17 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { AddCircle, Global } from "@/lib/icons";
+import { AddCircle, ArrowDown2, Global } from "@/lib/icons";
 import { toast } from "sonner";
 import { SitioWeb } from "@/lib/webs-kelatos";
 import { NavUser } from "../(app)/nav-user";
@@ -44,6 +48,57 @@ function gradientePara(nombre: string): string {
   return GRADIENTES_AVATAR[hash % GRADIENTES_AVATAR.length];
 }
 
+const SIN_TIPO = "Otras webs";
+
+function agruparPorTipo(sitios: SitioWeb[]): { tipo: string; sitios: SitioWeb[] }[] {
+  const grupos = new Map<string, SitioWeb[]>();
+  for (const sitio of sitios) {
+    const clave = sitio.tipo || SIN_TIPO;
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave)!.push(sitio);
+  }
+  return Array.from(grupos.entries()).map(([tipo, sitios]) => ({ tipo, sitios }));
+}
+
+/** Grupo colapsable por marca/tipo — mismo patrón que GrupoColapsable del
+    sidebar de Reparaciones ((app)/sidebar.tsx): nombre del grupo arriba,
+    las webs de ese tipo debajo al desplegar. Petición del usuario,
+    2026-09-09: "el sidebar que sea como en reparaciones... por tipo". */
+function GrupoTipo({ tipo, sitios, pathname }: { tipo: string; sitios: SitioWeb[]; pathname: string }) {
+  return (
+    <Collapsible defaultOpen className="group/collapsible">
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          tooltip={tipo}
+          className="hover:bg-transparent hover:text-sidebar-foreground"
+          render={<CollapsibleTrigger className="group/trigger" />}
+        >
+          <span className={`flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-[11px] font-bold text-white ${gradientePara(tipo)}`}>
+            {tipo.slice(0, 1).toUpperCase()}
+          </span>
+          <span>{tipo}</span>
+          <ArrowDown2 className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open/trigger:rotate-180" />
+        </SidebarMenuButton>
+        <CollapsibleContent>
+          <SidebarMenuSub className="mx-2 gap-1.5 border-sidebar-primary/55 px-2">
+            {sitios.map((sitio) => {
+              const href = `/webs-kelatos/${sitio.id}`;
+              return (
+                <SidebarMenuSubItem key={sitio.id}>
+                  <SidebarMenuSubButton isActive={pathname === href} render={<Link href={href} />}>
+                    <span>{sitio.nombre}</span>
+                  </SidebarMenuSubButton>
+                  {sitio.totalProductos > 0 && <SidebarMenuBadge>{sitio.totalProductos}</SidebarMenuBadge>}
+                </SidebarMenuSubItem>
+              );
+            })}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
+
 /** Sidebar dinámico: una página por cada web de Kelatos (kelatos_app.sitios_web) —
     petición del usuario, 2026-09-09, mismo componente de shadcn Sidebar
     que ya usan Transferencias/Asistencias, con un "+" para dar de alta
@@ -57,6 +112,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
   const [nombre, setNombre] = useState("");
   const [url, setUrl] = useState("");
   const [slug, setSlug] = useState("");
+  const [tipo, setTipo] = useState("");
   const [creando, setCreando] = useState(false);
 
   async function cargar() {
@@ -83,7 +139,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
       const res = await fetch("/api/sitios-web", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombre.trim(), url: url.trim(), slug: slug.trim() }),
+        body: JSON.stringify({ nombre: nombre.trim(), url: url.trim(), slug: slug.trim(), tipo: tipo.trim() }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -92,6 +148,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
       setNombre("");
       setUrl("");
       setSlug("");
+      setTipo("");
       await cargar();
       router.push(`/webs-kelatos/${data.sitio.id}`);
     } catch (e) {
@@ -157,21 +214,9 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
                   Sin webs todavía
                 </p>
               )}
-              {sitios.map((sitio) => {
-                const href = `/webs-kelatos/${sitio.id}`;
-                const activo = pathname === href;
-                return (
-                  <SidebarMenuItem key={sitio.id}>
-                    <SidebarMenuButton isActive={activo} tooltip={sitio.nombre} render={<Link href={href} />}>
-                      <span className={`flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-[11px] font-bold text-white ${gradientePara(sitio.nombre)}`}>
-                        {sitio.nombre.slice(0, 1).toUpperCase()}
-                      </span>
-                      <span>{sitio.nombre}</span>
-                    </SidebarMenuButton>
-                    {sitio.totalProductos > 0 && <SidebarMenuBadge>{sitio.totalProductos}</SidebarMenuBadge>}
-                  </SidebarMenuItem>
-                );
-              })}
+              {agruparPorTipo(sitios).map((grupo) => (
+                <GrupoTipo key={grupo.tipo} tipo={grupo.tipo} sitios={grupo.sitios} pathname={pathname} />
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -191,6 +236,11 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
             <div className="space-y-1.5">
               <Label htmlFor="nuevaWebUrl">URL (opcional)</Label>
               <Input id="nuevaWebUrl" placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nuevaWebTipo">Marca / tipo</Label>
+              <Input id="nuevaWebTipo" placeholder="Ej: Lenovo, Dyson..." value={tipo} onChange={(e) => setTipo(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">Agrupa esta web con otras del mismo tipo en el sidebar.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="nuevaWebSlug">Identificador para el endpoint público</Label>
