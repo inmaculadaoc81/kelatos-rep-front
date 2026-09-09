@@ -21,12 +21,14 @@ import { useConfirm } from "@/components/confirm-provider";
 import { toast } from "sonner";
 import { ProductoWeb, SitioWeb } from "@/lib/webs-kelatos";
 import { EquiposAlquilerVista } from "./equipos-alquiler-vista";
+import { PiezasCargadorVista } from "./piezas-cargador-vista";
 
-// Única web sincronizada con el inventario real de "Equipos y Alquileres"
-// de Reparaciones en vez del catálogo genérico de productos_web — petición
-// del usuario, 2026-09-09: mismo listado de equipos, sin los botones de
-// alquilar/devolver/vender, solo ver y marcar disponible o no.
+// Webs sincronizadas con datos reales de Reparaciones en vez del catálogo
+// genérico de productos_web — petición del usuario, 2026-09-09: mismo
+// listado de equipos/piezas, sin los botones de gestión completos, solo
+// ver (y en el caso de alquiler, marcar disponible o no).
 const SLUG_ALQUILER = "alquilerordenadores";
+const SLUG_CARGADOR = "doncargador";
 
 function euros(n: number | null): string {
   if (n === null) return "—";
@@ -216,6 +218,9 @@ export default function SitioWebPage() {
   }
 
   const esAlquiler = sitio?.slug === SLUG_ALQUILER;
+  const esCargador = sitio?.slug === SLUG_CARGADOR;
+  const esVistaSincronizada = esAlquiler || esCargador;
+  const endpointPublico = esAlquiler ? "/publico/equipos-alquiler" : esCargador ? "/publico/piezas-cargador" : `/publico/productos/${sitio?.slug || "—"}`;
 
   return (
     <div className="space-y-4">
@@ -227,7 +232,7 @@ export default function SitioWebPage() {
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg font-semibold">{sitio?.nombre || "Cargando…"}</h1>
-              {!cargando && !esAlquiler && (
+              {!cargando && !esVistaSincronizada && (
                 <Badge variant="secondary" className="gap-1 font-normal">
                   <Box className="size-3" /> {productos.length} producto{productos.length !== 1 ? "s" : ""}
                 </Badge>
@@ -241,7 +246,7 @@ export default function SitioWebPage() {
               )}
               {!cargando && (
                 <span className="inline-flex items-center gap-1">
-                  Endpoint <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{esAlquiler ? "/publico/equipos-alquiler" : `/publico/productos/${sitio?.slug || "—"}`}</code>
+                  Endpoint <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{endpointPublico}</code>
                 </span>
               )}
               {!cargando && (
@@ -252,7 +257,7 @@ export default function SitioWebPage() {
             </div>
           </div>
         </div>
-        {!esAlquiler && (
+        {!esVistaSincronizada && (
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="size-9" onClick={cargar} title="Actualizar">
               <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
@@ -266,6 +271,8 @@ export default function SitioWebPage() {
 
       {esAlquiler ? (
         <EquiposAlquilerVista />
+      ) : esCargador ? (
+        <PiezasCargadorVista />
       ) : (
         <>
       {error && (
