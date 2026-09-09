@@ -25,9 +25,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { AddCircle, ArrowDown2, Global, Link2, Tag } from "@/lib/icons";
+import { AddCircle, ArrowDown2, Global, Link2, Receipt, Tag } from "@/lib/icons";
 import { toast } from "sonner";
 import { SitioWeb } from "@/lib/webs-kelatos";
+import { CatalogoServicios } from "@/lib/catalogos-servicios";
 import { NavUser } from "../(app)/nav-user";
 
 const SIN_TIPO = "Otras webs";
@@ -101,6 +102,14 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
   const [tipo, setTipo] = useState("");
   const [creando, setCreando] = useState(false);
 
+  // "Servicios" — catálogos de precios compartidos por marca, aparte de
+  // las webs (sitios_web) de arriba. Petición del usuario, 2026-09-09.
+  const [catalogos, setCatalogos] = useState<CatalogoServicios[]>([]);
+  const [cargandoCatalogos, setCargandoCatalogos] = useState(true);
+  const [nuevoCatalogoAbierto, setNuevoCatalogoAbierto] = useState(false);
+  const [nuevoCatalogoNombre, setNuevoCatalogoNombre] = useState("");
+  const [creandoCatalogo, setCreandoCatalogo] = useState(false);
+
   async function cargar() {
     setCargando(true);
     try {
@@ -114,9 +123,46 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
     }
   }
 
+  async function cargarCatalogos() {
+    setCargandoCatalogos(true);
+    try {
+      const res = await fetch("/api/catalogos-servicios");
+      const data = await res.json();
+      if (data.ok) setCatalogos(data.catalogos as CatalogoServicios[]);
+    } catch {
+      // silencioso
+    } finally {
+      setCargandoCatalogos(false);
+    }
+  }
+
   useEffect(() => {
     cargar();
+    cargarCatalogos();
   }, []);
+
+  async function crearCatalogo() {
+    if (!nuevoCatalogoNombre.trim()) return toast.error("El nombre es obligatorio");
+    setCreandoCatalogo(true);
+    try {
+      const res = await fetch("/api/catalogos-servicios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: nuevoCatalogoNombre.trim() }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Catálogo creado");
+      setNuevoCatalogoAbierto(false);
+      setNuevoCatalogoNombre("");
+      await cargarCatalogos();
+      router.push(`/webs-kelatos/servicios/${data.catalogo.id}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setCreandoCatalogo(false);
+    }
+  }
 
   async function crearSitio() {
     if (!nombre.trim()) return toast.error("El nombre es obligatorio");
@@ -206,6 +252,46 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          {/* Catálogos de precios de servicio compartidos por marca — aparte
+              de las webs de arriba. Petición del usuario, 2026-09-09: "en
+              vez de webs vas a cambiarlo por un select que se llame
+              servicios" (dentro del mismo sidebar, sin tocar "Webs"). */}
+          <SidebarGroupLabel className="flex items-center justify-between gap-2 text-sidebar-foreground">
+            <span className="flex items-center gap-2">
+              <Receipt className="size-4 text-sidebar-primary" /> Servicios
+            </span>
+            <button
+              type="button"
+              onClick={() => setNuevoCatalogoAbierto(true)}
+              className="text-sidebar-foreground/60 hover:text-sidebar-primary"
+              title="Añadir catálogo"
+            >
+              <AddCircle className="size-4" />
+            </button>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1.5">
+              {!cargandoCatalogos && catalogos.length === 0 && (
+                <p className="px-2 py-1.5 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
+                  Sin catálogos todavía
+                </p>
+              )}
+              {catalogos.map((catalogo) => {
+                const href = `/webs-kelatos/servicios/${catalogo.id}`;
+                return (
+                  <SidebarMenuItem key={catalogo.id}>
+                    <SidebarMenuButton isActive={pathname === href} tooltip={catalogo.nombre} render={<Link href={href} />}>
+                      <Receipt />
+                      <span className="truncate">{catalogo.nombre}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <NavUser session={session} />
 
@@ -244,6 +330,30 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setNuevaAbierta(false)} disabled={creando}>Cancelar</Button>
             <Button onClick={crearSitio} disabled={creando}>{creando ? "Creando..." : "Crear web"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={nuevoCatalogoAbierto} onOpenChange={(o) => { if (!creandoCatalogo) setNuevoCatalogoAbierto(o); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogTitle className="flex items-center gap-2">
+            <Receipt className="size-4.5" /> Nuevo catálogo de servicios
+          </DialogTitle>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="nuevoCatalogoNombre">Nombre *</Label>
+              <Input
+                id="nuevoCatalogoNombre"
+                placeholder="Ej: Servicios Surface"
+                value={nuevoCatalogoNombre}
+                onChange={(e) => setNuevoCatalogoNombre(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNuevoCatalogoAbierto(false)} disabled={creandoCatalogo}>Cancelar</Button>
+            <Button onClick={crearCatalogo} disabled={creandoCatalogo}>{creandoCatalogo ? "Creando..." : "Crear catálogo"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
