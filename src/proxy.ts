@@ -34,6 +34,16 @@ export default auth((req) => {
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Dashboard de Agentes IA — vista aparte, solo administradores (mismo
+  // criterio que Webs Kelatos — defensa en profundidad, ver también
+  // agentes/layout.tsx).
+  if (
+    req.nextUrl.pathname.startsWith("/agentes") &&
+    req.auth?.user?.role !== "admin" &&
+    !esSuperadmin(req.auth?.user?.email)
+  ) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Dashboard de Asistencia (fichajes) — un empleado que ficha puede no
   // tener cuenta @kelatos.com (login ampliado en src/auth.ts); esa cuenta
   // solo puede entrar a /asistencia/kiosk (y a sus propias llamadas API

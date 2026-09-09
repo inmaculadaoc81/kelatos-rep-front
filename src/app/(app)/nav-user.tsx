@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, Global } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, Global, Cpu } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -64,8 +64,10 @@ export function NavUser({ session }: { session: Session | null }) {
   const enTransferencias = pathname?.startsWith("/transferencias") ?? false;
   const enAsistencia = pathname?.startsWith("/asistencia") ?? false;
   const enWebsKelatos = pathname?.startsWith("/webs-kelatos") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos;
+  const enAgentes = pathname?.startsWith("/agentes") ?? false;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
+  const puedeVerAgentes = esAdmin || esSuperadmin(email);
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -155,6 +157,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/webs-kelatos" />}>
                   <IconoDashboard icon={Global} className="from-emerald-500 to-green-600" />
                   Webs Kelatos
+                </DropdownMenuItem>
+              )}
+              {puedeVerAgentes && !enAgentes && (
+                <DropdownMenuItem render={<Link href="/agentes" />}>
+                  <IconoDashboard icon={Cpu} className="from-cyan-500 to-teal-600" />
+                  Agentes
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
