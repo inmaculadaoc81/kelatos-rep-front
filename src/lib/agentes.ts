@@ -12,6 +12,8 @@ export interface AgentType {
   type: string;
   label: string;
   description: string;
+  /** Tiene un run en 'queued' o 'running' ahora mismo. */
+  activo: boolean;
 }
 
 export interface AgentRun {
