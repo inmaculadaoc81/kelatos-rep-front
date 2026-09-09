@@ -20,6 +20,7 @@ export interface AgentRun {
   id: number;
   agentType: string;
   goalText: string;
+  input: Record<string, unknown>;
   status: AgentRunStatus;
   progress: Record<string, unknown>;
   totalCostUsd: number;
@@ -67,6 +68,7 @@ interface FilaAgentRunSql {
   id: number | string;
   agent_type: string;
   goal_text: string;
+  input?: Record<string, unknown> | null;
   status: AgentRunStatus;
   progress?: Record<string, unknown> | null;
   total_cost_usd: string | number;
@@ -115,6 +117,7 @@ export function mapearAgentRun(row: FilaAgentRunSql): AgentRun {
     id: Number(row.id),
     agentType: row.agent_type,
     goalText: row.goal_text,
+    input: row.input || {},
     status: row.status,
     progress: row.progress || {},
     totalCostUsd: Number(row.total_cost_usd) || 0,

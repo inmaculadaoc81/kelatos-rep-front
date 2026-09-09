@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentRun, AgentStep } from "@/lib/agentes";
 import { TrazaAgente } from "./traza-agente";
+import { CanvasAgente } from "./canvas-agente";
 
 // Vista de detalle de un run — por ahora SOLO el panel de traza (cómo va
 // el agente) + un contenedor vacío a la derecha reservado para más
@@ -75,10 +76,7 @@ export default function AgenteRunDetallePage() {
   return (
     <div className="flex h-[calc(100svh-6.5rem)] gap-4 overflow-hidden">
       <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} />
-      <div
-        className="h-full flex-1 rounded-xl border"
-        style={{ backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)", backgroundSize: "20px 20px" }}
-      />
+      <CanvasAgente run={run} steps={steps} tipoLabel={tipoLabel} />
     </div>
   );
 }
