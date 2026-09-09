@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PillBadge } from "@/components/pill-badge";
 import { ItemServicio } from "@/lib/catalogos-servicios";
 
 // Vista de solo lectura de los servicios que trae una web enlazada a un
@@ -19,14 +20,6 @@ import { ItemServicio } from "@/lib/catalogos-servicios";
 function euros(n: number | null): string {
   if (n === null) return "—";
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-}
-
-function Pill({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: bg, color }}>
-      {children}
-    </span>
-  );
 }
 
 export function CatalogoServiciosVista({ catalogoId, catalogoNombre }: { catalogoId: number; catalogoNombre: string }) {
@@ -128,7 +121,7 @@ export function CatalogoServiciosVista({ catalogoId, catalogoNombre }: { catalog
                   </TableCell>
                   <TableCell>
                     {i.categoria ? (
-                      <Pill bg="#e4e4e7" color="#3f3f46"><CategoryIcon className="size-3" /> {i.categoria}</Pill>
+                      <PillBadge bg="#e4e4e7" color="#3f3f46"><CategoryIcon className="size-3" /> {i.categoria}</PillBadge>
                     ) : "—"}
                   </TableCell>
                   <TableCell className="font-medium">
@@ -136,8 +129,8 @@ export function CatalogoServiciosVista({ catalogoId, catalogoNombre }: { catalog
                   </TableCell>
                   <TableCell>
                     {i.activo
-                      ? <Pill bg="#d1fae5" color="#065f46">Activo</Pill>
-                      : <Pill bg="#e4e4e7" color="#3f3f46">Inactivo</Pill>}
+                      ? <PillBadge bg="#d1fae5" color="#065f46">Activo</PillBadge>
+                      : <PillBadge bg="#e4e4e7" color="#3f3f46">Inactivo</PillBadge>}
                   </TableCell>
                 </TableRow>
               ))}

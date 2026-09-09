@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PillBadge } from "@/components/pill-badge";
 import { StockPieza } from "@/lib/stock-piezas";
 
 // Vista reducida de "Stock de Piezas" para la web pública de DonCargador —
@@ -26,9 +27,9 @@ function badgeStock(stock: number, minimo: number) {
   const bajo = minimo > 0 && stock < minimo;
   const estilo = stock <= 0 ? { bg: "#fee2e2", color: "#991b1b" } : bajo ? { bg: "#fef3c7", color: "#92400e" } : { bg: "#d1fae5", color: "#065f46" };
   return (
-    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
+    <PillBadge bg={estilo.bg} color={estilo.color}>
       {stock} {minimo > 0 ? `/ min ${minimo}` : ""}
-    </span>
+    </PillBadge>
   );
 }
 

@@ -20,6 +20,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useConfirm } from "@/components/confirm-provider";
+import { PillBadge } from "@/components/pill-badge";
 import { toast } from "sonner";
 import { CatalogoServicios, ItemServicio, SitioCatalogo } from "@/lib/catalogos-servicios";
 import { SitioWeb } from "@/lib/webs-kelatos";
@@ -33,14 +34,6 @@ import { SitioWeb } from "@/lib/webs-kelatos";
 function euros(n: number | null): string {
   if (n === null) return "—";
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-}
-
-function Pill({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: bg, color }}>
-      {children}
-    </span>
-  );
 }
 
 interface DatosItem {
@@ -296,27 +289,27 @@ export default function CatalogoServiciosPage() {
                 </Badge>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {!cargando && sitiosEnlazados.length === 0 && <span>Catálogo compartido — todavía sin páginas enlazadas</span>}
               {!cargando && (
-                <button type="button" onClick={abrirEditarCatalogo} className="inline-flex items-center gap-1 text-primary hover:underline">
+                <Button variant="link" size="xs" className="gap-1 px-0 text-primary" onClick={abrirEditarCatalogo}>
                   <Edit2 className="size-3" /> Editar catálogo
-                </button>
+                </Button>
               )}
-              <button type="button" onClick={abrirAñadirWeb} className="inline-flex items-center gap-1 text-primary hover:underline">
+              <Button variant="link" size="xs" className="gap-1 px-0 text-primary" onClick={abrirAñadirWeb}>
                 <Link2 className="size-3" /> Añadir a web
-              </button>
+              </Button>
             </div>
             {!cargando && sitiosEnlazados.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <span className="text-xs text-muted-foreground">Páginas conectadas:</span>
                 {sitiosEnlazados.map((s) => (
-                  <span key={s.id} className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 py-0.5 pl-2 pr-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  <PillBadge key={s.id} bg="rgb(16 185 129 / 0.1)" color="rgb(4 120 87)" className="gap-1 pr-1">
                     <Link href={`/webs-kelatos/${s.id}`} className="hover:underline">{s.nombre}</Link>
-                    <button type="button" onClick={() => desenlazar(s)} title="Desenlazar" className="text-emerald-700/60 hover:text-destructive dark:text-emerald-400/60">
+                    <button type="button" onClick={() => desenlazar(s)} title="Desenlazar" className="opacity-60 hover:opacity-100 hover:text-destructive">
                       <CloseCircle className="size-3" />
                     </button>
-                  </span>
+                  </PillBadge>
                 ))}
               </div>
             )}
@@ -394,7 +387,7 @@ export default function CatalogoServiciosPage() {
                     </TableCell>
                     <TableCell>
                       {i.categoria ? (
-                        <Pill bg="#e4e4e7" color="#3f3f46"><CategoryIcon className="size-3" /> {i.categoria}</Pill>
+                        <PillBadge bg="#e4e4e7" color="#3f3f46" className="gap-1"><CategoryIcon className="size-3" /> {i.categoria}</PillBadge>
                       ) : "—"}
                     </TableCell>
                     <TableCell className="font-medium">
@@ -402,8 +395,8 @@ export default function CatalogoServiciosPage() {
                     </TableCell>
                     <TableCell>
                       {i.activo
-                        ? <Pill bg="#d1fae5" color="#065f46">Activo</Pill>
-                        : <Pill bg="#e4e4e7" color="#3f3f46">Inactivo</Pill>}
+                        ? <PillBadge bg="#d1fae5" color="#065f46">Activo</PillBadge>
+                        : <PillBadge bg="#e4e4e7" color="#3f3f46">Inactivo</PillBadge>}
                     </TableCell>
                     <TableCell className="sticky right-0 z-10 whitespace-nowrap bg-background text-right">
                       <Button size="icon-sm" variant="outline" className="mr-1" title="Editar" onClick={() => abrirEditar(i)}>

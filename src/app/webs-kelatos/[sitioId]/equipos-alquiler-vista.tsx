@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PillBadge } from "@/components/pill-badge";
 import { toast } from "sonner";
 import { Equipo, EstadoEquipo } from "@/lib/equipos";
 
@@ -34,12 +35,12 @@ const ESTILO_ESTADO: Record<string, { bg: string; color: string }> = {
   VENDIDO: { bg: "#e4e4e7", color: "#3f3f46" },
 };
 
-function Pill({ estado }: { estado: string }) {
+function EstadoPill({ estado }: { estado: string }) {
   const estilo = ESTILO_ESTADO[estado] || { bg: "#e4e4e7", color: "#3f3f46" };
   return (
-    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
+    <PillBadge bg={estilo.bg} color={estilo.color}>
       {ETIQUETAS_ESTADO[estado] || estado}
-    </span>
+    </PillBadge>
   );
 }
 
@@ -163,7 +164,7 @@ export function EquiposAlquilerVista() {
                     <TableCell className="text-sm">{euros(e.precioDia)}</TableCell>
                     <TableCell className="text-sm">{euros(e.precioSemana)}</TableCell>
                     <TableCell className="text-sm">{euros(e.precioMes)}</TableCell>
-                    <TableCell><Pill estado={e.estado} /></TableCell>
+                    <TableCell><EstadoPill estado={e.estado} /></TableCell>
                     <TableCell className="text-right">
                       {puedeAlternar ? (
                         <Switch
