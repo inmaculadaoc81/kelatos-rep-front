@@ -1,31 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft2, TickCircle, CloseCircle, Timer1, SearchNormal1, Filter, Flash, SearchZoomIn, Sms, Magicpen } from "@/lib/icons";
-import type { Icon } from "@/lib/icons";
+import { Search, Filter, Zap, ScanSearch, Mail, CircleX } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
 import { AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import {
+  ChainOfThought,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "@/components/ai-elements/chain-of-thought";
+import {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent,
+} from "@/components/ai-elements/reasoning";
 
-// Traza del run en un panel ancho tipo "cómo va pensando el agente":
-// línea de tiempo vertical con lo que va tocando (nuestra fuente de
-// datos real, nuestros dos niveles de modelo), más un fragmento del
-// razonamiento real más reciente que produjo el modelo — no un stream
-// de tokens en vivo (esta plataforma no tiene eso todavía), pero sí
-// texto real del análisis, no inventado. Sin "sub-agentes"/"skills":
-// aquí no existen, sería fabricar estructura que no hay.
-const PASO_INFO: Record<string, { label: string; subtitulo: string; icon: Icon }> = {
-  discovery: { label: "Búsqueda de empresas", subtitulo: "Fuente: infoisinfo.es", icon: SearchNormal1 },
+// Traza del run con los componentes reales de shadcn/ai-elements
+// (npx shadcn add https://elements.ai-sdk.dev/api/registry/*.json) en
+// vez de una línea de tiempo y un bloque de razonamiento hechos a mano:
+// ChainOfThought para los pasos (icono + línea conectora ya la trae el
+// propio componente) y Reasoning para "en qué está pensando" (abre solo
+// mientras isStreaming, cierra solo, calcula la duración él mismo — no
+// hay que llevar ese estado a mano). reasoning.tsx se simplificó para
+// quitarle los plugins de markdown (cjk/code/math/mermaid) que trae de
+// fábrica: nuestro texto es prosa simple del modelo, nunca código ni
+// fórmulas, así que esos 4 paquetes no aportaban nada aquí.
+const PASO_INFO: Record<string, { label: string; subtitulo: string; icon: LucideIcon }> = {
+  discovery: { label: "Búsqueda de empresas", subtitulo: "Fuente: infoisinfo.es", icon: Search },
   dedupe_filter: { label: "Filtro y deduplicación", subtitulo: "Código determinista", icon: Filter },
-  cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico", icon: Flash },
-  deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado", icon: SearchZoomIn },
-  message_writer: { label: "Redacción de mensaje", subtitulo: "Modelo avanzado", icon: Sms },
+  cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico", icon: Zap },
+  deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado", icon: ScanSearch },
+  message_writer: { label: "Redacción de mensaje", subtitulo: "Modelo avanzado", icon: Mail },
 };
 
 interface GrupoPaso {
   step: string;
   label: string;
   subtitulo: string;
-  icon: Icon;
+  icon: LucideIcon;
   cantidad: number;
   estado: "completed" | "running" | "failed";
 }
@@ -48,23 +62,14 @@ function agruparPasos(steps: AgentStep[]): GrupoPaso[] {
         ? "running"
         : "completed";
     const info = PASO_INFO[step];
-    return { step, label: info?.label || step, subtitulo: info?.subtitulo || "", icon: info?.icon || SearchNormal1, cantidad: lista.length, estado };
+    return { step, label: info?.label || step, subtitulo: info?.subtitulo || "", icon: info?.icon || Search, cantidad: lista.length, estado };
   });
 }
 
-function IconoEstado({ estado }: { estado: GrupoPaso["estado"] }) {
-  if (estado === "completed") return <TickCircle className="size-3.5 shrink-0 text-emerald-600" />;
-  if (estado === "failed") return <CloseCircle className="size-3.5 shrink-0 text-destructive" />;
-  return <span className="size-3 shrink-0 animate-spin rounded-full border-[1.5px] border-blue-600 border-t-transparent" />;
-}
-
-function tiempoTranscurrido(run: AgentRun): string {
-  if (!run.startedAt) return "—";
+function tiempoEnSegundos(run: AgentRun): number {
+  if (!run.startedAt) return 0;
   const fin = run.finishedAt ? new Date(run.finishedAt).getTime() : Date.now();
-  const ms = Math.max(0, fin - new Date(run.startedAt).getTime());
-  const min = Math.floor(ms / 60000);
-  const seg = Math.round((ms % 60000) / 1000);
-  return min > 0 ? `${min}m ${seg}s` : `${seg}s`;
+  return Math.max(0, Math.round((fin - new Date(run.startedAt).getTime()) / 1000));
 }
 
 function tokensCompacto(n: number): string {
@@ -107,56 +112,38 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
         <p className="text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
 
-      {razonamiento && (
-        <div className="rounded-r-lg border-l-2 border-violet-400/60 bg-muted/40 py-2 pr-3 pl-3">
-          <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-violet-600 uppercase">
-            <Magicpen className="size-3.5" /> Razonamiento
-          </div>
-          <p className="text-xs leading-relaxed text-foreground/80 italic">{razonamiento}</p>
-        </div>
-      )}
-
-      <div className="relative">
-        <div className="absolute top-3 bottom-3 left-[13px] w-px bg-border" />
-        <div className="space-y-3">
-          {grupos.map((g) => {
-            const Icono = g.icon;
-            return (
-              <div key={g.step} className="relative flex items-start gap-3">
-                <span
-                  className={`relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-muted-foreground ${
-                    g.estado === "running" ? "border-blue-500 text-blue-600 ring-4 ring-blue-500/15" : ""
-                  }`}
-                >
-                  <Icono className="size-3.5" />
-                </span>
-                <div className="flex min-w-0 flex-1 items-start justify-between gap-2 pt-1">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{g.label}</p>
-                    <p className="text-xs text-muted-foreground">{g.subtitulo}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-                    {g.cantidad > 1 && <span className="text-xs tabular-nums text-muted-foreground">{g.cantidad}</span>}
-                    <IconoEstado estado={g.estado} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {grupos.length === 0 && <p className="pl-10 text-xs text-muted-foreground">Sin actividad todavía.</p>}
-        </div>
-      </div>
+      <ChainOfThought defaultOpen>
+        <ChainOfThoughtHeader>Actividad</ChainOfThoughtHeader>
+        {grupos.map((g) => {
+          const fallo = g.estado === "failed";
+          return (
+            <ChainOfThoughtStep
+              key={g.step}
+              icon={fallo ? CircleX : g.icon}
+              status={g.estado === "running" ? "active" : "complete"}
+              className={fallo ? "text-destructive" : undefined}
+              label={g.label}
+              description={`${g.subtitulo}${g.cantidad > 1 ? ` · ${g.cantidad}` : ""}`}
+            />
+          );
+        })}
+        {grupos.length === 0 && <p className="text-xs text-muted-foreground">Sin actividad todavía.</p>}
+      </ChainOfThought>
 
       {run.error && (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{run.error}</p>
       )}
 
-      <div className="flex items-center gap-1.5 border-t pt-3 text-xs">
-        <Timer1 className={`size-3.5 shrink-0 ${enCurso ? "text-blue-600" : "text-muted-foreground"}`} />
-        <span className={enCurso ? "text-shimmer font-medium" : "text-muted-foreground"}>
-          {enCurso ? "Pensando" : "Pensó durante"} · {tiempoTranscurrido(run)} · {tokensCompacto(tokensTotal)} tokens
-        </span>
-      </div>
+      <Reasoning isStreaming={enCurso} duration={tiempoEnSegundos(run)} className="border-t pt-3">
+        <ReasoningTrigger
+          getThinkingMessage={(streaming, duration) => (
+            <span className={streaming ? "text-shimmer" : ""}>
+              {streaming ? "Pensando" : `Pensó durante ${duration ?? 0}s`} · {tokensCompacto(tokensTotal)} tokens
+            </span>
+          )}
+        />
+        <ReasoningContent>{razonamiento || "Todavía sin razonamiento disponible."}</ReasoningContent>
+      </Reasoning>
     </div>
   );
 }
