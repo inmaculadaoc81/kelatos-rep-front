@@ -52,6 +52,7 @@ export interface Equipo {
   caracteristicas: string;
   defectos: string;
   observaciones: string;
+  imagenUrl: string;
   fianza: number;
   precioDia: number;
   precioSemana: number;

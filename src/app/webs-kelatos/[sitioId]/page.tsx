@@ -20,6 +20,13 @@ import {
 import { useConfirm } from "@/components/confirm-provider";
 import { toast } from "sonner";
 import { ProductoWeb, SitioWeb } from "@/lib/webs-kelatos";
+import { EquiposAlquilerVista } from "./equipos-alquiler-vista";
+
+// Única web sincronizada con el inventario real de "Equipos y Alquileres"
+// de Reparaciones en vez del catálogo genérico de productos_web — petición
+// del usuario, 2026-09-09: mismo listado de equipos, sin los botones de
+// alquilar/devolver/vender, solo ver y marcar disponible o no.
+const SLUG_ALQUILER = "alquilerordenadores";
 
 function euros(n: number | null): string {
   if (n === null) return "—";
@@ -208,6 +215,8 @@ export default function SitioWebPage() {
     }
   }
 
+  const esAlquiler = sitio?.slug === SLUG_ALQUILER;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border bg-card p-4">
@@ -218,7 +227,7 @@ export default function SitioWebPage() {
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg font-semibold">{sitio?.nombre || "Cargando…"}</h1>
-              {!cargando && (
+              {!cargando && !esAlquiler && (
                 <Badge variant="secondary" className="gap-1 font-normal">
                   <Box className="size-3" /> {productos.length} producto{productos.length !== 1 ? "s" : ""}
                 </Badge>
@@ -232,7 +241,7 @@ export default function SitioWebPage() {
               )}
               {!cargando && (
                 <span className="inline-flex items-center gap-1">
-                  Endpoint <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">/publico/productos/{sitio?.slug || "—"}</code>
+                  Endpoint <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{esAlquiler ? "/publico/equipos-alquiler" : `/publico/productos/${sitio?.slug || "—"}`}</code>
                 </span>
               )}
               {!cargando && (
@@ -243,16 +252,22 @@ export default function SitioWebPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="size-9" onClick={cargar} title="Actualizar">
-            <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
-          </Button>
-          <Button className="gap-1.5" onClick={abrirNuevo}>
-            <Add className="size-4" /> Nuevo producto
-          </Button>
-        </div>
+        {!esAlquiler && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" className="size-9" onClick={cargar} title="Actualizar">
+              <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+            </Button>
+            <Button className="gap-1.5" onClick={abrirNuevo}>
+              <Add className="size-4" /> Nuevo producto
+            </Button>
+          </div>
+        )}
       </div>
 
+      {esAlquiler ? (
+        <EquiposAlquilerVista />
+      ) : (
+        <>
       {error && (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Error al cargar: {error}
@@ -342,6 +357,8 @@ export default function SitioWebPage() {
             </Table>
           </div>
         </div>
+      )}
+        </>
       )}
 
       <Dialog open={dialogoAbierto} onOpenChange={(o) => { if (!guardando) setDialogoAbierto(o); }}>
