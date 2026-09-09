@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, Global } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, Global } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -64,6 +64,7 @@ export function NavUser({ session }: { session: Session | null }) {
   const enTransferencias = pathname?.startsWith("/transferencias") ?? false;
   const enAsistencia = pathname?.startsWith("/asistencia") ?? false;
   const enWebsKelatos = pathname?.startsWith("/webs-kelatos") ?? false;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
 
   return (
@@ -126,22 +127,34 @@ export function NavUser({ session }: { session: Session | null }) {
                   )}
                 </>
               )}
-              {puedeVerTransferencias && (
-                <DropdownMenuItem render={<Link href={enTransferencias ? "/" : "/transferencias"} />}>
+              {/* Un botón por dashboard, oculto cuando ya estás en él — en vez
+                  de reetiquetar el botón activo como "Reparaciones", cada uno
+                  desaparece por su cuenta y Reparaciones tiene su propia
+                  entrada (oculta solo cuando ya estás ahí). Petición del
+                  usuario, 2026-09-09: "para cada vista su respectivo botón
+                  que no salga". */}
+              {!enReparaciones && (
+                <DropdownMenuItem render={<Link href="/" />}>
+                  <IconoDashboard icon={ClipboardTick} className="from-amber-500 to-orange-600" />
+                  Reparaciones
+                </DropdownMenuItem>
+              )}
+              {puedeVerTransferencias && !enTransferencias && (
+                <DropdownMenuItem render={<Link href="/transferencias" />}>
                   <IconoDashboard icon={ArrowSwapHorizontal} className="from-sky-500 to-blue-600" />
-                  {enTransferencias ? "Reparaciones" : "Transferencias"}
+                  Transferencias
                 </DropdownMenuItem>
               )}
-              {puedeVerAsistencia && (
-                <DropdownMenuItem render={<Link href={enAsistencia ? "/" : "/asistencia"} />}>
+              {puedeVerAsistencia && !enAsistencia && (
+                <DropdownMenuItem render={<Link href="/asistencia" />}>
                   <IconoDashboard icon={Clock} className="from-violet-500 to-purple-600" />
-                  {enAsistencia ? "Reparaciones" : "Asistencias"}
+                  Asistencias
                 </DropdownMenuItem>
               )}
-              {puedeVerWebsKelatos && (
-                <DropdownMenuItem render={<Link href={enWebsKelatos ? "/" : "/webs-kelatos"} />}>
+              {puedeVerWebsKelatos && !enWebsKelatos && (
+                <DropdownMenuItem render={<Link href="/webs-kelatos" />}>
                   <IconoDashboard icon={Global} className="from-emerald-500 to-green-600" />
-                  {enWebsKelatos ? "Reparaciones" : "Webs Kelatos"}
+                  Webs Kelatos
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
