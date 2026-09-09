@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { SearchNormal1, Global, Cpu } from "@/lib/icons";
 import { AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import { PillBadge } from "@/components/pill-badge";
@@ -27,23 +28,31 @@ function Punto({ x, y, activo }: { x: number; y: number; activo: boolean }) {
   );
 }
 
+// Mismo patrón que la referencia del usuario: título con flecha arriba
+// (sin caja propia) y el contenido en una caja aparte, ambas con
+// border-radius 24 (rounded-3xl).
 function Tarjeta({
   left,
   top,
   width,
+  titulo,
   children,
 }: {
   left: number;
   top: number;
   width: number;
+  titulo: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div
-      className="absolute rounded-lg border bg-card p-3 shadow-sm"
+      className="absolute rounded-3xl border bg-card p-3 shadow-sm"
       style={{ left: `${left}%`, top: `${top}%`, width: `${width}%` }}
     >
-      {children}
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <ChevronDown className="size-3.5" /> {titulo}
+      </p>
+      <div className="rounded-3xl border bg-muted/20 p-3">{children}</div>
     </div>
   );
 }
@@ -94,8 +103,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         <Punto x={70} y={58} activo={pipelineActivo} />
       </svg>
 
-      <Tarjeta left={3} top={36} width={20}>
-        <p className="mb-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Entrada</p>
+      <Tarjeta left={3} top={36} width={20} titulo="Entrada">
         <div className="space-y-1.5 text-xs">
           <p><span className="text-muted-foreground">Sector: </span>{sector || "—"}</p>
           <p><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</p>
@@ -103,8 +111,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         </div>
       </Tarjeta>
 
-      <Tarjeta left={36} top={28} width={28}>
-        <p className="mb-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Agente</p>
+      <Tarjeta left={36} top={28} width={28} titulo="Agente">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-600 text-white">
             <Cpu className="size-3.5" />
@@ -115,10 +122,16 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         <PillBadge bg={color.bg} color={color.color} className="text-[11px]">{ESTADO_RUN_LABEL[run.status]}</PillBadge>
       </Tarjeta>
 
-      <Tarjeta left={70} top={10} width={27}>
-        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          <Global className="size-3.5" /> Herramientas
-        </p>
+      <Tarjeta
+        left={70}
+        top={10}
+        width={27}
+        titulo={
+          <>
+            <Global className="size-3.5" /> Herramientas
+          </>
+        }
+      >
         <div className="flex items-center gap-2 text-xs">
           <span className={`size-1.5 shrink-0 rounded-full ${discoveryActivo ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
           <SearchNormal1 className="size-3.5 text-muted-foreground" />
@@ -127,11 +140,17 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         </div>
       </Tarjeta>
 
-      <Tarjeta left={70} top={48} width={27}>
-        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          <span className={`size-1.5 shrink-0 rounded-full ${pipelineActivo ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
-          Embudo
-        </p>
+      <Tarjeta
+        left={70}
+        top={48}
+        width={27}
+        titulo={
+          <>
+            <span className={`size-1.5 shrink-0 rounded-full ${pipelineActivo ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
+            Embudo
+          </>
+        }
+      >
         <div className="space-y-1 text-xs">
           {embudo.map((e) => (
             <div key={e.label} className="flex items-center justify-between">
