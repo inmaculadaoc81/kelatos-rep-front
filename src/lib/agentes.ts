@@ -37,6 +37,7 @@ export interface AgentStep {
   kind: "deterministic" | "agentic" | "tool_call";
   companyId: number | null;
   status: "running" | "completed" | "failed" | "skipped";
+  output: Record<string, unknown> | null;
   error: string | null;
   durationMs: number | null;
   createdAt: string;
@@ -83,6 +84,7 @@ interface FilaAgentStepSql {
   kind: "deterministic" | "agentic" | "tool_call";
   company_id: number | string | null;
   status: "running" | "completed" | "failed" | "skipped";
+  output: unknown;
   error: string | null;
   duration_ms: number | string | null;
   created_at: string;
@@ -132,6 +134,7 @@ export function mapearAgentStep(row: FilaAgentStepSql): AgentStep {
     kind: row.kind,
     companyId: row.company_id === null || row.company_id === undefined ? null : Number(row.company_id),
     status: row.status,
+    output: (row.output && typeof row.output === "object" ? row.output : null) as Record<string, unknown> | null,
     error: row.error || null,
     durationMs: row.duration_ms === null || row.duration_ms === undefined ? null : Number(row.duration_ms),
     createdAt: row.created_at,
