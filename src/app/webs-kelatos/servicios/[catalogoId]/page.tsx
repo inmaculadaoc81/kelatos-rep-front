@@ -2,14 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import {
-  Add, Edit2, Trash, Box, Category as CategoryIcon, Money, Receipt, Refresh2, Gallery, SearchNormal1,
+  Add, Edit2, Trash, Box, Category as CategoryIcon, CloseCircle, Global, Link2, Money, Receipt, Refresh2, Gallery, SearchNormal1,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +21,8 @@ import {
 } from "@/components/ui/table";
 import { useConfirm } from "@/components/confirm-provider";
 import { toast } from "sonner";
-import { CatalogoServicios, ItemServicio } from "@/lib/catalogos-servicios";
+import { CatalogoServicios, ItemServicio, SitioCatalogo } from "@/lib/catalogos-servicios";
+import { SitioWeb } from "@/lib/webs-kelatos";
 
 // Catálogo de precios de servicio compartido por marca (Servicios Surface/
 // Dyson/Thermomix) — independiente de Webs Kelatos. Fase actual: solo el
@@ -73,20 +76,35 @@ export default function CatalogoServiciosPage() {
   const [catalogoNombre, setCatalogoNombre] = useState("");
   const [guardandoCatalogo, setGuardandoCatalogo] = useState(false);
 
+  // Webs (sitios_web) enlazadas a este catálogo — al enlazar una, su
+  // propia tabla de productos se sustituye por estos servicios y la web
+  // pública sirve estos mismos datos. Petición del usuario, 2026-09-09:
+  // "en la vista de servicios dyson tiene que ponerse arriba que paginas
+  // estan conectadas", con un botón "Añadir a web".
+  const [sitiosEnlazados, setSitiosEnlazados] = useState<SitioCatalogo[]>([]);
+  const [añadirWebAbierto, setAñadirWebAbierto] = useState(false);
+  const [candidatos, setCandidatos] = useState<SitioWeb[]>([]);
+  const [cargandoCandidatos, setCargandoCandidatos] = useState(false);
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
+  const [vinculando, setVinculando] = useState(false);
+
   async function cargar() {
     setCargando(true);
     setError("");
     try {
-      const [resCatalogos, resItems] = await Promise.all([
+      const [resCatalogos, resItems, resSitios] = await Promise.all([
         fetch("/api/catalogos-servicios"),
         fetch(`/api/catalogos-servicios/${catalogoId}/items`),
+        fetch(`/api/catalogos-servicios/${catalogoId}/sitios`),
       ]);
       const dataCatalogos = await resCatalogos.json();
       const dataItems = await resItems.json();
+      const dataSitios = await resSitios.json();
       if (!dataItems.ok) throw new Error(dataItems.error || "Error desconocido");
       const actual = (dataCatalogos.ok ? dataCatalogos.catalogos : []).find((c: CatalogoServicios) => String(c.id) === String(catalogoId));
       setCatalogo(actual || null);
       setItems(dataItems.items as ItemServicio[]);
+      setSitiosEnlazados(dataSitios.ok ? (dataSitios.sitios as SitioCatalogo[]) : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -98,6 +116,78 @@ export default function CatalogoServiciosPage() {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogoId]);
+
+  // Marca de la que trata el catálogo ("Servicios Dyson" -> "Dyson"), para
+  // sugerir solo las webs de esa marca al enlazar.
+  const marca = (catalogo?.nombre || "").replace(/^Servicios\s+/i, "").trim();
+
+  async function abrirAñadirWeb() {
+    setSeleccionados(new Set());
+    setAñadirWebAbierto(true);
+    setCargandoCandidatos(true);
+    try {
+      const res = await fetch("/api/sitios-web");
+      const data = await res.json();
+      if (data.ok) setCandidatos(data.sitios as SitioWeb[]);
+    } catch {
+      // silencioso
+    } finally {
+      setCargandoCandidatos(false);
+    }
+  }
+
+  const candidatosDeLaMarca = useMemo(() => {
+    if (!marca) return [];
+    const idsYaEnlazados = new Set(sitiosEnlazados.map((s) => s.id));
+    return candidatos.filter((s) => s.tipo && s.tipo.toLowerCase().includes(marca.toLowerCase()) && !idsYaEnlazados.has(s.id));
+  }, [candidatos, marca, sitiosEnlazados]);
+
+  function alternarSeleccion(id: number, marcado: boolean) {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (marcado) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
+  function alternarSeleccionarTodo(marcado: boolean) {
+    setSeleccionados(marcado ? new Set(candidatosDeLaMarca.map((s) => s.id)) : new Set());
+  }
+
+  async function vincularSeleccionados() {
+    if (!seleccionados.size) return toast.error("Selecciona al menos una web");
+    setVinculando(true);
+    try {
+      const res = await fetch(`/api/catalogos-servicios/${catalogoId}/sitios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sitioIds: Array.from(seleccionados) }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`${seleccionados.size} web${seleccionados.size !== 1 ? "s" : ""} enlazada${seleccionados.size !== 1 ? "s" : ""}`);
+      setAñadirWebAbierto(false);
+      await cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setVinculando(false);
+    }
+  }
+
+  async function desenlazar(sitio: SitioCatalogo) {
+    const ok = await confirmar(`¿Desenlazar «${sitio.nombre}» de este catálogo?`);
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/catalogos-servicios/${catalogoId}/sitios/${sitio.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Web desenlazada");
+      await cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
 
   const itemsFiltrados = useMemo(() => {
     if (!busqueda.trim()) return items;
@@ -207,13 +297,29 @@ export default function CatalogoServiciosPage() {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              <span>Catálogo compartido — todavía sin páginas enlazadas</span>
+              {!cargando && sitiosEnlazados.length === 0 && <span>Catálogo compartido — todavía sin páginas enlazadas</span>}
               {!cargando && (
                 <button type="button" onClick={abrirEditarCatalogo} className="inline-flex items-center gap-1 text-primary hover:underline">
                   <Edit2 className="size-3" /> Editar catálogo
                 </button>
               )}
+              <button type="button" onClick={abrirAñadirWeb} className="inline-flex items-center gap-1 text-primary hover:underline">
+                <Link2 className="size-3" /> Añadir a web
+              </button>
             </div>
+            {!cargando && sitiosEnlazados.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-xs text-muted-foreground">Páginas conectadas:</span>
+                {sitiosEnlazados.map((s) => (
+                  <span key={s.id} className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 py-0.5 pl-2 pr-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <Link href={`/webs-kelatos/${s.id}`} className="hover:underline">{s.nombre}</Link>
+                    <button type="button" onClick={() => desenlazar(s)} title="Desenlazar" className="text-emerald-700/60 hover:text-destructive dark:text-emerald-400/60">
+                      <CloseCircle className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -388,6 +494,61 @@ export default function CatalogoServiciosPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditarCatalogoAbierto(false)} disabled={guardandoCatalogo}>Cancelar</Button>
             <Button onClick={guardarCatalogo} disabled={guardandoCatalogo}>{guardandoCatalogo ? "Guardando..." : "Guardar cambios"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={añadirWebAbierto} onOpenChange={(o) => { if (!vinculando) setAñadirWebAbierto(o); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Link2 className="size-4.5" />
+            </span>
+            Añadir a web
+          </DialogTitle>
+          <div className="space-y-3">
+            {cargandoCandidatos ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : candidatosDeLaMarca.length === 0 ? (
+              <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                {marca ? `No hay webs de tipo «${marca}» disponibles para enlazar.` : "Este catálogo no tiene una marca reconocible en el nombre."}
+              </p>
+            ) : (
+              <>
+                <label className="flex items-center gap-2 border-b pb-2 text-sm font-medium">
+                  <Checkbox
+                    checked={seleccionados.size === candidatosDeLaMarca.length}
+                    onCheckedChange={(v) => alternarSeleccionarTodo(v === true)}
+                  />
+                  Seleccionar todo ({candidatosDeLaMarca.length})
+                </label>
+                <div className="max-h-72 space-y-1 overflow-y-auto">
+                  {candidatosDeLaMarca.map((s) => (
+                    <label key={s.id} className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-sm hover:bg-muted/50">
+                      <Checkbox
+                        checked={seleccionados.has(s.id)}
+                        onCheckedChange={(v) => alternarSeleccion(s.id, v === true)}
+                      />
+                      <Global className="size-3.5 text-muted-foreground" />
+                      <span className="flex-1 truncate">{s.nombre}</span>
+                      {s.catalogoServiciosId !== null && s.catalogoServiciosId !== Number(catalogoId) && (
+                        <span className="text-[11px] text-muted-foreground">ya enlazada a {s.catalogoServiciosNombre}</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAñadirWebAbierto(false)} disabled={vinculando}>Cancelar</Button>
+            <Button onClick={vincularSeleccionados} disabled={vinculando || !seleccionados.size}>
+              {vinculando ? "Enlazando..." : `Enlazar (${seleccionados.size})`}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

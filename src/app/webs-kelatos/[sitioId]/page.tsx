@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { ProductoWeb, SitioWeb } from "@/lib/webs-kelatos";
 import { EquiposAlquilerVista } from "./equipos-alquiler-vista";
 import { PiezasCargadorVista } from "./piezas-cargador-vista";
+import { CatalogoServiciosVista } from "./catalogo-servicios-vista";
 
 // Webs sincronizadas con datos reales de Reparaciones en vez del catálogo
 // genérico de productos_web — petición del usuario, 2026-09-09: mismo
@@ -219,8 +220,13 @@ export default function SitioWebPage() {
 
   const esAlquiler = sitio?.slug === SLUG_ALQUILER;
   const esCargador = sitio?.slug === SLUG_CARGADOR;
-  const esVistaSincronizada = esAlquiler || esCargador;
-  const endpointPublico = esAlquiler ? "/publico/equipos-alquiler" : esCargador ? "/publico/piezas-cargador" : `/publico/productos/${sitio?.slug || "—"}`;
+  const esCatalogo = !esAlquiler && !esCargador && !!sitio?.catalogoServiciosId;
+  const esVistaSincronizada = esAlquiler || esCargador || esCatalogo;
+  const endpointPublico = esAlquiler
+    ? "/publico/equipos-alquiler"
+    : esCargador
+    ? "/publico/piezas-cargador"
+    : `/publico/productos/${sitio?.slug || "—"}`;
 
   return (
     <div className="space-y-4">
@@ -249,6 +255,11 @@ export default function SitioWebPage() {
                   Endpoint <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{endpointPublico}</code>
                 </span>
               )}
+              {!cargando && esCatalogo && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  Sincronizado con {sitio?.catalogoServiciosNombre}
+                </span>
+              )}
               {!cargando && (
                 <button type="button" onClick={abrirEditarWeb} className="inline-flex items-center gap-1 text-primary hover:underline">
                   <Edit2 className="size-3" /> Editar web
@@ -273,6 +284,8 @@ export default function SitioWebPage() {
         <EquiposAlquilerVista />
       ) : esCargador ? (
         <PiezasCargadorVista />
+      ) : esCatalogo ? (
+        <CatalogoServiciosVista catalogoId={sitio!.catalogoServiciosId!} catalogoNombre={sitio!.catalogoServiciosNombre} />
       ) : (
         <>
       {error && (

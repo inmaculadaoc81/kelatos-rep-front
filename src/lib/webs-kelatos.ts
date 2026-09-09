@@ -16,6 +16,10 @@ export interface SitioWeb {
       varias webs "Lenovo" bajo un mismo grupo desplegable. */
   tipo: string;
   totalProductos: number;
+  /** Si está enlazada a un catálogo de "Servicios" compartido, su propia
+      tabla de productos se sustituye por los items de ese catálogo. */
+  catalogoServiciosId: number | null;
+  catalogoServiciosNombre: string;
 }
 
 export interface ProductoWeb {
@@ -39,6 +43,8 @@ interface FilaSitioWebSql {
   slug: string | null;
   tipo: string | null;
   total_productos: number | string;
+  catalogo_servicios_id: number | string | null;
+  catalogo_servicios_nombre: string | null;
 }
 
 interface FilaProductoWebSql {
@@ -63,6 +69,8 @@ export function mapearSitioWeb(row: FilaSitioWebSql): SitioWeb {
     slug: row.slug || "",
     tipo: row.tipo || "",
     totalProductos: Number(row.total_productos) || 0,
+    catalogoServiciosId: row.catalogo_servicios_id === null || row.catalogo_servicios_id === undefined ? null : Number(row.catalogo_servicios_id),
+    catalogoServiciosNombre: row.catalogo_servicios_nombre || "",
   };
 }
 

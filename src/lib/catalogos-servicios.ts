@@ -12,6 +12,32 @@ export interface CatalogoServicios {
   totalItems: number;
 }
 
+/** Web (sitios_web) enlazada a un catálogo — versión reducida, solo lo
+    necesario para listarla en "Páginas conectadas" y en el selector
+    "Añadir a web". */
+export interface SitioCatalogo {
+  id: number;
+  nombre: string;
+  slug: string;
+  tipo: string;
+}
+
+interface FilaSitioCatalogoSql {
+  id: number | string;
+  nombre: string;
+  slug: string | null;
+  tipo: string | null;
+}
+
+export function mapearSitioCatalogo(row: FilaSitioCatalogoSql): SitioCatalogo {
+  return {
+    id: Number(row.id),
+    nombre: row.nombre,
+    slug: row.slug || "",
+    tipo: row.tipo || "",
+  };
+}
+
 export interface ItemServicio {
   id: number;
   catalogoId: number;
