@@ -7,7 +7,7 @@ import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
 import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, Global, Cpu } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +51,7 @@ export function NavUser({ session }: { session: Session | null }) {
   const nombre = session?.user?.name || session?.user?.email || "Usuario";
   const email = session?.user?.email || "";
   const esAdmin = session?.user?.role === "admin";
-  const puedeVerTransferencias = esSuperadmin(email);
+  const muestraTransferencias = puedeVerTransferencias(email);
   const puedeVerAsistencia = esAdmin || esSuperadmin(email);
   // Un empleado que solo ficha (sin cuenta @kelatos.com, ver src/auth.ts)
   // no tiene acceso a nada fuera de /asistencia — "Mi perfil" y
@@ -141,7 +141,7 @@ export function NavUser({ session }: { session: Session | null }) {
                   Reparaciones
                 </DropdownMenuItem>
               )}
-              {puedeVerTransferencias && !enTransferencias && (
+              {muestraTransferencias && !enTransferencias && (
                 <DropdownMenuItem render={<Link href="/transferencias" />}>
                   <IconoDashboard icon={ArrowSwapHorizontal} className="from-sky-500 to-blue-600" />
                   Transferencias

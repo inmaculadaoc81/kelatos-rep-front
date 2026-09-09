@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { esSuperadmin } from "@/lib/superadmin";
+import { puedeVerTransferencias } from "@/lib/superadmin";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TransferenciasSidebar } from "./sidebar";
 import { TransferenciasHeader } from "./header";
@@ -12,7 +12,7 @@ import { TransferenciasHeader } from "./header";
 // dashboard aparte, no una sección más de Reparaciones.
 export default async function TransferenciasLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!esSuperadmin(session?.user?.email)) redirect("/");
+  if (!puedeVerTransferencias(session?.user?.email)) redirect("/");
 
   return (
     <SidebarProvider>

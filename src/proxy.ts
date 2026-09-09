@@ -1,6 +1,6 @@
 import { auth, esDominioKelatos } from "@/auth";
 import { NextResponse } from "next/server";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -19,9 +19,10 @@ export default auth((req) => {
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
-  // Dashboard de Transferencias — vista aparte, solo para superadmins
-  // (mismo conjunto que ya puede borrar registros en /admin/registros).
-  if (req.nextUrl.pathname.startsWith("/transferencias") && !esSuperadmin(req.auth?.user?.email)) {
+  // Dashboard de Transferencias — vista aparte. Superadmins entran por
+  // serlo; puedeVerTransferencias además admite cuentas con acceso SOLO a
+  // este módulo, sin el resto de poderes de superadmin.
+  if (req.nextUrl.pathname.startsWith("/transferencias") && !puedeVerTransferencias(req.auth?.user?.email)) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Dashboard de Webs Kelatos — vista aparte, solo administradores

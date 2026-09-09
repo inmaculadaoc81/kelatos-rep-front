@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { esSuperadmin } from "@/lib/superadmin";
+import { puedeVerTransferencias } from "@/lib/superadmin";
 import { kelatosApiGet } from "@/lib/kelatos-api";
 
 export async function GET(req: Request) {
   const session = await auth();
-  if (!esSuperadmin(session?.user?.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeVerTransferencias(session?.user?.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const estado = new URL(req.url).searchParams.get("estado") || "Pendiente";
   try {

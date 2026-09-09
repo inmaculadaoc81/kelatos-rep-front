@@ -11,3 +11,17 @@ export const SUPERADMIN_EMAILS = new Set(["kelatoscielo@gmail.com", "kelatosclau
 export function esSuperadmin(email: string | null | undefined): boolean {
   return !!email && SUPERADMIN_EMAILS.has(email.toLowerCase());
 }
+
+/**
+ * Acceso al dashboard de Transferencias (vista + acciones: conciliar,
+ * revertir, devoluciones) — deliberadamente separado de esSuperadmin, que
+ * además da permiso para borrar registros reales, restaurar backups, etc.
+ * Los superadmins ya tienen acceso por serlo; esta lista es solo para
+ * cuentas a las que se les da Transferencias sin el resto de poderes de
+ * superadmin. Petición del usuario, 2026-09-09: soporte@kelatos.com.
+ */
+const TRANSFERENCIAS_EMAILS_EXTRA = new Set(["soporte@kelatos.com"]);
+
+export function puedeVerTransferencias(email: string | null | undefined): boolean {
+  return esSuperadmin(email) || (!!email && TRANSFERENCIAS_EMAILS_EXTRA.has(email.toLowerCase()));
+}
