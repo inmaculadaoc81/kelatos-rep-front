@@ -1,6 +1,26 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
+import { mapearSitioWeb } from "@/lib/webs-kelatos";
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+
+  const { id } = await params;
+  const datos = await req.json();
+  try {
+    const resultado = await kelatosApiPost<{ ok: boolean; sitio: Parameters<typeof mapearSitioWeb>[0] }>(
+      `/v1/sitios-web/${encodeURIComponent(id)}`,
+      datos,
+      "PATCH"
+    );
+    return NextResponse.json({ ok: true, sitio: mapearSitioWeb(resultado.sitio) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ ok: false, error: message }, { status: 502 });
+  }
+}
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();

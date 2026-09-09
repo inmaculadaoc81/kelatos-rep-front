@@ -53,6 +53,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [nombre, setNombre] = useState("");
   const [url, setUrl] = useState("");
+  const [slug, setSlug] = useState("");
   const [creando, setCreando] = useState(false);
 
   async function cargar() {
@@ -79,7 +80,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
       const res = await fetch("/api/sitios-web", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombre.trim(), url: url.trim() }),
+        body: JSON.stringify({ nombre: nombre.trim(), url: url.trim(), slug: slug.trim() }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -87,6 +88,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
       setNuevaAbierta(false);
       setNombre("");
       setUrl("");
+      setSlug("");
       await cargar();
       router.push(`/webs-kelatos/${data.sitio.id}`);
     } catch (e) {
@@ -181,6 +183,18 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
             <div className="space-y-1.5">
               <Label htmlFor="nuevaWebUrl">URL (opcional)</Label>
               <Input id="nuevaWebUrl" placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nuevaWebSlug">Identificador para el endpoint público</Label>
+              <Input
+                id="nuevaWebSlug"
+                placeholder={nombre ? nombre.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "mi-web" : "mi-web"}
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Se usa en <code>/publico/productos/{slug || "…"}</code>. Si lo dejas vacío, se genera del nombre.
+              </p>
             </div>
           </div>
           <DialogFooter>

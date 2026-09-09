@@ -9,6 +9,9 @@ export interface SitioWeb {
   id: number;
   nombre: string;
   url: string;
+  /** Identificador para GET /publico/productos/:slug — cada web en Vercel
+      consulta sus productos con esto, sin el Bearer interno. */
+  slug: string;
   totalProductos: number;
 }
 
@@ -30,6 +33,7 @@ interface FilaSitioWebSql {
   id: number | string;
   nombre: string;
   url: string | null;
+  slug: string | null;
   total_productos: number | string;
 }
 
@@ -52,6 +56,7 @@ export function mapearSitioWeb(row: FilaSitioWebSql): SitioWeb {
     id: Number(row.id),
     nombre: row.nombre,
     url: row.url || "",
+    slug: row.slug || "",
     totalProductos: Number(row.total_productos) || 0,
   };
 }

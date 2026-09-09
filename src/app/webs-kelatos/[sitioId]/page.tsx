@@ -61,6 +61,15 @@ export default function SitioWebPage() {
   const [datos, setDatos] = useState<DatosProducto>(datosVacios());
   const [guardando, setGuardando] = useState(false);
 
+  // Editar la propia web (nombre/URL/slug) — el slug es el identificador
+  // que usa GET /publico/productos/:slug, así que hace falta poder
+  // asignarlo también a webs creadas antes de tener el endpoint público.
+  const [editarWebAbierto, setEditarWebAbierto] = useState(false);
+  const [webNombre, setWebNombre] = useState("");
+  const [webUrl, setWebUrl] = useState("");
+  const [webSlug, setWebSlug] = useState("");
+  const [guardandoWeb, setGuardandoWeb] = useState(false);
+
   async function cargar() {
     setCargando(true);
     setError("");
@@ -86,6 +95,34 @@ export default function SitioWebPage() {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sitioId]);
+
+  function abrirEditarWeb() {
+    setWebNombre(sitio?.nombre || "");
+    setWebUrl(sitio?.url || "");
+    setWebSlug(sitio?.slug || "");
+    setEditarWebAbierto(true);
+  }
+
+  async function guardarWeb() {
+    if (!webNombre.trim()) return toast.error("El nombre es obligatorio");
+    setGuardandoWeb(true);
+    try {
+      const res = await fetch(`/api/sitios-web/${sitioId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: webNombre.trim(), url: webUrl.trim(), slug: webSlug.trim() }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Web actualizada");
+      setEditarWebAbierto(false);
+      await cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setGuardandoWeb(false);
+    }
+  }
 
   function abrirNuevo() {
     setEditando(null);
@@ -160,11 +197,23 @@ export default function SitioWebPage() {
               </Badge>
             )}
           </h2>
-          {sitio?.url && (
-            <a href={sitio.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
-              {sitio.url}
-            </a>
-          )}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
+            {sitio?.url && (
+              <a href={sitio.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                {sitio.url}
+              </a>
+            )}
+            {!cargando && (
+              <span className="text-muted-foreground">
+                Endpoint: <code className="rounded bg-muted px-1 py-0.5 text-xs">/publico/productos/{sitio?.slug || "—"}</code>
+              </span>
+            )}
+            {!cargando && (
+              <button type="button" onClick={abrirEditarWeb} className="text-xs text-primary hover:underline">
+                Editar web
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
@@ -294,6 +343,35 @@ export default function SitioWebPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogoAbierto(false)} disabled={guardando}>Cancelar</Button>
             <Button onClick={guardar} disabled={guardando}>{guardando ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editarWebAbierto} onOpenChange={(o) => { if (!guardandoWeb) setEditarWebAbierto(o); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogTitle className="flex items-center gap-2">
+            <Global className="size-4.5" /> Editar web
+          </DialogTitle>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="webNombre">Nombre *</Label>
+              <Input id="webNombre" value={webNombre} onChange={(e) => setWebNombre(e.target.value)} autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="webUrl">URL</Label>
+              <Input id="webUrl" placeholder="https://..." value={webUrl} onChange={(e) => setWebUrl(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="webSlug">Identificador (slug) para el endpoint público</Label>
+              <Input id="webSlug" placeholder="mi-web" value={webSlug} onChange={(e) => setWebSlug(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">
+                La web en Vercel lo usará como <code>GET /publico/productos/{webSlug || "…"}</code>.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditarWebAbierto(false)} disabled={guardandoWeb}>Cancelar</Button>
+            <Button onClick={guardarWeb} disabled={guardandoWeb}>{guardandoWeb ? "Guardando..." : "Guardar cambios"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
