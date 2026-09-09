@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Add, AddCircle, ArrowDown2, Global, Link2, Receipt, Tag } from "@/lib/icons";
+import { Add, ArrowDown2, Global, Link2, Receipt, Tag } from "@/lib/icons";
 import { toast } from "sonner";
 import { SitioWeb } from "@/lib/webs-kelatos";
 import { CatalogoServicios } from "@/lib/catalogos-servicios";
@@ -88,19 +88,12 @@ function GrupoTipo({ tipo, sitios, pathname }: { tipo: string; sitios: SitioWeb[
 
 /** Sidebar dinámico: una página por cada web de Kelatos (kelatos_app.sitios_web) —
     petición del usuario, 2026-09-09, mismo componente de shadcn Sidebar
-    que ya usan Transferencias/Asistencias, con un "+" para dar de alta
-    webs nuevas sin tocar código. */
+    que ya usan Transferencias/Asistencias. */
 export function WebsKelatosSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sitios, setSitios] = useState<SitioWeb[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [nuevaAbierta, setNuevaAbierta] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [url, setUrl] = useState("");
-  const [slug, setSlug] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [creando, setCreando] = useState(false);
 
   // "Servicios" — catálogos de precios compartidos por marca, aparte de
   // las webs (sitios_web) de arriba. Petición del usuario, 2026-09-09.
@@ -161,32 +154,6 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setCreandoCatalogo(false);
-    }
-  }
-
-  async function crearSitio() {
-    if (!nombre.trim()) return toast.error("El nombre es obligatorio");
-    setCreando(true);
-    try {
-      const res = await fetch("/api/sitios-web", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombre.trim(), url: url.trim(), slug: slug.trim(), tipo: tipo.trim() }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Web creada");
-      setNuevaAbierta(false);
-      setNombre("");
-      setUrl("");
-      setSlug("");
-      setTipo("");
-      await cargar();
-      router.push(`/webs-kelatos/${data.sitio.id}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setCreando(false);
     }
   }
 
@@ -273,20 +240,11 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
 
         <SidebarGroup>
           {/* Mismo estilo que los encabezados de grupo de Reparaciones
-              (icono en color de marca + título), con el "+" de añadir web
-              a la derecha — petición del usuario, 2026-09-09. */}
-          <SidebarGroupLabel className="flex items-center justify-between gap-2 text-sidebar-foreground">
-            <span className="flex items-center gap-2">
-              <Global className="size-4 text-sidebar-primary" /> Webs
-            </span>
-            <button
-              type="button"
-              onClick={() => setNuevaAbierta(true)}
-              className="text-sidebar-foreground/60 hover:text-sidebar-primary"
-              title="Añadir web"
-            >
-              <AddCircle className="size-4" />
-            </button>
+              (icono en color de marca + título) — petición del usuario,
+              2026-09-09. Sin botón "+": las webs se dan de alta por
+              importación/código, no desde aquí. */}
+          <SidebarGroupLabel className="flex items-center gap-2 text-sidebar-foreground">
+            <Global className="size-4 text-sidebar-primary" /> Webs
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
@@ -303,45 +261,6 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
         </SidebarGroup>
       </SidebarContent>
       <NavUser session={session} />
-
-      <Dialog open={nuevaAbierta} onOpenChange={(o) => { if (!creando) setNuevaAbierta(o); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogTitle className="flex items-center gap-2">
-            <Global className="size-4.5" /> Nueva web
-          </DialogTitle>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="nuevaWebNombre">Nombre *</Label>
-              <Input id="nuevaWebNombre" placeholder="Ej: Lenovotech" value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="nuevaWebUrl">URL (opcional)</Label>
-              <Input id="nuevaWebUrl" placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="nuevaWebTipo">Marca / tipo</Label>
-              <Input id="nuevaWebTipo" placeholder="Ej: Lenovo, Dyson..." value={tipo} onChange={(e) => setTipo(e.target.value)} />
-              <p className="text-[11px] text-muted-foreground">Agrupa esta web con otras del mismo tipo en el sidebar.</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="nuevaWebSlug">Identificador para el endpoint público</Label>
-              <Input
-                id="nuevaWebSlug"
-                placeholder={nombre ? nombre.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "mi-web" : "mi-web"}
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Se usa en <code>/publico/productos/{slug || "…"}</code>. Si lo dejas vacío, se genera del nombre.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNuevaAbierta(false)} disabled={creando}>Cancelar</Button>
-            <Button onClick={crearSitio} disabled={creando}>{creando ? "Creando..." : "Crear web"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={nuevoCatalogoAbierto} onOpenChange={(o) => { if (!creandoCatalogo) setNuevoCatalogoAbierto(o); }}>
         <DialogContent className="sm:max-w-sm">
