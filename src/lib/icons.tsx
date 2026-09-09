@@ -64,6 +64,7 @@ export const DocumentUpload = withDefaults(Iconsax.DocumentUpload);
 export const Edit = withDefaults(Iconsax.Edit);
 export const Edit2 = withDefaults(Iconsax.Edit2);
 export const Element3 = withDefaults(Iconsax.Element3);
+export const Global = withDefaults(Iconsax.Global);
 export const Link2 = withDefaults(Iconsax.Link2);
 export const MinusCirlce = withDefaults(Iconsax.MinusCirlce);
 export const ExportSquare = withDefaults(Iconsax.ExportSquare);

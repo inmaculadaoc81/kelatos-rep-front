@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, Global } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -134,6 +134,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href={enAsistencia ? "/" : "/asistencia"} />}>
                   <IconoDashboard icon={Clock} className="from-violet-500 to-purple-600" />
                   {enAsistencia ? "Reparaciones" : "Asistencias"}
+                </DropdownMenuItem>
+              )}
+              {!esSoloAsistencia && (
+                <DropdownMenuItem render={<Link href="/webs-kelatos" />}>
+                  <IconoDashboard icon={Global} className="from-emerald-500 to-green-600" />
+                  Webs Kelatos
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
