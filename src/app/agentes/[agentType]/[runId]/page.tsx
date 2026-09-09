@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/u
 import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import { TrazaAgente } from "./traza-agente";
 
 const ESTADO_MENSAJE_LABEL: Record<string, string> = { draft: "Borrador", approved: "Aprobado", rejected: "Rechazado" };
 const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
@@ -28,6 +29,17 @@ export default function AgenteRunDetallePage() {
   const [leads, setLeads] = useState<AgentLead[]>([]);
   const [cargando, setCargando] = useState(true);
   const [leadAbierto, setLeadAbierto] = useState<AgentLead | null>(null);
+  const [tipoLabel, setTipoLabel] = useState(params.agentType);
+
+  useEffect(() => {
+    fetch("/api/agentes/tipos")
+      .then((r) => r.json())
+      .then((data) => {
+        const tipo = data.ok ? data.tipos.find((t: { type: string }) => t.type === params.agentType) : null;
+        if (tipo) setTipoLabel(tipo.label);
+      })
+      .catch(() => {});
+  }, [params.agentType]);
 
   async function cargar() {
     try {
@@ -128,41 +140,10 @@ export default function AgenteRunDetallePage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Pasos</CardTitle></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Paso</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Duración</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {steps.map((step) => (
-                <TableRow key={step.id}>
-                  <TableCell>{step.step}</TableCell>
-                  <TableCell className="text-muted-foreground">{step.kind}</TableCell>
-                  <TableCell>
-                    <PillBadge
-                      bg={step.status === "failed" ? "#fee2e2" : step.status === "completed" ? "#dcfce7" : "#dbeafe"}
-                      color={step.status === "failed" ? "#991b1b" : step.status === "completed" ? "#166534" : "#1e40af"}
-                    >
-                      {step.status}
-                    </PillBadge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{step.durationMs != null ? `${step.durationMs} ms` : "—"}</TableCell>
-                </TableRow>
-              ))}
-              {steps.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">Sin pasos todavía.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} />
+        <div className="min-h-70 flex-1 rounded-xl border border-dashed" />
+      </div>
 
       <Card>
         <CardHeader>
