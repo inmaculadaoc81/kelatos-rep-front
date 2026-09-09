@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Filter, Zap, ScanSearch, Mail, CircleX } from "lucide-react";
+import { Filter, CircleX } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
@@ -27,12 +27,31 @@ import {
 // quitarle los plugins de markdown (cjk/code/math/mermaid) que trae de
 // fábrica: nuestro texto es prosa simple del modelo, nunca código ni
 // fórmulas, así que esos 4 paquetes no aportaban nada aquí.
-const PASO_INFO: Record<string, { label: string; subtitulo: string; icon: LucideIcon }> = {
-  discovery: { label: "Búsqueda de empresas", subtitulo: "Fuente: infoisinfo.es", icon: Search },
+// Icono de la plataforma real a la que se conecta cada paso (favicon vía
+// Google, sin necesidad de tener el logo de cada servicio como asset
+// propio). No es un LucideIcon de verdad, pero ChainOfThoughtStep solo
+// hace `<Icon className="size-4" />` — cualquier componente que acepte
+// className sirve; el tipo se fuerza porque la firma exacta de
+// LucideIcon (con ref forwarding) es más estricta de lo que hace falta.
+function iconoDeDominio(dominio: string): LucideIcon {
+  function IconoDominio({ className }: { className?: string }) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={`https://www.google.com/s2/favicons?sz=64&domain=${dominio}`} alt="" className={`${className || ""} rounded-sm`} />
+    );
+  }
+  return IconoDominio as unknown as LucideIcon;
+}
+
+const ICONO_INFOISINFO = iconoDeDominio("infoisinfo.es");
+const ICONO_OPENAI = iconoDeDominio("openai.com");
+
+const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon: LucideIcon }> = {
+  discovery: { label: "Búsqueda de empresas", icon: ICONO_INFOISINFO },
   dedupe_filter: { label: "Filtro y deduplicación", subtitulo: "Código determinista", icon: Filter },
-  cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico", icon: Zap },
-  deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado", icon: ScanSearch },
-  message_writer: { label: "Redacción de mensaje", subtitulo: "Modelo avanzado", icon: Mail },
+  cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico", icon: ICONO_OPENAI },
+  deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado", icon: ICONO_OPENAI },
+  message_writer: { label: "Redacción de mensaje", subtitulo: "Modelo avanzado", icon: ICONO_OPENAI },
 };
 
 interface GrupoPaso {
@@ -62,7 +81,7 @@ function agruparPasos(steps: AgentStep[]): GrupoPaso[] {
         ? "running"
         : "completed";
     const info = PASO_INFO[step];
-    return { step, label: info?.label || step, subtitulo: info?.subtitulo || "", icon: info?.icon || Search, cantidad: lista.length, estado };
+    return { step, label: info?.label || step, subtitulo: info?.subtitulo || "", icon: info?.icon || Filter, cantidad: lista.length, estado };
   });
 }
 
