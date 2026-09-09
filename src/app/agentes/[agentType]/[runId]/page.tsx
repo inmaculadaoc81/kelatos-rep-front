@@ -75,7 +75,10 @@ export default function AgenteRunDetallePage() {
   return (
     <div className="flex h-[calc(100svh-6.5rem)] gap-4 overflow-hidden">
       <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} />
-      <div className="h-full flex-1 rounded-xl border border-dashed" />
+      <div
+        className="h-full flex-1 rounded-xl border"
+        style={{ backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)", backgroundSize: "20px 20px" }}
+      />
     </div>
   );
 }

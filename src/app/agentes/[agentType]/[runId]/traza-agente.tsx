@@ -92,7 +92,7 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
   const razonamiento = ultimoRazonamiento(steps);
 
   return (
-    <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl border bg-card p-4 text-sm">
+    <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl border p-4 text-sm">
       <Link href="/agentes" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft2 className="size-3" /> Agentes / {tipoLabel}
       </Link>
