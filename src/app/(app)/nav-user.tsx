@@ -63,6 +63,8 @@ export function NavUser({ session }: { session: Session | null }) {
   // a Transferencias.
   const enTransferencias = pathname?.startsWith("/transferencias") ?? false;
   const enAsistencia = pathname?.startsWith("/asistencia") ?? false;
+  const enWebsKelatos = pathname?.startsWith("/webs-kelatos") ?? false;
+  const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -136,10 +138,10 @@ export function NavUser({ session }: { session: Session | null }) {
                   {enAsistencia ? "Reparaciones" : "Asistencias"}
                 </DropdownMenuItem>
               )}
-              {!esSoloAsistencia && (
-                <DropdownMenuItem render={<Link href="/webs-kelatos" />}>
+              {puedeVerWebsKelatos && (
+                <DropdownMenuItem render={<Link href={enWebsKelatos ? "/" : "/webs-kelatos"} />}>
                   <IconoDashboard icon={Global} className="from-emerald-500 to-green-600" />
-                  Webs Kelatos
+                  {enWebsKelatos ? "Reparaciones" : "Webs Kelatos"}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

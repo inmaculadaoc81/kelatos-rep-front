@@ -24,6 +24,16 @@ export default auth((req) => {
   if (req.nextUrl.pathname.startsWith("/transferencias") && !esSuperadmin(req.auth?.user?.email)) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Dashboard de Webs Kelatos — vista aparte, solo administradores
+  // (mismo criterio que nav-user.tsx/webs-kelatos/layout.tsx — defensa en
+  // profundidad, igual patrón que Transferencias).
+  if (
+    req.nextUrl.pathname.startsWith("/webs-kelatos") &&
+    req.auth?.user?.role !== "admin" &&
+    !esSuperadmin(req.auth?.user?.email)
+  ) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Dashboard de Asistencia (fichajes) — un empleado que ficha puede no
   // tener cuenta @kelatos.com (login ampliado en src/auth.ts); esa cuenta
   // solo puede entrar a /asistencia/kiosk (y a sus propias llamadas API
