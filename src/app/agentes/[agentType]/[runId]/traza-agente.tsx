@@ -92,7 +92,7 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
   const razonamiento = ultimoRazonamiento(steps);
 
   return (
-    <div className="w-full max-w-[440px] shrink-0 space-y-4 rounded-xl border bg-card p-4 text-sm">
+    <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl border bg-card p-4 text-sm">
       <Link href="/agentes" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft2 className="size-3" /> Agentes / {tipoLabel}
       </Link>
@@ -136,6 +136,10 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
           {grupos.length === 0 && <p className="pl-10 text-xs text-muted-foreground">Sin actividad todavía.</p>}
         </div>
       </div>
+
+      {run.error && (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{run.error}</p>
+      )}
 
       <div className="flex items-center gap-1.5 border-t pt-3 text-xs text-muted-foreground">
         <Timer1 className="size-3.5" /> Pensando · {tiempoTranscurrido(run)} · {tokensCompacto(tokensTotal)} tokens
