@@ -26,10 +26,25 @@ function euros(n: number | null): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
+// Mismo patrón de pills pastel que asistencia/pills.tsx: span redondeado
+// con color inline en vez de las variantes fijas de components/ui/badge.tsx
+// — petición del usuario, 2026-09-09: "mas bonita la tabla, como en
+// asistencias, los pills".
+function Pill({ children, bg, color, className = "" }: { children: React.ReactNode; bg: string; color: string; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}
+      style={{ backgroundColor: bg, color }}
+    >
+      {children}
+    </span>
+  );
+}
+
 function badgeStock(stock: number) {
-  if (stock <= 0) return <Badge variant="destructive">Sin stock</Badge>;
-  if (stock < 5) return <Badge className="bg-amber-500 text-white hover:bg-amber-500">{stock} uds.</Badge>;
-  return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">{stock} uds.</Badge>;
+  if (stock <= 0) return <Pill bg="#fee2e2" color="#991b1b">Sin stock</Pill>;
+  if (stock < 5) return <Pill bg="#fef3c7" color="#92400e">{stock} uds.</Pill>;
+  return <Pill bg="#d1fae5" color="#065f46">{stock} uds.</Pill>;
 }
 
 interface DatosProducto {
@@ -301,7 +316,7 @@ export default function SitioWebPage() {
                     </TableCell>
                     <TableCell>
                       {p.categoria ? (
-                        <Badge variant="outline" className="gap-1"><CategoryIcon className="size-3" /> {p.categoria}</Badge>
+                        <Pill bg="#e4e4e7" color="#3f3f46"><CategoryIcon className="size-3" /> {p.categoria}</Pill>
                       ) : "—"}
                     </TableCell>
                     <TableCell className="font-medium">
@@ -310,8 +325,8 @@ export default function SitioWebPage() {
                     <TableCell>{badgeStock(p.stock)}</TableCell>
                     <TableCell>
                       {p.activo
-                        ? <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Activo</Badge>
-                        : <Badge variant="secondary">Inactivo</Badge>}
+                        ? <Pill bg="#d1fae5" color="#065f46">Activo</Pill>
+                        : <Pill bg="#e4e4e7" color="#3f3f46">Inactivo</Pill>}
                     </TableCell>
                     <TableCell className="sticky right-0 z-10 whitespace-nowrap bg-background text-right">
                       <Button size="icon-sm" variant="outline" className="mr-1" title="Editar" onClick={() => abrirEditar(p)}>
