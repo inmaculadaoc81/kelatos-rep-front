@@ -13,7 +13,6 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -70,9 +69,12 @@ function GrupoTipo({ tipo, sitios, pathname }: { tipo: string; sitios: SitioWeb[
                 <SidebarMenuSubItem key={sitio.id}>
                   <SidebarMenuSubButton isActive={pathname === href} render={<Link href={href} />}>
                     <Link2 />
-                    <span>{sitio.nombre}</span>
+                    <span className="truncate">{sitio.nombre}</span>
+                    <span
+                      className={`ml-auto size-2 shrink-0 rounded-full ${sitio.totalProductos > 0 ? "bg-emerald-500" : "bg-red-500"}`}
+                      title={sitio.totalProductos > 0 ? `${sitio.totalProductos} producto${sitio.totalProductos !== 1 ? "s" : ""}` : "Sin productos todavía"}
+                    />
                   </SidebarMenuSubButton>
-                  {sitio.totalProductos > 0 && <SidebarMenuBadge>{sitio.totalProductos}</SidebarMenuBadge>}
                 </SidebarMenuSubItem>
               );
             })}
