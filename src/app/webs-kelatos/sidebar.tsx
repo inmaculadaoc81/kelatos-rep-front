@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { AddCircle, ArrowDown2, Global, Link2, Receipt, Tag } from "@/lib/icons";
+import { Add, AddCircle, ArrowDown2, Global, Link2, Receipt, Tag } from "@/lib/icons";
 import { toast } from "sonner";
 import { SitioWeb } from "@/lib/webs-kelatos";
 import { CatalogoServicios } from "@/lib/catalogos-servicios";
@@ -223,6 +223,55 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
+          {/* Grupo colapsable: "Servicios" arriba, sus catálogos como
+              children debajo — mismo patrón que los grupos por marca de
+              "Webs". El "+" queda fuera del disparador de colapsar, como
+              botón hermano, para no anidar un botón dentro de otro.
+              Petición del usuario, 2026-09-09: "los servicios tienen que
+              estar arriba... es Servicios y luego sus children son los
+              servicios que estan ahi", e icono distinto para el "+". */}
+          <Collapsible defaultOpen className="group/servicios">
+            <SidebarGroupLabel className="flex items-center justify-between gap-2 p-0 text-sidebar-foreground">
+              <CollapsibleTrigger className="group/trigger flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left hover:text-sidebar-primary">
+                <Receipt className="size-4 text-sidebar-primary" />
+                <span>Servicios</span>
+                <ArrowDown2 className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open/trigger:rotate-180" />
+              </CollapsibleTrigger>
+              <button
+                type="button"
+                onClick={() => setNuevoCatalogoAbierto(true)}
+                className="mr-1 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-primary"
+                title="Añadir catálogo"
+              >
+                <Add className="size-4" />
+              </button>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1.5">
+                  {!cargandoCatalogos && catalogos.length === 0 && (
+                    <p className="px-2 py-1.5 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
+                      Sin catálogos todavía
+                    </p>
+                  )}
+                  {catalogos.map((catalogo) => {
+                    const href = `/webs-kelatos/servicios/${catalogo.id}`;
+                    return (
+                      <SidebarMenuItem key={catalogo.id}>
+                        <SidebarMenuButton isActive={pathname === href} tooltip={catalogo.nombre} render={<Link href={href} />}>
+                          <Receipt />
+                          <span className="truncate">{catalogo.nombre}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
+
+        <SidebarGroup>
           {/* Mismo estilo que los encabezados de grupo de Reparaciones
               (icono en color de marca + título), con el "+" de añadir web
               a la derecha — petición del usuario, 2026-09-09. */}
@@ -249,46 +298,6 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
               {agruparPorTipo(sitios).map((grupo) => (
                 <GrupoTipo key={grupo.tipo} tipo={grupo.tipo} sitios={grupo.sitios} pathname={pathname} />
               ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          {/* Catálogos de precios de servicio compartidos por marca — aparte
-              de las webs de arriba. Petición del usuario, 2026-09-09: "en
-              vez de webs vas a cambiarlo por un select que se llame
-              servicios" (dentro del mismo sidebar, sin tocar "Webs"). */}
-          <SidebarGroupLabel className="flex items-center justify-between gap-2 text-sidebar-foreground">
-            <span className="flex items-center gap-2">
-              <Receipt className="size-4 text-sidebar-primary" /> Servicios
-            </span>
-            <button
-              type="button"
-              onClick={() => setNuevoCatalogoAbierto(true)}
-              className="text-sidebar-foreground/60 hover:text-sidebar-primary"
-              title="Añadir catálogo"
-            >
-              <AddCircle className="size-4" />
-            </button>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1.5">
-              {!cargandoCatalogos && catalogos.length === 0 && (
-                <p className="px-2 py-1.5 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-                  Sin catálogos todavía
-                </p>
-              )}
-              {catalogos.map((catalogo) => {
-                const href = `/webs-kelatos/servicios/${catalogo.id}`;
-                return (
-                  <SidebarMenuItem key={catalogo.id}>
-                    <SidebarMenuButton isActive={pathname === href} tooltip={catalogo.nombre} render={<Link href={href} />}>
-                      <Receipt />
-                      <span className="truncate">{catalogo.nombre}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
