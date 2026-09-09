@@ -126,9 +126,6 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
           </Link>
           <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
         </div>
-        <p className="flex items-center gap-1.5 px-2 pb-1 text-[11px] font-medium text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-          <Global className="size-3.5" /> Webs Kelatos
-        </p>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
