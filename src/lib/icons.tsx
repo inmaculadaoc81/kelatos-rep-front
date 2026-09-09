@@ -100,6 +100,7 @@ export const ScanBarcode = withDefaults(Iconsax.ScanBarcode);
 export const SearchNormal1 = withDefaults(Iconsax.SearchNormal1);
 export const Send2 = withDefaults(Iconsax.Send2);
 export const Setting2 = withDefaults(Iconsax.Setting2);
+export const Sort = withDefaults(Iconsax.Sort);
 export const ShieldTick = withDefaults(Iconsax.ShieldTick);
 export const Shop = withDefaults(Iconsax.Shop);
 export const ShoppingCart = withDefaults(Iconsax.ShoppingCart);

@@ -25,22 +25,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Add, ArrowDown2, Global, Link2, Receipt, Tag } from "@/lib/icons";
+import { Add, ArrowDown2, Link2, Receipt, Sort, Tag } from "@/lib/icons";
 import { toast } from "sonner";
 import { SitioWeb } from "@/lib/webs-kelatos";
 import { CatalogoServicios } from "@/lib/catalogos-servicios";
 import { NavUser } from "../(app)/nav-user";
 
 const SIN_TIPO = "Otras webs";
+type Direccion = "asc" | "desc";
 
-function agruparPorTipo(sitios: SitioWeb[]): { tipo: string; sitios: SitioWeb[] }[] {
+// Agrupa por tipo/marca y ordena: primero los grupos que tienen alguna web
+// con contenido real (punto verde), luego los que están todos en rojo; en
+// ambos casos alfabético según `direccion`. Dentro de cada grupo, mismo
+// criterio: verdes arriba, rojas abajo. Petición del usuario, 2026-09-09:
+// "que se suban arriba los rojos quedan abajo".
+function agruparPorTipo(sitios: SitioWeb[], direccion: Direccion): { tipo: string; sitios: SitioWeb[] }[] {
   const grupos = new Map<string, SitioWeb[]>();
   for (const sitio of sitios) {
     const clave = sitio.tipo || SIN_TIPO;
     if (!grupos.has(clave)) grupos.set(clave, []);
     grupos.get(clave)!.push(sitio);
   }
-  return Array.from(grupos.entries()).map(([tipo, sitios]) => ({ tipo, sitios }));
+  const signo = direccion === "asc" ? 1 : -1;
+  const lista = Array.from(grupos.entries()).map(([tipo, sitios]) => ({
+    tipo,
+    sitios: [...sitios].sort((a, b) => {
+      const verdeA = a.totalProductos > 0 ? 0 : 1;
+      const verdeB = b.totalProductos > 0 ? 0 : 1;
+      if (verdeA !== verdeB) return verdeA - verdeB;
+      return signo * a.nombre.localeCompare(b.nombre);
+    }),
+  }));
+  return lista.sort((a, b) => {
+    const tieneVerdeA = a.sitios.some((s) => s.totalProductos > 0) ? 0 : 1;
+    const tieneVerdeB = b.sitios.some((s) => s.totalProductos > 0) ? 0 : 1;
+    if (tieneVerdeA !== tieneVerdeB) return tieneVerdeA - tieneVerdeB;
+    return signo * a.tipo.localeCompare(b.tipo);
+  });
 }
 
 /** Grupo colapsable por marca/tipo — mismo patrón que GrupoColapsable del
@@ -94,6 +115,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
   const router = useRouter();
   const [sitios, setSitios] = useState<SitioWeb[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [direccion, setDireccion] = useState<Direccion>("asc");
 
   // "Servicios" — catálogos de precios compartidos por marca, aparte de
   // las webs (sitios_web) de arriba. Petición del usuario, 2026-09-09.
@@ -239,12 +261,23 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
         </SidebarGroup>
 
         <SidebarGroup>
-          {/* Mismo estilo que los encabezados de grupo de Reparaciones
-              (icono en color de marca + título) — petición del usuario,
-              2026-09-09. Sin botón "+": las webs se dan de alta por
-              importación/código, no desde aquí. */}
-          <SidebarGroupLabel className="flex items-center gap-2 text-sidebar-foreground">
-            <Global className="size-4 text-sidebar-primary" /> Webs
+          {/* En vez del icono + texto "Webs", un filtro de orden con
+              flechitas: alterna A-Z/Z-A: los grupos y webs con contenido
+              (punto verde) siempre van primero, esto solo cambia el orden
+              alfabético dentro de cada bloque verde/rojo. Petición del
+              usuario, 2026-09-09: "en vez del icono y texto que dice webs,
+              que haya un filtrador con flechitas". Sin botón "+": las
+              webs se dan de alta por importación/código, no desde aquí. */}
+          <SidebarGroupLabel className="p-0 text-sidebar-foreground">
+            <button
+              type="button"
+              onClick={() => setDireccion((d) => (d === "asc" ? "desc" : "asc"))}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sidebar-foreground/70 hover:text-sidebar-primary"
+              title={direccion === "asc" ? "Orden A-Z (clic para Z-A)" : "Orden Z-A (clic para A-Z)"}
+            >
+              <Sort className="size-4" />
+              <span>{direccion === "asc" ? "A-Z" : "Z-A"}</span>
+            </button>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
@@ -253,7 +286,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
                   Sin webs todavía
                 </p>
               )}
-              {agruparPorTipo(sitios).map((grupo) => (
+              {agruparPorTipo(sitios, direccion).map((grupo) => (
                 <GrupoTipo key={grupo.tipo} tipo={grupo.tipo} sitios={grupo.sitios} pathname={pathname} />
               ))}
             </SidebarMenu>
