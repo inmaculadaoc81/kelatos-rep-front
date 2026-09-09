@@ -27,18 +27,21 @@ import { toast } from "sonner";
 import { SitioWeb } from "@/lib/webs-kelatos";
 import { NavUser } from "../(app)/nav-user";
 
-const COLORES_AVATAR = [
-  "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
-  "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
-  "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+// Mismo degradado que IconoDashboard (nav-user.tsx) para Transferencias/
+// Asistencias — petición del usuario, 2026-09-09: "dale gradient como los
+// iconos del perfil del select" en vez del fondo plano anterior.
+const GRADIENTES_AVATAR = [
+  "from-emerald-500 to-green-600",
+  "from-sky-500 to-blue-600",
+  "from-amber-500 to-orange-600",
+  "from-violet-500 to-purple-600",
+  "from-rose-500 to-pink-600",
 ];
 
-function colorPara(nombre: string): string {
+function gradientePara(nombre: string): string {
   let hash = 0;
   for (let i = 0; i < nombre.length; i++) hash = (hash * 31 + nombre.charCodeAt(i)) >>> 0;
-  return COLORES_AVATAR[hash % COLORES_AVATAR.length];
+  return GRADIENTES_AVATAR[hash % GRADIENTES_AVATAR.length];
 }
 
 /** Sidebar dinámico: una página por cada web de Kelatos (kelatos_app.sitios_web) —
@@ -131,12 +134,17 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between">
-            Webs
+          {/* Mismo estilo que los encabezados de grupo de Reparaciones
+              (icono en color de marca + título), con el "+" de añadir web
+              a la derecha — petición del usuario, 2026-09-09. */}
+          <SidebarGroupLabel className="flex items-center justify-between gap-2 text-sidebar-foreground">
+            <span className="flex items-center gap-2">
+              <Global className="size-4 text-sidebar-primary" /> Webs
+            </span>
             <button
               type="button"
               onClick={() => setNuevaAbierta(true)}
-              className="text-sidebar-foreground/60 hover:text-sidebar-foreground"
+              className="text-sidebar-foreground/60 hover:text-sidebar-primary"
               title="Añadir web"
             >
               <AddCircle className="size-4" />
@@ -155,7 +163,7 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
                 return (
                   <SidebarMenuItem key={sitio.id}>
                     <SidebarMenuButton isActive={activo} tooltip={sitio.nombre} render={<Link href={href} />}>
-                      <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${colorPara(sitio.nombre)}`}>
+                      <span className={`flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-[11px] font-bold text-white ${gradientePara(sitio.nombre)}`}>
                         {sitio.nombre.slice(0, 1).toUpperCase()}
                       </span>
                       <span>{sitio.nombre}</span>

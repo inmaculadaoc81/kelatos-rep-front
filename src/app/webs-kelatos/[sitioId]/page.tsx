@@ -187,7 +187,7 @@ export default function SitioWebPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-bold">
-            <span className="flex size-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+            <span className="flex size-8 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-green-600 text-white">
               <Global className="size-4" />
             </span>
             {sitio?.nombre || "Cargando…"}
