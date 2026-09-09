@@ -46,13 +46,13 @@ function Tarjeta({
 }) {
   return (
     <div
-      className="absolute rounded-3xl border bg-card p-3 shadow-sm"
+      className="absolute rounded-[28px] border bg-card py-3 shadow-sm"
       style={{ left: `${left}%`, top: `${top}%`, width: `${width}%` }}
     >
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <p className="mb-2 flex items-center gap-1.5 px-3 text-xs font-medium text-muted-foreground">
         <ChevronDown className="size-3.5" /> {titulo}
       </p>
-      <div className="rounded-3xl border bg-muted/20 p-3">{children}</div>
+      <div className="mx-1.5 rounded-[20px] border bg-muted/20 p-3">{children}</div>
     </div>
   );
 }
