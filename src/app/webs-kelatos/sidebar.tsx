@@ -248,24 +248,24 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
             </SidebarGroupLabel>
             <CollapsibleContent>
               <SidebarGroupContent>
-                <SidebarMenu className="gap-1.5">
-                  {!cargandoCatalogos && catalogos.length === 0 && (
-                    <p className="px-2 py-1.5 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-                      Sin catálogos todavía
-                    </p>
-                  )}
+                {!cargandoCatalogos && catalogos.length === 0 && (
+                  <p className="px-2 py-1.5 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
+                    Sin catálogos todavía
+                  </p>
+                )}
+                <SidebarMenuSub className="mx-2 gap-1.5 border-sidebar-primary/55 px-2">
                   {catalogos.map((catalogo) => {
                     const href = `/webs-kelatos/servicios/${catalogo.id}`;
                     return (
-                      <SidebarMenuItem key={catalogo.id}>
-                        <SidebarMenuButton isActive={pathname === href} tooltip={catalogo.nombre} render={<Link href={href} />}>
-                          <Receipt />
+                      <SidebarMenuSubItem key={catalogo.id}>
+                        <SidebarMenuSubButton isActive={pathname === href} render={<Link href={href} />}>
+                          <Link2 />
                           <span className="truncate">{catalogo.nombre}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
                     );
                   })}
-                </SidebarMenu>
+                </SidebarMenuSub>
               </SidebarGroupContent>
             </CollapsibleContent>
           </Collapsible>
