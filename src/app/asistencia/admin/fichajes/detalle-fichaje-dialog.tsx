@@ -208,7 +208,9 @@ export function DetalleFichajeDialog({
   async function eliminar() {
     if (!fichaje) return;
     const ok = await confirmar(
-      `¿Eliminar este fichaje de ${fichaje.empleado_nombre}? Esta acción no se puede deshacer desde aquí.`,
+      fichaje.firmado
+        ? `¿Eliminar este fichaje FIRMADO de ${fichaje.empleado_nombre}? Es un dato legal (RDL 8/2019) con firma del empleado — no se puede deshacer desde aquí.`
+        : `¿Eliminar este fichaje de ${fichaje.empleado_nombre}? Esta acción no se puede deshacer desde aquí.`,
       { titulo: "Eliminar fichaje", detalle: `${fechaHoraLarga(fichaje.check_in)} → ${fechaHoraLarga(fichaje.check_out)} · ${fichaje.tipo_fichaje}` }
     );
     if (!ok) return;
@@ -329,7 +331,7 @@ export function DetalleFichajeDialog({
             </div>
 
             {fichaje.firmado && (
-              <p className="text-xs text-muted-foreground">Este fichaje está firmado y no puede modificarse ni eliminarse.</p>
+              <p className="text-xs text-muted-foreground">Este fichaje está firmado y no puede modificarse.</p>
             )}
           </div>
 
@@ -342,15 +344,15 @@ export function DetalleFichajeDialog({
         )}
 
         <DialogFooter>
+          {!cargando && fichaje && !editando && (
+            <Button variant="destructive" size="sm" className="gap-1.5" onClick={eliminar} disabled={eliminando}>
+              <Trash className="size-3.5" /> {eliminando ? "Eliminando…" : "Eliminar"}
+            </Button>
+          )}
           {!cargando && fichaje && !fichaje.firmado && !editando && (
-            <>
-              <Button variant="destructive" size="sm" className="gap-1.5" onClick={eliminar} disabled={eliminando}>
-                <Trash className="size-3.5" /> {eliminando ? "Eliminando…" : "Eliminar"}
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={iniciarEdicion} disabled={eliminando}>
-                <Edit2 className="size-3.5" /> Editar
-              </Button>
-            </>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={iniciarEdicion} disabled={eliminando}>
+              <Edit2 className="size-3.5" /> Editar
+            </Button>
           )}
           {editando && (
             <>
