@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { TipoFichajePill } from "../../pills";
-import { Edit2 } from "@/lib/icons";
+import { Edit2, Trash } from "@/lib/icons";
+import { useConfirm } from "@/components/confirm-provider";
 
 interface FichajeDetalle {
   id: number;
@@ -121,12 +122,14 @@ export function DetalleFichajeDialog({
   onClose: () => void;
   onActualizado: () => void;
 }) {
+  const confirmar = useConfirm();
   const [fichaje, setFichaje] = useState<FichajeDetalle | null>(null);
   const [eventos, setEventos] = useState<AuditoriaEvento[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [campos, setCampos] = useState({ check_in: "", check_out: "", tipo_fichaje: "", observaciones: "" });
 
   useEffect(() => {
@@ -199,6 +202,28 @@ export function DetalleFichajeDialog({
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setGuardando(false);
+    }
+  }
+
+  async function eliminar() {
+    if (!fichaje) return;
+    const ok = await confirmar(
+      `¿Eliminar este fichaje de ${fichaje.empleado_nombre}? Esta acción no se puede deshacer desde aquí.`,
+      { titulo: "Eliminar fichaje", detalle: `${fechaHoraLarga(fichaje.check_in)} → ${fechaHoraLarga(fichaje.check_out)} · ${fichaje.tipo_fichaje}` }
+    );
+    if (!ok) return;
+    setEliminando(true);
+    try {
+      const res = await fetch(`/api/asistencia/admin/fichajes/${fichaje.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Fichaje eliminado");
+      onActualizado();
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEliminando(false);
     }
   }
 
@@ -304,7 +329,7 @@ export function DetalleFichajeDialog({
             </div>
 
             {fichaje.firmado && (
-              <p className="text-xs text-muted-foreground">Este fichaje está firmado y no puede modificarse.</p>
+              <p className="text-xs text-muted-foreground">Este fichaje está firmado y no puede modificarse ni eliminarse.</p>
             )}
           </div>
 
@@ -318,9 +343,14 @@ export function DetalleFichajeDialog({
 
         <DialogFooter>
           {!cargando && fichaje && !fichaje.firmado && !editando && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={iniciarEdicion}>
-              <Edit2 className="size-3.5" /> Editar
-            </Button>
+            <>
+              <Button variant="destructive" size="sm" className="gap-1.5" onClick={eliminar} disabled={eliminando}>
+                <Trash className="size-3.5" /> {eliminando ? "Eliminando…" : "Eliminar"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={iniciarEdicion} disabled={eliminando}>
+                <Edit2 className="size-3.5" /> Editar
+              </Button>
+            </>
           )}
           {editando && (
             <>

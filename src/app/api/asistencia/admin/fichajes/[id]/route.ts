@@ -39,3 +39,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Error desconocido" }, { status: 502 });
   }
 }
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!esManager(session?.user?.email, session?.user?.role)) {
+    return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  }
+  const { id } = await params;
+  try {
+    const data = await kelatosApiPost(`/v1/asistencia/admin/fichajes/${id}`, { usuario: session?.user?.email }, "DELETE");
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Error desconocido" }, { status: 502 });
+  }
+}
