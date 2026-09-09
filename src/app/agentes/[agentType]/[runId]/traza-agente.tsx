@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Filter, CircleX } from "lucide-react";
+import { Search, CircleX } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
@@ -10,6 +10,8 @@ import {
   ChainOfThought,
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
+  ChainOfThoughtSearchResults,
+  ChainOfThoughtSearchResult,
 } from "@/components/ai-elements/chain-of-thought";
 import {
   Reasoning,
@@ -17,48 +19,29 @@ import {
   ReasoningContent,
 } from "@/components/ai-elements/reasoning";
 
-// Traza del run con los componentes reales de shadcn/ai-elements
-// (npx shadcn add https://elements.ai-sdk.dev/api/registry/*.json) en
-// vez de una línea de tiempo y un bloque de razonamiento hechos a mano:
-// ChainOfThought para los pasos (icono + línea conectora ya la trae el
-// propio componente) y Reasoning para "en qué está pensando" (abre solo
-// mientras isStreaming, cierra solo, calcula la duración él mismo — no
-// hay que llevar ese estado a mano). reasoning.tsx se simplificó para
-// quitarle los plugins de markdown (cjk/code/math/mermaid) que trae de
-// fábrica: nuestro texto es prosa simple del modelo, nunca código ni
-// fórmulas, así que esos 4 paquetes no aportaban nada aquí.
-// Icono de la plataforma real a la que se conecta cada paso (favicon vía
-// Google, sin necesidad de tener el logo de cada servicio como asset
-// propio). No es un LucideIcon de verdad, pero ChainOfThoughtStep solo
-// hace `<Icon className="size-4" />` — cualquier componente que acepte
-// className sirve; el tipo se fuerza porque la firma exacta de
-// LucideIcon (con ref forwarding) es más estricta de lo que hace falta.
-function iconoDeDominio(dominio: string): LucideIcon {
-  function IconoDominio({ className }: { className?: string }) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={`https://www.google.com/s2/favicons?sz=64&domain=${dominio}`} alt="" className={`${className || ""} rounded-sm`} />
-    );
-  }
-  return IconoDominio as unknown as LucideIcon;
-}
-
-const ICONO_INFOISINFO = iconoDeDominio("infoisinfo.es");
-const ICONO_OPENAI = iconoDeDominio("openai.com");
-
-const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon: LucideIcon }> = {
-  discovery: { label: "Búsqueda de empresas", icon: ICONO_INFOISINFO },
-  dedupe_filter: { label: "Filtro y deduplicación", subtitulo: "Código determinista", icon: Filter },
-  cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico", icon: ICONO_OPENAI },
-  deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado", icon: ICONO_OPENAI },
-  message_writer: { label: "Redacción de mensaje", subtitulo: "Modelo avanzado", icon: ICONO_OPENAI },
+// Traza del run con los componentes reales de shadcn/ai-elements. La
+// mayoría de los pasos usan el punto por defecto de ChainOfThoughtStep
+// (mismo lenguaje visual que un paso de "pensamiento" genérico) — solo
+// "discovery" tiene icono propio y, además, sus resultados reales como
+// chips (ChainOfThoughtSearchResults), igual que un paso "Searched"
+// muestra las fuentes que encontró. Nada de favicons de plataforma en
+// los demás pasos: no se "conectan" a un sitio con marca reconocible,
+// son código propio o llamadas a OpenAI.
+const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: LucideIcon }> = {
+  discovery: { label: "Búsqueda de empresas", subtitulo: "infoisinfo.es", icon: Search },
+  dedupe_filter: { label: "Filtro y deduplicación", subtitulo: "Código determinista" },
+  cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico" },
+  deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado" },
+  message_writer: { label: "Redacción de mensaje", subtitulo: "Modelo avanzado" },
 };
+
+const MAX_CHIPS_VISIBLES = 4;
 
 interface GrupoPaso {
   step: string;
   label: string;
   subtitulo: string;
-  icon: LucideIcon;
+  icon: LucideIcon | undefined;
   cantidad: number;
   estado: "completed" | "running" | "failed";
 }
@@ -81,8 +64,17 @@ function agruparPasos(steps: AgentStep[]): GrupoPaso[] {
         ? "running"
         : "completed";
     const info = PASO_INFO[step];
-    return { step, label: info?.label || step, subtitulo: info?.subtitulo || "", icon: info?.icon || Filter, cantidad: lista.length, estado };
+    return { step, label: info?.label || step, subtitulo: info?.subtitulo || "", icon: info?.icon, cantidad: lista.length, estado };
   });
+}
+
+/** Empresas encontradas por el paso discovery más reciente, para
+    mostrarlas como chips (el output de ese paso es el array real que
+    devolvió findBusinesses). */
+function empresasEncontradas(steps: AgentStep[]): string[] {
+  const paso = [...steps].reverse().find((s) => s.step === "discovery" && s.status === "completed");
+  if (!paso || !Array.isArray(paso.output)) return [];
+  return (paso.output as Array<{ name?: string }>).map((e) => e.name).filter((n): n is string => !!n);
 }
 
 function tiempoEnSegundos(run: AgentRun): number {
@@ -103,7 +95,7 @@ function ultimoRazonamiento(steps: AgentStep[]): string | null {
   for (let i = steps.length - 1; i >= 0; i--) {
     const s = steps[i];
     if (s.step !== "deep_analysis" || s.status !== "completed" || !s.output) continue;
-    const analisis = s.output.analisis as { reason?: string } | undefined;
+    const analisis = (s.output as { analisis?: { reason?: string } })?.analisis;
     if (analisis?.reason) return analisis.reason;
   }
   return null;
@@ -115,6 +107,9 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
   const tokensTotal = run.totalTokensInput + run.totalTokensOutput;
   const razonamiento = ultimoRazonamiento(steps);
   const enCurso = run.status === "queued" || run.status === "running";
+  const empresas = empresasEncontradas(steps);
+  const empresasVisibles = empresas.slice(0, MAX_CHIPS_VISIBLES);
+  const empresasRestantes = empresas.length - empresasVisibles.length;
 
   return (
     <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl border p-4 text-sm">
@@ -143,7 +138,18 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
               className={fallo ? "text-destructive" : undefined}
               label={g.label}
               description={`${g.subtitulo}${g.cantidad > 1 ? ` · ${g.cantidad}` : ""}`}
-            />
+            >
+              {g.step === "discovery" && empresasVisibles.length > 0 && (
+                <ChainOfThoughtSearchResults>
+                  {empresasVisibles.map((nombre, i) => (
+                    <ChainOfThoughtSearchResult key={i}>{nombre}</ChainOfThoughtSearchResult>
+                  ))}
+                  {empresasRestantes > 0 && (
+                    <ChainOfThoughtSearchResult>+{empresasRestantes} más</ChainOfThoughtSearchResult>
+                  )}
+                </ChainOfThoughtSearchResults>
+              )}
+            </ChainOfThoughtStep>
           );
         })}
         {grupos.length === 0 && <p className="text-xs text-muted-foreground">Sin actividad todavía.</p>}
