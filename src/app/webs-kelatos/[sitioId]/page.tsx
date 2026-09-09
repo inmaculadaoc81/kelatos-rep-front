@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  Add, Edit2, Trash, Box, Category as CategoryIcon, Money, Global, Refresh2, Gallery,
+  Add, Edit2, Trash, Box, Category as CategoryIcon, Money, Global, Refresh2, Gallery, SearchNormal1,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,7 @@ export default function SitioWebPage() {
   const [productos, setProductos] = useState<ProductoWeb[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [busqueda, setBusqueda] = useState("");
 
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [editando, setEditando] = useState<ProductoWeb | null>(null);
@@ -96,6 +97,14 @@ export default function SitioWebPage() {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sitioId]);
+
+  const productosFiltrados = useMemo(() => {
+    if (!busqueda.trim()) return productos;
+    const q = busqueda.trim().toLowerCase();
+    return productos.filter(
+      (p) => p.nombre.toLowerCase().includes(q) || p.categoria.toLowerCase().includes(q) || p.descripcion.toLowerCase().includes(q)
+    );
+  }, [productos, busqueda]);
 
   function abrirEditarWeb() {
     setWebNombre(sitio?.nombre || "");
@@ -186,39 +195,41 @@ export default function SitioWebPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="flex items-center gap-2 text-xl font-bold">
-            <span className="flex size-8 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-green-600 text-white">
-              <Global className="size-4" />
-            </span>
-            {sitio?.nombre || "Cargando…"}
-            {!cargando && (
-              <Badge variant="secondary" className="ml-1 gap-1 font-normal">
-                <Box className="size-3" /> {productos.length} producto{productos.length !== 1 ? "s" : ""}
-              </Badge>
-            )}
-          </h2>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
-            {sitio?.url && (
-              <a href={sitio.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                {sitio.url}
-              </a>
-            )}
-            {!cargando && (
-              <span className="text-muted-foreground">
-                Endpoint: <code className="rounded bg-muted px-1 py-0.5 text-xs">/publico/productos/{sitio?.slug || "—"}</code>
-              </span>
-            )}
-            {!cargando && (
-              <button type="button" onClick={abrirEditarWeb} className="text-xs text-primary hover:underline">
-                Editar web
-              </button>
-            )}
+      <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border bg-card p-4">
+        <div className="flex items-start gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-emerald-500 to-green-600 text-white shadow-sm">
+            <Global className="size-5" />
+          </span>
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold">{sitio?.nombre || "Cargando…"}</h1>
+              {!cargando && (
+                <Badge variant="secondary" className="gap-1 font-normal">
+                  <Box className="size-3" /> {productos.length} producto{productos.length !== 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              {sitio?.url && (
+                <a href={sitio.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  {sitio.url}
+                </a>
+              )}
+              {!cargando && (
+                <span className="inline-flex items-center gap-1">
+                  Endpoint <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">/publico/productos/{sitio?.slug || "—"}</code>
+                </span>
+              )}
+              {!cargando && (
+                <button type="button" onClick={abrirEditarWeb} className="inline-flex items-center gap-1 text-primary hover:underline">
+                  <Edit2 className="size-3" /> Editar web
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
+          <Button variant="outline" size="icon" className="size-9" onClick={cargar} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
           <Button className="gap-1.5" onClick={abrirNuevo}>
@@ -246,71 +257,87 @@ export default function SitioWebPage() {
           <p className="text-sm text-muted-foreground">Pulsa «Nuevo producto» para añadir el primero de {sitio?.nombre}.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12"></TableHead>
-                <TableHead>Producto</TableHead>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="sticky right-0 z-10 bg-background text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {productos.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>
-                    {p.imagenUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imagenUrl} alt={p.nombre} className="size-9 rounded-md border object-cover" />
-                    ) : (
-                      <span className="flex size-9 items-center justify-center rounded-md border bg-muted text-muted-foreground">
-                        <Gallery className="size-4" />
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium">{p.nombre}</p>
-                    {p.descripcion && <p className="max-w-xs truncate text-xs text-muted-foreground">{p.descripcion}</p>}
-                  </TableCell>
-                  <TableCell>
-                    {p.categoria ? (
-                      <Badge variant="outline" className="gap-1"><CategoryIcon className="size-3" /> {p.categoria}</Badge>
-                    ) : "—"}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <span className="inline-flex items-center gap-1"><Money className="size-3.5 text-muted-foreground" /> {euros(p.precio)}</span>
-                  </TableCell>
-                  <TableCell>{badgeStock(p.stock)}</TableCell>
-                  <TableCell>
-                    {p.activo
-                      ? <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Activo</Badge>
-                      : <Badge variant="secondary">Inactivo</Badge>}
-                  </TableCell>
-                  <TableCell className="sticky right-0 z-10 whitespace-nowrap bg-background text-right">
-                    <Button size="icon-sm" variant="outline" className="mr-1" title="Editar" onClick={() => abrirEditar(p)}>
-                      <Edit2 className="size-3.5" />
-                    </Button>
-                    <Button size="icon-sm" variant="outline" className="text-destructive" title="Eliminar" onClick={() => eliminar(p)}>
-                      <Trash className="size-3.5" />
-                    </Button>
-                  </TableCell>
+        <div className="space-y-3">
+          <div className="relative w-72">
+            <SearchNormal1 className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar producto..." className="pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          </div>
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="w-14"></TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead>Precio</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="sticky right-0 z-10 bg-muted/40 text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {productosFiltrados.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                      Sin resultados para «{busqueda}»
+                    </TableCell>
+                  </TableRow>
+                )}
+                {productosFiltrados.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      {p.imagenUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.imagenUrl} alt={p.nombre} className="size-10 rounded-lg border object-cover" />
+                      ) : (
+                        <span className="flex size-10 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+                          <Gallery className="size-4" />
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium">{p.nombre}</p>
+                      {p.descripcion && <p className="max-w-xs truncate text-xs text-muted-foreground">{p.descripcion}</p>}
+                    </TableCell>
+                    <TableCell>
+                      {p.categoria ? (
+                        <Badge variant="outline" className="gap-1"><CategoryIcon className="size-3" /> {p.categoria}</Badge>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <span className="inline-flex items-center gap-1"><Money className="size-3.5 text-muted-foreground" /> {euros(p.precio)}</span>
+                    </TableCell>
+                    <TableCell>{badgeStock(p.stock)}</TableCell>
+                    <TableCell>
+                      {p.activo
+                        ? <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Activo</Badge>
+                        : <Badge variant="secondary">Inactivo</Badge>}
+                    </TableCell>
+                    <TableCell className="sticky right-0 z-10 whitespace-nowrap bg-background text-right">
+                      <Button size="icon-sm" variant="outline" className="mr-1" title="Editar" onClick={() => abrirEditar(p)}>
+                        <Edit2 className="size-3.5" />
+                      </Button>
+                      <Button size="icon-sm" variant="outline" className="text-destructive" title="Eliminar" onClick={() => eliminar(p)}>
+                        <Trash className="size-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 
       <Dialog open={dialogoAbierto} onOpenChange={(o) => { if (!guardando) setDialogoAbierto(o); }}>
         <DialogContent className="sm:max-w-lg">
-          <DialogTitle className="flex items-center gap-2">
-            <Box className="size-5" /> {editando ? "Editar producto" : "Nuevo producto"}
+          <DialogTitle className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Box className="size-4.5" />
+            </span>
+            {editando ? "Editar producto" : "Nuevo producto"}
           </DialogTitle>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="prodNombre">Nombre *</Label>
               <Input id="prodNombre" value={datos.nombre} onChange={(e) => setDatos((d) => ({ ...d, nombre: e.target.value }))} autoFocus />
@@ -335,11 +362,24 @@ export default function SitioWebPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="prodImagen">URL de imagen (opcional)</Label>
-              <Input id="prodImagen" placeholder="https://..." value={datos.imagenUrl} onChange={(e) => setDatos((d) => ({ ...d, imagenUrl: e.target.value }))} />
+              <div className="flex items-center gap-2">
+                {datos.imagenUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={datos.imagenUrl} alt="" className="size-10 shrink-0 rounded-lg border object-cover" />
+                ) : (
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+                    <Gallery className="size-4" />
+                  </span>
+                )}
+                <Input id="prodImagen" placeholder="https://..." value={datos.imagenUrl} onChange={(e) => setDatos((d) => ({ ...d, imagenUrl: e.target.value }))} />
+              </div>
             </div>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm">
+              <span>
+                <span className="font-medium">Visible / activo</span>
+                <p className="text-xs text-muted-foreground">Se muestra en la web pública si está activado.</p>
+              </span>
               <Switch checked={datos.activo} onCheckedChange={(v) => setDatos((d) => ({ ...d, activo: v === true }))} />
-              Visible / activo
             </label>
           </div>
           <DialogFooter>
@@ -351,8 +391,11 @@ export default function SitioWebPage() {
 
       <Dialog open={editarWebAbierto} onOpenChange={(o) => { if (!guardandoWeb) setEditarWebAbierto(o); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogTitle className="flex items-center gap-2">
-            <Global className="size-4.5" /> Editar web
+          <DialogTitle className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Global className="size-4.5" />
+            </span>
+            Editar web
           </DialogTitle>
           <div className="space-y-3">
             <div className="space-y-1.5">
