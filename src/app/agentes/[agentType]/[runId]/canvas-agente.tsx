@@ -89,29 +89,29 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
       }}
     >
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full text-border">
-        <path d="M23,44 C 30,44 29,42 36,42" fill="none" stroke="currentColor" strokeDasharray="0.6 0.8" strokeWidth="0.25" />
+        <path d="M23,36 C 30,36 29,42 36,42" fill="none" stroke="currentColor" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
         <path
           d="M64,42 C 68,42 66,18 70,18"
           fill="none"
           stroke={discoveryActivo ? "#3b82f6" : "currentColor"}
-          strokeDasharray="0.6 0.8"
-          strokeWidth="0.25"
+          strokeDasharray="0.3 0.4"
+          strokeWidth="0.18"
         />
         <path
           d="M64,42 C 68,42 66,58 70,58"
           fill="none"
           stroke={pipelineActivo ? "#3b82f6" : "currentColor"}
-          strokeDasharray="0.6 0.8"
-          strokeWidth="0.25"
+          strokeDasharray="0.3 0.4"
+          strokeWidth="0.18"
         />
-        <Punto x={23} y={44} activo={false} />
+        <Punto x={23} y={36} activo={false} />
         <Punto x={36} y={42} activo={false} />
         <Punto x={64} y={42} activo={discoveryActivo || pipelineActivo} />
         <Punto x={70} y={18} activo={discoveryActivo} />
         <Punto x={70} y={58} activo={pipelineActivo} />
       </svg>
 
-      <Tarjeta left={3} top={36} width={20} titulo="Entrada">
+      <Tarjeta left={3} top={28} width={20} titulo="Entrada">
         <div className="-mx-3 divide-y divide-border text-xs">
           <p className="px-3 py-1.5"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</p>
           <p className="px-3 py-1.5"><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</p>
