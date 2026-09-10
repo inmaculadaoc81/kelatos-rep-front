@@ -24,8 +24,6 @@ import { useConfirm } from "@/components/confirm-provider";
 // coordenadas porcentual (0-100) que el viewBox del SVG con
 // preserveAspectRatio="none", así que quedan alineados sin medir el DOM
 // en tiempo de ejecución.
-const MAX_LEADS_VISIBLES = 3;
-
 const ESTADO_MENSAJE_LABEL: Record<string, string> = { draft: "Borrador", approved: "Aprobado", rejected: "Rechazado" };
 const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
   draft: { bg: "#e5e7eb", color: "#374151" },
@@ -173,8 +171,6 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
   // "Salida": los mensajes ya aprobados por revisión humana. En este MVP
   // nada se envía todavía, así que todos cuentan como "listos para enviar".
   const aprobados = leads.filter((l) => l.messageStatus === "approved");
-  const aprobadosVisibles = aprobados.slice(0, MAX_LEADS_VISIBLES);
-  const aprobadosRestantes = aprobados.length - aprobadosVisibles.length;
 
   const sector = typeof run.input.sector === "string" ? run.input.sector : null;
   const ubicacion = typeof run.input.location === "string" ? run.input.location : null;
@@ -187,8 +183,6 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
     { label: "Calificadas", valor: progreso.companiesQualified },
   ];
 
-  const leadsVisibles = leads.slice(0, MAX_LEADS_VISIBLES);
-  const leadsRestantes = leads.length - leadsVisibles.length;
 
   return (
     <div
@@ -326,11 +320,11 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           </>
         }
       >
-        {leadsVisibles.length === 0 ? (
+        {leads.length === 0 ? (
           <p className="text-xs text-muted-foreground">Sin leads calificados todavía.</p>
         ) : (
-          <div className="-mx-3 divide-y divide-border text-xs">
-            {leadsVisibles.map((lead) => (
+          <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
+            {leads.map((lead) => (
               <div key={lead.companyId} className="flex items-center justify-between gap-2 px-3 py-1.5">
                 <button
                   type="button"
@@ -368,7 +362,6 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
                 )}
               </div>
             ))}
-            {leadsRestantes > 0 && <p className="px-3 py-1.5 text-muted-foreground">+{leadsRestantes} más</p>}
           </div>
         )}
       </Tarjeta>
@@ -377,19 +370,19 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         left={70}
         top={29}
         width={27}
-        claseExterior="border-dashed border-emerald-300 bg-emerald-50"
+        claseExterior="border-dashed border-orange-300 bg-orange-50"
         titulo={
           <>
-            <span className={`size-1.5 shrink-0 rounded-full ${aprobados.length ? "animate-pulse bg-emerald-500" : "bg-muted-foreground/30"}`} />
+            <span className={`size-1.5 shrink-0 rounded-full ${aprobados.length ? "animate-pulse bg-orange-500" : "bg-muted-foreground/30"}`} />
             <Send className="size-3.5" /> Salida
           </>
         }
       >
-        {aprobadosVisibles.length === 0 ? (
+        {aprobados.length === 0 ? (
           <p className="text-xs text-muted-foreground">Sin mensajes aprobados todavía.</p>
         ) : (
-          <div className="-mx-3 divide-y divide-border text-xs">
-            {aprobadosVisibles.map((lead) => (
+          <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
+            {aprobados.map((lead) => (
               <button
                 key={lead.companyId}
                 type="button"
@@ -400,7 +393,6 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
                 <p className="truncate text-muted-foreground">{lead.subject || "Sin asunto"}</p>
               </button>
             ))}
-            {aprobadosRestantes > 0 && <p className="px-3 py-1.5 text-muted-foreground">+{aprobadosRestantes} más</p>}
           </div>
         )}
       </Tarjeta>
