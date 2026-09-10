@@ -209,10 +209,10 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
   const limite = typeof run.input.limit === "number" ? run.input.limit : null;
 
   const embudo = [
-    { label: "Encontradas", corto: "Encontr.", valor: progreso.companiesFound },
-    { label: "Candidatas", corto: "Candid.", valor: progreso.companiesCandidate },
-    { label: "Pase rápido", corto: "P. rápido", valor: progreso.companiesCheapPass },
-    { label: "Calificadas", corto: "Calific.", valor: progreso.companiesQualified },
+    { label: "Encontradas", valor: progreso.companiesFound },
+    { label: "Candidatas", valor: progreso.companiesCandidate },
+    { label: "Pase rápido", valor: progreso.companiesCheapPass },
+    { label: "Calificadas", valor: progreso.companiesQualified },
   ];
 
 
@@ -464,40 +464,25 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         )}
       </Tarjeta>
 
-      {/* Lectura flotante del run — esquina inferior derecha, sobre el
-          canvas, sin tarjeta con título como las demás. */}
-      <div className="absolute right-3 bottom-3 z-20 w-60 rounded-xl border border-border bg-white/85 p-2.5 shadow-md backdrop-blur-sm">
-        <div className="flex items-stretch divide-x divide-border text-center">
-          <div className="flex-1 px-1">
-            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Coste</p>
-            <p className="text-sm font-semibold tabular-nums">${run.totalCostUsd.toFixed(4)}</p>
-          </div>
-          <div className="flex-1 px-1">
-            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Tokens</p>
-            <p
-              className="text-sm font-semibold tabular-nums"
-              title={`${run.totalTokensInput} entrada · ${run.totalTokensOutput} salida`}
-            >
-              {tokensCompacto(run.totalTokensInput + run.totalTokensOutput)}
-            </p>
-          </div>
-          <div className="flex-1 px-1">
-            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Duración</p>
-            <p className="text-sm font-semibold tabular-nums">{formatearDuracion(duracionRunMs(run))}</p>
-          </div>
+      {/* Lectura del run — solo coste / tokens / duración, sin contenedor.
+          (Provisional en la esquina; se moverá arriba.) */}
+      <div className="absolute right-3 bottom-3 z-20 flex items-stretch gap-4 text-center">
+        <div>
+          <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Coste</p>
+          <p className="text-sm font-semibold tabular-nums">${run.totalCostUsd.toFixed(4)}</p>
         </div>
-        <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
-          {embudo.flatMap((e, i) => [
-            i > 0 ? (
-              <span key={`sep-${i}`} className="text-[10px] text-muted-foreground/40">→</span>
-            ) : null,
-            <div key={e.label} className="text-center">
-              <p className={`text-xs font-semibold tabular-nums ${i === embudo.length - 1 ? "text-emerald-600" : "text-foreground"}`}>
-                {e.valor ?? "—"}
-              </p>
-              <p className="text-[8px] whitespace-nowrap tracking-wide text-muted-foreground uppercase">{e.corto}</p>
-            </div>,
-          ])}
+        <div>
+          <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Tokens</p>
+          <p
+            className="text-sm font-semibold tabular-nums"
+            title={`${run.totalTokensInput} entrada · ${run.totalTokensOutput} salida`}
+          >
+            {tokensCompacto(run.totalTokensInput + run.totalTokensOutput)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Duración</p>
+          <p className="text-sm font-semibold tabular-nums">{formatearDuracion(duracionRunMs(run))}</p>
         </div>
       </div>
 
