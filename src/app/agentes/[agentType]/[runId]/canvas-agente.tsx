@@ -78,7 +78,15 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
   return (
     <div
       className="relative h-full flex-1 overflow-hidden rounded-xl border"
-      style={{ backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)", backgroundSize: "20px 20px" }}
+      style={{
+        // Dos capas de puntos, la segunda desplazada media celda en x e
+        // y — así cada fila queda a la mitad respecto a la de arriba y
+        // los puntos forman triángulos, no una cuadrícula cuadrada.
+        backgroundImage:
+          "radial-gradient(var(--border) 1px, transparent 1px), radial-gradient(var(--border) 1px, transparent 1px)",
+        backgroundSize: "20px 20px, 20px 20px",
+        backgroundPosition: "0 0, 10px 10px",
+      }}
     >
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full text-border">
         <path d="M23,44 C 30,44 29,42 36,42" fill="none" stroke="currentColor" strokeDasharray="0.6 0.8" strokeWidth="0.25" />
