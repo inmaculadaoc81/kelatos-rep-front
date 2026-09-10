@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, CircleX, CircleCheck, Loader2 } from "lucide-react";
+import { Search, CircleX, CircleCheck, Loader2, DotIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
@@ -27,8 +27,30 @@ import {
 // muestra las fuentes que encontró. Nada de favicons de plataforma en
 // los demás pasos: no se "conectan" a un sitio con marca reconocible,
 // son código propio o llamadas a OpenAI.
+// Encierra cualquier icono en una cajita con borde de 1px — mismo icono
+// de siempre, pequeño y gris oscuro, casi sin padding. ChainOfThoughtStep
+// solo hace `<Icon className="size-4" />`, así que ese className cae en
+// el envoltorio (la caja) y el icono real se dibuja más chico adentro.
+// Se llama SOLO a nivel de módulo (nunca dentro del render) para no
+// crear un componente nuevo en cada pasada — el mismo problema que tenía
+// shimmer.tsx con motion.create() antes de cachearlo.
+function conCaja(IconoInterno: LucideIcon): LucideIcon {
+  function IconoEnCaja({ className }: { className?: string }) {
+    return (
+      <span className={`${className || ""} flex items-center justify-center rounded-md border border-border`}>
+        <IconoInterno className="size-2.5 text-muted-foreground" strokeWidth={2} />
+      </span>
+    );
+  }
+  return IconoEnCaja as unknown as LucideIcon;
+}
+
+const ICONO_BUSQUEDA = conCaja(Search);
+const ICONO_FALLO = conCaja(CircleX);
+const ICONO_DEFECTO = conCaja(DotIcon);
+
 const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: LucideIcon }> = {
-  discovery: { label: "Búsqueda de empresas", subtitulo: "infoisinfo.es", icon: Search },
+  discovery: { label: "Búsqueda de empresas", subtitulo: "infoisinfo.es", icon: ICONO_BUSQUEDA },
   dedupe_filter: { label: "Filtro y deduplicación", subtitulo: "Código determinista" },
   cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico" },
   deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado" },
@@ -153,7 +175,7 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
           return (
             <ChainOfThoughtStep
               key={g.step}
-              icon={fallo ? CircleX : g.icon}
+              icon={fallo ? ICONO_FALLO : g.icon || ICONO_DEFECTO}
               status={g.estado === "running" ? "active" : "complete"}
               className={fallo ? "text-destructive" : undefined}
               label={g.label}
