@@ -10,11 +10,12 @@ import { useConfirm } from "@/components/confirm-provider";
 // Canvas de nodos conectados (mismo lenguaje visual que un editor de
 // agentes tipo flow-builder: tarjetas + líneas punteadas curvas con un
 // punto en cada extremo) pero con datos reales de ESTE run, no
-// decorativo: "Entrada" es run.input de verdad, "Herramientas" se
-// enciende en azul solo mientras el paso discovery está corriendo de
-// verdad, "Embudo" es el embudo real (encontradas → candidatas → pase
-// rápido → calificadas) sacado de run.progress, y "Leads" son los leads
-// calificados de verdad, con aprobar/rechazar cableado al mismo
+// decorativo: "Entrada" es run.input de verdad, "Herramientas" lista las
+// tools reales que el agente puede usar y se enciende en azul solo
+// mientras el paso discovery está corriendo de verdad, "Embudo" es el
+// embudo real (encontradas → candidatas → pase rápido → calificadas)
+// sacado de run.progress, y "Leads" son los leads calificados de verdad,
+// con aprobar/rechazar cableado al mismo
 // PATCH /v1/agentes/runs/:id/leads/:companyId que ya usaba la tabla.
 //
 // Las tarjetas y los puntos de conexión comparten el mismo sistema de
@@ -29,6 +30,11 @@ const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
   approved: { bg: "#dcfce7", color: "#166534" },
   rejected: { bg: "#fee2e2", color: "#991b1b" },
 };
+
+/** Herramientas que el agente puede usar — hoy solo una (el scraper de
+    infoisinfo.es detrás de findBusinesses), pero la tarjeta ya está
+    pensada como lista para cuando un agente tenga varias. */
+const HERRAMIENTAS = [{ nombre: "Páginas Amarillas", detalle: "infoisinfo.es", icono: SearchNormal1, color: "bg-blue-600" }];
 
 function tokensCompacto(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -151,22 +157,21 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         backgroundPosition: "0 0, 10px 10px",
       }}
     >
-      {/* Grilla de 3 columnas: las 3 primeras tarjetas de cada columna
-          arrancan en la misma fila (ROW_TOP) — antes "Herramientas"
-          arrancaba más arriba que "Entrada"/"Agente". Las siguientes
-          tarjetas de cada columna se apilan debajo de la de arriba. Sin
-          línea Agente→Leads: al ir justo debajo no hace falta conector. */}
+      {/* Grilla de 3 columnas: Entrada/Agente/Embudo arrancan en la misma
+          fila. Debajo de Entrada va Herramientas (lo que el agente puede
+          usar) y debajo de Agente va Leads — ninguna de las dos necesita
+          conector propio por ir justo debajo de la de arriba. */}
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full text-border">
         <path d="M23,16 C 30,16 29,22 36,22" fill="none" stroke="currentColor" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
         <path
-          d="M60,22 C 65,22 64,16 70,16"
+          d="M36,27 C 30,27 29,37 23,37"
           fill="none"
           stroke={discoveryActivo ? "#3b82f6" : "currentColor"}
           strokeDasharray="0.3 0.4"
           strokeWidth="0.18"
         />
         <path
-          d="M60,22 C 65,22 64,31 70,31"
+          d="M60,22 C 65,22 64,16 70,16"
           fill="none"
           stroke={pipelineActivo ? "#3b82f6" : "currentColor"}
           strokeDasharray="0.3 0.4"
@@ -174,9 +179,10 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         />
         <Punto x={23} y={16} activo={false} />
         <Punto x={36} y={22} activo={false} />
-        <Punto x={60} y={22} activo={discoveryActivo || pipelineActivo} />
-        <Punto x={70} y={16} activo={discoveryActivo} />
-        <Punto x={70} y={31} activo={pipelineActivo} />
+        <Punto x={36} y={27} activo={discoveryActivo} />
+        <Punto x={23} y={37} activo={discoveryActivo} />
+        <Punto x={60} y={22} activo={pipelineActivo} />
+        <Punto x={70} y={16} activo={pipelineActivo} />
       </svg>
 
       <Tarjeta left={3} top={8} width={20} titulo="Entrada">
@@ -184,6 +190,32 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</div>
           <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</div>
           <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Límite: </span>{limite ?? "—"}</div>
+        </div>
+      </Tarjeta>
+
+      <Tarjeta
+        left={3}
+        top={32}
+        width={20}
+        titulo={
+          <>
+            <Global className="size-3.5" /> Herramientas
+          </>
+        }
+      >
+        <div className="-mx-3 divide-y divide-border text-xs">
+          {HERRAMIENTAS.map((h) => (
+            <div key={h.nombre} className="flex items-center gap-2 px-3 py-2">
+              <span className={`flex size-6 shrink-0 items-center justify-center rounded-md text-white ${h.color}`}>
+                <h.icono className="size-3.5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-medium">{h.nombre}</p>
+                <p className="truncate text-[10px] text-muted-foreground">{h.detalle}</p>
+              </div>
+              {discoveryActivo && <span className="ml-auto size-1.5 shrink-0 animate-pulse rounded-full bg-blue-500" />}
+            </div>
+          ))}
         </div>
       </Tarjeta>
 
@@ -208,24 +240,6 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
       <Tarjeta
         left={70}
         top={8}
-        width={27}
-        titulo={
-          <>
-            <Global className="size-3.5" /> Herramientas
-          </>
-        }
-      >
-        <div className="flex items-center gap-2 text-xs">
-          <span className={`size-1.5 shrink-0 rounded-full ${discoveryActivo ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
-          <SearchNormal1 className="size-3.5 text-muted-foreground" />
-          <span>infoisinfo.es</span>
-          {discoveryActivo && <span className="ml-auto text-[11px] text-blue-600">buscando…</span>}
-        </div>
-      </Tarjeta>
-
-      <Tarjeta
-        left={70}
-        top={21}
         width={27}
         titulo={
           <>
