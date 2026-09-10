@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Send, ChevronDown } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PillBadge } from "@/components/pill-badge";
@@ -25,7 +25,6 @@ export default function CampanaDetallePage() {
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
-  const [planAbierto, setPlanAbierto] = useState(false);
   const [aprobados, setAprobados] = useState(0);
 
   const cargar = useCallback(async () => {
@@ -109,65 +108,24 @@ export default function CampanaDetallePage() {
   if (!campaign) return <p className="text-sm text-muted-foreground">Campaña no encontrada.</p>;
 
   const col = CAMPAIGN_STATUS_COLOR[campaign.status];
-  const pct = campaign.maxCostUsd > 0 ? Math.min(100, (campaign.costUsd / campaign.maxCostUsd) * 100) : 0;
 
   return (
     <div className="flex h-[calc(100svh-6.5rem)] flex-col gap-3">
-      <Link href="/agentes/campanas" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft2 className="size-3" /> Campañas
-      </Link>
-
-      {/* Cabecera de campaña */}
-      <div className="shrink-0 rounded-xl border bg-white p-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-semibold">{campaign.name}</h1>
-              <PillBadge bg={col.bg} color={col.color} className="text-[11px]">{CAMPAIGN_STATUS_LABEL[campaign.status]}</PillBadge>
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{campaign.goalText}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {campaign.status === "draft" && (
-              <Button size="sm" onClick={lanzar} disabled={enviando}>Lanzar campaña</Button>
-            )}
-            {aprobados > 0 && (
-              <Button size="sm" variant="outline" onClick={dispatch} disabled={enviando}>
-                <Send className="size-4" /> Enviar ({aprobados})
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          <span className="tabular-nums">
-            <span className="text-muted-foreground">Coste </span>
-            ${campaign.costUsd.toFixed(4)} / ${campaign.maxCostUsd.toFixed(2)}
-          </span>
-          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="tabular-nums">
-            <span className="text-muted-foreground">Objetivo </span>
-            {campaign.plan?.targetLeads ?? campaign.targetLeads ?? "—"} leads
-          </span>
-          {campaign.plan && (
-            <button
-              type="button"
-              onClick={() => setPlanAbierto((v) => !v)}
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-            >
-              <ChevronDown className={`size-3.5 transition-transform ${planAbierto ? "" : "-rotate-90"}`} /> Plan
-            </button>
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/agentes/campanas" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft2 className="size-3" /> Campañas
+        </Link>
+        <div className="flex items-center gap-2">
+          <PillBadge bg={col.bg} color={col.color} className="text-[11px]">{CAMPAIGN_STATUS_LABEL[campaign.status]}</PillBadge>
+          {campaign.status === "draft" && (
+            <Button size="sm" onClick={lanzar} disabled={enviando}>Lanzar campaña</Button>
+          )}
+          {aprobados > 0 && (
+            <Button size="sm" variant="outline" onClick={dispatch} disabled={enviando}>
+              <Send className="size-4" /> Enviar ({aprobados})
+            </Button>
           )}
         </div>
-        {planAbierto && campaign.plan && (
-          <div className="mt-2 space-y-1 border-t pt-2 text-xs">
-            <p><span className="text-muted-foreground">ICP:</span> {campaign.plan.icp}</p>
-            <p><span className="text-muted-foreground">Propuesta:</span> {campaign.plan.valueProposition}</p>
-            <p><span className="text-muted-foreground">Señales +:</span> {campaign.plan.positiveSignals.join("; ")}</p>
-            <p><span className="text-muted-foreground">Señales −:</span> {campaign.plan.negativeSignals.join("; ")}</p>
-          </div>
-        )}
       </div>
 
       {/* Traza + canvas — misma interfaz que el detalle de run */}
