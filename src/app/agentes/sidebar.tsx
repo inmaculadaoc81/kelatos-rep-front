@@ -106,6 +106,24 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
         </div>
 
         <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuSub className="mx-0 gap-1.5 border-none px-0">
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    isActive={pathname?.startsWith("/agentes/campanas") ?? false}
+                    render={<Link href="/agentes/campanas" />}
+                  >
+                    <SearchNormal1 />
+                    <span className="truncate">Campañas</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </SidebarMenuSub>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2 text-sidebar-foreground">
             <Cpu className="size-4 text-sidebar-primary" />
             <span>Agentes</span>
