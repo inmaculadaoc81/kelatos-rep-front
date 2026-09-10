@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown, UserCheck, Check, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2 } from "lucide-react";
 import { SearchNormal1, Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import { PillBadge } from "@/components/pill-badge";
@@ -91,6 +91,26 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
   const [leads, setLeads] = useState<AgentLead[]>([]);
 
+  // Botón "ampliar" en la esquina: pone el canvas a pantalla completa de
+  // verdad (Fullscreen API). Las tarjetas usan coordenadas porcentuales,
+  // así que se reajustan solas al nuevo tamaño.
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [ampliado, setAmpliado] = useState(false);
+
+  useEffect(() => {
+    const alCambiar = () => setAmpliado(document.fullscreenElement === canvasRef.current);
+    document.addEventListener("fullscreenchange", alCambiar);
+    return () => document.removeEventListener("fullscreenchange", alCambiar);
+  }, []);
+
+  function alternarAmpliado() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      canvasRef.current?.requestFullscreen().catch(() => {});
+    }
+  }
+
   async function cargarLeads() {
     try {
       const res = await fetch(`/api/agentes/runs/${run.id}/leads`);
@@ -146,6 +166,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
   return (
     <div
+      ref={canvasRef}
       className="relative h-full flex-1 overflow-hidden rounded-xl border bg-white"
       style={{
         // Dos capas de puntos, la segunda desplazada media celda en x e
@@ -157,6 +178,15 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         backgroundPosition: "0 0, 10px 10px",
       }}
     >
+      <button
+        type="button"
+        onClick={alternarAmpliado}
+        title={ampliado ? "Restaurar" : "Ampliar"}
+        className="absolute top-3 right-3 z-20 flex size-7 items-center justify-center rounded-[4px] border border-border bg-white text-muted-foreground shadow-sm hover:bg-muted"
+      >
+        {ampliado ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+      </button>
+
       {/* Grilla de 3 columnas: Entrada/Agente/Embudo arrancan en la misma
           fila. Debajo de Entrada va Herramientas (lo que el agente puede
           usar) y debajo de Agente va Leads — ninguna de las dos necesita
