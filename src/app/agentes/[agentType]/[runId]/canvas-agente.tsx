@@ -22,7 +22,7 @@ function Punto({ x, y, activo }: { x: number; y: number; activo: boolean }) {
     <circle
       cx={x}
       cy={y}
-      r={1.1}
+      r={0.6}
       className={activo ? "fill-blue-500" : "fill-muted-foreground/40"}
     />
   );
@@ -81,20 +81,20 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
       style={{ backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)", backgroundSize: "20px 20px" }}
     >
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full text-border">
-        <path d="M23,44 C 30,44 29,42 36,42" fill="none" stroke="currentColor" strokeDasharray="2 2" strokeWidth="0.4" />
+        <path d="M23,44 C 30,44 29,42 36,42" fill="none" stroke="currentColor" strokeDasharray="0.6 0.8" strokeWidth="0.25" />
         <path
           d="M64,42 C 68,42 66,18 70,18"
           fill="none"
           stroke={discoveryActivo ? "#3b82f6" : "currentColor"}
-          strokeDasharray="2 2"
-          strokeWidth="0.4"
+          strokeDasharray="0.6 0.8"
+          strokeWidth="0.25"
         />
         <path
           d="M64,42 C 68,42 66,58 70,58"
           fill="none"
           stroke={pipelineActivo ? "#3b82f6" : "currentColor"}
-          strokeDasharray="2 2"
-          strokeWidth="0.4"
+          strokeDasharray="0.6 0.8"
+          strokeWidth="0.25"
         />
         <Punto x={23} y={44} activo={false} />
         <Punto x={36} y={42} activo={false} />
