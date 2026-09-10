@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
 import { ArrowLeft2 } from "@/lib/icons";
-import { AgentRun, AgentStep, mapearAgentRun, mapearAgentStep } from "@/lib/agentes";
+import { AgentRun, AgentStep } from "@/lib/agentes";
 import { Campaign, CAMPAIGN_STATUS_LABEL, CAMPAIGN_STATUS_COLOR } from "@/lib/campanas";
 import { TrazaAgente } from "../../[agentType]/[runId]/traza-agente";
 import { CanvasAgente } from "../../[agentType]/[runId]/canvas-agente";
@@ -40,8 +40,9 @@ export default function CampanaDetallePage() {
           fetch(`/api/agentes/runs/${c.runId}/leads`).then((r) => r.json()),
         ]);
         if (rr.ok) {
-          setRun(mapearAgentRun(rr.run));
-          setSteps((rr.steps as Parameters<typeof mapearAgentStep>[0][]).map(mapearAgentStep));
+          // el proxy /api/agentes/runs/:id ya devuelve run/steps mapeados
+          setRun(rr.run as AgentRun);
+          setSteps(rr.steps as AgentStep[]);
         }
         if (ll.ok) {
           setAprobados((ll.leads as { message_status?: string }[]).filter((x) => x.message_status === "approved").length);
