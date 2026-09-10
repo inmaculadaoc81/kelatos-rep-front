@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send } from "lucide-react";
+import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles } from "lucide-react";
 import { SearchNormal1, Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import { PillBadge } from "@/components/pill-badge";
@@ -14,11 +14,14 @@ import { useConfirm } from "@/components/confirm-provider";
 // punto en cada extremo) pero con datos reales de ESTE run, no
 // decorativo: "Entrada" es run.input de verdad, "Herramientas" lista las
 // tools reales que el agente puede usar y se enciende en azul solo
-// mientras el paso discovery está corriendo de verdad, "Embudo" es el
-// embudo real (encontradas → candidatas → pase rápido → calificadas)
-// sacado de run.progress, y "Leads" son los leads calificados de verdad,
-// con aprobar/rechazar cableado al mismo
+// mientras el paso discovery está corriendo de verdad, "Modelos" son los
+// dos niveles del embudo de coste, "Embudo" es el embudo real
+// (encontradas → candidatas → pase rápido → calificadas) sacado de
+// run.progress, y "Leads" son los leads calificados de verdad, con
+// aprobar/rechazar cableado al mismo
 // PATCH /v1/agentes/runs/:id/leads/:companyId que ya usaba la tabla.
+// Si un paso falla, la tarjeta afectada se pinta en rojo (discovery →
+// Herramientas, un paso de IA → Modelos + Embudo, cualquier fallo → Agente).
 //
 // Las tarjetas y los puntos de conexión comparten el mismo sistema de
 // coordenadas porcentual (0-100) que el viewBox del SVG con
@@ -35,6 +38,16 @@ const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
     infoisinfo.es detrás de findBusinesses), pero la tarjeta ya está
     pensada como lista para cuando un agente tenga varias. */
 const HERRAMIENTAS = [{ nombre: "Páginas Amarillas", detalle: "infoisinfo.es", icono: SearchNormal1, color: "bg-blue-600" }];
+
+/** Los dos niveles de modelo del embudo de coste. Son los valores por
+    defecto de AGENTES_OPENAI_MODEL_CHEAP/DEEP en el backend (mismo criterio
+    que HERRAMIENTAS: se muestran fijos, no hay endpoint de config todavía). */
+const MODELOS = [
+  { nombre: "gpt-4o-mini", rol: "Filtro barato · todas las candidatas", dot: "bg-teal-500" },
+  { nombre: "gpt-4o", rol: "Análisis profundo y redacción", dot: "bg-violet-500" },
+];
+
+const ERROR_CLASE = "border-destructive bg-destructive/5";
 
 function tokensCompacto(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -165,6 +178,9 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
   const discoveryActivo = steps.some((s) => s.step === "discovery" && s.status === "running");
   const pipelineActivo = steps.some((s) => ["cheap_pass", "deep_analysis", "message_writer"].includes(s.step) && s.status === "running");
+  const discoveryFallo = steps.some((s) => s.step === "discovery" && s.status === "failed");
+  const pipelineFallo = steps.some((s) => ["cheap_pass", "deep_analysis", "message_writer"].includes(s.step) && s.status === "failed");
+  const runFallo = run.status === "failed";
   const hayLeadsPendientes = leads.some((l) => l.messageStatus === "draft");
   const leadAbierto = leads.find((l) => l.companyId === leadAbiertoId) || null;
 
@@ -247,6 +263,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         left={3}
         top={32}
         width={20}
+        claseExterior={discoveryFallo ? ERROR_CLASE : undefined}
         titulo={
           <>
             <Global className="size-3.5" /> Herramientas
@@ -263,13 +280,46 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
                 <p className="truncate font-medium">{h.nombre}</p>
                 <p className="truncate text-[10px] text-muted-foreground">{h.detalle}</p>
               </div>
-              {discoveryActivo && <span className="ml-auto size-1.5 shrink-0 animate-pulse rounded-full bg-blue-500" />}
+              {discoveryFallo ? (
+                <span className="ml-auto text-[10px] text-destructive">error</span>
+              ) : (
+                discoveryActivo && <span className="ml-auto size-1.5 shrink-0 animate-pulse rounded-full bg-blue-500" />
+              )}
             </div>
           ))}
         </div>
       </Tarjeta>
 
-      <Tarjeta left={36} top={8} width={24} titulo="Agente">
+      <Tarjeta
+        left={3}
+        top={49}
+        width={20}
+        claseExterior={pipelineFallo ? ERROR_CLASE : undefined}
+        titulo={
+          <>
+            <Sparkles className="size-3.5" /> Modelos
+          </>
+        }
+      >
+        <div className="-mx-3 divide-y divide-border text-xs">
+          {MODELOS.map((m) => (
+            <div key={m.nombre} className="flex items-center gap-2 px-3 py-2">
+              <span className={`size-2 shrink-0 rounded-full ${m.dot}`} />
+              <div className="min-w-0">
+                <p className="truncate font-medium">{m.nombre}</p>
+                <p className="truncate text-[10px] text-muted-foreground">{m.rol}</p>
+              </div>
+              {pipelineFallo ? (
+                <span className="ml-auto text-[10px] text-destructive">error</span>
+              ) : (
+                pipelineActivo && <span className="ml-auto size-1.5 shrink-0 animate-pulse rounded-full bg-blue-500" />
+              )}
+            </div>
+          ))}
+        </div>
+      </Tarjeta>
+
+      <Tarjeta left={36} top={8} width={24} claseExterior={runFallo ? ERROR_CLASE : undefined} titulo="Agente">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-600 text-white">
             <Cpu className="size-3.5" />
@@ -291,9 +341,10 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         left={70}
         top={8}
         width={27}
+        claseExterior={pipelineFallo ? ERROR_CLASE : undefined}
         titulo={
           <>
-            <span className={`size-1.5 shrink-0 rounded-full ${pipelineActivo ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
+            <span className={`size-1.5 shrink-0 rounded-full ${pipelineFallo ? "bg-destructive" : pipelineActivo ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
             Embudo
           </>
         }
