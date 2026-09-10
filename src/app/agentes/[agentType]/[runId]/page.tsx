@@ -75,7 +75,7 @@ export default function AgenteRunDetallePage() {
 
   return (
     <div className="flex h-[calc(100svh-6.5rem)] gap-4 overflow-hidden">
-      <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} />
+      <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} agentType={params.agentType} onActualizado={cargar} />
       <CanvasAgente run={run} steps={steps} tipoLabel={tipoLabel} />
     </div>
   );

@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Search, CircleX, CircleCheck, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Search, CircleX, Square, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
+import { useConfirm } from "@/components/confirm-provider";
 import { AgentRun, AgentStep, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import {
   ChainOfThought,
@@ -38,7 +42,7 @@ function conCaja(IconoInterno: LucideIcon): LucideIcon {
   function IconoEnCaja({ className }: { className?: string }) {
     return (
       <span className={`${className || ""} flex items-center justify-center rounded-sm border border-border`}>
-        <IconoInterno className="size-2.5 text-muted-foreground" strokeWidth={2} />
+        <IconoInterno className="size-3 text-muted-foreground" strokeWidth={2} />
       </span>
     );
   }
@@ -132,7 +136,23 @@ function ultimoRazonamiento(steps: AgentStep[]): string | null {
   return null;
 }
 
-export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: AgentStep[]; tipoLabel: string }) {
+export function TrazaAgente({
+  run,
+  steps,
+  tipoLabel,
+  agentType,
+  onActualizado,
+}: {
+  run: AgentRun;
+  steps: AgentStep[];
+  tipoLabel: string;
+  agentType: string;
+  onActualizado: () => void;
+}) {
+  const router = useRouter();
+  const confirmar = useConfirm();
+  const [enviando, setEnviando] = useState(false);
+
   const grupos = agruparPasos(steps);
   const tokensTotal = run.totalTokensInput + run.totalTokensOutput;
   const razonamiento = ultimoRazonamiento(steps);
@@ -141,6 +161,42 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
   const empresasVisibles = empresas.slice(0, MAX_CHIPS_VISIBLES);
   const empresasRestantes = empresas.length - empresasVisibles.length;
 
+  async function cancelar() {
+    const ok = await confirmar("¿Detener este run? Los pasos que ya se completaron quedan como están, pero no se harán más llamadas al modelo.", { titulo: "Detener run" });
+    if (!ok) return;
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/agentes/runs/${run.id}/cancel`, { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Run detenido");
+      onActualizado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function reintentar() {
+    setEnviando(true);
+    try {
+      const res = await fetch("/api/agentes/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentType, goal: run.goalText, input: run.input }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Nuevo run creado");
+      router.push(`/agentes/${agentType}/${data.runId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
     <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl bg-white p-4 text-sm">
       <Link href="/agentes" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -148,21 +204,33 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
       </Link>
 
       <div>
-        <div className="flex items-center justify-between gap-2 rounded-2xl bg-muted/50 px-3 py-2">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2">
           <p className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="font-medium">Run</span>
             <PillBadge bg="#e8edfc" color="#2451c4" className="text-[11px] font-normal">{tipoLabel}</PillBadge>
             <span className="text-muted-foreground">{ESTADO_RUN_LABEL[run.status]} · {tiempoRelativo(run.createdAt)}</span>
           </p>
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background">
-            {enCurso ? (
-              <Loader2 className="size-3.5 animate-spin text-blue-600" />
-            ) : run.status === "failed" || run.status === "cancelled" ? (
-              <CircleX className="size-3.5 text-destructive" />
-            ) : (
-              <CircleCheck className="size-3.5 text-emerald-600" />
-            )}
-          </span>
+          {enCurso ? (
+            <button
+              type="button"
+              onClick={cancelar}
+              disabled={enviando}
+              title="Detener run"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+            >
+              <Square className="size-2.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={reintentar}
+              disabled={enviando}
+              title="Relanzar con el mismo objetivo"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
+            >
+              <RotateCcw className="size-3.5 text-muted-foreground" />
+            </button>
+          )}
         </div>
         <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
