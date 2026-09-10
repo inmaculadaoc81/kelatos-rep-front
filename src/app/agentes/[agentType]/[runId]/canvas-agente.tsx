@@ -46,13 +46,13 @@ function Tarjeta({
 }) {
   return (
     <div
-      className="absolute rounded-[22px] border bg-card pt-3 pb-2 shadow-sm"
+      className="absolute rounded-[22px] border bg-muted pt-3 pb-1 shadow-sm"
       style={{ left: `${left}%`, top: `${top}%`, width: `${width}%` }}
     >
       <p className="mb-2 flex items-center gap-1.5 px-3 text-xs font-medium text-muted-foreground">
         <ChevronDown className="size-3.5" /> {titulo}
       </p>
-      <div className="mx-1 rounded-[16px] border bg-muted/20 p-3">{children}</div>
+      <div className="mx-1 rounded-[16px] border bg-card p-3">{children}</div>
     </div>
   );
 }
@@ -112,10 +112,10 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
       </svg>
 
       <Tarjeta left={3} top={36} width={20} titulo="Entrada">
-        <div className="space-y-1.5 text-xs">
-          <p><span className="text-muted-foreground">Sector: </span>{sector || "—"}</p>
-          <p><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</p>
-          <p><span className="text-muted-foreground">Límite: </span>{limite ?? "—"}</p>
+        <div className="-mx-3 divide-y divide-border text-xs">
+          <p className="px-3 py-1.5"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</p>
+          <p className="px-3 py-1.5"><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</p>
+          <p className="px-3 py-1.5"><span className="text-muted-foreground">Límite: </span>{limite ?? "—"}</p>
         </div>
       </Tarjeta>
 
