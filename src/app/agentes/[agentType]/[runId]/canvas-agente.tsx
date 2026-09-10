@@ -143,39 +143,35 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         backgroundPosition: "0 0, 10px 10px",
       }}
     >
+      {/* Grilla de 3 columnas: las 3 primeras tarjetas de cada columna
+          arrancan en la misma fila (ROW_TOP) — antes "Herramientas"
+          arrancaba más arriba que "Entrada"/"Agente". Las siguientes
+          tarjetas de cada columna se apilan debajo de la de arriba. Sin
+          línea Agente→Leads: al ir justo debajo no hace falta conector. */}
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full text-border">
-        <path d="M23,36 C 30,36 29,42 36,42" fill="none" stroke="currentColor" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
+        <path d="M23,16 C 30,16 29,22 36,22" fill="none" stroke="currentColor" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
         <path
-          d="M60,42 C 65,42 64,18 70,18"
+          d="M60,22 C 65,22 64,16 70,16"
           fill="none"
           stroke={discoveryActivo ? "#3b82f6" : "currentColor"}
           strokeDasharray="0.3 0.4"
           strokeWidth="0.18"
         />
         <path
-          d="M60,42 C 65,42 64,58 70,58"
+          d="M60,22 C 65,22 64,36 70,36"
           fill="none"
           stroke={pipelineActivo ? "#3b82f6" : "currentColor"}
           strokeDasharray="0.3 0.4"
           strokeWidth="0.18"
         />
-        <path
-          d="M48,52 C 48,54 48,54 48,56"
-          fill="none"
-          stroke={hayLeadsPendientes ? "#3b82f6" : "currentColor"}
-          strokeDasharray="0.3 0.4"
-          strokeWidth="0.18"
-        />
-        <Punto x={23} y={36} activo={false} />
-        <Punto x={36} y={42} activo={false} />
-        <Punto x={60} y={42} activo={discoveryActivo || pipelineActivo} />
-        <Punto x={70} y={18} activo={discoveryActivo} />
-        <Punto x={70} y={58} activo={pipelineActivo} />
-        <Punto x={48} y={52} activo={hayLeadsPendientes} />
-        <Punto x={48} y={56} activo={hayLeadsPendientes} />
+        <Punto x={23} y={16} activo={false} />
+        <Punto x={36} y={22} activo={false} />
+        <Punto x={60} y={22} activo={discoveryActivo || pipelineActivo} />
+        <Punto x={70} y={16} activo={discoveryActivo} />
+        <Punto x={70} y={36} activo={pipelineActivo} />
       </svg>
 
-      <Tarjeta left={3} top={28} width={20} titulo="Entrada">
+      <Tarjeta left={3} top={8} width={20} titulo="Entrada">
         <div className="-mx-3 divide-y divide-border text-xs">
           <p className="px-3 py-1.5"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</p>
           <p className="px-3 py-1.5"><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</p>
@@ -183,7 +179,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         </div>
       </Tarjeta>
 
-      <Tarjeta left={36} top={28} width={24} titulo="Agente">
+      <Tarjeta left={36} top={8} width={24} titulo="Agente">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-600 text-white">
             <Cpu className="size-3.5" />
@@ -196,7 +192,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={70}
-        top={10}
+        top={8}
         width={27}
         titulo={
           <>
@@ -214,7 +210,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={70}
-        top={48}
+        top={26}
         width={27}
         titulo={
           <>
@@ -235,7 +231,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={36}
-        top={56}
+        top={30}
         width={24}
         titulo={
           <>
