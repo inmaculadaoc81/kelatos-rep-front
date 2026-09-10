@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2 } from "lucide-react";
+import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send } from "lucide-react";
 import { SearchNormal1, Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import { PillBadge } from "@/components/pill-badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/confirm-provider";
 
 // Canvas de nodos conectados (mismo lenguaje visual que un editor de
@@ -90,6 +92,10 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
   const progreso = run.progress as Record<string, number | undefined>;
 
   const [leads, setLeads] = useState<AgentLead[]>([]);
+  // Lead cuyo detalle está abierto en el modal (click en la fila del card
+  // "Leads"). El objeto se refresca desde `leads` en cada render mientras
+  // el modal está abierto, así el estado del mensaje no se queda viejo.
+  const [leadAbiertoId, setLeadAbiertoId] = useState<number | null>(null);
 
   // Botón "ampliar" en la esquina: pone el canvas a pantalla completa de
   // verdad (Fullscreen API). Las tarjetas usan coordenadas porcentuales,
@@ -146,9 +152,29 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
     }
   }
 
+  async function revisarYCerrar(lead: AgentLead, status: "approved" | "rejected") {
+    await revisar(lead, status);
+    setLeadAbiertoId(null);
+  }
+
+  function abrirLead(lead: AgentLead) {
+    // Si el canvas está a pantalla completa, el modal (portal en <body>)
+    // quedaría detrás del elemento fullscreen — se sale de fullscreen para
+    // que se vea centrado en la página.
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    setLeadAbiertoId(lead.companyId);
+  }
+
   const discoveryActivo = steps.some((s) => s.step === "discovery" && s.status === "running");
   const pipelineActivo = steps.some((s) => ["cheap_pass", "deep_analysis", "message_writer"].includes(s.step) && s.status === "running");
   const hayLeadsPendientes = leads.some((l) => l.messageStatus === "draft");
+  const leadAbierto = leads.find((l) => l.companyId === leadAbiertoId) || null;
+
+  // "Salida": los mensajes ya aprobados por revisión humana. En este MVP
+  // nada se envía todavía, así que todos cuentan como "listos para enviar".
+  const aprobados = leads.filter((l) => l.messageStatus === "approved");
+  const aprobadosVisibles = aprobados.slice(0, MAX_LEADS_VISIBLES);
+  const aprobadosRestantes = aprobados.length - aprobadosVisibles.length;
 
   const sector = typeof run.input.sector === "string" ? run.input.sector : null;
   const ubicacion = typeof run.input.location === "string" ? run.input.location : null;
@@ -306,16 +332,20 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           <div className="-mx-3 divide-y divide-border text-xs">
             {leadsVisibles.map((lead) => (
               <div key={lead.companyId} className="flex items-center justify-between gap-2 px-3 py-1.5">
-                <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => abrirLead(lead)}
+                  className="-my-1 min-w-0 flex-1 rounded-sm py-1 text-left hover:bg-black/3"
+                >
                   <p className="truncate font-medium">{lead.name}</p>
                   <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
-                </div>
+                </button>
                 {lead.messageStatus === "draft" ? (
                   <div className="flex shrink-0 gap-1">
                     <button
                       type="button"
                       title="Aprobar"
-                      onClick={() => revisar(lead, "approved")}
+                      onClick={(e) => { e.stopPropagation(); revisar(lead, "approved"); }}
                       className="flex size-5 items-center justify-center rounded-sm border border-border text-emerald-600 hover:bg-emerald-50"
                     >
                       <Check className="size-3" />
@@ -323,7 +353,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
                     <button
                       type="button"
                       title="Rechazar"
-                      onClick={() => revisar(lead, "rejected")}
+                      onClick={(e) => { e.stopPropagation(); revisar(lead, "rejected"); }}
                       className="flex size-5 items-center justify-center rounded-sm border border-border text-destructive hover:bg-destructive/10"
                     >
                       <X className="size-3" />
@@ -342,6 +372,105 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           </div>
         )}
       </Tarjeta>
+
+      <Tarjeta
+        left={70}
+        top={24}
+        width={27}
+        claseExterior="border-dashed border-emerald-300 bg-emerald-50"
+        titulo={
+          <>
+            <span className={`size-1.5 shrink-0 rounded-full ${aprobados.length ? "animate-pulse bg-emerald-500" : "bg-muted-foreground/30"}`} />
+            <Send className="size-3.5" /> Salida
+          </>
+        }
+      >
+        {aprobadosVisibles.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Sin mensajes aprobados todavía.</p>
+        ) : (
+          <div className="-mx-3 divide-y divide-border text-xs">
+            {aprobadosVisibles.map((lead) => (
+              <button
+                key={lead.companyId}
+                type="button"
+                onClick={() => abrirLead(lead)}
+                className="block w-full px-3 py-1.5 text-left hover:bg-black/3"
+              >
+                <p className="truncate font-medium">{lead.name}</p>
+                <p className="truncate text-muted-foreground">{lead.subject || "Sin asunto"}</p>
+              </button>
+            ))}
+            {aprobadosRestantes > 0 && <p className="px-3 py-1.5 text-muted-foreground">+{aprobadosRestantes} más</p>}
+          </div>
+        )}
+      </Tarjeta>
+
+      <Dialog open={leadAbierto !== null} onOpenChange={(o) => !o && setLeadAbiertoId(null)}>
+        {leadAbierto && (
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{leadAbierto.name}</DialogTitle>
+              <p className="text-xs text-muted-foreground">
+                {[leadAbierto.sector, leadAbierto.location].filter(Boolean).join(" · ") || "Sin datos de sector/ubicación"}
+              </p>
+            </DialogHeader>
+
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto text-xs">
+              <div className="flex flex-wrap gap-3">
+                <span><span className="text-muted-foreground">Score:</span> <b>{leadAbierto.score ?? "—"}</b></span>
+                {leadAbierto.confidence !== null && (
+                  <span><span className="text-muted-foreground">Confianza:</span> <b>{Math.round(leadAbierto.confidence * 100)}%</b></span>
+                )}
+                {leadAbierto.messageStatus && (
+                  <PillBadge bg={ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus].color} className="text-[10px]">
+                    {ESTADO_MENSAJE_LABEL[leadAbierto.messageStatus]}
+                  </PillBadge>
+                )}
+              </div>
+
+              {leadAbierto.reason && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Motivo</p>
+                  <p>{leadAbierto.reason}</p>
+                </div>
+              )}
+
+              {leadAbierto.painPoints.length > 0 && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Puntos de dolor</p>
+                  <ul className="list-disc pl-4">
+                    {leadAbierto.painPoints.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {leadAbierto.recommendedService && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Servicio recomendado</p>
+                  <p>{leadAbierto.recommendedService}</p>
+                </div>
+              )}
+
+              <div className="rounded-md border bg-muted/40 p-3">
+                <p className="font-medium text-muted-foreground">Mensaje en borrador</p>
+                {leadAbierto.subject && <p className="mt-1 font-medium">{leadAbierto.subject}</p>}
+                <p className="mt-1 whitespace-pre-wrap">{leadAbierto.message || "Sin mensaje redactado."}</p>
+              </div>
+            </div>
+
+            {leadAbierto.messageStatus === "draft" && (
+              <DialogFooter>
+                <Button variant="outline" onClick={() => revisarYCerrar(leadAbierto, "rejected")}>
+                  <X className="size-4" /> Rechazar
+                </Button>
+                <Button onClick={() => revisarYCerrar(leadAbierto, "approved")}>
+                  <Check className="size-4" /> Aprobar
+                </Button>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }
