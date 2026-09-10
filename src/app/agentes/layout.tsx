@@ -18,7 +18,7 @@ export default async function AgentesLayout({ children }: { children: React.Reac
       <AgentesSidebar session={session} />
       <SidebarInset>
         <AgentesHeader />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 bg-white p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
