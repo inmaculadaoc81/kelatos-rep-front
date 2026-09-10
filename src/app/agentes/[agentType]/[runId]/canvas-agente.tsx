@@ -166,7 +166,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           strokeWidth="0.18"
         />
         <path
-          d="M60,22 C 65,22 64,36 70,36"
+          d="M60,22 C 65,22 64,31 70,31"
           fill="none"
           stroke={pipelineActivo ? "#3b82f6" : "currentColor"}
           strokeDasharray="0.3 0.4"
@@ -176,7 +176,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
         <Punto x={36} y={22} activo={false} />
         <Punto x={60} y={22} activo={discoveryActivo || pipelineActivo} />
         <Punto x={70} y={16} activo={discoveryActivo} />
-        <Punto x={70} y={36} activo={pipelineActivo} />
+        <Punto x={70} y={31} activo={pipelineActivo} />
       </svg>
 
       <Tarjeta left={3} top={8} width={20} titulo="Entrada">
@@ -225,7 +225,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={70}
-        top={26}
+        top={21}
         width={27}
         titulo={
           <>
@@ -246,7 +246,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={36}
-        top={44}
+        top={38}
         width={24}
         claseExterior="border-dashed border-sky-300 bg-sky-50"
         titulo={
