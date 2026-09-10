@@ -37,7 +37,7 @@ import {
 function conCaja(IconoInterno: LucideIcon): LucideIcon {
   function IconoEnCaja({ className }: { className?: string }) {
     return (
-      <span className={`${className || ""} flex items-center justify-center rounded-md border border-border`}>
+      <span className={`${className || ""} flex items-center justify-center rounded-sm border border-border`}>
         <IconoInterno className="size-2.5 text-muted-foreground" strokeWidth={2} />
       </span>
     );
