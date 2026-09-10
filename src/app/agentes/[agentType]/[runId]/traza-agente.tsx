@@ -52,11 +52,22 @@ const ICONO_BUSQUEDA = conCaja(Search);
 const ICONO_FALLO = conCaja(CircleX);
 
 const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: LucideIcon }> = {
+  // agente lead_research (clásico)
   discovery: { label: "Búsqueda de empresas", subtitulo: "infoisinfo.es", icon: ICONO_BUSQUEDA },
   dedupe_filter: { label: "Filtro y deduplicación", subtitulo: "Código determinista" },
   cheap_pass: { label: "Puntuación rápida", subtitulo: "Modelo económico" },
   deep_analysis: { label: "Análisis profundo", subtitulo: "Modelo avanzado" },
   message_writer: { label: "Redacción de mensaje", subtitulo: "Modelo avanzado" },
+  // pipeline de campaña (equipo de marketing)
+  campaign_planner: { label: "Plan de campaña", subtitulo: "ICP y señales" },
+  enrich: { label: "Enriquecimiento", subtitulo: "Web + scraping" },
+  heuristic_rank: { label: "Ranking heurístico", subtitulo: "Código determinista" },
+  batch_classify: { label: "Clasificación en lote", subtitulo: "Modelo económico" },
+  web_research: { label: "Web Research", subtitulo: "Agente · modelo medio" },
+  qualification: { label: "Calificación", subtitulo: "Fit comercial" },
+  offer_strategy: { label: "Estrategia de oferta", subtitulo: "Qué servicio ofrecer" },
+  outreach: { label: "Borradores de contacto", subtitulo: "Modelo medio" },
+  marketing_manager: { label: "Marketing Manager", subtitulo: "Supervisión" },
 };
 
 const MAX_CHIPS_VISIBLES = 4;
