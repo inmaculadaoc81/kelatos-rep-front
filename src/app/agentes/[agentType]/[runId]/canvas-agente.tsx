@@ -53,6 +53,22 @@ function tokensCompacto(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
+// Módulo (no en el render) para no llamar a Date.now() de forma impura.
+function duracionRunMs(run: AgentRun): number {
+  if (!run.startedAt) return 0;
+  const fin = run.finishedAt ? new Date(run.finishedAt).getTime() : Date.now();
+  return Math.max(0, fin - new Date(run.startedAt).getTime());
+}
+
+function formatearDuracion(ms: number): string {
+  if (!ms || ms <= 0) return "—";
+  if (ms < 1000) return `${ms} ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)} s`;
+  const m = Math.floor(s / 60);
+  return `${m}m ${Math.round(s % 60)}s`;
+}
+
 function Punto({ x, y, activo }: { x: number; y: number; activo: boolean }) {
   return (
     <circle
@@ -193,10 +209,10 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
   const limite = typeof run.input.limit === "number" ? run.input.limit : null;
 
   const embudo = [
-    { label: "Encontradas", valor: progreso.companiesFound },
-    { label: "Candidatas", valor: progreso.companiesCandidate },
-    { label: "Pase rápido", valor: progreso.companiesCheapPass },
-    { label: "Calificadas", valor: progreso.companiesQualified },
+    { label: "Encontradas", corto: "Encontr.", valor: progreso.companiesFound },
+    { label: "Candidatas", corto: "Candid.", valor: progreso.companiesCandidate },
+    { label: "Pase rápido", corto: "P. rápido", valor: progreso.companiesCheapPass },
+    { label: "Calificadas", corto: "Calific.", valor: progreso.companiesQualified },
   ];
 
 
@@ -447,6 +463,43 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           </div>
         )}
       </Tarjeta>
+
+      {/* Lectura flotante del run — esquina inferior derecha, sobre el
+          canvas, sin tarjeta con título como las demás. */}
+      <div className="absolute right-3 bottom-3 z-20 w-60 rounded-xl border border-border bg-white/85 p-2.5 shadow-md backdrop-blur-sm">
+        <div className="flex items-stretch divide-x divide-border text-center">
+          <div className="flex-1 px-1">
+            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Coste</p>
+            <p className="text-sm font-semibold tabular-nums">${run.totalCostUsd.toFixed(4)}</p>
+          </div>
+          <div className="flex-1 px-1">
+            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Tokens</p>
+            <p
+              className="text-sm font-semibold tabular-nums"
+              title={`${run.totalTokensInput} entrada · ${run.totalTokensOutput} salida`}
+            >
+              {tokensCompacto(run.totalTokensInput + run.totalTokensOutput)}
+            </p>
+          </div>
+          <div className="flex-1 px-1">
+            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Duración</p>
+            <p className="text-sm font-semibold tabular-nums">{formatearDuracion(duracionRunMs(run))}</p>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
+          {embudo.flatMap((e, i) => [
+            i > 0 ? (
+              <span key={`sep-${i}`} className="text-[10px] text-muted-foreground/40">→</span>
+            ) : null,
+            <div key={e.label} className="text-center">
+              <p className={`text-xs font-semibold tabular-nums ${i === embudo.length - 1 ? "text-emerald-600" : "text-foreground"}`}>
+                {e.valor ?? "—"}
+              </p>
+              <p className="text-[8px] whitespace-nowrap tracking-wide text-muted-foreground uppercase">{e.corto}</p>
+            </div>,
+          ])}
+        </div>
+      </div>
 
       <Dialog open={leadAbierto !== null} onOpenChange={(o) => !o && setLeadAbiertoId(null)}>
         {leadAbierto && (

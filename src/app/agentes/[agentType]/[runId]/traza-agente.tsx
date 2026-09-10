@@ -186,12 +186,6 @@ function tiempoEnSegundos(run: AgentRun): number {
   return Math.max(0, Math.round((fin - new Date(run.startedAt).getTime()) / 1000));
 }
 
-function duracionRunMs(run: AgentRun): number {
-  if (!run.startedAt) return 0;
-  const fin = run.finishedAt ? new Date(run.finishedAt).getTime() : Date.now();
-  return Math.max(0, fin - new Date(run.startedAt).getTime());
-}
-
 function tokensCompacto(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
@@ -246,14 +240,7 @@ export function TrazaAgente({
   const empresasRestantes = empresas.length - empresasVisibles.length;
 
   const nombres = nombresDeCandidatas(steps);
-  const duracionTotalMs = duracionRunMs(run);
   const prog = run.progress as Record<string, number | undefined>;
-  const embudo: Array<[string, number | undefined]> = [
-    ["Encontradas", prog.companiesFound],
-    ["Candidatas", prog.companiesCandidate],
-    ["Pase rápido", prog.companiesCheapPass],
-    ["Calificadas", prog.companiesQualified],
-  ];
 
   async function cancelar() {
     const ok = await confirmar("¿Detener este run? Los pasos que ya se completaron quedan como están, pero no se harán más llamadas al modelo.", { titulo: "Detener run" });
@@ -323,35 +310,6 @@ export function TrazaAgente({
           )}
         </div>
         <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
-      </div>
-
-      <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <p className="text-muted-foreground">Coste</p>
-            <p className="font-medium tabular-nums">${run.totalCostUsd.toFixed(4)}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Tokens</p>
-            <p className="font-medium tabular-nums" title={`${run.totalTokensInput} entrada · ${run.totalTokensOutput} salida`}>
-              {tokensCompacto(tokensTotal)}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Duración</p>
-            <p className="font-medium tabular-nums">{formatearDuracion(duracionTotalMs)}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-border pt-2 text-muted-foreground">
-          {embudo.map(([label, val], i) => (
-            <span key={label} className="flex items-center gap-1.5">
-              {i > 0 && <span className="text-muted-foreground/50">→</span>}
-              <span>
-                {label} <b className={`tabular-nums ${i === embudo.length - 1 ? "text-foreground" : ""}`}>{val ?? "—"}</b>
-              </span>
-            </span>
-          ))}
-        </div>
       </div>
 
       <ChainOfThought defaultOpen>
