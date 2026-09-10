@@ -30,6 +30,10 @@ const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
   rejected: { bg: "#fee2e2", color: "#991b1b" },
 };
 
+function tokensCompacto(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
 function Punto({ x, y, activo }: { x: number; y: number; activo: boolean }) {
   return (
     <circle
@@ -190,7 +194,14 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           </span>
           <p className="truncate text-sm font-medium">{tipoLabel}</p>
         </div>
-        <p className="mb-2 line-clamp-2 text-xs text-muted-foreground">{run.goalText}</p>
+        <div className="mb-2 space-y-0.5">
+          <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">Objetivo</p>
+          <p className="line-clamp-2 text-xs">{run.goalText}</p>
+        </div>
+        <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>${run.totalCostUsd.toFixed(4)}</span>
+          <span>{tokensCompacto(run.totalTokensInput + run.totalTokensOutput)} tokens</span>
+        </div>
         <PillBadge bg={color.bg} color={color.color} className="text-[11px]">{ESTADO_RUN_LABEL[run.status]}</PillBadge>
       </Tarjeta>
 
@@ -235,7 +246,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={36}
-        top={26}
+        top={28}
         width={24}
         claseExterior="border-dashed border-sky-300 bg-sky-50"
         titulo={

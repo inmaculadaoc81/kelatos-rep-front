@@ -13,6 +13,7 @@ import { AgentRun, AgentStep, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import {
   ChainOfThought,
   ChainOfThoughtHeader,
+  ChainOfThoughtContent,
   ChainOfThoughtStep,
   ChainOfThoughtSearchResults,
   ChainOfThoughtSearchResult,
@@ -199,10 +200,6 @@ export function TrazaAgente({
 
   return (
     <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl bg-white p-4 text-sm">
-      <Link href="/agentes" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft2 className="size-3" /> Agentes / {tipoLabel}
-      </Link>
-
       <div>
         <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2">
           <p className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -235,8 +232,13 @@ export function TrazaAgente({
         <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
 
+      <Link href="/agentes" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <ArrowLeft2 className="size-3" /> Agentes / {tipoLabel}
+      </Link>
+
       <ChainOfThought defaultOpen>
         <ChainOfThoughtHeader>Actividad</ChainOfThoughtHeader>
+        <ChainOfThoughtContent>
         {grupos.map((g) => {
           const fallo = g.estado === "failed";
           return (
@@ -262,6 +264,7 @@ export function TrazaAgente({
           );
         })}
         {grupos.length === 0 && <p className="text-xs text-muted-foreground">Sin actividad todavía.</p>}
+        </ChainOfThoughtContent>
       </ChainOfThought>
 
       {run.error && (
