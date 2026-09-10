@@ -349,29 +349,6 @@ export function TrazaAgente({
         <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
 
-      {eventos ? (
-        <ChainOfThought defaultOpen>
-          <ChainOfThoughtHeader>Actividad del equipo</ChainOfThoughtHeader>
-          <ChainOfThoughtContent>
-            {eventos.length === 0 && <p className="text-xs text-muted-foreground">Sin actividad todavía.</p>}
-            <ol className="space-y-2.5 text-xs">
-              {eventos.map((ev) => (
-                <li key={ev.id} className="flex gap-2">
-                  <span className={`mt-1 size-1.5 shrink-0 rounded-full ${COLOR_AGENTE[ev.agentSlug] ?? "bg-muted-foreground/40"}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] text-muted-foreground">
-                      <span className="font-medium text-foreground">{LABEL_AGENTE[ev.agentSlug] ?? ev.agentSlug}</span>
-                      {" · "}{ev.action}
-                      {ev.companyName ? ` · ${ev.companyName}` : ""}
-                    </p>
-                    <p className="text-foreground/90">{ev.summary}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </ChainOfThoughtContent>
-        </ChainOfThought>
-      ) : (
       <ChainOfThought defaultOpen>
         <ChainOfThoughtHeader>Actividad</ChainOfThoughtHeader>
         <ChainOfThoughtContent>
@@ -421,7 +398,44 @@ export function TrazaAgente({
         {grupos.length === 0 && <p className="text-xs text-muted-foreground">Sin actividad todavía.</p>}
         </ChainOfThoughtContent>
       </ChainOfThought>
-      )}
+
+      {eventos && eventos.length > 0 && (() => {
+        const porAgente = new Map<string, AgentEvent[]>();
+        for (const ev of eventos) {
+          if (ev.agentSlug === "orchestrator") continue; // los pasos ya están en "Actividad"
+          if (!porAgente.has(ev.agentSlug)) porAgente.set(ev.agentSlug, []);
+          porAgente.get(ev.agentSlug)!.push(ev);
+        }
+        const agentes = [...porAgente.entries()];
+        if (agentes.length === 0) return null;
+        return (
+          <details className="rounded-lg border border-border">
+            <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none marker:content-['']">
+              <span className="text-muted-foreground">›</span>
+              Sub-agentes <span className="text-muted-foreground">· {agentes.length} agente{agentes.length !== 1 ? "s" : ""}</span>
+            </summary>
+            <div className="space-y-2 border-t border-border px-3 py-2">
+              {agentes.map(([slug, evs]) => (
+                <details key={slug} className="text-xs">
+                  <summary className="flex cursor-pointer items-center gap-2 select-none marker:content-['']">
+                    <span className={`size-1.5 shrink-0 rounded-full ${COLOR_AGENTE[slug] ?? "bg-muted-foreground/40"}`} />
+                    <span className="font-medium">{LABEL_AGENTE[slug] ?? slug}</span>
+                    <span className="text-muted-foreground">· {evs.length}</span>
+                  </summary>
+                  <ul className="mt-1 space-y-1.5 border-l border-border pl-3">
+                    {evs.map((ev) => (
+                      <li key={ev.id}>
+                        <span className="text-muted-foreground">{ev.action}{ev.companyName ? ` · ${ev.companyName}` : ""}: </span>
+                        {ev.summary}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+            </div>
+          </details>
+        );
+      })()}
 
       {run.error && (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{run.error}</p>
