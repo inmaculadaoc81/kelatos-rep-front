@@ -246,7 +246,7 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={36}
-        top={28}
+        top={44}
         width={24}
         claseExterior="border-dashed border-sky-300 bg-sky-50"
         titulo={
