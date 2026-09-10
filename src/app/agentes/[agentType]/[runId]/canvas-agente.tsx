@@ -59,7 +59,7 @@ function Tarjeta({
 }) {
   return (
     <div
-      className="absolute rounded-[22px] border bg-[#F4F5F7] pt-3 pb-1 shadow-sm"
+      className="absolute rounded-[22px] border bg-[#F9FAFB] pt-3 pb-1 shadow-sm"
       style={{ left: `${left}%`, top: `${top}%`, width: `${width}%` }}
     >
       <p className="mb-2 flex items-center gap-1.5 px-3 text-xs font-medium text-muted-foreground">
