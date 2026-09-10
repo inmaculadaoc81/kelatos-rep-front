@@ -8,6 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
 import { AgentRun, AgentStep, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import type { AgentEvent } from "@/lib/campanas";
 import {
   ChainOfThought,
   ChainOfThoughtHeader,
@@ -225,18 +226,43 @@ function ultimoRazonamiento(steps: AgentStep[]): string | null {
   return null;
 }
 
+// Color de punto por agente del equipo (timeline de campaña).
+const COLOR_AGENTE: Record<string, string> = {
+  orchestrator: "bg-muted-foreground/40",
+  campaign_planner: "bg-violet-500",
+  marketing_manager: "bg-amber-500",
+  web_research: "bg-cyan-600",
+  qualification: "bg-emerald-500",
+  offer_strategy: "bg-blue-500",
+  outreach: "bg-orange-500",
+};
+
+const LABEL_AGENTE: Record<string, string> = {
+  orchestrator: "Orquestador",
+  campaign_planner: "Campaign Planner",
+  marketing_manager: "Marketing Manager",
+  web_research: "Web Research",
+  qualification: "Qualification",
+  offer_strategy: "Offer Strategist",
+  outreach: "Outreach",
+};
+
 export function TrazaAgente({
   run,
   steps,
   tipoLabel,
   agentType,
   onActualizado,
+  eventos,
 }: {
   run: AgentRun;
   steps: AgentStep[];
   tipoLabel: string;
   agentType: string;
   onActualizado: () => void;
+  /** Cuando se pasa (campañas), la "Actividad" es el timeline del equipo
+      en vez de los grupos de agent_steps. */
+  eventos?: AgentEvent[];
 }) {
   const router = useRouter();
   const confirmar = useConfirm();
@@ -323,6 +349,29 @@ export function TrazaAgente({
         <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
 
+      {eventos ? (
+        <ChainOfThought defaultOpen>
+          <ChainOfThoughtHeader>Actividad del equipo</ChainOfThoughtHeader>
+          <ChainOfThoughtContent>
+            {eventos.length === 0 && <p className="text-xs text-muted-foreground">Sin actividad todavía.</p>}
+            <ol className="space-y-2.5 text-xs">
+              {eventos.map((ev) => (
+                <li key={ev.id} className="flex gap-2">
+                  <span className={`mt-1 size-1.5 shrink-0 rounded-full ${COLOR_AGENTE[ev.agentSlug] ?? "bg-muted-foreground/40"}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] text-muted-foreground">
+                      <span className="font-medium text-foreground">{LABEL_AGENTE[ev.agentSlug] ?? ev.agentSlug}</span>
+                      {" · "}{ev.action}
+                      {ev.companyName ? ` · ${ev.companyName}` : ""}
+                    </p>
+                    <p className="text-foreground/90">{ev.summary}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </ChainOfThoughtContent>
+        </ChainOfThought>
+      ) : (
       <ChainOfThought defaultOpen>
         <ChainOfThoughtHeader>Actividad</ChainOfThoughtHeader>
         <ChainOfThoughtContent>
@@ -372,6 +421,7 @@ export function TrazaAgente({
         {grupos.length === 0 && <p className="text-xs text-muted-foreground">Sin actividad todavía.</p>}
         </ChainOfThoughtContent>
       </ChainOfThought>
+      )}
 
       {run.error && (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{run.error}</p>

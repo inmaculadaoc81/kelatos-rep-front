@@ -11,7 +11,7 @@ import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
 import { ArrowLeft2 } from "@/lib/icons";
 import { AgentRun, AgentStep } from "@/lib/agentes";
-import { Campaign, CAMPAIGN_STATUS_LABEL, CAMPAIGN_STATUS_COLOR } from "@/lib/campanas";
+import { Campaign, AgentEvent, CAMPAIGN_STATUS_LABEL, CAMPAIGN_STATUS_COLOR } from "@/lib/campanas";
 import { TrazaAgente } from "../../[agentType]/[runId]/traza-agente";
 import { CanvasAgente } from "../../[agentType]/[runId]/canvas-agente";
 
@@ -23,6 +23,7 @@ export default function CampanaDetallePage() {
   const [runId, setRunId] = useState<number | null>(null);
   const [run, setRun] = useState<AgentRun | null>(null);
   const [steps, setSteps] = useState<AgentStep[]>([]);
+  const [eventos, setEventos] = useState<AgentEvent[]>([]);
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [aprobados, setAprobados] = useState(0);
@@ -34,6 +35,8 @@ export default function CampanaDetallePage() {
         setCampaign(c.campaign as Campaign);
         setRunId(c.runId ?? null);
       }
+      const ev = await fetch(`/api/agentes/campanas/${params.id}/events`).then((r) => r.json());
+      if (ev.ok) setEventos(ev.events as AgentEvent[]);
       if (c.ok && c.runId) {
         const [rr, ll] = await Promise.all([
           fetch(`/api/agentes/runs/${c.runId}`).then((r) => r.json()),
@@ -138,6 +141,7 @@ export default function CampanaDetallePage() {
             tipoLabel={campaign.name}
             agentType="campaign_pipeline"
             onActualizado={cargar}
+            eventos={eventos}
           />
           <CanvasAgente run={run} steps={steps} tipoLabel={campaign.name} />
         </div>
