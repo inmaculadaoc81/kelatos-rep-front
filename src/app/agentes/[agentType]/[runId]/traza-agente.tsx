@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, CircleX, CircleCheck, Loader2, DotIcon } from "lucide-react";
+import { Search, CircleX, CircleCheck, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
@@ -47,7 +47,6 @@ function conCaja(IconoInterno: LucideIcon): LucideIcon {
 
 const ICONO_BUSQUEDA = conCaja(Search);
 const ICONO_FALLO = conCaja(CircleX);
-const ICONO_DEFECTO = conCaja(DotIcon);
 
 const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: LucideIcon }> = {
   discovery: { label: "Búsqueda de empresas", subtitulo: "infoisinfo.es", icon: ICONO_BUSQUEDA },
@@ -175,7 +174,7 @@ export function TrazaAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: A
           return (
             <ChainOfThoughtStep
               key={g.step}
-              icon={fallo ? ICONO_FALLO : g.icon || ICONO_DEFECTO}
+              icon={fallo ? ICONO_FALLO : g.icon}
               status={g.estado === "running" ? "active" : "complete"}
               className={fallo ? "text-destructive" : undefined}
               label={g.label}
