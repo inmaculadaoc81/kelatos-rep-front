@@ -150,6 +150,17 @@ export type ReasoningTriggerProps = ComponentProps<
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
 };
 
+// Mientras el run está activo, en vez del icono de cerebro se muestran
+// tres puntitos que laten en secuencia (mismo gesto que el indicador de
+// escritura de Claude). La animación vive en globals.css (.puntos-pensando).
+const PuntosPensando = () => (
+  <span className="puntos-pensando size-4 justify-center" aria-hidden="true">
+    <span />
+    <span />
+    <span />
+  </span>
+);
+
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
     return <Shimmer duration={1}>Pensando…</Shimmer>;
@@ -179,7 +190,7 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4" />
+            {isStreaming ? <PuntosPensando /> : <BrainIcon className="size-4" />}
             {getThinkingMessage(isStreaming, duration)}
             <ChevronDownIcon
               className={cn(
