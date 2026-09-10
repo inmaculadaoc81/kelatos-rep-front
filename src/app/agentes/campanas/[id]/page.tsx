@@ -143,7 +143,7 @@ export default function CampanaDetallePage() {
             onActualizado={cargar}
             eventos={eventos}
           />
-          <CanvasAgente run={run} steps={steps} tipoLabel={campaign.name} />
+          <CanvasAgente run={run} steps={steps} tipoLabel={campaign.name} eventos={eventos} />
         </div>
       ) : (
         <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">

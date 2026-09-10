@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles } from "lucide-react";
 import { SearchNormal1, Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import type { AgentEvent } from "@/lib/campanas";
 import { PillBadge } from "@/components/pill-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -113,7 +114,34 @@ function Tarjeta({
   );
 }
 
-export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: AgentStep[]; tipoLabel: string }) {
+// Sub-agentes del equipo de marketing, en el orden del pipeline.
+const EQUIPO: { slug: string; label: string; dot: string; contar: (e: AgentEvent[]) => string }[] = [
+  { slug: "campaign_planner", label: "Campaign Planner", dot: "bg-violet-500",
+    contar: (e) => (e.some((x) => x.action === "plan_ready") ? "plan listo" : "—") },
+  { slug: "marketing_manager", label: "Marketing Manager", dot: "bg-amber-500",
+    contar: (e) => `${e.length} decisión${e.length !== 1 ? "es" : ""}` },
+  { slug: "web_research", label: "Web Research", dot: "bg-cyan-600",
+    contar: (e) => `${e.filter((x) => x.action === "brief_ready").length} briefs` },
+  { slug: "qualification", label: "Qualification", dot: "bg-emerald-500",
+    contar: (e) => `${e.filter((x) => x.action === "qualified").length} calificados` },
+  { slug: "offer_strategy", label: "Offer Strategist", dot: "bg-blue-500",
+    contar: (e) => `${e.filter((x) => x.action === "chose_offer").length} ofertas` },
+  { slug: "outreach", label: "Outreach", dot: "bg-orange-500",
+    contar: (e) => `${e.filter((x) => x.action === "draft_ready").length} borradores` },
+];
+
+export function CanvasAgente({
+  run,
+  steps,
+  tipoLabel,
+  eventos,
+}: {
+  run: AgentRun;
+  steps: AgentStep[];
+  tipoLabel: string;
+  /** Cuando se pasa (campañas), el canvas añade la tarjeta "Equipo". */
+  eventos?: AgentEvent[];
+}) {
   const confirmar = useConfirm();
   const color = ESTADO_RUN_COLOR[run.status];
   const progreso = run.progress as Record<string, number | undefined>;
@@ -463,6 +491,32 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
           </div>
         )}
       </Tarjeta>
+
+      {eventos && (
+        <Tarjeta
+          left={36}
+          top={62}
+          width={24}
+          titulo={
+            <>
+              <Cpu className="size-3.5" /> Equipo
+            </>
+          }
+        >
+          <div className="-mx-3 divide-y divide-border text-xs">
+            {EQUIPO.map((a) => {
+              const evs = eventos.filter((e) => e.agentSlug === a.slug);
+              return (
+                <div key={a.slug} className="flex items-center gap-2 px-3 py-1.5">
+                  <span className={`size-1.5 shrink-0 rounded-full ${evs.length ? a.dot : "bg-muted-foreground/25"}`} />
+                  <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{evs.length ? a.contar(evs) : "—"}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Tarjeta>
+      )}
 
       {/* Lectura del run — solo coste / tokens / duración, sin contenedor.
           (Provisional en la esquina; se moverá arriba.) */}
