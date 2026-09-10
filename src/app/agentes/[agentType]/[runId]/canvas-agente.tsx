@@ -50,16 +50,20 @@ function Tarjeta({
   width,
   titulo,
   children,
+  claseExterior,
 }: {
   left: number;
   top: number;
   width: number;
   titulo: React.ReactNode;
   children: React.ReactNode;
+  /** Sobrescribe fondo/borde del contenedor exterior (p.ej. "Leads" en
+      celeste con borde punteado) — la caja interior blanca no cambia. */
+  claseExterior?: string;
 }) {
   return (
     <div
-      className="absolute rounded-[22px] border bg-[#F9FAFB] pt-3 pb-1 shadow-sm"
+      className={`absolute rounded-[22px] border pt-3 pb-1 shadow-sm ${claseExterior || "border-border bg-[#F9FAFB]"}`}
       style={{ left: `${left}%`, top: `${top}%`, width: `${width}%` }}
     >
       <p className="mb-2 flex items-center gap-1.5 px-3 text-xs font-medium text-muted-foreground">
@@ -173,9 +177,9 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta left={3} top={8} width={20} titulo="Entrada">
         <div className="-mx-3 divide-y divide-border text-xs">
-          <p className="px-3 py-1.5"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</p>
-          <p className="px-3 py-1.5"><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</p>
-          <p className="px-3 py-1.5"><span className="text-muted-foreground">Límite: </span>{limite ?? "—"}</p>
+          <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</div>
+          <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</div>
+          <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Límite: </span>{limite ?? "—"}</div>
         </div>
       </Tarjeta>
 
@@ -231,8 +235,9 @@ export function CanvasAgente({ run, steps, tipoLabel }: { run: AgentRun; steps: 
 
       <Tarjeta
         left={36}
-        top={30}
+        top={26}
         width={24}
+        claseExterior="border-dashed border-sky-300 bg-sky-50"
         titulo={
           <>
             <span className={`size-1.5 shrink-0 rounded-full ${hayLeadsPendientes ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
