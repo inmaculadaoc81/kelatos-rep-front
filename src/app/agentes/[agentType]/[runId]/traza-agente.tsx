@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Search, CircleX, Square, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeft2 } from "@/lib/icons";
 import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
 import { AgentRun, AgentStep, ESTADO_RUN_LABEL } from "@/lib/agentes";
@@ -231,10 +229,6 @@ export function TrazaAgente({
         </div>
         <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
-
-      <Link href="/agentes" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft2 className="size-3" /> Agentes / {tipoLabel}
-      </Link>
 
       <ChainOfThought defaultOpen>
         <ChainOfThoughtHeader>Actividad</ChainOfThoughtHeader>
