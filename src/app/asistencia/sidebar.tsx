@@ -75,9 +75,11 @@ const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers/agentes", label: "Agentes", icon: Cpu },
   { href: "/asistencia/admin/remote-workers/categorias", label: "Categorías", icon: Category2 },
   { href: "/asistencia/admin/remote-workers/reportes", label: "Reportes", icon: DocumentText },
-  // Horarios NO se filtra "solo remotos" -- son plantillas de calendario
-  // compartidas (asistencia.calendarios), no datos por empleado; se
-  // enlaza directo a la pantalla ya existente de Administración.
+  // Empleados y Horarios NO se filtran "solo remotos" -- son la misma
+  // pantalla y los mismos datos compartidos de Administración
+  // (asistencia.empleados / asistencia.calendarios), no un directorio
+  // paralelo: se enlaza directo, igual que ya se hizo con Horarios.
+  { href: "/asistencia/admin/empleados", label: "Empleados", icon: Profile2User, soloSuperadmin: true },
   { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
   { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
   { href: "/asistencia/admin/remote-workers/vacaciones", label: "Vacaciones", icon: Airplane },
@@ -145,7 +147,7 @@ export function AsistenciaSidebar({ session }: { session: Session | null }) {
                     <span>Volver a Asistencia</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {ITEMS_REMOTE_WORKERS.map((item) => {
+                {ITEMS_REMOTE_WORKERS.filter((item) => !item.soloSuperadmin || esSuperadmin(email)).map((item) => {
                   const Icon = item.icon;
                   return (
                     <SidebarMenuItem key={item.href}>
