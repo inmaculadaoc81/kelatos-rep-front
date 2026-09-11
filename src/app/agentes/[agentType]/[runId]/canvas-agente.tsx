@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles,
   Briefcase, MapPin, Hash, Search, Filter, Zap, BadgeCheck, Building2, Mail,
@@ -57,7 +58,6 @@ function campaignLeadToUI(c: CampaignLead): LeadUI {
 }
 import { PillBadge } from "@/components/pill-badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/confirm-provider";
 
 // Canvas de tarjetas (mismo lenguaje visual que un editor de agentes tipo
@@ -227,6 +227,181 @@ const EQUIPO: { slug: string; label: string; icon: LucideIcon; tint: string; con
     contar: (e) => `${e.filter((x) => x.action === "draft_ready").length} borradores` },
 ];
 
+/** Detalle de un lead — modal propio con createPortal(document.body) en
+    vez del <Dialog> de shadcn/Base UI: diagnosticado en vivo el
+    2026-09-11 (alert() dentro del onClick confirmó que el estado se
+    actualizaba perfectamente, pero el <Dialog> con open={true} nunca
+    pintaba nada visible) — se reconstruye a mano, sin depender de la
+    máquina de estados interna de esa librería, para tener control total
+    sobre por qué aparece o no. */
+function LeadDetailModal({
+  lead,
+  onClose,
+  onAprobar,
+  onRechazar,
+}: {
+  lead: LeadUI;
+  onClose: () => void;
+  onAprobar: () => void;
+  onRechazar: () => void;
+}) {
+  useEffect(() => {
+    function alEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", alEscape);
+    return () => document.removeEventListener("keydown", alEscape);
+  }, [onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/45 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-2 border-b p-4">
+          <div className="min-w-0">
+            <p className="font-heading truncate text-base font-medium">{lead.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {[lead.sector, lead.location].filter(Boolean).join(" · ") || "Sin datos de sector/ubicación"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Cerrar"
+            className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 text-xs">
+          <div className="flex flex-wrap items-center gap-3">
+            <span><span className="text-muted-foreground">Score:</span> <b>{lead.score ?? "—"}</b></span>
+            {lead.fit && (
+              <span><span className="text-muted-foreground">Fit:</span> <b>{lead.fit}</b></span>
+            )}
+            {lead.confidence !== null && (
+              <span><span className="text-muted-foreground">Confianza:</span> <b>{Math.round(lead.confidence * 100)}%</b></span>
+            )}
+            {lead.messageStatus && ESTADO_MENSAJE_COLOR[lead.messageStatus] && (
+              <PillBadge bg={ESTADO_MENSAJE_COLOR[lead.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[lead.messageStatus].color} className="text-[10px]">
+                {ESTADO_MENSAJE_LABEL[lead.messageStatus]}
+              </PillBadge>
+            )}
+          </div>
+
+          {(lead.offer && lead.offer !== "none") && (
+            <div className="rounded-md border border-sky-200 bg-sky-50 p-3">
+              <p className="font-medium text-sky-800">Oferta: {SERVICE_LABEL[lead.offer] ?? lead.offer}</p>
+              {lead.angle && <p className="mt-1">{lead.angle}</p>}
+              {lead.rationale && <p className="mt-1 text-muted-foreground">{lead.rationale}</p>}
+            </div>
+          )}
+
+          {lead.reason && (
+            <div>
+              <p className="font-medium text-muted-foreground">Calificación</p>
+              <p>{lead.reason}</p>
+            </div>
+          )}
+
+          {(lead.briefOpportunities?.length ?? 0) > 0 && (
+            <div>
+              <p className="font-medium text-muted-foreground">Oportunidades</p>
+              <ul className="list-disc pl-4">
+                {lead.briefOpportunities!.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {(lead.riskList?.length ?? lead.painPoints.length) > 0 && (
+            <div>
+              <p className="font-medium text-muted-foreground">Riesgos / puntos de dolor</p>
+              <ul className="list-disc pl-4">
+                {(lead.riskList?.length ? lead.riskList : lead.painPoints).map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {lead.briefSummary && (
+            <div>
+              <p className="font-medium text-muted-foreground">Research</p>
+              <p>{lead.briefSummary}</p>
+            </div>
+          )}
+
+          {(lead.facts?.length ?? 0) > 0 && (
+            <div>
+              <p className="font-medium text-muted-foreground">Hechos verificados</p>
+              <ul className="list-disc pl-4">
+                {lead.facts!.map((f, i) => (
+                  <li key={i}>
+                    {f.statement}
+                    {f.evidenceUrls?.length ? (
+                      <span className="text-muted-foreground"> — {f.evidenceUrls.join(", ")}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {(lead.inferences?.length ?? 0) > 0 && (
+            <div>
+              <p className="font-medium text-muted-foreground">Inferencias</p>
+              <ul className="list-disc pl-4">
+                {lead.inferences!.map((f, i) => (
+                  <li key={i}>{f.statement}{f.confidence != null ? ` (conf. ${Math.round(f.confidence * 100)}%)` : ""}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {(lead.evidence?.length ?? 0) > 0 && (
+            <details>
+              <summary className="cursor-pointer font-medium text-muted-foreground select-none">Evidencia ({lead.evidence!.length})</summary>
+              <ul className="mt-1 space-y-1 border-l pl-3">
+                {lead.evidence!.map((e, i) => (
+                  <li key={i}>
+                    <span className="text-muted-foreground">[{e.type}] </span>
+                    {e.statement || e.url}
+                    {e.url && e.statement ? <span className="text-muted-foreground"> — {e.url}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          <div className="rounded-md border bg-muted/40 p-3">
+            <p className="font-medium text-muted-foreground">Mensaje en borrador{lead.channel ? ` · ${lead.channel}` : ""}</p>
+            {lead.subject && <p className="mt-1 font-medium">{lead.subject}</p>}
+            <p className="mt-1 whitespace-pre-wrap">{lead.message || "Sin mensaje redactado."}</p>
+          </div>
+        </div>
+
+        {lead.messageStatus === "draft" && (
+          <div className="flex flex-col-reverse gap-2 border-t bg-muted/50 p-4 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={onRechazar}>
+              <X className="size-4" /> Rechazar
+            </Button>
+            <Button onClick={onAprobar}>
+              <Check className="size-4" /> Aprobar
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export function CanvasAgente({
   run,
   steps,
@@ -377,9 +552,6 @@ export function CanvasAgente({
   }
 
   function abrirLead(lead: LeadUI) {
-    alert("abrirLead SE EJECUTÓ: " + lead.name + " (id " + lead.companyId + ")"); // TODO: quitar tras diagnosticar 2026-09-11
-    // eslint-disable-next-line no-console
-    console.log("[canvas-agente] abrirLead", lead.companyId, lead.name); // TODO: quitar tras diagnosticar 2026-09-11
     // Si el canvas está a pantalla completa, el modal (portal en <body>)
     // quedaría detrás del elemento fullscreen — se sale de fullscreen para
     // que se vea centrado en la página.
@@ -563,39 +735,19 @@ export function CanvasAgente({
           <p className="text-xs text-muted-foreground">Sin leads calificados todavía.</p>
         ) : (
           <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
-            {/* PRUEBA TEMPORAL DE DIAGNÓSTICO 2026-09-11 — quitar en cuanto se
-                confirme si esto reacciona o no. */}
             {leads.map((lead) => (
-              <button
-                key={lead.companyId}
-                type="button"
-                onClick={() => alert("CLIC FUNCIONA: " + lead.name)}
-                style={{ display: "block", width: "100%", background: "red", color: "white", padding: "20px", fontSize: "16px", fontWeight: "bold", border: "none" }}
-              >
-                PRUEBA — CLIC AQUÍ — {lead.name}
-              </button>
-            ))}
-            {leads.map((lead) => (
-              <div
-                key={lead.companyId}
-                role="button"
-                tabIndex={0}
-                onClick={() => abrirLead(lead)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    abrirLead(lead);
-                  }
-                }}
-                className="relative z-20 flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 hover:bg-black/5"
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-2">
+              <div key={lead.companyId} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                <button
+                  type="button"
+                  onClick={() => abrirLead(lead)}
+                  className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left hover:bg-black/5"
+                >
                   <IconoCaja icon={Building2} />
                   <span className="min-w-0">
                     <p className="truncate font-medium">{lead.name}</p>
                     <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
                   </span>
-                </div>
+                </button>
                 {lead.messageStatus === "draft" ? (
                   <div className="flex shrink-0 gap-1">
                     <button
@@ -689,25 +841,18 @@ export function CanvasAgente({
         ) : (
           <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
             {aprobados.map((lead) => (
-              <div
+              <button
                 key={lead.companyId}
-                role="button"
-                tabIndex={0}
+                type="button"
                 onClick={() => abrirLead(lead)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    abrirLead(lead);
-                  }
-                }}
-                className="relative z-20 flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-black/5"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-black/5"
               >
                 <IconoCaja icon={Mail} />
                 <span className="min-w-0">
                   <p className="truncate font-medium">{lead.name}</p>
                   <p className="truncate text-muted-foreground">{lead.subject || "Sin asunto"}</p>
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -745,134 +890,14 @@ export function CanvasAgente({
         )}
       </div>
 
-      <Dialog open={leadAbierto !== null} onOpenChange={(o) => !o && setLeadAbiertoId(null)}>
-        {leadAbierto && (
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{leadAbierto.name}</DialogTitle>
-              <p className="text-xs text-muted-foreground">
-                {[leadAbierto.sector, leadAbierto.location].filter(Boolean).join(" · ") || "Sin datos de sector/ubicación"}
-              </p>
-            </DialogHeader>
-
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto text-xs">
-              <div className="flex flex-wrap items-center gap-3">
-                <span><span className="text-muted-foreground">Score:</span> <b>{leadAbierto.score ?? "—"}</b></span>
-                {leadAbierto.fit && (
-                  <span><span className="text-muted-foreground">Fit:</span> <b>{leadAbierto.fit}</b></span>
-                )}
-                {leadAbierto.confidence !== null && (
-                  <span><span className="text-muted-foreground">Confianza:</span> <b>{Math.round(leadAbierto.confidence * 100)}%</b></span>
-                )}
-                {leadAbierto.messageStatus && ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus] && (
-                  <PillBadge bg={ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus].color} className="text-[10px]">
-                    {ESTADO_MENSAJE_LABEL[leadAbierto.messageStatus]}
-                  </PillBadge>
-                )}
-              </div>
-
-              {(leadAbierto.offer && leadAbierto.offer !== "none") && (
-                <div className="rounded-md border border-sky-200 bg-sky-50 p-3">
-                  <p className="font-medium text-sky-800">Oferta: {SERVICE_LABEL[leadAbierto.offer] ?? leadAbierto.offer}</p>
-                  {leadAbierto.angle && <p className="mt-1">{leadAbierto.angle}</p>}
-                  {leadAbierto.rationale && <p className="mt-1 text-muted-foreground">{leadAbierto.rationale}</p>}
-                </div>
-              )}
-
-              {leadAbierto.reason && (
-                <div>
-                  <p className="font-medium text-muted-foreground">Calificación</p>
-                  <p>{leadAbierto.reason}</p>
-                </div>
-              )}
-
-              {(leadAbierto.briefOpportunities?.length ?? 0) > 0 && (
-                <div>
-                  <p className="font-medium text-muted-foreground">Oportunidades</p>
-                  <ul className="list-disc pl-4">
-                    {leadAbierto.briefOpportunities!.map((p, i) => <li key={i}>{p}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              {(leadAbierto.riskList?.length ?? leadAbierto.painPoints.length) > 0 && (
-                <div>
-                  <p className="font-medium text-muted-foreground">Riesgos / puntos de dolor</p>
-                  <ul className="list-disc pl-4">
-                    {(leadAbierto.riskList?.length ? leadAbierto.riskList : leadAbierto.painPoints).map((p, i) => <li key={i}>{p}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              {leadAbierto.briefSummary && (
-                <div>
-                  <p className="font-medium text-muted-foreground">Research</p>
-                  <p>{leadAbierto.briefSummary}</p>
-                </div>
-              )}
-
-              {(leadAbierto.facts?.length ?? 0) > 0 && (
-                <div>
-                  <p className="font-medium text-muted-foreground">Hechos verificados</p>
-                  <ul className="list-disc pl-4">
-                    {leadAbierto.facts!.map((f, i) => (
-                      <li key={i}>
-                        {f.statement}
-                        {f.evidenceUrls?.length ? (
-                          <span className="text-muted-foreground"> — {f.evidenceUrls.join(", ")}</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {(leadAbierto.inferences?.length ?? 0) > 0 && (
-                <div>
-                  <p className="font-medium text-muted-foreground">Inferencias</p>
-                  <ul className="list-disc pl-4">
-                    {leadAbierto.inferences!.map((f, i) => (
-                      <li key={i}>{f.statement}{f.confidence != null ? ` (conf. ${Math.round(f.confidence * 100)}%)` : ""}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {(leadAbierto.evidence?.length ?? 0) > 0 && (
-                <details>
-                  <summary className="cursor-pointer font-medium text-muted-foreground select-none">Evidencia ({leadAbierto.evidence!.length})</summary>
-                  <ul className="mt-1 space-y-1 border-l pl-3">
-                    {leadAbierto.evidence!.map((e, i) => (
-                      <li key={i}>
-                        <span className="text-muted-foreground">[{e.type}] </span>
-                        {e.statement || e.url}
-                        {e.url && e.statement ? <span className="text-muted-foreground"> — {e.url}</span> : null}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-
-              <div className="rounded-md border bg-muted/40 p-3">
-                <p className="font-medium text-muted-foreground">Mensaje en borrador{leadAbierto.channel ? ` · ${leadAbierto.channel}` : ""}</p>
-                {leadAbierto.subject && <p className="mt-1 font-medium">{leadAbierto.subject}</p>}
-                <p className="mt-1 whitespace-pre-wrap">{leadAbierto.message || "Sin mensaje redactado."}</p>
-              </div>
-            </div>
-
-            {leadAbierto.messageStatus === "draft" && (
-              <DialogFooter>
-                <Button variant="outline" onClick={() => revisarYCerrar(leadAbierto, "rejected")}>
-                  <X className="size-4" /> Rechazar
-                </Button>
-                <Button onClick={() => revisarYCerrar(leadAbierto, "approved")}>
-                  <Check className="size-4" /> Aprobar
-                </Button>
-              </DialogFooter>
-            )}
-          </DialogContent>
-        )}
-      </Dialog>
+      {leadAbierto && (
+        <LeadDetailModal
+          lead={leadAbierto}
+          onClose={() => setLeadAbiertoId(null)}
+          onAprobar={() => revisarYCerrar(leadAbierto, "approved")}
+          onRechazar={() => revisarYCerrar(leadAbierto, "rejected")}
+        />
+      )}
     </div>
   );
 }
