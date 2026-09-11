@@ -67,10 +67,11 @@ import { useConfirm } from "@/components/confirm-provider";
 // Si un paso falla, la tarjeta afectada se pinta en rojo (discovery →
 // Herramientas, un paso de IA → Modelos + Embudo, cualquier fallo → Agente).
 //
-// Layout: 3 columnas en CSS grid (`grid-cols-[...fr]`), cada una un flex
-// column con la MISMA separación vertical (`gap`) entre tarjetas y su
-// propio scroll. Es responsive (las columnas encogen con `min-w-0`) y no
-// hay posicionamiento absoluto ni conectores SVG que mantener alineados.
+// Layout: 3 columnas posicionadas en % (left/width) sobre el mismo
+// sistema de coordenadas que el viewBox del SVG de conectores. Cada
+// columna es un flex column con `gap` uniforme, así la separación
+// vertical entre tarjetas es constante aunque cada tarjeta tenga una
+// altura distinta según su contenido.
 const ESTADO_MENSAJE_LABEL: Record<string, string> = { draft: "Borrador", approved: "Aprobado", rejected: "Rechazado" };
 const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
   draft: { bg: "#e5e7eb", color: "#374151" },
@@ -111,6 +112,17 @@ function formatearDuracion(ms: number): string {
   if (s < 60) return `${s.toFixed(1)} s`;
   const m = Math.floor(s / 60);
   return `${m}m ${Math.round(s % 60)}s`;
+}
+
+function Punto({ x, y, activo }: { x: number; y: number; activo: boolean }) {
+  return (
+    <circle
+      cx={x}
+      cy={y}
+      r={0.6}
+      className={activo ? "fill-blue-500" : "fill-muted-foreground/40"}
+    />
+  );
 }
 
 // Mismo patrón que la referencia del usuario: título con flecha arriba
@@ -307,13 +319,35 @@ export function CanvasAgente({
         {ampliado ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
       </button>
 
-      {/* 3 columnas en grid: Entrada+capacidades / Agente+leads+equipo /
-          Embudo+salida. Cada columna es un flex column con `gap-4`
-          uniforme y su propio scroll; `min-w-0` las hace encoger sin
-          recortar contenido. `pt-12` deja hueco al botón de ampliar. */}
-      <div className="grid h-full grid-cols-[1fr_1.15fr_1.2fr] gap-4 overflow-hidden px-4 pt-12 pb-4">
-        {/* Columna 1 — entrada y capacidades del agente */}
-        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto pb-4">
+      {/* Conectores: Entrada→Agente, Agente→Herramientas (discovery),
+          Agente→Embudo. Sobre el mismo viewBox 0-100 que el left/top de
+          las columnas, con preserveAspectRatio="none". */}
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full text-border">
+        <path d="M23,16 C 30,16 29,22 36,22" fill="none" stroke="currentColor" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
+        <path
+          d="M36,27 C 30,27 29,37 23,37"
+          fill="none"
+          stroke={discoveryActivo ? "#3b82f6" : "currentColor"}
+          strokeDasharray="0.3 0.4"
+          strokeWidth="0.18"
+        />
+        <path
+          d="M60,22 C 65,22 64,16 70,16"
+          fill="none"
+          stroke={pipelineActivo ? "#3b82f6" : "currentColor"}
+          strokeDasharray="0.3 0.4"
+          strokeWidth="0.18"
+        />
+        <Punto x={23} y={16} activo={false} />
+        <Punto x={36} y={22} activo={false} />
+        <Punto x={36} y={27} activo={discoveryActivo} />
+        <Punto x={23} y={37} activo={discoveryActivo} />
+        <Punto x={60} y={22} activo={pipelineActivo} />
+        <Punto x={70} y={16} activo={pipelineActivo} />
+      </svg>
+
+      {/* Columna 1 — entrada y capacidades del agente */}
+      <div className="absolute flex flex-col gap-4" style={{ left: "3%", width: "20%", top: "8%" }}>
       <Tarjeta titulo="Entrada">
         <div className="-mx-3 divide-y divide-border text-xs">
           <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</div>
@@ -375,10 +409,10 @@ export function CanvasAgente({
           ))}
         </div>
       </Tarjeta>
-        </div>
+      </div>
 
-        {/* Columna 2 — el agente, sus leads y el equipo */}
-        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto pb-4">
+      {/* Columna 2 — el agente, sus leads y el equipo */}
+      <div className="absolute flex flex-col gap-4" style={{ left: "36%", width: "24%", top: "8%" }}>
       <Tarjeta claseExterior={runFallo ? ERROR_CLASE : undefined} titulo="Agente">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-600 text-white">
@@ -474,10 +508,10 @@ export function CanvasAgente({
           </div>
         </Tarjeta>
       )}
-        </div>
+      </div>
 
-        {/* Columna 3 — resultado: embudo y salida */}
-        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto pb-4">
+      {/* Columna 3 — resultado: embudo y salida */}
+      <div className="absolute flex flex-col gap-4" style={{ left: "70%", width: "27%", top: "8%" }}>
       <Tarjeta
         claseExterior={pipelineFallo ? ERROR_CLASE : undefined}
         titulo={
@@ -524,7 +558,6 @@ export function CanvasAgente({
           </div>
         )}
       </Tarjeta>
-        </div>
       </div>
 
       {/* Lectura del run — solo coste / tokens / duración, sin contenedor.
