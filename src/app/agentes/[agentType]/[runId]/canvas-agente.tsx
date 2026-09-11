@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import {
   ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles,
   Briefcase, MapPin, Hash, Search, Filter, Zap, BadgeCheck, Building2, Mail,
@@ -156,34 +156,51 @@ function formatearDuracion(ms: number): string {
   return `${m}m ${Math.round(s % 60)}s`;
 }
 
-function Punto({ x, y, activo, color }: { x: number; y: number; activo: boolean; color?: string }) {
+/** Punto de conexión: un <span> HTML redondeado (no un <circle> del SVG de
+    conectores) a propósito — ese SVG usa preserveAspectRatio="none" para
+    que sus coordenadas 0-100 calcen con el left/top % de las columnas, lo
+    que estira cualquier <circle> hasta convertirlo en una elipse. Un
+    <span> con tamaño fijo en px y border-radius siempre sale redondo,
+    esté el contenedor a la anchura que esté. */
+function PuntoConector({ x, y, color }: { x: number; y: number; color: string }) {
   return (
-    <circle
-      cx={x}
-      cy={y}
-      r={0.7}
-      fill={activo ? "#3b82f6" : (color ?? "currentColor")}
+    <span
+      className="absolute z-10 size-1.5 rounded-full"
+      style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)", backgroundColor: color }}
     />
   );
+}
+
+// Curva suave entre dos puntos medidos de verdad (ver medirConectores) —
+// mismo trazo en S que antes, pero genérico: ya no depende de coordenadas
+// fijas adivinadas, así que el punto de llegada de dos conectores al
+// mismo lado de una tarjeta (p.ej. Entrada Y Herramientas hacia Agente)
+// cae siempre en el mismo sitio: el centro vertical real de esa tarjeta,
+// nunca dos puntos distintos.
+function curvaConector(a: { x: number; y: number }, b: { x: number; y: number }): string {
+  const midX = (a.x + b.x) / 2;
+  return `M${a.x},${a.y} C ${midX},${a.y} ${midX},${b.y} ${b.x},${b.y}`;
 }
 
 // Mismo patrón que la referencia del usuario: título con flecha arriba
 // (sin caja propia) y el contenido en una caja aparte, ambas con
 // border-radius 24 (rounded-3xl). Sin posición propia: fluye dentro de su
-// columna con `gap` uniforme.
-function Tarjeta({
-  titulo,
-  children,
-  claseExterior,
-}: {
-  titulo: React.ReactNode;
-  children: React.ReactNode;
-  /** Sobrescribe fondo/borde del contenedor exterior (p.ej. "Leads" en
-      celeste con borde punteado) — la caja interior blanca no cambia. */
-  claseExterior?: string;
-}) {
+// columna con `gap` uniforme. Con ref (hacia el <div> exterior, el borde
+// real de la tarjeta) para que el canvas pueda medir su centro vertical y
+// enganchar ahí los conectores.
+const Tarjeta = forwardRef<
+  HTMLDivElement,
+  {
+    titulo: React.ReactNode;
+    children: React.ReactNode;
+    /** Sobrescribe fondo/borde del contenedor exterior (p.ej. "Leads" en
+        celeste con borde punteado) — la caja interior blanca no cambia. */
+    claseExterior?: string;
+  }
+>(function Tarjeta({ titulo, children, claseExterior }, ref) {
   return (
     <div
+      ref={ref}
       className={`shrink-0 rounded-[22px] border pt-3 pb-1 shadow-sm ${claseExterior || "border-border bg-[#F9FAFB]"}`}
     >
       <p className="mb-2 flex items-center gap-1.5 px-3 text-xs font-medium text-muted-foreground">
@@ -192,7 +209,7 @@ function Tarjeta({
       <div className="mx-1 rounded-[16px] border bg-card p-3">{children}</div>
     </div>
   );
-}
+});
 
 // Sub-agentes del equipo de marketing, en el orden del pipeline.
 const EQUIPO: { slug: string; label: string; icon: LucideIcon; tint: string; contar: (e: AgentEvent[]) => string }[] = [
@@ -247,6 +264,59 @@ export function CanvasAgente({
     const alCambiar = () => setAmpliado(document.fullscreenElement === canvasRef.current);
     document.addEventListener("fullscreenchange", alCambiar);
     return () => document.removeEventListener("fullscreenchange", alCambiar);
+  }, []);
+
+  // Conectores: en vez de coordenadas adivinadas a mano, se miden de
+  // verdad el centro vertical (getBoundingClientRect) de cada tarjeta
+  // implicada — así el punto de conexión cae siempre en el centro real de
+  // ese lado, y si dos líneas llegan al mismo lado de una tarjeta
+  // (Entrada Y Herramientas hacia Agente) confluyen en el MISMO punto, no
+  // en dos puntos distintos. Se remide al montar y cada vez que cambia el
+  // tamaño del canvas (incluida la pantalla completa).
+  const entradaRef = useRef<HTMLDivElement>(null);
+  const herramientasRef = useRef<HTMLDivElement>(null);
+  const agenteRef = useRef<HTMLDivElement>(null);
+  const embudoRef = useRef<HTMLDivElement>(null);
+
+  type PuntoXY = { x: number; y: number };
+  const [conectores, setConectores] = useState<{
+    entrada: PuntoXY;
+    herramientas: PuntoXY;
+    agenteIzq: PuntoXY;
+    agenteDer: PuntoXY;
+    embudo: PuntoXY;
+  } | null>(null);
+
+  useEffect(() => {
+    function medir(el: HTMLElement | null, cont: HTMLElement, lado: "izq" | "der"): PuntoXY | null {
+      if (!el || !cont.clientWidth || !cont.clientHeight) return null;
+      const c = cont.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return {
+        x: (((lado === "izq" ? r.left : r.right) - c.left) / c.width) * 100,
+        y: ((r.top + r.height / 2 - c.top) / c.height) * 100,
+      };
+    }
+    function recalcular() {
+      const cont = canvasRef.current;
+      if (!cont) return;
+      const entrada = medir(entradaRef.current, cont, "der");
+      const herramientas = medir(herramientasRef.current, cont, "der");
+      const agenteIzq = medir(agenteRef.current, cont, "izq");
+      const agenteDer = medir(agenteRef.current, cont, "der");
+      const embudo = medir(embudoRef.current, cont, "izq");
+      if (entrada && herramientas && agenteIzq && agenteDer && embudo) {
+        setConectores({ entrada, herramientas, agenteIzq, agenteDer, embudo });
+      }
+    }
+    recalcular();
+    const ro = new ResizeObserver(recalcular);
+    if (canvasRef.current) ro.observe(canvasRef.current);
+    window.addEventListener("resize", recalcular);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", recalcular);
+    };
   }, []);
 
   function alternarAmpliado() {
@@ -361,46 +431,42 @@ export function CanvasAgente({
         {ampliado ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
       </button>
 
-      {/* Conectores: Entrada→Agente y Agente→Herramientas (discovery) en
-          morado; Agente→Embudo en verde. Sobre el mismo viewBox 0-100 que
-          el left/top de las columnas, con preserveAspectRatio="none". */}
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-        <path d="M23,16 C 30,16 29,22 36,22" fill="none" stroke="#8b5cf6" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
-        <path
-          d="M36,27 C 30,27 29,37 23,37"
-          fill="none"
-          stroke={discoveryActivo ? "#3b82f6" : "#8b5cf6"}
-          strokeDasharray="0.3 0.4"
-          strokeWidth="0.18"
-        />
-        <path
-          d="M60,22 C 65,22 64,16 70,16"
-          fill="none"
-          stroke={pipelineActivo ? "#3b82f6" : "#10b981"}
-          strokeDasharray="0.3 0.4"
-          strokeWidth="0.18"
-        />
-        <Punto x={23} y={16} activo={false} color="#8b5cf6" />
-        <Punto x={36} y={22} activo={false} color="#8b5cf6" />
-        <Punto x={36} y={27} activo={discoveryActivo} color="#8b5cf6" />
-        <Punto x={23} y={37} activo={discoveryActivo} color="#8b5cf6" />
-        <Punto x={60} y={22} activo={pipelineActivo} color="#10b981" />
-        <Punto x={70} y={16} activo={pipelineActivo} color="#10b981" />
-      </svg>
+      {/* Conectores: Entrada→Agente y Herramientas→Agente (discovery) en
+          morado, confluyendo en el MISMO punto del lado izquierdo de
+          Agente; Agente→Embudo en verde. Puntos medidos de verdad (ver
+          el useEffect de arriba), no adivinados. */}
+      {conectores && (() => {
+        const colorIzq = discoveryActivo ? "#3b82f6" : "#8b5cf6";
+        const colorDer = pipelineActivo ? "#3b82f6" : "#10b981";
+        return (
+          <>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
+              <path d={curvaConector(conectores.entrada, conectores.agenteIzq)} fill="none" stroke={colorIzq} strokeDasharray="0.3 0.4" strokeWidth="0.18" />
+              <path d={curvaConector(conectores.herramientas, conectores.agenteIzq)} fill="none" stroke={colorIzq} strokeDasharray="0.3 0.4" strokeWidth="0.18" />
+              <path d={curvaConector(conectores.agenteDer, conectores.embudo)} fill="none" stroke={colorDer} strokeDasharray="0.3 0.4" strokeWidth="0.18" />
+            </svg>
+            <PuntoConector x={conectores.entrada.x} y={conectores.entrada.y} color={colorIzq} />
+            <PuntoConector x={conectores.herramientas.x} y={conectores.herramientas.y} color={colorIzq} />
+            <PuntoConector x={conectores.agenteIzq.x} y={conectores.agenteIzq.y} color={colorIzq} />
+            <PuntoConector x={conectores.agenteDer.x} y={conectores.agenteDer.y} color={colorDer} />
+            <PuntoConector x={conectores.embudo.x} y={conectores.embudo.y} color={colorDer} />
+          </>
+        );
+      })()}
 
       {/* Columna 1 — entrada y capacidades del agente */}
       <div className="absolute flex flex-col gap-4" style={{ left: "3%", width: "20%", top: "8%" }}>
-      <Tarjeta titulo="Entrada">
+      <Tarjeta ref={entradaRef} titulo="Entrada">
         <div className="-mx-3 divide-y divide-border text-xs">
-          <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex items-center gap-2 px-3 py-1.5">
             <IconoCaja icon={Briefcase} />
             <div className="min-w-0"><p className="text-[10px] text-muted-foreground">Sector</p><p className="truncate font-medium">{sector || "—"}</p></div>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex items-center gap-2 px-3 py-1.5">
             <IconoCaja icon={MapPin} />
             <div className="min-w-0"><p className="text-[10px] text-muted-foreground">Ubicación</p><p className="truncate font-medium">{ubicacion || "—"}</p></div>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex items-center gap-2 px-3 py-1.5">
             <IconoCaja icon={Hash} />
             <div className="min-w-0"><p className="text-[10px] text-muted-foreground">Límite</p><p className="truncate font-medium">{limite ?? "—"}</p></div>
           </div>
@@ -408,6 +474,7 @@ export function CanvasAgente({
       </Tarjeta>
 
       <Tarjeta
+        ref={herramientasRef}
         claseExterior={discoveryFallo ? ERROR_CLASE : "border-violet-200 bg-violet-50/60"}
         titulo={
           <span className="flex items-center gap-1.5 text-violet-700">
@@ -417,7 +484,7 @@ export function CanvasAgente({
       >
         <div className="-mx-3 divide-y divide-border text-xs">
           {HERRAMIENTAS.map((h) => (
-            <div key={h.nombre} className="flex items-center gap-2 px-3 py-2">
+            <div key={h.nombre} className="flex items-center gap-2 px-3 py-1.5">
               <FaviconApp dominio={h.dominio} alt={h.nombre} />
               <div className="min-w-0">
                 <p className="truncate font-medium">{h.nombre}</p>
@@ -443,7 +510,7 @@ export function CanvasAgente({
       >
         <div className="-mx-3 divide-y divide-border text-xs">
           {MODELOS.map((m) => (
-            <div key={m.nombre} className="flex items-center gap-2 px-3 py-2">
+            <div key={m.nombre} className="flex items-center gap-2 px-3 py-1.5">
               <FaviconApp dominio="openai.com" alt="OpenAI" />
               <div className="min-w-0">
                 <p className="truncate font-medium">{m.nombre}</p>
@@ -462,7 +529,7 @@ export function CanvasAgente({
 
       {/* Columna 2 — el agente, sus leads y el equipo */}
       <div className="absolute flex flex-col gap-4" style={{ left: "36%", width: "24%", top: "8%" }}>
-      <Tarjeta claseExterior={runFallo ? ERROR_CLASE : undefined} titulo="Agente">
+      <Tarjeta ref={agenteRef} claseExterior={runFallo ? ERROR_CLASE : undefined} titulo="Agente">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-600 text-white">
             <Cpu className="size-3.5" />
@@ -550,7 +617,7 @@ export function CanvasAgente({
             {EQUIPO.map((a) => {
               const evs = eventos.filter((e) => e.agentSlug === a.slug);
               return (
-                <div key={a.slug} className="flex items-center gap-2 px-3 py-2">
+                <div key={a.slug} className="flex items-center gap-2 px-3 py-1.5">
                   <IconoCaja icon={a.icon} tint={evs.length ? a.tint : undefined} />
                   <span className="min-w-0 flex-1 truncate">{a.label}</span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">{evs.length ? a.contar(evs) : "—"}</span>
@@ -565,6 +632,7 @@ export function CanvasAgente({
       {/* Columna 3 — resultado: embudo y salida */}
       <div className="absolute flex flex-col gap-4" style={{ left: "70%", width: "20%", top: "8%" }}>
       <Tarjeta
+        ref={embudoRef}
         claseExterior={pipelineFallo ? ERROR_CLASE : undefined}
         titulo={
           <>
@@ -575,7 +643,7 @@ export function CanvasAgente({
       >
         <div className="-mx-3 divide-y divide-border text-xs">
           {embudo.map((e) => (
-            <div key={e.label} className="flex items-center gap-2 px-3 py-2">
+            <div key={e.label} className="flex items-center gap-2 px-3 py-1.5">
               <IconoCaja icon={e.icon} />
               <span className="min-w-0 flex-1 truncate text-muted-foreground">{e.label}</span>
               <span className="shrink-0 font-medium tabular-nums">{e.valor ?? "—"}</span>
