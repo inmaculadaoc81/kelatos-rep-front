@@ -21,32 +21,28 @@ import type { ReparacionDetalle } from "@/lib/reparacion-detalle";
 import type { FacturaManualDetalle } from "@/lib/factura-manual";
 import type { TicketManualDetalle } from "@/lib/ticket-manual";
 import type { AlquilerFacturaDetalle } from "@/lib/alquiler-detalle";
+import type { Venta } from "@/lib/ventas";
 import { FacturaModalShell } from "../reparaciones/factura-modal-shell";
 import type { TipoFacturaBase } from "../reparaciones/factura-acciones-tabs";
 import { FacturaManualModalShell } from "./factura-manual-modal-shell";
 import { TicketManualModalShell, type VistaTicketManual } from "./ticket-manual-modal-shell";
 import { AlquilerModalShell } from "./alquiler-modal-shell";
+import { VentaFacturaModalShell } from "../ventas/venta-factura-modal-shell";
+import { VentaTicketModalShell } from "../ventas/venta-ticket-modal-shell";
 
 /**
  * Resuelve a qué tipoBase corresponde una fila de la lista — para
  * rectificativa/corregida hace falta tipoOriginal (reparación o revisión)
  * porque ambas colapsan al mismo "tipo" visible en la lista, pero son
  * documentos distintos (numero_factura_rectificativa vs. ..._revision).
- * Recogida/venta no tienen un resguardo de reparación real — se quedan en
- * la vista simple, fuera de alcance. Manual y Alquiler tienen su propio
- * recorrido (DetalleFacturaManualConTabs/DetalleFacturaAlquilerConTabs más
- * abajo), no pasan por aquí.
+ * Recogida no tiene un resguardo de reparación real — se queda en la
+ * vista simple, fuera de alcance. Manual, Alquiler y Venta tienen su
+ * propio recorrido (DetalleFacturaManualConTabs/
+ * DetalleFacturaAlquilerConTabs/DetalleFacturaVentaConTabs más abajo), no
+ * pasan por aquí — se filtran en DetalleFacturaDialog antes de llegar.
  */
 function resolverTipoBase(factura: FacturaCliente): TipoFacturaBase | null {
-  if (factura.esAlquiler || factura.esManual || factura.esTicketManual) return null;
-  // Una rectificativa/corregida de venta comparte "resguardo" con el
-  // venta_id, no con un resguardo de reparación real — dejarla caer en las
-  // ramas de abajo intentaría leer /api/reparaciones/:resguardo con ese
-  // mismo número, arriesgando mostrar el detalle de OTRA reparación real
-  // que coincida por casualidad en el mismo id (ambas secuencias son
-  // independientes). Se queda en DetalleFacturaSimple, igual que la fila
-  // base "venta".
-  if (factura.tipoOriginal === "venta" || factura.tipoOriginal === "venta_ticket") return null;
+  if (factura.esAlquiler || factura.esManual || factura.esTicketManual || factura.esVenta) return null;
   switch (factura.tipo) {
     case "reparacion": return "normal";
     case "revision": return factura.esTicket ? "ticket_revision" : "revision";
@@ -85,8 +81,8 @@ function Fila({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode })
  * mensajería tienen las 3 pestañas completas; anticipo/rectificativa/
  * corregida solo PDF/Enviar (igual que _esRect en _mfaRenderResumen: un
  * documento que ya es una rectificativa o corregida no encadena su propia
- * devolución). Alquiler/recogida/manual/venta se quedan en la vista
- * reducida de solo lectura — fuera de alcance por ahora.
+ * devolución). Recogida se queda en la vista reducida de solo lectura —
+ * fuera de alcance por ahora.
  */
 export function DetalleFacturaDialog({
   factura,
@@ -126,6 +122,24 @@ export function DetalleFacturaDialog({
   if (factura.esAlquiler && factura.tipo === "alquiler") {
     return (
       <DetalleFacturaAlquilerConTabs
+        key={factura.resguardo + factura.tipo}
+        factura={factura}
+        onOpenChange={onOpenChange}
+        onActualizado={onCobrada}
+      />
+    );
+  }
+
+  // Fila base de un pedido de piezas (factura real "venta" o Ticket de
+  // venta "ticket") — antes se quedaba en DetalleFacturaSimple (solo Ver
+  // PDF, sin Enviar). Su rectificativa/corregida (tipoOriginal
+  // venta/venta_ticket) sigue cayendo en la vista simple, igual que antes
+  // — comparten resguardo con el venta_id, no con un resguardo de
+  // reparación real, así que ambigüedad aparte, todavía no hay una vista
+  // con tabs específica para ELLAS (solo para la factura/ticket base).
+  if (factura.esVenta && (factura.tipo === "venta" || factura.tipo === "ticket")) {
+    return (
+      <DetalleFacturaVentaConTabs
         key={factura.resguardo + factura.tipo}
         factura={factura}
         onOpenChange={onOpenChange}
@@ -405,6 +419,89 @@ function DetalleFacturaAlquilerConTabs({
   return (
     <AlquilerModalShell detalle={detalle} open onOpenChange={onOpenChange} onActualizado={actualizar} />
   );
+}
+
+/**
+ * Igual que DetalleFacturaAlquilerConTabs, pero para un pedido de piezas
+ * (kelatos_app.ventas) — lee /api/ventas/:ventaId (factura.resguardo es el
+ * venta_id) en vez de /api/reparaciones/:resguardo. Reutiliza los mismos
+ * shells que ya usa la pantalla de Ventas (VentaFacturaModalShell para la
+ * factura real, VentaTicketModalShell para el Ticket de venta) en vez de
+ * reconstruir PDF/Enviar/Devolución/Rectificativo aparte — así "Detalle de
+ * factura" desde aquí ofrece Enviar igual que desde Ventas (petición del
+ * usuario, 2026-09-11: "no sale para enviarle desde aquí").
+ */
+function DetalleFacturaVentaConTabs({
+  factura,
+  onOpenChange,
+  onActualizado,
+}: {
+  factura: FacturaCliente;
+  onOpenChange: (open: boolean) => void;
+  onActualizado: () => void;
+}) {
+  const [venta, setVenta] = useState<Venta | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function cargar() {
+    setCargando(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/ventas/${encodeURIComponent(factura.resguardo)}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setVenta(data.venta as Venta);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [factura.resguardo]);
+
+  function actualizar() {
+    cargar();
+    onActualizado();
+  }
+
+  if (cargando || error || !venta) {
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
+          <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
+            <Receipt className="size-4.5 shrink-0" />
+            <DialogTitle className="text-sm font-semibold text-primary-foreground">
+              {factura.numero} — {factura.cliente || "Sin nombre"}
+            </DialogTitle>
+            <Button variant="ghost" size="icon-sm" className="ml-auto text-primary-foreground hover:bg-white/15 hover:text-primary-foreground" onClick={() => onOpenChange(false)}>
+              <CloseCircle className="size-4" />
+            </Button>
+          </header>
+          <div className="space-y-2 p-4">
+            {error ? (
+              <p className="text-sm text-destructive">Error al cargar: {error}</p>
+            ) : (
+              <>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-24 w-full" />
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (factura.tipo === "ticket") {
+    return <VentaTicketModalShell venta={venta} open onOpenChange={onOpenChange} onActualizado={actualizar} />;
+  }
+  return <VentaFacturaModalShell venta={venta} open onOpenChange={onOpenChange} onActualizado={actualizar} />;
 }
 
 function DetalleFacturaConTabs({
