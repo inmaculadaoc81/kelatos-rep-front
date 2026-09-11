@@ -165,7 +165,7 @@ function formatearDuracion(ms: number): string {
 function PuntoConector({ x, y, color }: { x: number; y: number; color: string }) {
   return (
     <span
-      className="absolute z-10 size-1.5 rounded-full"
+      className="pointer-events-none absolute z-10 size-1.5 rounded-full"
       style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)", backgroundColor: color }}
     />
   );
