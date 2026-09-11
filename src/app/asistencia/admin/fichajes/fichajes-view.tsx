@@ -22,6 +22,7 @@ import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
 import { TipoFichajePill } from "../../pills";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { Filter, Category2, ArrowRight2 } from "@/lib/icons";
+import { useEmpleadosRemotosIds } from "../../use-empleados-remotos";
 import { DetalleFichajeDialog } from "./detalle-fichaje-dialog";
 
 interface Empleado {
@@ -171,7 +172,7 @@ function agrupar(lista: Fichaje[], agruparPor: AgruparPor): Grupo[] | null {
  */
 export function FichajesView({ soloRemotos = false }: { soloRemotos?: boolean }) {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [empleadosRemotosIds, setEmpleadosRemotosIds] = useState<Set<number> | null>(null);
+  const empleadosRemotosIds = useEmpleadosRemotosIds(soloRemotos);
   const [fichajes, setFichajes] = useState<Fichaje[]>([]);
   const [empleadoId, setEmpleadoId] = useState("");
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>("todas");
@@ -203,25 +204,6 @@ export function FichajesView({ soloRemotos = false }: { soloRemotos?: boolean })
   useEffect(() => {
     fetch("/api/asistencia/admin/empleados").then((r) => r.json()).then((d) => { if (d.ok) setEmpleados(d.empleados); });
   }, []);
-
-  // Solo en modo Remote Work: qué empleados tienen al menos un
-  // dispositivo remoto asignado — determina tanto el desplegable como el
-  // filtrado de la tabla de abajo.
-  useEffect(() => {
-    if (!soloRemotos) return;
-    fetch("/api/asistencia/admin/remote-workers")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.ok) return;
-        const ids = new Set<number>(
-          (d.dispositivos as { employee_id: number | null }[])
-            .map((disp) => disp.employee_id)
-            .filter((id): id is number => id != null),
-        );
-        setEmpleadosRemotosIds(ids);
-      })
-      .catch(() => setEmpleadosRemotosIds(new Set()));
-  }, [soloRemotos]);
 
   useEffect(() => {
     cargar();

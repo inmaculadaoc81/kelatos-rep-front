@@ -61,13 +61,19 @@ const ENTRADA_REMOTE_WORKERS = { href: "/asistencia/admin/remote-workers", label
 
 /** Dentro de /asistencia/admin/remote-workers/*, el sidebar deja de
     mostrar Kiosco/Administración y muestra solo esto — es una sección
-    dedicada a empleados remotos, con su propio dashboard y sus propios
-    fichajes (se reutiliza la pantalla de Fichajes ya existente, sin
-    filtro — no se crea una tabla de fichajes paralela). */
+    dedicada a empleados remotos, con su propio dashboard y las mismas
+    pantallas de solicitudes que ya existen en Administración
+    (Fichajes/Vacaciones/Correcciones/Marcaciones olvidadas/Ausencias
+    parciales), reutilizadas con un filtro "solo remotos" — no se crea
+    ninguna tabla paralela. */
 const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers", label: "Dashboard", icon: Chart },
   { href: "/asistencia/admin/remote-workers/dispositivos", label: "Dispositivos", icon: Monitor },
   { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
+  { href: "/asistencia/admin/remote-workers/vacaciones", label: "Vacaciones", icon: Airplane },
+  { href: "/asistencia/admin/remote-workers/correcciones", label: "Correcciones", icon: Edit2 },
+  { href: "/asistencia/admin/remote-workers/marcaciones-olvidadas", label: "Marcaciones olvidadas", icon: CalendarRemove },
+  { href: "/asistencia/admin/remote-workers/ausencias-parciales", label: "Ausencias parciales", icon: Health },
 ];
 
 /** Puerto del sidebar de la app (mismo componente Sidebar de shadcn ya
