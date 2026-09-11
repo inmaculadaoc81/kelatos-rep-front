@@ -28,6 +28,7 @@ import {
   DocumentDownload,
   Setting2,
   Profile2User,
+  Monitor,
 } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
@@ -46,6 +47,7 @@ const ITEMS_ADMIN = [
   { href: "/asistencia/admin/correcciones", label: "Correcciones", icon: Edit2 },
   { href: "/asistencia/admin/marcaciones-olvidadas", label: "Marcaciones olvidadas", icon: CalendarRemove },
   { href: "/asistencia/admin/ausencias-parciales", label: "Ausencias parciales", icon: Health },
+  { href: "/asistencia/admin/remote-workers", label: "Teletrabajo", icon: Monitor },
   { href: "/asistencia/admin/auditoria", label: "Auditoría", icon: SecuritySafe },
   { href: "/asistencia/admin/informe", label: "Informe mensual", icon: DocumentDownload },
 ];

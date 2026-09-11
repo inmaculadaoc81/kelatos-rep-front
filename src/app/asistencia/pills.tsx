@@ -2,6 +2,8 @@
 // EstadoBadge ya usado en Ventas/Facturas de Clientes (span redondeado,
 // color inline en vez de las variantes fijas de components/ui/badge.tsx).
 
+import { ESTADO_DISPOSITIVO_LABEL, ESTADO_DISPOSITIVO_COLOR, type EstadoDispositivo } from "@/lib/remote-workers";
+
 const ESTILO_ESTADO: Record<string, { bg: string; color?: string }> = {
   pendiente: { bg: "#fef3c7", color: "#92400e" },
   aprobado: { bg: "#d1fae5", color: "#065f46" },
@@ -52,6 +54,15 @@ export function TipoFichajePill({ tipo }: { tipo: string }) {
   return (
     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
       {ETIQUETA_TIPO_FICHAJE[tipo] || tipo}
+    </span>
+  );
+}
+
+export function EstadoDispositivoPill({ estado }: { estado: EstadoDispositivo }) {
+  const estilo = ESTADO_DISPOSITIVO_COLOR[estado] || { bg: "#e4e4e7", color: "#3f3f46" };
+  return (
+    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
+      {ESTADO_DISPOSITIVO_LABEL[estado] || estado}
     </span>
   );
 }
