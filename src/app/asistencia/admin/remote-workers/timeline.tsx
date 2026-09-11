@@ -1,4 +1,5 @@
 import { formatDuracion, type RemoteWindowEvent } from "@/lib/remote-workers";
+import { AppIcon } from "./app-icon";
 
 function hora(fecha: string | null): string {
   if (!fecha) return "—";
@@ -18,6 +19,7 @@ export function Timeline({ eventos }: { eventos: RemoteWindowEvent[] }) {
       {eventos.map((ev, i) => (
         <li key={i} className="flex gap-3 border-l-2 border-border py-2 pl-3">
           <span className="w-12 shrink-0 text-xs tabular-nums text-muted-foreground">{hora(ev.startedAt)}</span>
+          <AppIcon applicationName={ev.application} className="mt-0.5 size-4 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{ev.application}</p>
             {ev.windowTitle && <p className="truncate text-xs text-muted-foreground">{ev.windowTitle}</p>}

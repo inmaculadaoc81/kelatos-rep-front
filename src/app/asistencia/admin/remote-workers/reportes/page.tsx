@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Danger } from "@/lib/icons";
+import { Danger, Calendar, ClipboardText, Chart, Clock, Category2 } from "@/lib/icons";
 import { EstadoActividadPill } from "../../../pills";
 import {
   type RemoteWorkerListItem,
@@ -144,12 +144,12 @@ export default function ReportesRemoteWorkersPage() {
       ) : (
         <Tabs defaultValue="diario">
           <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="diario">Diario</TabsTrigger>
-            <TabsTrigger value="semanal">Semanal</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="alertas">Alertas</TabsTrigger>
-            <TabsTrigger value="timeline">Línea de tiempo</TabsTrigger>
-            <TabsTrigger value="apps">Aplicaciones</TabsTrigger>
+            <TabsTrigger value="diario" className="gap-1.5"><Calendar className="size-3.5" /> Diario</TabsTrigger>
+            <TabsTrigger value="semanal" className="gap-1.5"><ClipboardText className="size-3.5" /> Semanal</TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-1.5"><Chart className="size-3.5" /> Analytics</TabsTrigger>
+            <TabsTrigger value="alertas" className="gap-1.5"><Danger className="size-3.5" /> Alertas</TabsTrigger>
+            <TabsTrigger value="timeline" className="gap-1.5"><Clock className="size-3.5" /> Línea de tiempo</TabsTrigger>
+            <TabsTrigger value="apps" className="gap-1.5"><Category2 className="size-3.5" /> Aplicaciones</TabsTrigger>
           </TabsList>
 
           <TabsContent value="diario">

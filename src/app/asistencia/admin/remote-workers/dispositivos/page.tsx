@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useConfirm } from "@/components/confirm-provider";
-import { Eye } from "@/lib/icons";
+import { Eye, UserAdd, CloseCircle, TickCircle } from "@/lib/icons";
 import { EstadoDispositivoPill } from "../../../pills";
 import { type RemoteWorkerListItem, mapearRemoteWorkerListItem } from "@/lib/remote-workers";
 import { AsignarDispositivoDialog } from "../asignar-dispositivo-dialog";
@@ -116,16 +116,17 @@ export default function DispositivosRemotosPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="outline" onClick={() => setAsignando(d)}>
-                      {d.employeeId ? "Cambiar" : "Asignar"}
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAsignando(d)}>
+                      <UserAdd className="size-3.5" /> {d.employeeId ? "Cambiar" : "Asignar"}
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className={d.status === "activo" ? "text-destructive" : "text-emerald-700"}
+                      className={`gap-1.5 ${d.status === "activo" ? "text-destructive" : "text-emerald-700"}`}
                       disabled={cambiandoEstado === d.deviceId}
                       onClick={() => alternarEstado(d)}
                     >
+                      {d.status === "activo" ? <CloseCircle className="size-3.5" /> : <TickCircle className="size-3.5" />}
                       {d.status === "activo" ? "Desactivar" : "Reactivar"}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => router.push(`/asistencia/admin/remote-workers/${d.deviceId}`)}>

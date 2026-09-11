@@ -3,6 +3,7 @@
 import { Pie, PieChart, Cell } from "recharts";
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { formatDuracion, type RemoteWorkerAppUsage } from "@/lib/remote-workers";
+import { AppIcon } from "./app-icon";
 
 const COLORES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 const MAX_SEGMENTOS = 5;
@@ -23,7 +24,17 @@ export function AppDistributionChart({ apps }: { apps: RemoteWorkerAppUsage[] })
     : top;
 
   const chartConfig: ChartConfig = Object.fromEntries(
-    datos.map((d, i) => [d.applicationName, { label: d.applicationName, color: COLORES[i % COLORES.length] }]),
+    datos.map((d, i) => [
+      d.applicationName,
+      {
+        label: d.applicationName,
+        color: COLORES[i % COLORES.length],
+        // Logo real de la app en vez del punto de color, cuando se
+        // reconoce el ejecutable (ver app-icon.tsx) — "Otras" (grupo
+        // agregado sin ejecutable propio) cae al icono generico.
+        icon: () => <AppIcon applicationName={d.applicationName} className="size-3.5" />,
+      },
+    ]),
   );
 
   return (

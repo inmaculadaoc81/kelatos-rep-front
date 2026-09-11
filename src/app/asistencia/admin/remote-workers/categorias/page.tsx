@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TickCircle, CloseCircle, Save2 } from "@/lib/icons";
 import { type AppCategory, mapearCategoria } from "@/lib/remote-workers";
+import { AppIcon } from "../app-icon";
 
 const FORM_VACIO = { applicationName: "", category: "", productive: true };
 
@@ -87,7 +89,7 @@ export default function CategoriasAplicacionesPage() {
               <Checkbox checked={form.productive} onCheckedChange={(v) => setForm((f) => ({ ...f, productive: v === true }))} />
               <Label className="font-normal">Cuenta como productivo</Label>
             </div>
-            <Button onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button>
+            <Button className="gap-1.5" onClick={guardar} disabled={guardando}><Save2 className="size-3.5" /> {guardando ? "Guardando…" : "Guardar"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -111,9 +113,20 @@ export default function CategoriasAplicacionesPage() {
             )}
             {!cargando && categorias.map((c) => (
               <TableRow key={c.id}>
-                <TableCell className="font-medium">{c.applicationName}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="inline-flex items-center gap-2">
+                    <AppIcon applicationName={c.applicationName} />
+                    {c.applicationName}
+                  </span>
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{c.category}</TableCell>
-                <TableCell className="text-sm">{c.productive ? "Sí" : "No"}</TableCell>
+                <TableCell className="text-sm">
+                  {c.productive ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-600"><TickCircle className="size-4" /> Sí</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground"><CloseCircle className="size-4" /> No</span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Button size="sm" variant="outline" onClick={() => editar(c)}>Editar</Button>
                 </TableCell>

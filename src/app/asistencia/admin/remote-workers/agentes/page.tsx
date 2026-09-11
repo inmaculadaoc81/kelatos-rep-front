@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useConfirm } from "@/components/confirm-provider";
-import { Eye } from "@/lib/icons";
+import { Eye, Lock, TickCircle } from "@/lib/icons";
 import { EstadoDispositivoPill } from "../../../pills";
 import { type RemoteWorkerListItem, mapearRemoteWorkerListItem } from "@/lib/remote-workers";
 
@@ -122,10 +122,11 @@ export default function AgentesRemotosPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className={d.status === "activo" ? "text-destructive" : "text-emerald-700"}
+                      className={`gap-1.5 ${d.status === "activo" ? "text-destructive" : "text-emerald-700"}`}
                       disabled={cambiandoEstado === d.deviceId}
                       onClick={() => revocar(d)}
                     >
+                      {d.status === "activo" ? <Lock className="size-3.5" /> : <TickCircle className="size-3.5" />}
                       {d.status === "activo" ? "Revocar" : "Reactivar"}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => router.push(`/asistencia/admin/remote-workers/${d.deviceId}`)}>
