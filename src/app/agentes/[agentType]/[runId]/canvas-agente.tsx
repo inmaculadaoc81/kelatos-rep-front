@@ -563,7 +563,7 @@ export function CanvasAgente({
       </div>
 
       {/* Columna 3 — resultado: embudo y salida */}
-      <div className="absolute flex flex-col gap-4" style={{ left: "70%", width: "27%", top: "8%" }}>
+      <div className="absolute flex flex-col gap-4" style={{ left: "70%", width: "20%", top: "8%" }}>
       <Tarjeta
         claseExterior={pipelineFallo ? ERROR_CLASE : undefined}
         titulo={
