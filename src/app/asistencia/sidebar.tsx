@@ -67,7 +67,7 @@ const ENTRADA_REMOTE_WORKERS = { href: "/asistencia/admin/remote-workers", label
 const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers", label: "Dashboard", icon: Chart },
   { href: "/asistencia/admin/remote-workers/dispositivos", label: "Dispositivos", icon: Monitor },
-  { href: "/asistencia/admin/fichajes", label: "Fichajes", icon: Clock },
+  { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
 ];
 
 /** Puerto del sidebar de la app (mismo componente Sidebar de shadcn ya
