@@ -20,6 +20,7 @@ import {
   Copy,
   CloseCircle,
   Folder2,
+  ShoppingCart,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,7 @@ import { ColumnaFiltro } from "./columna-filtro";
 import { DetalleFacturaDialog } from "./detalle-factura-dialog";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
 import { AlquilerDetalleDialog } from "../equipos/alquiler-detalle-dialog";
+import { DetalleVentaDialog } from "../ventas/detalle-venta-dialog";
 import type { Equipo } from "@/lib/equipos";
 
 function euros(n: number): string {
@@ -294,9 +296,25 @@ function FacturaBadge({ f }: { f: FacturaCliente }) {
   );
 }
 
-function ResguardoCell({ f, onVer }: { f: FacturaCliente; onVer: (resguardo: string) => void }) {
+function ResguardoCell({ f, onVer, onVerVenta }: { f: FacturaCliente; onVer: (resguardo: string) => void; onVerVenta: (ventaId: string) => void }) {
   if (f.esAlquiler) return <span className="font-bold" style={{ color: "#198754" }}>{f.resguardo || "—"}</span>;
   if (f.esManual || f.esTicketManual) return <span className="font-bold" style={{ color: "#6f42c1" }}>{f.resguardo || "—"}</span>;
+  // "venta": f.resguardo es en realidad el venta_id (secuencia
+  // independiente de reparaciones.resguardo) — abre el pedido, no
+  // /api/reparaciones/<resguardo> (bug real reportado 2026-09-11: el
+  // número no coincidía con ninguna reparación y se quedaba sin entrar).
+  if (f.esVenta) {
+    return (
+      <button
+        type="button"
+        className="font-bold underline-offset-2 hover:underline"
+        style={{ color: "#d63384" }}
+        onClick={() => onVerVenta(f.resguardo)}
+      >
+        {f.resguardo || "—"}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -312,11 +330,13 @@ function VerBoton({
   f,
   onVer,
   onVerAlquiler,
+  onVerVenta,
   cargandoAlquiler,
 }: {
   f: FacturaCliente;
   onVer: (resguardo: string) => void;
   onVerAlquiler: (f: FacturaCliente) => void;
+  onVerVenta: (ventaId: string) => void;
   cargandoAlquiler: boolean;
 }) {
   if (f.esManual || f.esTicketManual) return <span className="mr-1 inline-block size-7" />;
@@ -330,6 +350,18 @@ function VerBoton({
     return (
       <Button variant="outline" size="icon-sm" className="mr-1" title="Ver alquiler" onClick={() => onVerAlquiler(f)} disabled={cargandoAlquiler}>
         <Bank className="size-3.5" />
+      </Button>
+    );
+  }
+  if (f.esVenta) {
+    // Antes caía aquí al botón por defecto ("Ver reparación") e intentaba
+    // /api/reparaciones/<venta_id> — bug real reportado 2026-09-11: ese
+    // número es del pedido, no de una reparación, así que no encontraba
+    // nada (o, peor, podía coincidir por casualidad con una reparación
+    // real distinta). Abre el mismo DetalleVentaDialog que usa Ventas.
+    return (
+      <Button variant="outline" size="icon-sm" className="mr-1" title="Ver venta" onClick={() => onVerVenta(f.resguardo)}>
+        <ShoppingCart className="size-3.5" />
       </Button>
     );
   }
@@ -368,6 +400,7 @@ export default function FacturasClientesPage() {
 
   const [facturaAcciones, setFacturaAcciones] = useState<FacturaCliente | null>(null);
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
+  const [ventaVerId, setVentaVerId] = useState<string | null>(null);
   const [alquilerEquipoAbierto, setAlquilerEquipoAbierto] = useState<Equipo | null>(null);
   const [cargandoAlquilerEquipo, setCargandoAlquilerEquipo] = useState(false);
 
@@ -788,7 +821,7 @@ export default function FacturasClientesPage() {
                       paginaActual.map((f, i) => (
                         <TableRow key={`${f.resguardo}-${f.numero}-${f.tipo}-${i}`}>
                           <TableCell>
-                            <ResguardoCell f={f} onVer={setResguardoDetalle} />
+                            <ResguardoCell f={f} onVer={setResguardoDetalle} onVerVenta={setVentaVerId} />
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5">
@@ -821,7 +854,7 @@ export default function FacturasClientesPage() {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{formaPagoLabel(f)}</TableCell>
                           <TableCell className="text-nowrap">
-                            <VerBoton f={f} onVer={setResguardoDetalle} onVerAlquiler={abrirAlquilerEquipo} cargandoAlquiler={cargandoAlquilerEquipo} />
+                            <VerBoton f={f} onVer={setResguardoDetalle} onVerAlquiler={abrirAlquilerEquipo} onVerVenta={setVentaVerId} cargandoAlquiler={cargandoAlquilerEquipo} />
                             {!f.historica && (
                               <Button variant="outline" size="icon-sm" title="Detalle de factura" onClick={() => setFacturaAcciones(f)}>
                                 <DocumentText className="size-3.5" />
@@ -892,6 +925,7 @@ export default function FacturasClientesPage() {
 
       <DetalleFacturaDialog factura={facturaAcciones} onOpenChange={(o) => !o && setFacturaAcciones(null)} onCobrada={cargar} />
       <DetalleReparacionDialog resguardo={resguardoDetalle} onOpenChange={(o) => !o && setResguardoDetalle(null)} onActualizado={cargar} />
+      <DetalleVentaDialog ventaId={ventaVerId} open={ventaVerId !== null} onOpenChange={(o) => !o && setVentaVerId(null)} onActualizado={cargar} />
       <AlquilerDetalleDialog equipo={alquilerEquipoAbierto} open={!!alquilerEquipoAbierto} onOpenChange={(o) => !o && setAlquilerEquipoAbierto(null)} />
     </div>
   );

@@ -89,7 +89,7 @@ export function VentaFacturaModalShell({
 
             <TabsContent value="pdf" className="p-4">
               <TabPdfEnviar
-                enviarUrl={null}
+                enviarUrl={`${apiBase}/enviar`}
                 tipo="normal"
                 numeroFactura={venta.numeroFactura}
                 urlFactura={venta.urlFactura}

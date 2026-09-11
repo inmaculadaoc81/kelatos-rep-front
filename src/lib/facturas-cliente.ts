@@ -85,6 +85,15 @@ export interface FacturaCliente {
       DetalleFacturaManualConTabs) y que la lista lo trate como standalone
       (sin botón "Ver reparación"). */
   esTicketManual?: boolean;
+  /** true = viene de kelatos_app.ventas (pedido de piezas) — el
+      "resguardo" de estas filas es en realidad el venta_id, de una
+      secuencia independiente de la de reparaciones.resguardo. Decide que
+      "Ver" abra el detalle del pedido (DetalleVentaDialog) en vez de
+      intentar `/api/reparaciones/<resguardo>` con ese número — bug real
+      reportado 2026-09-11: para una venta esa llamada no encontraba nada
+      (o, peor, podía coincidir por casualidad con una reparación real
+      distinta) y el botón "Ver" se quedaba sin poder entrar. */
+  esVenta?: boolean;
   /** true = este número fiscal fue real y se generó, pero quedó sustituido
       por un ciclo posterior de rectificativa/corregida (columna de un solo
       slot en reparaciones). Desde la migración 029 el total se conserva en
@@ -190,11 +199,17 @@ export function serieFactura(numeroFactura: string): string {
 }
 
 /** true si el total ya incluye IVA (alquiler/recogida ya lo aplican al
-    guardar, junto con fianza/envío en su caso; venta también) — el resto
-    de tipos guarda la base sin IVA y hay que aplicar el 21% para mostrar
-    el importe real, tal como hace _fcRenderPagina() en el original. */
+    guardar, junto con fianza/envío en su caso) — el resto de tipos guarda
+    la base SIN IVA y hay que aplicar el 21% para mostrar el importe real,
+    tal como hace _fcRenderPagina() en el original.
+    "venta" NO va aquí: total_factura guarda la base imponible (ver
+    /api/ventas/nuevo-pedido/route.ts: total_factura: generado.baseImponible,
+    y venta-factura-modal-shell.tsx: totalConIva = venta.totalFactura * 1.21)
+    — bug real reportado 2026-09-11: la columna Total de esta tabla mostraba
+    el importe antes de IVA para las facturas de venta de piezas, aunque el
+    PDF de la factura sí llevaba el importe correcto. */
 export function esFacturaConIvaIncluido(f: Pick<FacturaCliente, "tipo" | "esAlquiler">): boolean {
-  return f.tipo === "alquiler" || f.tipo === "recogida" || f.tipo === "venta" || !!f.esAlquiler;
+  return f.tipo === "alquiler" || f.tipo === "recogida" || !!f.esAlquiler;
 }
 
 export function montoConIva(f: FacturaCliente): number {
@@ -1253,6 +1268,7 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
     email: texto(row.cliente_email),
     equipo: "",
     estadoEntrega: "",
+    esVenta: true as const,
   };
   const facturas: FacturaCliente[] = [];
 
