@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles,
   Briefcase, MapPin, Hash, Search, Filter, Zap, BadgeCheck, Building2, Mail,
+  ClipboardList, Megaphone, Lightbulb,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Global, Cpu } from "@/lib/icons";
@@ -117,10 +118,10 @@ function FaviconApp({ dominio, alt }: { dominio: string; alt: string }) {
 
 /** Icono pequeño dentro de una caja de 1px (mismo lenguaje visual que los
     pasos del panel "Actividad"). Va a la izquierda de cada fila. */
-function IconoCaja({ icon: Icono }: { icon: LucideIcon }) {
+function IconoCaja({ icon: Icono, tint }: { icon: LucideIcon; tint?: string }) {
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-white text-muted-foreground">
-      <Icono className="size-3.5" strokeWidth={2} />
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-white">
+      <Icono className={`size-3.5 ${tint ?? "text-muted-foreground"}`} strokeWidth={2} />
     </span>
   );
 }
@@ -155,13 +156,13 @@ function formatearDuracion(ms: number): string {
   return `${m}m ${Math.round(s % 60)}s`;
 }
 
-function Punto({ x, y, activo }: { x: number; y: number; activo: boolean }) {
+function Punto({ x, y, activo, color }: { x: number; y: number; activo: boolean; color?: string }) {
   return (
     <circle
       cx={x}
       cy={y}
-      r={0.6}
-      className={activo ? "fill-blue-500" : "fill-muted-foreground/40"}
+      r={0.7}
+      fill={activo ? "#3b82f6" : (color ?? "currentColor")}
     />
   );
 }
@@ -194,18 +195,18 @@ function Tarjeta({
 }
 
 // Sub-agentes del equipo de marketing, en el orden del pipeline.
-const EQUIPO: { slug: string; label: string; dot: string; contar: (e: AgentEvent[]) => string }[] = [
-  { slug: "campaign_planner", label: "Campaign Planner", dot: "bg-violet-500",
+const EQUIPO: { slug: string; label: string; icon: LucideIcon; tint: string; contar: (e: AgentEvent[]) => string }[] = [
+  { slug: "campaign_planner", label: "Campaign Planner", icon: ClipboardList, tint: "text-violet-500",
     contar: (e) => (e.some((x) => x.action === "plan_ready") ? "plan listo" : "—") },
-  { slug: "marketing_manager", label: "Marketing Manager", dot: "bg-amber-500",
+  { slug: "marketing_manager", label: "Marketing Manager", icon: Megaphone, tint: "text-amber-500",
     contar: (e) => `${e.length} decisión${e.length !== 1 ? "es" : ""}` },
-  { slug: "web_research", label: "Web Research", dot: "bg-cyan-600",
+  { slug: "web_research", label: "Web Research", icon: Search, tint: "text-cyan-600",
     contar: (e) => `${e.filter((x) => x.action === "brief_ready").length} briefs` },
-  { slug: "qualification", label: "Qualification", dot: "bg-emerald-500",
+  { slug: "qualification", label: "Qualification", icon: BadgeCheck, tint: "text-emerald-500",
     contar: (e) => `${e.filter((x) => x.action === "qualified").length} calificados` },
-  { slug: "offer_strategy", label: "Offer Strategist", dot: "bg-blue-500",
+  { slug: "offer_strategy", label: "Offer Strategist", icon: Lightbulb, tint: "text-blue-500",
     contar: (e) => `${e.filter((x) => x.action === "chose_offer").length} ofertas` },
-  { slug: "outreach", label: "Outreach", dot: "bg-orange-500",
+  { slug: "outreach", label: "Outreach", icon: Send, tint: "text-orange-500",
     contar: (e) => `${e.filter((x) => x.action === "draft_ready").length} borradores` },
 ];
 
@@ -360,31 +361,31 @@ export function CanvasAgente({
         {ampliado ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
       </button>
 
-      {/* Conectores: Entrada→Agente, Agente→Herramientas (discovery),
-          Agente→Embudo. Sobre el mismo viewBox 0-100 que el left/top de
-          las columnas, con preserveAspectRatio="none". */}
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full text-border">
-        <path d="M23,16 C 30,16 29,22 36,22" fill="none" stroke="currentColor" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
+      {/* Conectores: Entrada→Agente y Agente→Herramientas (discovery) en
+          morado; Agente→Embudo en verde. Sobre el mismo viewBox 0-100 que
+          el left/top de las columnas, con preserveAspectRatio="none". */}
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+        <path d="M23,16 C 30,16 29,22 36,22" fill="none" stroke="#8b5cf6" strokeDasharray="0.3 0.4" strokeWidth="0.18" />
         <path
           d="M36,27 C 30,27 29,37 23,37"
           fill="none"
-          stroke={discoveryActivo ? "#3b82f6" : "currentColor"}
+          stroke={discoveryActivo ? "#3b82f6" : "#8b5cf6"}
           strokeDasharray="0.3 0.4"
           strokeWidth="0.18"
         />
         <path
           d="M60,22 C 65,22 64,16 70,16"
           fill="none"
-          stroke={pipelineActivo ? "#3b82f6" : "currentColor"}
+          stroke={pipelineActivo ? "#3b82f6" : "#10b981"}
           strokeDasharray="0.3 0.4"
           strokeWidth="0.18"
         />
-        <Punto x={23} y={16} activo={false} />
-        <Punto x={36} y={22} activo={false} />
-        <Punto x={36} y={27} activo={discoveryActivo} />
-        <Punto x={23} y={37} activo={discoveryActivo} />
-        <Punto x={60} y={22} activo={pipelineActivo} />
-        <Punto x={70} y={16} activo={pipelineActivo} />
+        <Punto x={23} y={16} activo={false} color="#8b5cf6" />
+        <Punto x={36} y={22} activo={false} color="#8b5cf6" />
+        <Punto x={36} y={27} activo={discoveryActivo} color="#8b5cf6" />
+        <Punto x={23} y={37} activo={discoveryActivo} color="#8b5cf6" />
+        <Punto x={60} y={22} activo={pipelineActivo} color="#10b981" />
+        <Punto x={70} y={16} activo={pipelineActivo} color="#10b981" />
       </svg>
 
       {/* Columna 1 — entrada y capacidades del agente */}
@@ -407,11 +408,11 @@ export function CanvasAgente({
       </Tarjeta>
 
       <Tarjeta
-        claseExterior={discoveryFallo ? ERROR_CLASE : undefined}
+        claseExterior={discoveryFallo ? ERROR_CLASE : "border-violet-200 bg-violet-50/60"}
         titulo={
-          <>
+          <span className="flex items-center gap-1.5 text-violet-700">
             <Global className="size-3.5" /> Herramientas
-          </>
+          </span>
         }
       >
         <div className="-mx-3 divide-y divide-border text-xs">
@@ -433,11 +434,11 @@ export function CanvasAgente({
       </Tarjeta>
 
       <Tarjeta
-        claseExterior={pipelineFallo ? ERROR_CLASE : undefined}
+        claseExterior={pipelineFallo ? ERROR_CLASE : "border-emerald-200 bg-emerald-50/60"}
         titulo={
-          <>
+          <span className="flex items-center gap-1.5 text-emerald-700">
             <Sparkles className="size-3.5" /> Modelos
-          </>
+          </span>
         }
       >
         <div className="-mx-3 divide-y divide-border text-xs">
@@ -549,8 +550,8 @@ export function CanvasAgente({
             {EQUIPO.map((a) => {
               const evs = eventos.filter((e) => e.agentSlug === a.slug);
               return (
-                <div key={a.slug} className="flex items-center gap-2 px-3 py-1.5">
-                  <span className={`size-1.5 shrink-0 rounded-full ${evs.length ? a.dot : "bg-muted-foreground/25"}`} />
+                <div key={a.slug} className="flex items-center gap-2 px-3 py-2">
+                  <IconoCaja icon={a.icon} tint={evs.length ? a.tint : undefined} />
                   <span className="min-w-0 flex-1 truncate">{a.label}</span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">{evs.length ? a.contar(evs) : "—"}</span>
                 </div>
