@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles } from "lucide-react";
-import { SearchNormal1, Global, Cpu } from "@/lib/icons";
+import { Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import type { AgentEvent, CampaignLead, CampaignBudget } from "@/lib/campanas";
 import { SERVICE_LABEL, mapearLead } from "@/lib/campanas";
@@ -79,10 +79,37 @@ const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
   rejected: { bg: "#fee2e2", color: "#991b1b" },
 };
 
-/** Herramientas que el agente puede usar — hoy solo una (el buscador de
-    empresas detrás de findBusinesses), pero la tarjeta ya está pensada
-    como lista para cuando un agente tenga varias. */
-const HERRAMIENTAS = [{ nombre: "Directorio web", detalle: "infoisinfo.es + DuckDuckGo", icono: SearchNormal1, color: "bg-blue-600" }];
+/** Herramientas / fuentes que el agente usa detrás de findBusinesses y de
+    la resolución de webs. El icono es el favicon real de cada servicio. */
+const HERRAMIENTAS: { nombre: string; detalle: string; dominio: string }[] = [
+  { nombre: "infoisinfo", detalle: "Directorio de empresas", dominio: "infoisinfo.es" },
+  { nombre: "DuckDuckGo", detalle: "Búsqueda de webs", dominio: "duckduckgo.com" },
+  { nombre: "Google", detalle: "Places · resolución de webs", dominio: "google.com" },
+];
+
+/** Favicon de un servicio (vía el servicio de favicons de Google). Si no
+    carga, cae a un icono genérico — nunca deja un hueco roto. */
+function FaviconApp({ dominio, alt }: { dominio: string; alt: string }) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return (
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+        <Global className="size-3.5" />
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${dominio}&sz=64`}
+      alt={alt}
+      width={24}
+      height={24}
+      className="size-6 shrink-0 rounded-md border border-border bg-white object-contain p-0.5"
+      onError={() => setError(true)}
+    />
+  );
+}
 
 /** Los dos niveles de modelo del embudo de coste. Son los valores por
     defecto de AGENTES_OPENAI_MODEL_CHEAP/DEEP en el backend (mismo criterio
@@ -367,9 +394,7 @@ export function CanvasAgente({
         <div className="-mx-3 divide-y divide-border text-xs">
           {HERRAMIENTAS.map((h) => (
             <div key={h.nombre} className="flex items-center gap-2 px-3 py-2">
-              <span className={`flex size-6 shrink-0 items-center justify-center rounded-md text-white ${h.color}`}>
-                <h.icono className="size-3.5" />
-              </span>
+              <FaviconApp dominio={h.dominio} alt={h.nombre} />
               <div className="min-w-0">
                 <p className="truncate font-medium">{h.nombre}</p>
                 <p className="truncate text-[10px] text-muted-foreground">{h.detalle}</p>
