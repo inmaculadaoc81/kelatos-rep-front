@@ -562,6 +562,18 @@ export function CanvasAgente({
           <p className="text-xs text-muted-foreground">Sin leads calificados todavía.</p>
         ) : (
           <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
+            {/* PRUEBA TEMPORAL DE DIAGNÓSTICO 2026-09-11 — quitar en cuanto se
+                confirme si esto reacciona o no. */}
+            {leads.map((lead) => (
+              <button
+                key={lead.companyId}
+                type="button"
+                onClick={() => alert("CLIC FUNCIONA: " + lead.name)}
+                style={{ display: "block", width: "100%", background: "red", color: "white", padding: "20px", fontSize: "16px", fontWeight: "bold", border: "none" }}
+              >
+                PRUEBA — CLIC AQUÍ — {lead.name}
+              </button>
+            ))}
             {leads.map((lead) => (
               <div
                 key={lead.companyId}
