@@ -67,6 +67,9 @@ const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: Luci
   web_research: { label: "Web Research", subtitulo: "Agente · modelo medio" },
   qualification: { label: "Calificación", subtitulo: "Fit comercial" },
   offer_strategy: { label: "Estrategia de oferta", subtitulo: "Qué servicio ofrecer" },
+  linkedin_contact_discovery: { label: "Contactos LinkedIn", subtitulo: "Agente · búsqueda pública" },
+  linkedin_contact_analysis: { label: "Análisis de contactos", subtitulo: "Fit + perfil (modelo medio)" },
+  linkedin_message_strategy: { label: "Mensajes LinkedIn", subtitulo: "Modelo medio" },
   outreach: { label: "Borradores de contacto", subtitulo: "Modelo medio" },
   marketing_manager: { label: "Marketing Manager", subtitulo: "Supervisión" },
 };
@@ -248,6 +251,9 @@ const COLOR_AGENTE: Record<string, string> = {
   web_research: "bg-cyan-600",
   qualification: "bg-emerald-500",
   offer_strategy: "bg-blue-500",
+  linkedin_intelligence: "bg-sky-500",
+  linkedin_contact_analysis: "bg-fuchsia-500",
+  linkedin_message_strategy: "bg-pink-500",
   outreach: "bg-orange-500",
 };
 
@@ -258,6 +264,9 @@ const LABEL_AGENTE: Record<string, string> = {
   web_research: "Web Research",
   qualification: "Qualification",
   offer_strategy: "Offer Strategist",
+  linkedin_intelligence: "LinkedIn Discovery",
+  linkedin_contact_analysis: "LinkedIn Analysis",
+  linkedin_message_strategy: "LinkedIn Outreach",
   outreach: "Outreach",
 };
 

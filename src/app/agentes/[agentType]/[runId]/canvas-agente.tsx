@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import {
   ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles,
   Briefcase, MapPin, Hash, Search, Filter, Zap, BadgeCheck, Building2, Mail,
-  ClipboardList, Megaphone, Lightbulb,
+  ClipboardList, Megaphone, Lightbulb, Users, BrainCircuit, MessageSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Global, Cpu } from "@/lib/icons";
@@ -223,6 +223,12 @@ const EQUIPO: { slug: string; label: string; icon: LucideIcon; tint: string; con
     contar: (e) => `${e.filter((x) => x.action === "qualified").length} calificados` },
   { slug: "offer_strategy", label: "Offer Strategist", icon: Lightbulb, tint: "text-blue-500",
     contar: (e) => `${e.filter((x) => x.action === "chose_offer").length} ofertas` },
+  { slug: "linkedin_intelligence", label: "LinkedIn Discovery", icon: Users, tint: "text-sky-500",
+    contar: (e) => `${e.filter((x) => x.action === "contacts_found").length} empresas con contactos` },
+  { slug: "linkedin_contact_analysis", label: "LinkedIn Analysis", icon: BrainCircuit, tint: "text-fuchsia-500",
+    contar: (e) => `${e.filter((x) => x.action === "contact_qualified").length} contactos calificados` },
+  { slug: "linkedin_message_strategy", label: "LinkedIn Outreach", icon: MessageSquare, tint: "text-pink-500",
+    contar: (e) => `${e.filter((x) => x.action === "linkedin_draft_ready").length} borradores` },
   { slug: "outreach", label: "Outreach", icon: Send, tint: "text-orange-500",
     contar: (e) => `${e.filter((x) => x.action === "draft_ready").length} borradores` },
 ];

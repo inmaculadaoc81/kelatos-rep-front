@@ -60,6 +60,8 @@ export interface CampaignSourceConfig {
   sector?: string;
   location?: string;
   limit: number;
+  /** Opt-in: activa las 3 etapas de LinkedIn Intelligence para esta campaña. */
+  enableLinkedin?: boolean;
 }
 
 export interface Campaign {
@@ -125,6 +127,76 @@ export interface CampaignLead {
   message: string | null;
   messageStatus: LeadMessageStatus;
   dispatchedAt: string | null;
+}
+
+export type LinkedInMessageStatus = "draft" | "approved" | "rejected" | "sent_manually" | null;
+
+export const CONTACT_ROLE_LABEL: Record<string, string> = {
+  ceo: "CEO",
+  founder: "Fundador/a",
+  director_general: "Director/a General",
+  director_comercial: "Director/a Comercial",
+  responsable_marketing: "Responsable de Marketing",
+  responsable_ti: "Responsable de TI",
+  responsable_innovacion: "Responsable de Innovación",
+  other: "Otro",
+};
+
+export interface LinkedInContact {
+  contactId: number;
+  companyId: number;
+  companyName: string;
+  contactName: string;
+  roleTitle: string | null;
+  roleCategory: string;
+  linkedinUrl: string | null;
+  score: number | null;
+  reason: string | null;
+  seniority: string | null;
+  responsibilities: string[];
+  possiblePainPoints: string[];
+  signals: string[];
+  facts: { statement: string; evidenceUrls?: string[] }[];
+  inferences: { statement: string; basedOnFacts?: number[]; confidence?: number }[];
+  analysisConfidence: number | null;
+  messageId: number | null;
+  message: string | null;
+  messageStatus: LinkedInMessageStatus;
+  evidenceRefs: string[];
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  markedSentBy: string | null;
+  markedSentAt: string | null;
+}
+
+export function mapearLinkedInContact(r: Record<string, unknown>): LinkedInContact {
+  const arr = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : []);
+  return {
+    contactId: Number(r.contact_id),
+    companyId: Number(r.company_id),
+    companyName: String(r.company_name ?? ""),
+    contactName: String(r.contact_name ?? ""),
+    roleTitle: (r.role_title as string) ?? null,
+    roleCategory: String(r.role_category ?? "other"),
+    linkedinUrl: (r.linkedin_url as string) ?? null,
+    score: r.score === null || r.score === undefined ? null : Number(r.score),
+    reason: (r.reason as string) ?? null,
+    seniority: (r.seniority as string) ?? null,
+    responsibilities: arr(r.responsibilities),
+    possiblePainPoints: arr(r.possible_pain_points),
+    signals: arr(r.signals),
+    facts: Array.isArray(r.facts) ? (r.facts as LinkedInContact["facts"]) : [],
+    inferences: Array.isArray(r.inferences) ? (r.inferences as LinkedInContact["inferences"]) : [],
+    analysisConfidence: r.analysis_confidence === null || r.analysis_confidence === undefined ? null : Number(r.analysis_confidence),
+    messageId: r.message_id === null || r.message_id === undefined ? null : Number(r.message_id),
+    message: (r.message as string) ?? null,
+    messageStatus: (r.message_status as LinkedInMessageStatus) ?? null,
+    evidenceRefs: arr(r.evidence_refs),
+    reviewedBy: (r.reviewed_by as string) ?? null,
+    reviewedAt: (r.reviewed_at as string) ?? null,
+    markedSentBy: (r.marked_sent_by as string) ?? null,
+    markedSentAt: (r.marked_sent_at as string) ?? null,
+  };
 }
 
 export interface CampaignBudget {
@@ -218,6 +290,9 @@ export const PIPELINE_STAGES: { key: string; label: string; progressKey?: string
   { key: "web_research", label: "Research", progressKey: "companiesResearched" },
   { key: "qualification", label: "Calificación", progressKey: "companiesQualified" },
   { key: "offer_strategy", label: "Oferta", progressKey: "companiesWithOffer" },
+  { key: "linkedin_contact_discovery", label: "Contactos LinkedIn", progressKey: "contactsFound" },
+  { key: "linkedin_contact_analysis", label: "Análisis contactos", progressKey: "contactsAnalyzed" },
+  { key: "linkedin_message_strategy", label: "Mensajes LinkedIn", progressKey: "linkedinDraftsCreated" },
   { key: "outreach", label: "Borradores", progressKey: "draftsCreated" },
 ];
 

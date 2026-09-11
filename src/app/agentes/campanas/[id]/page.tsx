@@ -14,6 +14,7 @@ import { AgentRun, AgentStep } from "@/lib/agentes";
 import { Campaign, AgentEvent, CampaignBudget, CAMPAIGN_STATUS_LABEL, CAMPAIGN_STATUS_COLOR } from "@/lib/campanas";
 import { TrazaAgente } from "../../[agentType]/[runId]/traza-agente";
 import { CanvasAgente } from "../../[agentType]/[runId]/canvas-agente";
+import { LinkedInContactsTable } from "../../[agentType]/[runId]/linkedin-contacts-table";
 
 export default function CampanaDetallePage() {
   const params = useParams<{ id: string }>();
@@ -124,7 +125,7 @@ export default function CampanaDetallePage() {
   const col = CAMPAIGN_STATUS_COLOR[campaign.status];
 
   return (
-    <div className="flex h-[calc(100svh-6.5rem)] flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <Link href="/agentes/campanas" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft2 className="size-3" /> Campañas
@@ -144,7 +145,7 @@ export default function CampanaDetallePage() {
 
       {/* Traza + canvas — misma interfaz que el detalle de run */}
       {run && runId ? (
-        <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+        <div className="flex h-[calc(100svh-6.5rem)] min-h-0 gap-4 overflow-hidden">
           <TrazaAgente
             run={run}
             steps={steps}
@@ -164,9 +165,15 @@ export default function CampanaDetallePage() {
           />
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
+        <div className="flex h-[calc(100svh-6.5rem)] items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
           {campaign.status === "draft" ? "Pulsa «Lanzar campaña» para empezar." : "Preparando la ejecución…"}
         </div>
+      )}
+
+      {/* Contactos de LinkedIn (Sprint 8, opt-in) — se renderiza SOLO si hay
+          filas; no ocupa espacio ni añade scroll en campañas sin LinkedIn. */}
+      {campaign.sourceConfig?.enableLinkedin && (
+        <LinkedInContactsTable campanaId={campaign.id} />
       )}
     </div>
   );
