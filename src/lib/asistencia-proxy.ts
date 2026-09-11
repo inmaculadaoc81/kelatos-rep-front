@@ -50,11 +50,11 @@ export async function adminGet(path: string, params?: Record<string, string | un
   }
 }
 
-export async function adminPost(path: string) {
+export async function adminPost(path: string, extra?: Record<string, unknown>) {
   const session = await auth();
   if (!(await esManagerSesion())) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   try {
-    return NextResponse.json(await kelatosApiPost(path, { usuario: session?.user?.email }));
+    return NextResponse.json(await kelatosApiPost(path, { usuario: session?.user?.email, ...extra }));
   } catch (error) {
     return errorJson(error);
   }

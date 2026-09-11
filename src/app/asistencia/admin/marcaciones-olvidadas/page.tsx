@@ -9,9 +9,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { EstadoPill, TipoFichajePill } from "../../pills";
+import { AprobarMarcacionDialog } from "./aprobar-marcacion-dialog";
 
 interface Marcacion {
   id: number;
+  employee_id: number;
   empleado: string;
   fecha_marcacion: string;
   tipo_fichaje: string;
@@ -41,6 +43,7 @@ export default function AdminMarcacionesOlvidadasPage() {
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState<number | null>(null);
   const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
+  const [aprobando, setAprobando] = useState<Marcacion | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -88,13 +91,13 @@ export default function AdminMarcacionesOlvidadasPage() {
     });
   }
 
-  async function resolver(id: number, accion: "aprobar-auto" | "rechazar") {
+  async function rechazar(id: number) {
     setProcesando(id);
     try {
-      const res = await fetch(`/api/asistencia/admin/marcaciones-olvidadas/${id}/${accion}`, { method: "POST" });
+      const res = await fetch(`/api/asistencia/admin/marcaciones-olvidadas/${id}/rechazar`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(accion === "rechazar" ? "Rechazada" : "Aprobada");
+      toast.success("Rechazada");
       await cargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
@@ -108,7 +111,7 @@ export default function AdminMarcacionesOlvidadasPage() {
       <div>
         <h1 className="text-lg font-semibold">Marcaciones olvidadas</h1>
         <p className="text-xs text-muted-foreground">
-          Al aprobar, se reconstruye automáticamente el fichaje que falta.
+          Al aprobar, tú escribes la entrada/salida del fichaje que falta — nada se reconstruye solo.
         </p>
       </div>
       <div className="overflow-hidden rounded-lg border bg-card">
@@ -162,8 +165,8 @@ export default function AdminMarcacionesOlvidadasPage() {
                 <TableCell>
                   {m.state === "pendiente" && (
                     <div className="flex flex-wrap gap-1">
-                      <Button size="sm" className="h-7 bg-emerald-600 text-white hover:bg-emerald-700" disabled={procesando === m.id} onClick={() => resolver(m.id, "aprobar-auto")}>Aprobar</Button>
-                      <Button size="sm" variant="outline" className="h-7 text-destructive" disabled={procesando === m.id} onClick={() => resolver(m.id, "rechazar")}>Rechazar</Button>
+                      <Button size="sm" className="h-7 bg-emerald-600 text-white hover:bg-emerald-700" disabled={procesando === m.id} onClick={() => setAprobando(m)}>Aprobar</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-destructive" disabled={procesando === m.id} onClick={() => rechazar(m.id)}>Rechazar</Button>
                     </div>
                   )}
                 </TableCell>
@@ -172,6 +175,8 @@ export default function AdminMarcacionesOlvidadasPage() {
           </TableBody>
         </Table>
       </div>
+
+      <AprobarMarcacionDialog marcacion={aprobando} onClose={() => setAprobando(null)} onAprobado={cargar} />
     </div>
   );
 }
