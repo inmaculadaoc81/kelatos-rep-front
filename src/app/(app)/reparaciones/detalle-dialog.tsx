@@ -220,8 +220,42 @@ function EstadoFactura({ detalle }: { detalle: ReparacionDetalle }) {
   );
 }
 
+/** Plataforma real de compra, a partir del dominio del enlace — el
+    desplegable "Proveedor" del formulario mezcla plataformas (Amazon,
+    AliExpress, eBay) con fabricantes (Asus, Lenovo, MSI...), así que
+    quien registra el pedido a veces elige la marca de la pieza en vez
+    de dónde se compró (ej. una pantalla MSI comprada en Amazon, con
+    "MSI" seleccionado). El enlace es la fuente más fiable de "dónde" —
+    se prioriza sobre el proveedor elegido cuando coincide con una
+    plataforma conocida. */
+const PLATAFORMAS_POR_DOMINIO: { patron: RegExp; nombre: string }[] = [
+  { patron: /(^|\.)amazon\./i, nombre: "Amazon" },
+  { patron: /(^|\.)aliexpress\./i, nombre: "AliExpress" },
+  { patron: /(^|\.)ebay\./i, nombre: "eBay" },
+  { patron: /(^|\.)mercadolibre\.|(^|\.)mercadolivre\./i, nombre: "MercadoLibre" },
+  { patron: /(^|\.)pccomponentes\./i, nombre: "PcComponentes" },
+  { patron: /(^|\.)wallapop\./i, nombre: "Wallapop" },
+];
+
+function plataformaDesdeEnlace(enlace: string): string | null {
+  if (!enlace) return null;
+  try {
+    const host = new URL(enlace).hostname;
+    return PLATAFORMAS_POR_DOMINIO.find((p) => p.patron.test(host))?.nombre ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Tarjeta de pedido con los mismos campos e iconos que el original. */
 function PedidoCard({ pedido: pd }: { pedido: Pedido }) {
+  const plataforma = plataformaDesdeEnlace(pd.enlace) || pd.proveedorNombre;
+  const etiquetaProveedor = plataforma && (
+    <Badge variant="secondary" className="gap-1 font-normal">
+      <Shop className="size-3" /> {plataforma}
+    </Badge>
+  );
+
   return (
     <m.div
       variants={elementoLista}
@@ -229,10 +263,14 @@ function PedidoCard({ pedido: pd }: { pedido: Pedido }) {
     >
       <div className="flex items-center gap-2">
         <span className="font-semibold">{pd.pedidoId || "-"}</span>
-        {pd.proveedorNombre && (
-          <Badge variant="secondary" className="gap-1 font-normal">
-            <Shop className="size-3" /> {pd.proveedorNombre}
-          </Badge>
+        {etiquetaProveedor && (
+          pd.enlace ? (
+            <a href={pd.enlace} target="_blank" rel="noreferrer" title="Ver producto">
+              {etiquetaProveedor}
+            </a>
+          ) : (
+            etiquetaProveedor
+          )
         )}
         {pd.compradoPor && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
