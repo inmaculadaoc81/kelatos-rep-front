@@ -69,7 +69,7 @@ export default function RemoteWorkerDetailPage() {
     return <p className="text-sm text-muted-foreground">{error || "Dispositivo no encontrado."}</p>;
   }
 
-  const { device, hoy, applications, windowEvents } = detalle;
+  const { device, hoy, applications, windowEvents, productividadCategoria } = detalle;
   const productividadHoy = calcularProductividad(hoy.activeSeconds, hoy.idleSeconds);
 
   return (
@@ -94,6 +94,8 @@ export default function RemoteWorkerDetailPage() {
               <span className="text-muted-foreground">Usuario Windows</span><span>{device.username}</span>
               <span className="text-muted-foreground">Hostname</span><span>{device.hostname}</span>
               <span className="text-muted-foreground">Device ID</span><span className="truncate">{device.deviceUuid}</span>
+              <span className="text-muted-foreground">Versión agente</span><span>{device.agentVersion || "—"}</span>
+              <span className="text-muted-foreground">Sistema operativo</span><span className="truncate">{device.osVersion || "—"}</span>
               <span className="text-muted-foreground">Última conexión</span><span>{fechaHora(device.lastSeen)}</span>
             </div>
           </CardContent>
@@ -114,6 +116,36 @@ export default function RemoteWorkerDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardContent className="pt-4 text-sm">
+          <p className="mb-2 font-medium text-muted-foreground">Productividad técnica vs. por categoría</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Técnica (activo/total)</p>
+              <p className="text-lg font-semibold">{productividadHoy == null ? "—" : `${productividadHoy}%`}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Por categoría</p>
+              <p className="text-lg font-semibold">{productividadCategoria.porcentaje == null ? "—" : `${productividadCategoria.porcentaje}%`}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Apps no productivas</p>
+              <p className="text-lg font-semibold">{formatDuracion(productividadCategoria.segundosNoProductivos)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Sin clasificar</p>
+              <p className="text-lg font-semibold">{formatDuracion(productividadCategoria.segundosSinClasificar)}</p>
+            </div>
+          </div>
+          {productividadCategoria.sinClasificar.length > 0 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Sin clasificar: {productividadCategoria.sinClasificar.join(", ")} —{" "}
+              <Link href="/asistencia/admin/remote-workers/categorias" className="underline">clasificarlas</Link>.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card>

@@ -31,6 +31,8 @@ import {
   Monitor,
   ArrowLeft2,
   Chart,
+  Cpu,
+  Category2,
 } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
@@ -69,6 +71,8 @@ const ENTRADA_REMOTE_WORKERS = { href: "/asistencia/admin/remote-workers", label
 const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers", label: "Dashboard", icon: Chart },
   { href: "/asistencia/admin/remote-workers/dispositivos", label: "Dispositivos", icon: Monitor },
+  { href: "/asistencia/admin/remote-workers/agentes", label: "Agentes", icon: Cpu },
+  { href: "/asistencia/admin/remote-workers/categorias", label: "Categorías", icon: Category2 },
   { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
   { href: "/asistencia/admin/remote-workers/vacaciones", label: "Vacaciones", icon: Airplane },
   { href: "/asistencia/admin/remote-workers/correcciones", label: "Correcciones", icon: Edit2 },

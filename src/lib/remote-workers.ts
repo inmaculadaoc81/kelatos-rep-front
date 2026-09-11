@@ -13,12 +13,29 @@ export interface RemoteWorkerListItem {
   username: string;
   status: string;
   lastSeen: string | null;
+  agentVersion: string | null;
+  osVersion: string | null;
   employeeId: number | null;
   empleadoNombre: string | null;
   estado: EstadoDispositivo;
   activeSecondsHoy: number;
   idleSecondsHoy: number;
   appPrincipal: string | null;
+}
+
+export interface AppCategory {
+  id: number;
+  applicationName: string;
+  category: string;
+  productive: boolean;
+}
+
+export interface ProductividadPorCategoria {
+  segundosProductivos: number;
+  segundosNoProductivos: number;
+  segundosSinClasificar: number;
+  porcentaje: number | null;
+  sinClasificar: string[];
 }
 
 export interface RemoteWorkersDashboard {
@@ -51,6 +68,8 @@ export interface RemoteWorkerDetail {
     username: string;
     status: string;
     lastSeen: string | null;
+    agentVersion: string | null;
+    osVersion: string | null;
     employeeId: number | null;
     empleadoNombre: string | null;
   };
@@ -62,6 +81,7 @@ export interface RemoteWorkerDetail {
   };
   applications: RemoteWorkerAppUsage[];
   windowEvents: RemoteWindowEvent[];
+  productividadCategoria: ProductividadPorCategoria;
 }
 
 export interface RemoteWorkerHistoryRow {
@@ -79,6 +99,8 @@ export function mapearRemoteWorkerListItem(r: Record<string, unknown>): RemoteWo
     username: String(r.username ?? ""),
     status: String(r.status ?? "activo"),
     lastSeen: (r.last_seen as string) ?? null,
+    agentVersion: (r.agent_version as string) ?? null,
+    osVersion: (r.os_version as string) ?? null,
     employeeId: r.employee_id === null || r.employee_id === undefined ? null : Number(r.employee_id),
     empleadoNombre: (r.empleado_nombre as string) ?? null,
     estado: (r.estado as EstadoDispositivo) ?? "nunca_sincronizado",
@@ -109,6 +131,8 @@ export function mapearDetalle(r: Record<string, unknown>): RemoteWorkerDetail {
       username: String(device.username ?? ""),
       status: String(device.status ?? "activo"),
       lastSeen: (device.last_seen as string) ?? null,
+      agentVersion: (device.agent_version as string) ?? null,
+      osVersion: (device.os_version as string) ?? null,
       employeeId: device.employee_id === null || device.employee_id === undefined ? null : Number(device.employee_id),
       empleadoNombre: (device.empleado_nombre as string) ?? null,
     },
@@ -130,6 +154,26 @@ export function mapearDetalle(r: Record<string, unknown>): RemoteWorkerDetail {
       endedAt: (w.ended_at as string) ?? null,
       seconds: Number(w.seconds ?? 0),
     })),
+    productividadCategoria: mapearProductividadCategoria((r.productividadCategoria as Record<string, unknown>) ?? {}),
+  };
+}
+
+function mapearProductividadCategoria(r: Record<string, unknown>): ProductividadPorCategoria {
+  return {
+    segundosProductivos: Number(r.segundosProductivos ?? 0),
+    segundosNoProductivos: Number(r.segundosNoProductivos ?? 0),
+    segundosSinClasificar: Number(r.segundosSinClasificar ?? 0),
+    porcentaje: r.porcentaje === null || r.porcentaje === undefined ? null : Number(r.porcentaje),
+    sinClasificar: Array.isArray(r.sinClasificar) ? (r.sinClasificar as string[]) : [],
+  };
+}
+
+export function mapearCategoria(r: Record<string, unknown>): AppCategory {
+  return {
+    id: Number(r.id),
+    applicationName: String(r.application_name ?? ""),
+    category: String(r.category ?? ""),
+    productive: Boolean(r.productive),
   };
 }
 
