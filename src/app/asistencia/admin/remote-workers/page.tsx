@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Monitor, Profile2User, Chart } from "@/lib/icons";
+import { Monitor, Profile2User, Chart, Danger } from "@/lib/icons";
 import { EstadoActividadPill } from "../../pills";
 import {
   type RemoteWorkerListItem,
   type RemoteWorkersDashboard,
+  type AlertaDispositivo,
   mapearRemoteWorkerListItem,
   mapearDashboard,
+  mapearAlertaDispositivo,
   formatDuracion,
   calcularProductividad,
 } from "@/lib/remote-workers";
@@ -35,16 +38,19 @@ export default function RemoteWorkersPage() {
   const router = useRouter();
   const [dispositivos, setDispositivos] = useState<RemoteWorkerListItem[]>([]);
   const [resumen, setResumen] = useState<RemoteWorkersDashboard | null>(null);
+  const [alertas, setAlertas] = useState<AlertaDispositivo[]>([]);
   const [cargando, setCargando] = useState(true);
 
   async function cargar() {
     try {
-      const [rDisp, rDash] = await Promise.all([
+      const [rDisp, rDash, rAlert] = await Promise.all([
         fetch("/api/asistencia/admin/remote-workers").then((r) => r.json()),
         fetch("/api/asistencia/admin/remote-workers/dashboard").then((r) => r.json()),
+        fetch("/api/asistencia/admin/remote-workers/alertas").then((r) => r.json()),
       ]);
       if (rDisp.ok) setDispositivos((rDisp.dispositivos as Record<string, unknown>[]).map(mapearRemoteWorkerListItem));
       if (rDash.ok) setResumen(mapearDashboard(rDash.resumen));
+      if (rAlert.ok) setAlertas((rAlert.alertas as Record<string, unknown>[]).map(mapearAlertaDispositivo));
     } finally {
       setCargando(false);
     }
@@ -63,7 +69,7 @@ export default function RemoteWorkersPage() {
         <p className="text-xs text-muted-foreground">Actividad de PC de empleados en teletrabajo — sincronizada automáticamente, no se registra nada manual aquí.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Card>
           <CardContent className="flex items-center gap-3 pt-4">
             <Profile2User className="size-5 text-emerald-600" />
@@ -100,6 +106,17 @@ export default function RemoteWorkersPage() {
             </div>
           </CardContent>
         </Card>
+        <Link href="/asistencia/admin/remote-workers/reportes">
+          <Card className={alertas.length > 0 ? "border-destructive/50" : undefined}>
+            <CardContent className="flex items-center gap-3 pt-4">
+              <Danger className={`size-5 ${alertas.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+              <div>
+                <p className="text-lg font-semibold leading-none">{cargando ? "—" : alertas.length}</p>
+                <p className="text-xs text-muted-foreground">Alertas activas</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card">

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Danger } from "@/lib/icons";
 import { EstadoActividadPill } from "../../../pills";
 import {
   type RemoteWorkerListItem,
@@ -16,13 +17,16 @@ import {
   type AnalyticsSupervisor,
   type TimelineSegmento,
   type RemoteWorkerAppUsage,
+  type AlertaDispositivo,
   mapearRemoteWorkerListItem,
   mapearReporteDiario,
   mapearReporteSemanal,
   mapearAnalytics,
   mapearTimelineSegmento,
   mapearAppUsage,
+  mapearAlertaDispositivo,
   formatDuracion,
+  TIPO_ALERTA_COLOR,
 } from "@/lib/remote-workers";
 import { AppDistributionChart } from "../app-distribution-chart";
 
@@ -139,10 +143,11 @@ export default function ReportesRemoteWorkersPage() {
         <p className="text-sm text-muted-foreground">Selecciona un empleado para ver sus reportes.</p>
       ) : (
         <Tabs defaultValue="diario">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="diario">Diario</TabsTrigger>
             <TabsTrigger value="semanal">Semanal</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="alertas">Alertas</TabsTrigger>
             <TabsTrigger value="timeline">Línea de tiempo</TabsTrigger>
             <TabsTrigger value="apps">Aplicaciones</TabsTrigger>
           </TabsList>
@@ -155,6 +160,9 @@ export default function ReportesRemoteWorkersPage() {
           </TabsContent>
           <TabsContent value="analytics">
             <AnalyticsTab />
+          </TabsContent>
+          <TabsContent value="alertas">
+            <AlertasTab />
           </TabsContent>
           <TabsContent value="timeline">
             <TimelineTab empleadoId={empleadoId} fecha={fecha} />
@@ -320,6 +328,59 @@ function AnalyticsTab() {
           </TableBody>
         </Table>
       </div>
+    </div>
+  );
+}
+
+function AlertaPill({ mensaje, tipo }: { mensaje: string; tipo: AlertaDispositivo["alertas"][number]["tipo"] }) {
+  const estilo = TIPO_ALERTA_COLOR[tipo];
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
+      <Danger className="size-3" /> {mensaje}
+    </span>
+  );
+}
+
+function AlertasTab() {
+  const [alertas, setAlertas] = useState<AlertaDispositivo[] | null>(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/asistencia/admin/remote-workers/alertas")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setAlertas((d.alertas as Record<string, unknown>[]).map(mapearAlertaDispositivo)); })
+      .finally(() => setCargando(false));
+  }, []);
+
+  if (cargando) return <Skeleton className="mt-3 h-48 w-full" />;
+  if (!alertas || alertas.length === 0) {
+    return (
+      <Card className="mt-3">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Sin alertas activas — ningún equipo lleva &gt;30 min sin conexión, &gt;2h fuera de horario ni &gt;2h sin actividad en jornada.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      {alertas.map((d) => (
+        <Card key={d.deviceId}>
+          <CardContent className="space-y-2 pt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">{d.empleadoNombre || "Sin asignar"}</p>
+              <p className="text-xs text-muted-foreground">{d.hostname}</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {d.alertas.map((a, i) => <AlertaPill key={i} mensaje={a.mensaje} tipo={a.tipo} />)}
+            </div>
+            <ul className="space-y-0.5 text-xs text-muted-foreground">
+              {d.alertas.map((a, i) => <li key={i}>{a.detalle}</li>)}
+            </ul>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

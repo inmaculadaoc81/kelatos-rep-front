@@ -159,6 +159,25 @@ export interface TimelineSegmento {
   duracionSeg: number;
 }
 
+/** Reglas de alerta (Fase 9.6) — umbrales fijos, computadas en caliente
+    sobre datos ya existentes (last_seen, reporteDiario, sesiones): sin
+    conexión > 30 min, fuera de horario > 2h, sin actividad en jornada > 2h. */
+export type TipoAlerta = "offline" | "fuera_horario_prolongado" | "sin_actividad_jornada";
+
+export interface Alerta {
+  tipo: TipoAlerta;
+  mensaje: string;
+  detalle: string;
+}
+
+export interface AlertaDispositivo {
+  deviceId: number;
+  hostname: string;
+  employeeId: number | null;
+  empleadoNombre: string | null;
+  alertas: Alerta[];
+}
+
 export function mapearRemoteWorkerListItem(r: Record<string, unknown>): RemoteWorkerListItem {
   return {
     deviceId: Number(r.device_id),
@@ -314,6 +333,26 @@ export function mapearTimelineSegmento(r: Record<string, unknown>): TimelineSegm
     duracionSeg: Number(r.duracionSeg ?? 0),
   };
 }
+
+export function mapearAlertaDispositivo(r: Record<string, unknown>): AlertaDispositivo {
+  return {
+    deviceId: Number(r.deviceId),
+    hostname: String(r.hostname ?? ""),
+    employeeId: r.employeeId === null || r.employeeId === undefined ? null : Number(r.employeeId),
+    empleadoNombre: (r.empleadoNombre as string) ?? null,
+    alertas: ((r.alertas as Record<string, unknown>[]) ?? []).map((a) => ({
+      tipo: a.tipo as TipoAlerta,
+      mensaje: String(a.mensaje ?? ""),
+      detalle: String(a.detalle ?? ""),
+    })),
+  };
+}
+
+export const TIPO_ALERTA_COLOR: Record<TipoAlerta, { bg: string; color: string }> = {
+  offline: { bg: "#e4e4e7", color: "#3f3f46" },
+  fuera_horario_prolongado: { bg: "#fef3c7", color: "#92400e" },
+  sin_actividad_jornada: { bg: "#fee2e2", color: "#991b1b" },
+};
 
 export function mapearHistorialRow(r: Record<string, unknown>): RemoteWorkerHistoryRow {
   return {
