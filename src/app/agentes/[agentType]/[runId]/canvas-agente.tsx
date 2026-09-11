@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles } from "lucide-react";
+import {
+  ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles,
+  Briefcase, MapPin, Hash, Search, Filter, Zap, BadgeCheck, Building2, Mail,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import type { AgentEvent, CampaignLead, CampaignBudget } from "@/lib/campanas";
@@ -111,12 +115,22 @@ function FaviconApp({ dominio, alt }: { dominio: string; alt: string }) {
   );
 }
 
+/** Icono pequeño dentro de una caja de 1px (mismo lenguaje visual que los
+    pasos del panel "Actividad"). Va a la izquierda de cada fila. */
+function IconoCaja({ icon: Icono }: { icon: LucideIcon }) {
+  return (
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-white text-muted-foreground">
+      <Icono className="size-3.5" strokeWidth={2} />
+    </span>
+  );
+}
+
 /** Los dos niveles de modelo del embudo de coste. Son los valores por
     defecto de AGENTES_OPENAI_MODEL_CHEAP/DEEP en el backend (mismo criterio
     que HERRAMIENTAS: se muestran fijos, no hay endpoint de config todavía). */
 const MODELOS = [
-  { nombre: "gpt-4o-mini", rol: "Filtro barato · todas las candidatas", dot: "bg-teal-500" },
-  { nombre: "gpt-4o", rol: "Análisis profundo y redacción", dot: "bg-violet-500" },
+  { nombre: "gpt-4o-mini", rol: "Filtro barato · todas las candidatas" },
+  { nombre: "gpt-4o", rol: "Análisis profundo y redacción" },
 ];
 
 const ERROR_CLASE = "border-destructive bg-destructive/5";
@@ -315,11 +329,11 @@ export function CanvasAgente({
   const ubicacion = typeof run.input.location === "string" ? run.input.location : null;
   const limite = typeof run.input.limit === "number" ? run.input.limit : null;
 
-  const embudo = [
-    { label: "Encontradas", valor: progreso.companiesFound },
-    { label: "Candidatas", valor: progreso.companiesCandidate },
-    { label: "Pase rápido", valor: progreso.companiesCheapPass },
-    { label: "Calificadas", valor: progreso.companiesQualified },
+  const embudo: { label: string; valor: number | undefined; icon: LucideIcon }[] = [
+    { label: "Encontradas", valor: progreso.companiesFound, icon: Search },
+    { label: "Candidatas", valor: progreso.companiesCandidate, icon: Filter },
+    { label: "Pase rápido", valor: progreso.companiesCheapPass, icon: Zap },
+    { label: "Calificadas", valor: progreso.companiesQualified, icon: BadgeCheck },
   ];
 
 
@@ -377,9 +391,18 @@ export function CanvasAgente({
       <div className="absolute flex flex-col gap-4" style={{ left: "3%", width: "20%", top: "8%" }}>
       <Tarjeta titulo="Entrada">
         <div className="-mx-3 divide-y divide-border text-xs">
-          <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Sector: </span>{sector || "—"}</div>
-          <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Ubicación: </span>{ubicacion || "—"}</div>
-          <div className="flex h-8 items-center px-3"><span className="text-muted-foreground">Límite: </span>{limite ?? "—"}</div>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <IconoCaja icon={Briefcase} />
+            <div className="min-w-0"><p className="text-[10px] text-muted-foreground">Sector</p><p className="truncate font-medium">{sector || "—"}</p></div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <IconoCaja icon={MapPin} />
+            <div className="min-w-0"><p className="text-[10px] text-muted-foreground">Ubicación</p><p className="truncate font-medium">{ubicacion || "—"}</p></div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <IconoCaja icon={Hash} />
+            <div className="min-w-0"><p className="text-[10px] text-muted-foreground">Límite</p><p className="truncate font-medium">{limite ?? "—"}</p></div>
+          </div>
         </div>
       </Tarjeta>
 
@@ -420,7 +443,7 @@ export function CanvasAgente({
         <div className="-mx-3 divide-y divide-border text-xs">
           {MODELOS.map((m) => (
             <div key={m.nombre} className="flex items-center gap-2 px-3 py-2">
-              <span className={`size-2 shrink-0 rounded-full ${m.dot}`} />
+              <FaviconApp dominio="openai.com" alt="OpenAI" />
               <div className="min-w-0">
                 <p className="truncate font-medium">{m.nombre}</p>
                 <p className="truncate text-[10px] text-muted-foreground">{m.rol}</p>
@@ -474,10 +497,13 @@ export function CanvasAgente({
                 <button
                   type="button"
                   onClick={() => abrirLead(lead)}
-                  className="-my-1 min-w-0 flex-1 rounded-sm py-1 text-left hover:bg-black/3"
+                  className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left hover:bg-black/3"
                 >
-                  <p className="truncate font-medium">{lead.name}</p>
-                  <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
+                  <IconoCaja icon={Building2} />
+                  <span className="min-w-0">
+                    <p className="truncate font-medium">{lead.name}</p>
+                    <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
+                  </span>
                 </button>
                 {lead.messageStatus === "draft" ? (
                   <div className="flex shrink-0 gap-1">
@@ -546,11 +572,12 @@ export function CanvasAgente({
           </>
         }
       >
-        <div className="space-y-1 text-xs">
+        <div className="-mx-3 divide-y divide-border text-xs">
           {embudo.map((e) => (
-            <div key={e.label} className="flex items-center justify-between">
-              <span className="text-muted-foreground">{e.label}</span>
-              <span className="font-medium tabular-nums">{e.valor ?? "—"}</span>
+            <div key={e.label} className="flex items-center gap-2 px-3 py-2">
+              <IconoCaja icon={e.icon} />
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">{e.label}</span>
+              <span className="shrink-0 font-medium tabular-nums">{e.valor ?? "—"}</span>
             </div>
           ))}
         </div>
@@ -574,10 +601,13 @@ export function CanvasAgente({
                 key={lead.companyId}
                 type="button"
                 onClick={() => abrirLead(lead)}
-                className="block w-full px-3 py-1.5 text-left hover:bg-black/3"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-black/3"
               >
-                <p className="truncate font-medium">{lead.name}</p>
-                <p className="truncate text-muted-foreground">{lead.subject || "Sin asunto"}</p>
+                <IconoCaja icon={Mail} />
+                <span className="min-w-0">
+                  <p className="truncate font-medium">{lead.name}</p>
+                  <p className="truncate text-muted-foreground">{lead.subject || "Sin asunto"}</p>
+                </span>
               </button>
             ))}
           </div>
