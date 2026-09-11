@@ -18,6 +18,7 @@ import {
   Calendar,
   Ticket,
   Gallery,
+  Shop,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -228,6 +229,11 @@ function PedidoCard({ pedido: pd }: { pedido: Pedido }) {
     >
       <div className="flex items-center gap-2">
         <span className="font-semibold">{pd.pedidoId || "-"}</span>
+        {pd.proveedorNombre && (
+          <Badge variant="secondary" className="gap-1 font-normal">
+            <Shop className="size-3" /> {pd.proveedorNombre}
+          </Badge>
+        )}
         {pd.compradoPor && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Profile2User className="size-3.5" /> {pd.compradoPor}

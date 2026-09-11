@@ -328,6 +328,11 @@ export interface Pedido {
   notas: string;
   enlace: string;
   proveedorId: string;
+  /** Nombre legible (ej. "Amazon", "AliExpress", "MSI") — resuelto desde
+      kelatos_app.proveedores por proveedorId, para que la tarjeta de
+      Pedidos pueda mostrar de dónde se compró la pieza (antes solo se
+      veía el código de pedido, que no identifica la plataforma). */
+  proveedorNombre: string;
 }
 
 export interface HistorialEvento {
@@ -514,7 +519,8 @@ function mapearPresupuesto(row: FilaPresupuestoSql, piezas: FilaPiezaSql[]): Pre
   };
 }
 
-function mapearPedido(row: FilaPedidoSql): Pedido {
+function mapearPedido(row: FilaPedidoSql, proveedoresPorId: Record<string, string>): Pedido {
+  const proveedorId = row.proveedor_id || "";
   return {
     pedidoId: row.pedido_id || "",
     piezaId: row.pieza_id || "",
@@ -531,7 +537,8 @@ function mapearPedido(row: FilaPedidoSql): Pedido {
     pedidoRemplazoId: row.pedido_remplazo_id || "",
     notas: row.notas || "",
     enlace: row.enlace || "",
-    proveedorId: row.proveedor_id || "",
+    proveedorId,
+    proveedorNombre: proveedoresPorId[proveedorId] || "",
   };
 }
 
@@ -552,7 +559,8 @@ export function mapearReparacionDetalle(
   presupuestosRaw: FilaPresupuestoSql[],
   piezasPorPresupuesto: Record<string, FilaPiezaSql[]>,
   pedidosRaw: FilaPedidoSql[],
-  historialRaw: FilaHistorialSql[]
+  historialRaw: FilaHistorialSql[],
+  proveedoresPorId: Record<string, string> = {}
 ): ReparacionDetalle {
   return {
     resguardo: String(row.resguardo || ""),
@@ -689,7 +697,7 @@ export function mapearReparacionDetalle(
         }))
       : null,
     presupuestos: presupuestosRaw.map((p) => mapearPresupuesto(p, piezasPorPresupuesto[p.presupuesto_id] || [])),
-    pedidos: pedidosRaw.map(mapearPedido),
+    pedidos: pedidosRaw.map((p) => mapearPedido(p, proveedoresPorId)),
     historialEventos: historialRaw.map(mapearHistorial),
   };
 }

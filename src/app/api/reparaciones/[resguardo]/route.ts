@@ -25,7 +25,7 @@ export async function GET(
 ) {
   const { resguardo } = await params;
   try {
-    const [reparacion, presupuestos, pedidos, historial] = await Promise.all([
+    const [reparacion, presupuestos, pedidos, historial, proveedores] = await Promise.all([
       kelatosApiGet<{ ok: boolean; row: Record<string, unknown> }>(`/v1/reparaciones/${resguardo}`),
       kelatosApiGet<ListaGenerica<FilaPresupuesto>>("/v1/presupuestos", {
         resguardo,
@@ -45,7 +45,18 @@ export async function GET(
         order: "fecha_hora",
         direction: "desc",
       }),
+      // Catálogo pequeño (10 filas) de plataformas/marcas — se usa solo
+      // para mostrar el nombre en la tarjeta de Pedidos (antes solo se
+      // veía el código de pedido, sin identificar Amazon/AliExpress/etc.).
+      kelatosApiGet<ListaGenerica<{ proveedor_id: string; nombre: string }>>("/v1/proveedores", {
+        limit: 1000,
+      }),
     ]);
+
+    const proveedoresPorId: Record<string, string> = {};
+    for (const p of proveedores.rows) {
+      if (p.proveedor_id) proveedoresPorId[p.proveedor_id] = p.nombre || "";
+    }
 
     const piezasPorPresupuesto: Record<string, FilaPieza[]> = {};
     await Promise.all(
@@ -70,7 +81,8 @@ export async function GET(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pedidos.rows as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      historial.rows as any
+      historial.rows as any,
+      proveedoresPorId
     );
 
     return NextResponse.json({ ok: true, detalle });
