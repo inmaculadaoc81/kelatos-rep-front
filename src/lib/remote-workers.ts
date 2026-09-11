@@ -6,6 +6,13 @@
 
 export type EstadoDispositivo = "conectado" | "inactivo" | "nunca_sincronizado" | "deshabilitado";
 
+/** Estado de ACTIVIDAD del empleado (distinto del estado de conectividad
+    del dispositivo, EstadoDispositivo) — combina horario (asistencia.
+    calendario_horas) + fichajes (salida_comida/vuelta_comida) + si el
+    dispositivo sigue comunicando. null = sin horario asignado, no se
+    puede calcular. */
+export type EstadoActividad = "WORKING" | "BREAK" | "OFFLINE" | "OUT_OF_SCHEDULE" | null;
+
 export interface RemoteWorkerListItem {
   deviceId: number;
   deviceUuid: string;
@@ -18,6 +25,11 @@ export interface RemoteWorkerListItem {
   employeeId: number | null;
   empleadoNombre: string | null;
   estado: EstadoDispositivo;
+  estadoActividad: EstadoActividad;
+  horarioLabel: string | null;
+  tiempoLaboralEsperadoSeg: number | null;
+  descansoSegHoy: number;
+  productividadHorario: number | null;
   activeSecondsHoy: number;
   idleSecondsHoy: number;
   appPrincipal: string | null;
@@ -82,6 +94,13 @@ export interface RemoteWorkerDetail {
   applications: RemoteWorkerAppUsage[];
   windowEvents: RemoteWindowEvent[];
   productividadCategoria: ProductividadPorCategoria;
+  horario: {
+    estadoActividad: EstadoActividad;
+    horarioLabel: string | null;
+    tiempoLaboralEsperadoSeg: number | null;
+    descansoSegHoy: number;
+    productividadHorario: number | null;
+  };
 }
 
 export interface RemoteWorkerHistoryRow {
@@ -104,6 +123,11 @@ export function mapearRemoteWorkerListItem(r: Record<string, unknown>): RemoteWo
     employeeId: r.employee_id === null || r.employee_id === undefined ? null : Number(r.employee_id),
     empleadoNombre: (r.empleado_nombre as string) ?? null,
     estado: (r.estado as EstadoDispositivo) ?? "nunca_sincronizado",
+    estadoActividad: (r.estado_actividad as EstadoActividad) ?? null,
+    horarioLabel: (r.horario_label as string) ?? null,
+    tiempoLaboralEsperadoSeg: r.tiempo_laboral_esperado_seg === null || r.tiempo_laboral_esperado_seg === undefined ? null : Number(r.tiempo_laboral_esperado_seg),
+    descansoSegHoy: Number(r.descanso_seg_hoy ?? 0),
+    productividadHorario: r.productividad_horario === null || r.productividad_horario === undefined ? null : Number(r.productividad_horario),
     activeSecondsHoy: Number(r.active_seconds_hoy ?? 0),
     idleSecondsHoy: Number(r.idle_seconds_hoy ?? 0),
     appPrincipal: (r.app_principal as string) ?? null,
@@ -155,6 +179,17 @@ export function mapearDetalle(r: Record<string, unknown>): RemoteWorkerDetail {
       seconds: Number(w.seconds ?? 0),
     })),
     productividadCategoria: mapearProductividadCategoria((r.productividadCategoria as Record<string, unknown>) ?? {}),
+    horario: mapearHorario((r.horario as Record<string, unknown>) ?? {}),
+  };
+}
+
+function mapearHorario(r: Record<string, unknown>): RemoteWorkerDetail["horario"] {
+  return {
+    estadoActividad: (r.estadoActividad as EstadoActividad) ?? null,
+    horarioLabel: (r.horarioLabel as string) ?? null,
+    tiempoLaboralEsperadoSeg: r.tiempoLaboralEsperadoSeg === null || r.tiempoLaboralEsperadoSeg === undefined ? null : Number(r.tiempoLaboralEsperadoSeg),
+    descansoSegHoy: Number(r.descansoSegHoy ?? 0),
+    productividadHorario: r.productividadHorario === null || r.productividadHorario === undefined ? null : Number(r.productividadHorario),
   };
 }
 
@@ -220,4 +255,18 @@ export const ESTADO_DISPOSITIVO_COLOR: Record<EstadoDispositivo, { bg: string; c
   inactivo: { bg: "#fef3c7", color: "#92400e" },
   nunca_sincronizado: { bg: "#e4e4e7", color: "#3f3f46" },
   deshabilitado: { bg: "#fee2e2", color: "#991b1b" },
+};
+
+export const ESTADO_ACTIVIDAD_LABEL: Record<string, string> = {
+  WORKING: "Trabajando",
+  BREAK: "Descanso",
+  OFFLINE: "Desconectado",
+  OUT_OF_SCHEDULE: "Fuera de horario",
+};
+
+export const ESTADO_ACTIVIDAD_COLOR: Record<string, { bg: string; color: string }> = {
+  WORKING: { bg: "#d1fae5", color: "#065f46" },
+  BREAK: { bg: "#dbeafe", color: "#1e40af" },
+  OFFLINE: { bg: "#e4e4e7", color: "#3f3f46" },
+  OUT_OF_SCHEDULE: { bg: "#fef3c7", color: "#92400e" },
 };

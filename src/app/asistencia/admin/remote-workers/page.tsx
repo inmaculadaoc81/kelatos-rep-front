@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Monitor, Profile2User, Timer1, Chart } from "@/lib/icons";
-import { EstadoDispositivoPill } from "../../pills";
+import { Monitor, Profile2User, Chart } from "@/lib/icons";
+import { EstadoActividadPill } from "../../pills";
 import {
   type RemoteWorkerListItem,
   type RemoteWorkersDashboard,
@@ -84,10 +84,10 @@ export default function RemoteWorkersPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 pt-4">
-            <Timer1 className="size-5 text-violet-600" />
+            <Chart className="size-5 text-violet-600" />
             <div>
-              <p className="text-lg font-semibold leading-none">{cargando ? "—" : formatDuracion(resumen?.promedioActivoSeg ?? 0)}</p>
-              <p className="text-xs text-muted-foreground">Tiempo activo promedio</p>
+              <p className="text-lg font-semibold leading-none">{cargando ? "—" : resumen?.sesionesHoy ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Sesiones del día</p>
             </div>
           </CardContent>
         </Card>
@@ -95,34 +95,39 @@ export default function RemoteWorkersPage() {
           <CardContent className="flex items-center gap-3 pt-4">
             <Chart className="size-5 text-amber-600" />
             <div>
-              <p className="text-lg font-semibold leading-none">{cargando ? "—" : resumen?.sesionesHoy ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Sesiones hoy</p>
+              <p className="text-lg font-semibold leading-none">{cargando || resumen?.productividadPromedio == null ? "—" : `${resumen.productividadPromedio}%`}</p>
+              <p className="text-xs text-muted-foreground">Productividad promedio</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Empleado</TableHead>
               <TableHead>Equipo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>Estado actual</TableHead>
+              <TableHead>Horario</TableHead>
               <TableHead>Activo hoy</TableHead>
+              <TableHead>Descanso</TableHead>
               <TableHead>Productividad</TableHead>
               <TableHead>Última actividad</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cargando && Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 6 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              <TableRow key={i}>{Array.from({ length: 8 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
             {!cargando && dispositivos.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Todavía no ha sincronizado ningún dispositivo.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Todavía no ha sincronizado ningún dispositivo.</TableCell></TableRow>
             )}
             {!cargando && dispositivos.map((d) => {
-              const productividad = calcularProductividad(d.activeSecondsHoy, d.idleSecondsHoy);
+              // Productividad por horario si tiene calendario asignado;
+              // si no, cae a la técnica (activo/(activo+inactivo)) —
+              // mismo criterio que en el detalle del dispositivo.
+              const productividad = d.productividadHorario ?? calcularProductividad(d.activeSecondsHoy, d.idleSecondsHoy);
               return (
                 <TableRow
                   key={d.deviceId}
@@ -133,8 +138,10 @@ export default function RemoteWorkersPage() {
                     {d.empleadoNombre || <span className="text-muted-foreground">Sin asignar</span>}
                   </TableCell>
                   <TableCell className="text-sm">{d.hostname}</TableCell>
-                  <TableCell><EstadoDispositivoPill estado={d.estado} /></TableCell>
+                  <TableCell><EstadoActividadPill estado={d.estadoActividad} /></TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{d.horarioLabel || "—"}</TableCell>
                   <TableCell className="text-sm">{formatDuracion(d.activeSecondsHoy)}</TableCell>
+                  <TableCell className="text-sm">{d.descansoSegHoy > 0 ? formatDuracion(d.descansoSegHoy) : "—"}</TableCell>
                   <TableCell className="text-sm">{productividad == null ? "—" : `${productividad}%`}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{hace(d.lastSeen)}</TableCell>
                 </TableRow>

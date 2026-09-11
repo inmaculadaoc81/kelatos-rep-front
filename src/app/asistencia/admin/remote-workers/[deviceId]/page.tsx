@@ -7,11 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft2 } from "@/lib/icons";
-import { EstadoDispositivoPill } from "../../../pills";
+import { EstadoActividadPill } from "../../../pills";
 import {
   type RemoteWorkerDetail,
   type RemoteWorkerHistoryRow,
-  type EstadoDispositivo,
   mapearDetalle,
   mapearHistorialRow,
   formatDuracion,
@@ -69,7 +68,7 @@ export default function RemoteWorkerDetailPage() {
     return <p className="text-sm text-muted-foreground">{error || "Dispositivo no encontrado."}</p>;
   }
 
-  const { device, hoy, applications, windowEvents, productividadCategoria } = detalle;
+  const { device, hoy, applications, windowEvents, productividadCategoria, horario } = detalle;
   const productividadHoy = calcularProductividad(hoy.activeSeconds, hoy.idleSeconds);
 
   return (
@@ -83,7 +82,7 @@ export default function RemoteWorkerDetailPage() {
           <h1 className="text-lg font-semibold">{device.empleadoNombre || "Sin asignar"}</h1>
           <p className="text-xs text-muted-foreground">{device.hostname}</p>
         </div>
-        <EstadoDispositivoPill estado={device.status === "deshabilitado" ? "deshabilitado" as EstadoDispositivo : (windowEvents.length || applications.length ? "conectado" : "inactivo") as EstadoDispositivo} />
+        <EstadoActividadPill estado={horario.estadoActividad} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -104,23 +103,31 @@ export default function RemoteWorkerDetailPage() {
           <CardContent className="space-y-2 pt-4 text-sm">
             <p className="font-medium text-muted-foreground">Resumen de hoy</p>
             <div className="grid grid-cols-2 gap-2 text-xs">
+              <span className="text-muted-foreground">Horario</span><span>{horario.horarioLabel || "Sin horario asignado"}</span>
+              <span className="text-muted-foreground">Tiempo programado</span><span>{horario.tiempoLaboralEsperadoSeg ? formatDuracion(horario.tiempoLaboralEsperadoSeg) : "—"}</span>
               <span className="text-muted-foreground">Tiempo trabajado</span><span>{formatDuracion(hoy.activeSeconds + hoy.idleSeconds)}</span>
               <span className="text-muted-foreground">Tiempo activo</span><span>{formatDuracion(hoy.activeSeconds)}</span>
               <span className="text-muted-foreground">Tiempo inactivo</span><span>{formatDuracion(hoy.idleSeconds)}</span>
-              <span className="text-muted-foreground">Productividad</span><span>{productividadHoy == null ? "—" : `${productividadHoy}%`}</span>
+              <span className="text-muted-foreground">Tiempo descanso</span><span>{horario.descansoSegHoy > 0 ? formatDuracion(horario.descansoSegHoy) : "—"}</span>
               <span className="text-muted-foreground">Primera actividad</span><span>{fechaHora(hoy.primeraActividad)}</span>
               <span className="text-muted-foreground">Última actividad</span><span>{fechaHora(hoy.ultimaActividad)}</span>
               <span className="text-muted-foreground">Nº de aplicaciones</span><span>{applications.length}</span>
               <span className="text-muted-foreground">Nº de eventos</span><span>{windowEvents.length}</span>
             </div>
+            {!horario.horarioLabel && (
+              <p className="text-xs text-muted-foreground">
+                Sin calendario asignado — la productividad por horario no se puede calcular. Asígnalo desde{" "}
+                <Link href="/asistencia/admin/horarios" className="underline">Horarios</Link>.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardContent className="pt-4 text-sm">
-          <p className="mb-2 font-medium text-muted-foreground">Productividad técnica vs. por categoría</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <p className="mb-2 font-medium text-muted-foreground">Productividad — técnica vs. por categoría vs. por horario</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <div>
               <p className="text-xs text-muted-foreground">Técnica (activo/total)</p>
               <p className="text-lg font-semibold">{productividadHoy == null ? "—" : `${productividadHoy}%`}</p>
@@ -128,6 +135,10 @@ export default function RemoteWorkerDetailPage() {
             <div>
               <p className="text-xs text-muted-foreground">Por categoría</p>
               <p className="text-lg font-semibold">{productividadCategoria.porcentaje == null ? "—" : `${productividadCategoria.porcentaje}%`}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Por horario</p>
+              <p className="text-lg font-semibold">{horario.productividadHorario == null ? "—" : `${horario.productividadHorario}%`}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Apps no productivas</p>

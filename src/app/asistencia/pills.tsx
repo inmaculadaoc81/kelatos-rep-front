@@ -2,7 +2,10 @@
 // EstadoBadge ya usado en Ventas/Facturas de Clientes (span redondeado,
 // color inline en vez de las variantes fijas de components/ui/badge.tsx).
 
-import { ESTADO_DISPOSITIVO_LABEL, ESTADO_DISPOSITIVO_COLOR, type EstadoDispositivo } from "@/lib/remote-workers";
+import {
+  ESTADO_DISPOSITIVO_LABEL, ESTADO_DISPOSITIVO_COLOR, type EstadoDispositivo,
+  ESTADO_ACTIVIDAD_LABEL, ESTADO_ACTIVIDAD_COLOR, type EstadoActividad,
+} from "@/lib/remote-workers";
 
 const ESTILO_ESTADO: Record<string, { bg: string; color?: string }> = {
   pendiente: { bg: "#fef3c7", color: "#92400e" },
@@ -63,6 +66,16 @@ export function EstadoDispositivoPill({ estado }: { estado: EstadoDispositivo })
   return (
     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
       {ESTADO_DISPOSITIVO_LABEL[estado] || estado}
+    </span>
+  );
+}
+
+export function EstadoActividadPill({ estado }: { estado: EstadoActividad }) {
+  if (!estado) return <span className="text-xs text-muted-foreground">Sin horario</span>;
+  const estilo = ESTADO_ACTIVIDAD_COLOR[estado] || { bg: "#e4e4e7", color: "#3f3f46" };
+  return (
+    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
+      {ESTADO_ACTIVIDAD_LABEL[estado] || estado}
     </span>
   );
 }

@@ -73,6 +73,10 @@ const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers/dispositivos", label: "Dispositivos", icon: Monitor },
   { href: "/asistencia/admin/remote-workers/agentes", label: "Agentes", icon: Cpu },
   { href: "/asistencia/admin/remote-workers/categorias", label: "Categorías", icon: Category2 },
+  // Horarios NO se filtra "solo remotos" -- son plantillas de calendario
+  // compartidas (asistencia.calendarios), no datos por empleado; se
+  // enlaza directo a la pantalla ya existente de Administración.
+  { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
   { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
   { href: "/asistencia/admin/remote-workers/vacaciones", label: "Vacaciones", icon: Airplane },
   { href: "/asistencia/admin/remote-workers/correcciones", label: "Correcciones", icon: Edit2 },
