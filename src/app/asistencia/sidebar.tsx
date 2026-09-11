@@ -33,6 +33,7 @@ import {
   Chart,
   Cpu,
   Category2,
+  DocumentText,
 } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
@@ -73,6 +74,7 @@ const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers/dispositivos", label: "Dispositivos", icon: Monitor },
   { href: "/asistencia/admin/remote-workers/agentes", label: "Agentes", icon: Cpu },
   { href: "/asistencia/admin/remote-workers/categorias", label: "Categorías", icon: Category2 },
+  { href: "/asistencia/admin/remote-workers/reportes", label: "Reportes", icon: DocumentText },
   // Horarios NO se filtra "solo remotos" -- son plantillas de calendario
   // compartidas (asistencia.calendarios), no datos por empleado; se
   // enlaza directo a la pantalla ya existente de Administración.

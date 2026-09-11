@@ -110,6 +110,55 @@ export interface RemoteWorkerHistoryRow {
   productividad: number | null;
 }
 
+/** Reporte diario/semanal (Fase 9.5) — separa el tiempo activo del
+    dispositivo en 3 cubos, según si cae dentro de una franja de
+    calendario_horas: laboral (cuenta para productividad), descanso
+    (huecos reales de fichaje salida_comida/vuelta_comida) o fuera de
+    horario (nunca cuenta como productividad, aunque haya actividad). */
+export interface ReporteDiario {
+  empleadoId: number;
+  empleadoNombre: string;
+  dispositivo: { deviceId: number; hostname: string } | null;
+  fecha: string;
+  horarioLabel: string | null;
+  tiempoLaboralEsperadoSeg: number | null;
+  activoLaboralSeg: number;
+  inactivoLaboralSeg: number;
+  descansoSeg: number;
+  fueraHorarioSeg: number;
+  productividad: number | null;
+}
+
+export interface ReporteSemanal {
+  empleadoId: number;
+  empleadoNombre: string | null;
+  dias: ReporteDiario[];
+  totales: {
+    diasTrabajados: number;
+    activoLaboralSeg: number;
+    inactivoLaboralSeg: number;
+    descansoSeg: number;
+    fueraHorarioSeg: number;
+    productividad: number | null;
+  };
+}
+
+export interface AnalyticsSupervisor {
+  trabajadoresActivosHoy: number;
+  productividadPromedio: number | null;
+  tiempoActivoPromedioSeg: number;
+  horasFueraHorarioSeg: number;
+  descansosRegistrados: number;
+  tabla: RemoteWorkerListItem[];
+}
+
+export interface TimelineSegmento {
+  estado: "WORKING" | "BREAK" | "OUT_OF_SCHEDULE";
+  inicio: string;
+  fin: string;
+  duracionSeg: number;
+}
+
 export function mapearRemoteWorkerListItem(r: Record<string, unknown>): RemoteWorkerListItem {
   return {
     deviceId: Number(r.device_id),
@@ -209,6 +258,60 @@ export function mapearCategoria(r: Record<string, unknown>): AppCategory {
     applicationName: String(r.application_name ?? ""),
     category: String(r.category ?? ""),
     productive: Boolean(r.productive),
+  };
+}
+
+export function mapearReporteDiario(r: Record<string, unknown>): ReporteDiario {
+  const dispositivo = r.dispositivo as Record<string, unknown> | null;
+  return {
+    empleadoId: Number(r.empleadoId),
+    empleadoNombre: String(r.empleadoNombre ?? ""),
+    dispositivo: dispositivo ? { deviceId: Number(dispositivo.deviceId), hostname: String(dispositivo.hostname ?? "") } : null,
+    fecha: String(r.fecha ?? ""),
+    horarioLabel: (r.horarioLabel as string) ?? null,
+    tiempoLaboralEsperadoSeg: r.tiempoLaboralEsperadoSeg === null || r.tiempoLaboralEsperadoSeg === undefined ? null : Number(r.tiempoLaboralEsperadoSeg),
+    activoLaboralSeg: Number(r.activoLaboralSeg ?? 0),
+    inactivoLaboralSeg: Number(r.inactivoLaboralSeg ?? 0),
+    descansoSeg: Number(r.descansoSeg ?? 0),
+    fueraHorarioSeg: Number(r.fueraHorarioSeg ?? 0),
+    productividad: r.productividad === null || r.productividad === undefined ? null : Number(r.productividad),
+  };
+}
+
+export function mapearReporteSemanal(r: Record<string, unknown>): ReporteSemanal {
+  const totales = r.totales as Record<string, unknown>;
+  return {
+    empleadoId: Number(r.empleadoId),
+    empleadoNombre: (r.empleadoNombre as string) ?? null,
+    dias: ((r.dias as Record<string, unknown>[]) ?? []).map(mapearReporteDiario),
+    totales: {
+      diasTrabajados: Number(totales.diasTrabajados ?? 0),
+      activoLaboralSeg: Number(totales.activoLaboralSeg ?? 0),
+      inactivoLaboralSeg: Number(totales.inactivoLaboralSeg ?? 0),
+      descansoSeg: Number(totales.descansoSeg ?? 0),
+      fueraHorarioSeg: Number(totales.fueraHorarioSeg ?? 0),
+      productividad: totales.productividad === null || totales.productividad === undefined ? null : Number(totales.productividad),
+    },
+  };
+}
+
+export function mapearAnalytics(r: Record<string, unknown>): AnalyticsSupervisor {
+  return {
+    trabajadoresActivosHoy: Number(r.trabajadoresActivosHoy ?? 0),
+    productividadPromedio: r.productividadPromedio === null || r.productividadPromedio === undefined ? null : Number(r.productividadPromedio),
+    tiempoActivoPromedioSeg: Number(r.tiempoActivoPromedioSeg ?? 0),
+    horasFueraHorarioSeg: Number(r.horasFueraHorarioSeg ?? 0),
+    descansosRegistrados: Number(r.descansosRegistrados ?? 0),
+    tabla: ((r.tabla as Record<string, unknown>[]) ?? []).map(mapearRemoteWorkerListItem),
+  };
+}
+
+export function mapearTimelineSegmento(r: Record<string, unknown>): TimelineSegmento {
+  return {
+    estado: r.estado as TimelineSegmento["estado"],
+    inicio: String(r.inicio ?? ""),
+    fin: String(r.fin ?? ""),
+    duracionSeg: Number(r.duracionSeg ?? 0),
   };
 }
 
