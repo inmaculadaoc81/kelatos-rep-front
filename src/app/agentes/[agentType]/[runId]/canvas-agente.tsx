@@ -377,6 +377,8 @@ export function CanvasAgente({
   }
 
   function abrirLead(lead: LeadUI) {
+    // eslint-disable-next-line no-console
+    console.log("[canvas-agente] abrirLead", lead.companyId, lead.name); // TODO: quitar tras diagnosticar 2026-09-11
     // Si el canvas está a pantalla completa, el modal (portal en <body>)
     // quedaría detrás del elemento fullscreen — se sale de fullscreen para
     // que se vea centrado en la página.
