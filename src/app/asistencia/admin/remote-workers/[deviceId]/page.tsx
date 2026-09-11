@@ -108,6 +108,8 @@ export default function RemoteWorkerDetailPage() {
               <span className="text-muted-foreground">Productividad</span><span>{productividadHoy == null ? "—" : `${productividadHoy}%`}</span>
               <span className="text-muted-foreground">Primera actividad</span><span>{fechaHora(hoy.primeraActividad)}</span>
               <span className="text-muted-foreground">Última actividad</span><span>{fechaHora(hoy.ultimaActividad)}</span>
+              <span className="text-muted-foreground">Nº de aplicaciones</span><span>{applications.length}</span>
+              <span className="text-muted-foreground">Nº de eventos</span><span>{windowEvents.length}</span>
             </div>
           </CardContent>
         </Card>

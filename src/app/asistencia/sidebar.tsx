@@ -66,6 +66,7 @@ const ENTRADA_REMOTE_WORKERS = { href: "/asistencia/admin/remote-workers", label
     filtro — no se crea una tabla de fichajes paralela). */
 const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers", label: "Dashboard", icon: Chart },
+  { href: "/asistencia/admin/remote-workers/dispositivos", label: "Dispositivos", icon: Monitor },
   { href: "/asistencia/admin/fichajes", label: "Fichajes", icon: Clock },
 ];
 

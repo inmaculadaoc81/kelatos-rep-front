@@ -26,6 +26,7 @@ export interface RemoteWorkersDashboard {
   totalDispositivos: number;
   promedioActivoSeg: number;
   productividadPromedio: number | null;
+  sesionesHoy: number;
 }
 
 export interface RemoteWorkerAppUsage {
@@ -93,6 +94,7 @@ export function mapearDashboard(r: Record<string, unknown>): RemoteWorkersDashbo
     totalDispositivos: Number(r.totalDispositivos ?? 0),
     promedioActivoSeg: Number(r.promedioActivoSeg ?? 0),
     productividadPromedio: r.productividadPromedio === null || r.productividadPromedio === undefined ? null : Number(r.productividadPromedio),
+    sesionesHoy: Number(r.sesionesHoy ?? 0),
   };
 }
 

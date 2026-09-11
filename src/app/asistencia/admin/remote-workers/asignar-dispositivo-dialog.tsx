@@ -10,11 +10,13 @@ import type { RemoteWorkerListItem } from "@/lib/remote-workers";
 
 interface Empleado { id: number; nombre: string; activo: boolean; }
 
-/** Vincula manualmente un dispositivo "sin asignar" a un empleado real de
+/** Vincula manualmente un dispositivo a un empleado real de
     asistencia.empleados — mismo patrón (Dialog + Select + toast) que
     AprobarMarcacionDialog en admin/marcaciones-olvidadas. No hay
     auto-vinculación: el agente Python solo conoce hostname/usuario del
-    SO, que no es fiable como identidad real. */
+    SO, que no es fiable como identidad real. Sirve tanto para "Asignar"
+    (dispositivo sin empleado) como para "Cambiar empleado" (ya
+    asignado) — es la misma acción, solo cambia el texto según el caso. */
 export function AsignarDispositivoDialog({
   dispositivo,
   onClose,
@@ -27,10 +29,11 @@ export function AsignarDispositivoDialog({
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [employeeId, setEmployeeId] = useState<string>("");
   const [guardando, setGuardando] = useState(false);
+  const yaAsignado = dispositivo?.employeeId != null;
 
   useEffect(() => {
     if (!dispositivo) return;
-    setEmployeeId("");
+    setEmployeeId(dispositivo.employeeId != null ? String(dispositivo.employeeId) : "");
     fetch("/api/asistencia/admin/empleados")
       .then((r) => r.json())
       .then((data) => { if (data.ok) setEmpleados((data.empleados as Empleado[]).filter((e) => e.activo)); })
@@ -49,7 +52,7 @@ export function AsignarDispositivoDialog({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo asignar el dispositivo");
-      toast.success("Dispositivo asignado");
+      toast.success(yaAsignado ? "Empleado cambiado" : "Dispositivo asignado");
       onAsignado();
       onClose();
     } catch (e) {
@@ -63,13 +66,17 @@ export function AsignarDispositivoDialog({
     <Dialog open={dispositivo != null} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Asignar dispositivo</DialogTitle>
+          <DialogTitle>{yaAsignado ? "Cambiar empleado" : "Asignar dispositivo"}</DialogTitle>
         </DialogHeader>
 
         {dispositivo && (
           <div className="space-y-4 text-sm">
             <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <p><span className="font-medium text-foreground">{dispositivo.hostname}</span> (usuario del sistema: {dispositivo.username}) todavía no está vinculado a ningún empleado.</p>
+              {yaAsignado ? (
+                <p><span className="font-medium text-foreground">{dispositivo.hostname}</span> está asignado a <span className="font-medium text-foreground">{dispositivo.empleadoNombre}</span>. Elige el nuevo empleado.</p>
+              ) : (
+                <p><span className="font-medium text-foreground">{dispositivo.hostname}</span> (usuario del sistema: {dispositivo.username}) todavía no está vinculado a ningún empleado.</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Empleado</Label>
@@ -85,7 +92,7 @@ export function AsignarDispositivoDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={guardando}>Cancelar</Button>
-          <Button onClick={asignar} disabled={guardando}>{guardando ? "Asignando…" : "Asignar"}</Button>
+          <Button onClick={asignar} disabled={guardando}>{guardando ? "Guardando…" : yaAsignado ? "Cambiar" : "Asignar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

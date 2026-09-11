@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Monitor, Profile2User, Timer1, Chart } from "@/lib/icons";
-import { cn } from "@/lib/utils";
 import { EstadoDispositivoPill } from "../../pills";
 import {
   type RemoteWorkerListItem,
@@ -17,7 +15,6 @@ import {
   formatDuracion,
   calcularProductividad,
 } from "@/lib/remote-workers";
-import { AsignarDispositivoDialog } from "./asignar-dispositivo-dialog";
 
 function hace(fecha: string | null): string {
   if (!fecha) return "Nunca";
@@ -30,16 +27,15 @@ function hace(fecha: string | null): string {
   return `Hace ${Math.floor(horas / 24)} d`;
 }
 
-/** Dashboard de "Teletrabajadores remotos" (Asistencia) — cards de
-    resumen + tabla de dispositivos. Los datos vienen de un agente Python
-    (ActivityWatch) vía un workflow n8n existente que hace POST al
-    webhook del backend; esta página solo lee. */
+/** Dashboard de "Teletrabajadores remotos" (Asistencia) — solo monitoreo
+    (cards + tabla de actividad/productividad). La gestión de dispositivos
+    (asignar/cambiar empleado, desactivar) vive en su propia vista,
+    "Dispositivos" — ver dispositivos/page.tsx. */
 export default function RemoteWorkersPage() {
   const router = useRouter();
   const [dispositivos, setDispositivos] = useState<RemoteWorkerListItem[]>([]);
   const [resumen, setResumen] = useState<RemoteWorkersDashboard | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [asignando, setAsignando] = useState<RemoteWorkerListItem | null>(null);
 
   async function cargar() {
     try {
@@ -82,7 +78,7 @@ export default function RemoteWorkersPage() {
             <Monitor className="size-5 text-sky-600" />
             <div>
               <p className="text-lg font-semibold leading-none">{cargando ? "—" : resumen?.totalDispositivos ?? 0}</p>
-              <p className="text-xs text-muted-foreground">PCs registrados</p>
+              <p className="text-xs text-muted-foreground">Dispositivos registrados</p>
             </div>
           </CardContent>
         </Card>
@@ -99,8 +95,8 @@ export default function RemoteWorkersPage() {
           <CardContent className="flex items-center gap-3 pt-4">
             <Chart className="size-5 text-amber-600" />
             <div>
-              <p className="text-lg font-semibold leading-none">{cargando || resumen?.productividadPromedio == null ? "—" : `${resumen.productividadPromedio}%`}</p>
-              <p className="text-xs text-muted-foreground">Productividad promedio</p>
+              <p className="text-lg font-semibold leading-none">{cargando ? "—" : resumen?.sesionesHoy ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Sesiones hoy</p>
             </div>
           </CardContent>
         </Card>
@@ -113,27 +109,24 @@ export default function RemoteWorkersPage() {
               <TableHead>Empleado</TableHead>
               <TableHead>Equipo</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Última sincronización</TableHead>
-              <TableHead>Tiempo activo hoy</TableHead>
-              <TableHead>Tiempo inactivo</TableHead>
-              <TableHead>Aplicación principal</TableHead>
+              <TableHead>Activo hoy</TableHead>
               <TableHead>Productividad</TableHead>
-              <TableHead>Acciones</TableHead>
+              <TableHead>Última actividad</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cargando && Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 9 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              <TableRow key={i}>{Array.from({ length: 6 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
             {!cargando && dispositivos.length === 0 && (
-              <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">Todavía no ha sincronizado ningún dispositivo.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Todavía no ha sincronizado ningún dispositivo.</TableCell></TableRow>
             )}
             {!cargando && dispositivos.map((d) => {
               const productividad = calcularProductividad(d.activeSecondsHoy, d.idleSecondsHoy);
               return (
                 <TableRow
                   key={d.deviceId}
-                  className={cn("cursor-pointer", !d.employeeId && "opacity-70")}
+                  className="cursor-pointer"
                   onClick={() => router.push(`/asistencia/admin/remote-workers/${d.deviceId}`)}
                 >
                   <TableCell className="font-medium">
@@ -141,30 +134,15 @@ export default function RemoteWorkersPage() {
                   </TableCell>
                   <TableCell className="text-sm">{d.hostname}</TableCell>
                   <TableCell><EstadoDispositivoPill estado={d.estado} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{hace(d.lastSeen)}</TableCell>
                   <TableCell className="text-sm">{formatDuracion(d.activeSecondsHoy)}</TableCell>
-                  <TableCell className="text-sm">{formatDuracion(d.idleSecondsHoy)}</TableCell>
-                  <TableCell className="text-sm">{d.appPrincipal || "—"}</TableCell>
                   <TableCell className="text-sm">{productividad == null ? "—" : `${productividad}%`}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    {!d.employeeId ? (
-                      <Button size="sm" variant="outline" onClick={() => setAsignando(d)}>Asignar</Button>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{hace(d.lastSeen)}</TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
       </div>
-
-      <AsignarDispositivoDialog
-        dispositivo={asignando}
-        onClose={() => setAsignando(null)}
-        onAsignado={cargar}
-      />
     </div>
   );
 }
