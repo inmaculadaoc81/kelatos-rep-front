@@ -11,7 +11,7 @@ import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
 import { ArrowLeft2 } from "@/lib/icons";
 import { AgentRun, AgentStep } from "@/lib/agentes";
-import { Campaign, AgentEvent, CAMPAIGN_STATUS_LABEL, CAMPAIGN_STATUS_COLOR } from "@/lib/campanas";
+import { Campaign, AgentEvent, CampaignBudget, CAMPAIGN_STATUS_LABEL, CAMPAIGN_STATUS_COLOR } from "@/lib/campanas";
 import { TrazaAgente } from "../../[agentType]/[runId]/traza-agente";
 import { CanvasAgente } from "../../[agentType]/[runId]/canvas-agente";
 
@@ -24,6 +24,7 @@ export default function CampanaDetallePage() {
   const [run, setRun] = useState<AgentRun | null>(null);
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [eventos, setEventos] = useState<AgentEvent[]>([]);
+  const [budget, setBudget] = useState<CampaignBudget | null>(null);
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [aprobados, setAprobados] = useState(0);
@@ -37,6 +38,15 @@ export default function CampanaDetallePage() {
       }
       const ev = await fetch(`/api/agentes/campanas/${params.id}/events`).then((r) => r.json());
       if (ev.ok) setEventos(ev.events as AgentEvent[]);
+      const bg = await fetch(`/api/agentes/campanas/${params.id}/budget`).then((r) => r.json());
+      if (bg.ok) {
+        setBudget({
+          maxCostUsd: Number(bg.maxCostUsd ?? 0),
+          costUsd: Number(bg.costUsd ?? 0),
+          remainingUsd: Number(bg.remainingUsd ?? 0),
+          byResource: Array.isArray(bg.byResource) ? bg.byResource : [],
+        });
+      }
       if (c.ok && c.runId) {
         const [rr, ll] = await Promise.all([
           fetch(`/api/agentes/runs/${c.runId}`).then((r) => r.json()),
@@ -142,8 +152,16 @@ export default function CampanaDetallePage() {
             agentType="campaign_pipeline"
             onActualizado={cargar}
             eventos={eventos}
+            plan={campaign.plan}
           />
-          <CanvasAgente run={run} steps={steps} tipoLabel={campaign.name} eventos={eventos} />
+          <CanvasAgente
+            run={run}
+            steps={steps}
+            tipoLabel={campaign.name}
+            eventos={eventos}
+            campanaId={campaign.id}
+            budget={budget ?? undefined}
+          />
         </div>
       ) : (
         <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">

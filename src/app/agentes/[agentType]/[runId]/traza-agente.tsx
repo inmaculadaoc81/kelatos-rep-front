@@ -8,7 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
 import { AgentRun, AgentStep, ESTADO_RUN_LABEL } from "@/lib/agentes";
-import type { AgentEvent } from "@/lib/campanas";
+import type { AgentEvent, CampaignPlan } from "@/lib/campanas";
 import {
   ChainOfThought,
   ChainOfThoughtHeader,
@@ -226,6 +226,20 @@ function ultimoRazonamiento(steps: AgentStep[]): string | null {
   return null;
 }
 
+/** En campañas no hay pasos deep_analysis; el "razonamiento" más cercano
+    es el último resumen de una decisión del equipo (manager, calificación,
+    research u oferta). */
+function ultimoRazonamientoEventos(eventos: AgentEvent[]): string | null {
+  const relevantes = new Set(["marketing_manager", "qualification", "offer_strategy", "web_research", "campaign_planner"]);
+  for (let i = eventos.length - 1; i >= 0; i--) {
+    const ev = eventos[i];
+    if (relevantes.has(ev.agentSlug) && ev.summary) {
+      return ev.companyName ? `${ev.companyName}: ${ev.summary}` : ev.summary;
+    }
+  }
+  return null;
+}
+
 // Color de punto por agente del equipo (timeline de campaña).
 const COLOR_AGENTE: Record<string, string> = {
   orchestrator: "bg-muted-foreground/40",
@@ -254,6 +268,7 @@ export function TrazaAgente({
   agentType,
   onActualizado,
   eventos,
+  plan,
 }: {
   run: AgentRun;
   steps: AgentStep[];
@@ -263,6 +278,8 @@ export function TrazaAgente({
   /** Cuando se pasa (campañas), la "Actividad" es el timeline del equipo
       en vez de los grupos de agent_steps. */
   eventos?: AgentEvent[];
+  /** Plan del Campaign Planner (ICP, señales, propuesta, target). */
+  plan?: CampaignPlan | null;
 }) {
   const router = useRouter();
   const confirmar = useConfirm();
@@ -270,7 +287,7 @@ export function TrazaAgente({
 
   const grupos = agruparPasos(steps);
   const tokensTotal = run.totalTokensInput + run.totalTokensOutput;
-  const razonamiento = ultimoRazonamiento(steps);
+  const razonamiento = ultimoRazonamiento(steps) ?? (eventos ? ultimoRazonamientoEventos(eventos) : null);
   const enCurso = run.status === "queued" || run.status === "running";
   const empresas = empresasEncontradas(steps);
   const empresasVisibles = empresas.slice(0, MAX_CHIPS_VISIBLES);
@@ -348,6 +365,59 @@ export function TrazaAgente({
         </div>
         <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
       </div>
+
+      {plan && (
+        <details className="rounded-lg border border-border" open>
+          <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none marker:content-['']">
+            <span className="text-muted-foreground">›</span>
+            Plan de campaña
+            {plan.targetLeads ? <span className="text-muted-foreground">· objetivo {plan.targetLeads} leads</span> : null}
+          </summary>
+          <div className="space-y-2.5 border-t border-border px-3 py-2.5 text-xs">
+            {plan.icp && (
+              <div>
+                <p className="font-medium text-muted-foreground">Cliente ideal (ICP)</p>
+                <p>{plan.icp}</p>
+              </div>
+            )}
+            {plan.valueProposition && (
+              <div>
+                <p className="font-medium text-muted-foreground">Propuesta de valor</p>
+                <p>{plan.valueProposition}</p>
+              </div>
+            )}
+            {(plan.sectors?.length > 0 || plan.locations?.length > 0) && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {plan.sectors?.length > 0 && (
+                  <p><span className="text-muted-foreground">Sectores: </span>{plan.sectors.join(", ")}</p>
+                )}
+                {plan.locations?.length > 0 && (
+                  <p><span className="text-muted-foreground">Zonas: </span>{plan.locations.join(", ")}</p>
+                )}
+              </div>
+            )}
+            {plan.positiveSignals?.length > 0 && (
+              <div>
+                <p className="font-medium text-emerald-600">Señales a favor</p>
+                <ul className="list-disc pl-4">
+                  {plan.positiveSignals.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+            )}
+            {plan.negativeSignals?.length > 0 && (
+              <div>
+                <p className="font-medium text-destructive">Señales en contra</p>
+                <ul className="list-disc pl-4">
+                  {plan.negativeSignals.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+            )}
+            {plan.channels?.length > 0 && (
+              <p><span className="text-muted-foreground">Canales: </span>{plan.channels.join(", ")}</p>
+            )}
+          </div>
+        </details>
+      )}
 
       <ChainOfThought defaultOpen>
         <ChainOfThoughtHeader>Actividad</ChainOfThoughtHeader>

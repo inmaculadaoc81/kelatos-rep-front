@@ -108,6 +108,13 @@ export interface CampaignLead {
   confidence: number | null;
   briefSummary: string | null;
   briefConfidence: number | null;
+  digitalMaturity: string | null;
+  briefOpportunities: string[];
+  possibleProblems: string[];
+  services: string[];
+  facts: { statement: string; evidenceUrls?: string[] }[];
+  inferences: { statement: string; basedOnFacts?: number[]; confidence?: number }[];
+  evidence: { type: string; url: string | null; statement: string | null; text: string | null }[];
   offer: string | null;
   angle: string | null;
   rationale: string | null;
@@ -179,6 +186,13 @@ export function mapearLead(r: Record<string, unknown>): CampaignLead {
     confidence: r.confidence === null || r.confidence === undefined ? null : Number(r.confidence),
     briefSummary: (r.brief_summary as string) ?? null,
     briefConfidence: r.brief_confidence === null || r.brief_confidence === undefined ? null : Number(r.brief_confidence),
+    digitalMaturity: (r.digital_maturity as string) ?? null,
+    briefOpportunities: arr(r.brief_opportunities),
+    possibleProblems: arr(r.possible_problems),
+    services: arr(r.services),
+    facts: Array.isArray(r.facts) ? (r.facts as CampaignLead["facts"]) : [],
+    inferences: Array.isArray(r.inferences) ? (r.inferences as CampaignLead["inferences"]) : [],
+    evidence: Array.isArray(r.evidence) ? (r.evidence as CampaignLead["evidence"]) : [],
     offer: (r.offer as string) ?? null,
     angle: (r.angle as string) ?? null,
     rationale: (r.rationale as string) ?? null,

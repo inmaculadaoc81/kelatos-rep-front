@@ -4,7 +4,52 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles } from "lucide-react";
 import { SearchNormal1, Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
-import type { AgentEvent } from "@/lib/campanas";
+import type { AgentEvent, CampaignLead, CampaignBudget } from "@/lib/campanas";
+import { SERVICE_LABEL, mapearLead } from "@/lib/campanas";
+
+/** Lead que renderiza el canvas: AgentLead + extras de campaña (opcionales). */
+type LeadUI = AgentLead & {
+  fit?: string | null;
+  offer?: string | null;
+  angle?: string | null;
+  rationale?: string | null;
+  briefSummary?: string | null;
+  briefOpportunities?: string[];
+  riskList?: string[];
+  facts?: { statement: string; evidenceUrls?: string[] }[];
+  inferences?: { statement: string; confidence?: number }[];
+  evidence?: { type: string; url: string | null; statement: string | null }[];
+};
+
+function campaignLeadToUI(c: CampaignLead): LeadUI {
+  return {
+    companyId: c.companyId,
+    name: c.name,
+    website: c.website,
+    sector: c.sector,
+    location: c.location,
+    score: c.score,
+    reason: c.reason,
+    painPoints: c.possibleProblems ?? [],
+    recommendedService: c.offer && c.offer !== "none" ? (SERVICE_LABEL[c.offer] ?? c.offer) : null,
+    confidence: c.confidence,
+    messageId: c.messageId,
+    channel: c.channel,
+    subject: c.subject,
+    message: c.message,
+    messageStatus: (c.messageStatus as AgentLead["messageStatus"]) ?? null,
+    fit: c.fit,
+    offer: c.offer,
+    angle: c.angle,
+    rationale: c.rationale,
+    briefSummary: c.briefSummary,
+    briefOpportunities: c.opportunities?.length ? c.opportunities : c.briefOpportunities,
+    riskList: c.risks,
+    facts: c.facts,
+    inferences: c.inferences,
+    evidence: c.evidence,
+  };
+}
 import { PillBadge } from "@/components/pill-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -35,10 +80,10 @@ const ESTADO_MENSAJE_COLOR: Record<string, { bg: string; color: string }> = {
   rejected: { bg: "#fee2e2", color: "#991b1b" },
 };
 
-/** Herramientas que el agente puede usar — hoy solo una (el scraper de
-    infoisinfo.es detrás de findBusinesses), pero la tarjeta ya está
-    pensada como lista para cuando un agente tenga varias. */
-const HERRAMIENTAS = [{ nombre: "Páginas Amarillas", detalle: "infoisinfo.es", icono: SearchNormal1, color: "bg-blue-600" }];
+/** Herramientas que el agente puede usar — hoy solo una (el buscador de
+    empresas detrás de findBusinesses), pero la tarjeta ya está pensada
+    como lista para cuando un agente tenga varias. */
+const HERRAMIENTAS = [{ nombre: "Directorio web", detalle: "infoisinfo.es + DuckDuckGo", icono: SearchNormal1, color: "bg-blue-600" }];
 
 /** Los dos niveles de modelo del embudo de coste. Son los valores por
     defecto de AGENTES_OPENAI_MODEL_CHEAP/DEEP en el backend (mismo criterio
@@ -135,18 +180,23 @@ export function CanvasAgente({
   steps,
   tipoLabel,
   eventos,
+  campanaId,
+  budget,
 }: {
   run: AgentRun;
   steps: AgentStep[];
   tipoLabel: string;
   /** Cuando se pasa (campañas), el canvas añade la tarjeta "Equipo". */
   eventos?: AgentEvent[];
+  /** Id de campaña: cambia el origen de leads/aprobación al endpoint de campaña. */
+  campanaId?: number;
+  budget?: CampaignBudget;
 }) {
   const confirmar = useConfirm();
   const color = ESTADO_RUN_COLOR[run.status];
   const progreso = run.progress as Record<string, number | undefined>;
 
-  const [leads, setLeads] = useState<AgentLead[]>([]);
+  const [leads, setLeads] = useState<LeadUI[]>([]);
   // Lead cuyo detalle está abierto en el modal (click en la fila del card
   // "Leads"). El objeto se refresca desde `leads` en cada render mientras
   // el modal está abierto, así el estado del mensaje no se queda viejo.
@@ -174,9 +224,15 @@ export function CanvasAgente({
 
   async function cargarLeads() {
     try {
-      const res = await fetch(`/api/agentes/runs/${run.id}/leads`);
-      const data = await res.json();
-      if (data.ok) setLeads(data.leads as AgentLead[]);
+      if (campanaId) {
+        const res = await fetch(`/api/agentes/campanas/${campanaId}/leads`);
+        const data = await res.json();
+        if (data.ok) setLeads((data.leads as Record<string, unknown>[]).map((r) => campaignLeadToUI(mapearLead(r))));
+      } else {
+        const res = await fetch(`/api/agentes/runs/${run.id}/leads`);
+        const data = await res.json();
+        if (data.ok) setLeads(data.leads as LeadUI[]);
+      }
     } catch {
       // silencioso — la tarjeta se queda con lo último que cargó bien
     }
@@ -187,13 +243,16 @@ export function CanvasAgente({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run.id, run.status]);
 
-  async function revisar(lead: AgentLead, status: "approved" | "rejected") {
+  async function revisar(lead: LeadUI, status: "approved" | "rejected") {
     if (status === "rejected") {
       const ok = await confirmar(`¿Rechazar el mensaje para "${lead.name}"? No se enviará nada.`, { titulo: "Rechazar lead" });
       if (!ok) return;
     }
     try {
-      const res = await fetch(`/api/agentes/runs/${run.id}/leads/${lead.companyId}`, {
+      const url = campanaId
+        ? `/api/agentes/campanas/${campanaId}/leads/${lead.companyId}`
+        : `/api/agentes/runs/${run.id}/leads/${lead.companyId}`;
+      const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -207,12 +266,12 @@ export function CanvasAgente({
     }
   }
 
-  async function revisarYCerrar(lead: AgentLead, status: "approved" | "rejected") {
+  async function revisarYCerrar(lead: LeadUI, status: "approved" | "rejected") {
     await revisar(lead, status);
     setLeadAbiertoId(null);
   }
 
-  function abrirLead(lead: AgentLead) {
+  function abrirLead(lead: LeadUI) {
     // Si el canvas está a pantalla completa, el modal (portal en <body>)
     // quedaría detrás del elemento fullscreen — se sale de fullscreen para
     // que se vea centrado en la página.
@@ -520,24 +579,33 @@ export function CanvasAgente({
 
       {/* Lectura del run — solo coste / tokens / duración, sin contenedor.
           (Provisional en la esquina; se moverá arriba.) */}
-      <div className="absolute right-3 bottom-3 z-20 flex items-stretch gap-4 text-center">
-        <div>
-          <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Coste</p>
-          <p className="text-sm font-semibold tabular-nums">${run.totalCostUsd.toFixed(4)}</p>
+      <div className="absolute right-3 bottom-3 z-20 flex flex-col items-end gap-1">
+        <div className="flex items-stretch gap-4 text-center">
+          <div>
+            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Coste</p>
+            <p className="text-sm font-semibold tabular-nums">${run.totalCostUsd.toFixed(4)}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Tokens</p>
+            <p
+              className="text-sm font-semibold tabular-nums"
+              title={`${run.totalTokensInput} entrada · ${run.totalTokensOutput} salida`}
+            >
+              {tokensCompacto(run.totalTokensInput + run.totalTokensOutput)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Duración</p>
+            <p className="text-sm font-semibold tabular-nums">{formatearDuracion(duracionRunMs(run))}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Tokens</p>
-          <p
-            className="text-sm font-semibold tabular-nums"
-            title={`${run.totalTokensInput} entrada · ${run.totalTokensOutput} salida`}
-          >
-            {tokensCompacto(run.totalTokensInput + run.totalTokensOutput)}
+        {budget && budget.byResource.length > 0 && (
+          <p className="text-[10px] text-muted-foreground tabular-nums">
+            {budget.byResource
+              .map((b) => `${b.resource} $${Number(b.cost_usd).toFixed(4)}`)
+              .join("  ·  ")}
           </p>
-        </div>
-        <div>
-          <p className="text-[9px] font-medium tracking-wider text-muted-foreground uppercase">Duración</p>
-          <p className="text-sm font-semibold tabular-nums">{formatearDuracion(duracionRunMs(run))}</p>
-        </div>
+        )}
       </div>
 
       <Dialog open={leadAbierto !== null} onOpenChange={(o) => !o && setLeadAbiertoId(null)}>
@@ -551,43 +619,105 @@ export function CanvasAgente({
             </DialogHeader>
 
             <div className="max-h-[60vh] space-y-3 overflow-y-auto text-xs">
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span><span className="text-muted-foreground">Score:</span> <b>{leadAbierto.score ?? "—"}</b></span>
+                {leadAbierto.fit && (
+                  <span><span className="text-muted-foreground">Fit:</span> <b>{leadAbierto.fit}</b></span>
+                )}
                 {leadAbierto.confidence !== null && (
                   <span><span className="text-muted-foreground">Confianza:</span> <b>{Math.round(leadAbierto.confidence * 100)}%</b></span>
                 )}
-                {leadAbierto.messageStatus && (
+                {leadAbierto.messageStatus && ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus] && (
                   <PillBadge bg={ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[leadAbierto.messageStatus].color} className="text-[10px]">
                     {ESTADO_MENSAJE_LABEL[leadAbierto.messageStatus]}
                   </PillBadge>
                 )}
               </div>
 
+              {(leadAbierto.offer && leadAbierto.offer !== "none") && (
+                <div className="rounded-md border border-sky-200 bg-sky-50 p-3">
+                  <p className="font-medium text-sky-800">Oferta: {SERVICE_LABEL[leadAbierto.offer] ?? leadAbierto.offer}</p>
+                  {leadAbierto.angle && <p className="mt-1">{leadAbierto.angle}</p>}
+                  {leadAbierto.rationale && <p className="mt-1 text-muted-foreground">{leadAbierto.rationale}</p>}
+                </div>
+              )}
+
               {leadAbierto.reason && (
                 <div>
-                  <p className="font-medium text-muted-foreground">Motivo</p>
+                  <p className="font-medium text-muted-foreground">Calificación</p>
                   <p>{leadAbierto.reason}</p>
                 </div>
               )}
 
-              {leadAbierto.painPoints.length > 0 && (
+              {(leadAbierto.briefOpportunities?.length ?? 0) > 0 && (
                 <div>
-                  <p className="font-medium text-muted-foreground">Puntos de dolor</p>
+                  <p className="font-medium text-muted-foreground">Oportunidades</p>
                   <ul className="list-disc pl-4">
-                    {leadAbierto.painPoints.map((p, i) => <li key={i}>{p}</li>)}
+                    {leadAbierto.briefOpportunities!.map((p, i) => <li key={i}>{p}</li>)}
                   </ul>
                 </div>
               )}
 
-              {leadAbierto.recommendedService && (
+              {(leadAbierto.riskList?.length ?? leadAbierto.painPoints.length) > 0 && (
                 <div>
-                  <p className="font-medium text-muted-foreground">Servicio recomendado</p>
-                  <p>{leadAbierto.recommendedService}</p>
+                  <p className="font-medium text-muted-foreground">Riesgos / puntos de dolor</p>
+                  <ul className="list-disc pl-4">
+                    {(leadAbierto.riskList?.length ? leadAbierto.riskList : leadAbierto.painPoints).map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
                 </div>
               )}
 
+              {leadAbierto.briefSummary && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Research</p>
+                  <p>{leadAbierto.briefSummary}</p>
+                </div>
+              )}
+
+              {(leadAbierto.facts?.length ?? 0) > 0 && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Hechos verificados</p>
+                  <ul className="list-disc pl-4">
+                    {leadAbierto.facts!.map((f, i) => (
+                      <li key={i}>
+                        {f.statement}
+                        {f.evidenceUrls?.length ? (
+                          <span className="text-muted-foreground"> — {f.evidenceUrls.join(", ")}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(leadAbierto.inferences?.length ?? 0) > 0 && (
+                <div>
+                  <p className="font-medium text-muted-foreground">Inferencias</p>
+                  <ul className="list-disc pl-4">
+                    {leadAbierto.inferences!.map((f, i) => (
+                      <li key={i}>{f.statement}{f.confidence != null ? ` (conf. ${Math.round(f.confidence * 100)}%)` : ""}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(leadAbierto.evidence?.length ?? 0) > 0 && (
+                <details>
+                  <summary className="cursor-pointer font-medium text-muted-foreground select-none">Evidencia ({leadAbierto.evidence!.length})</summary>
+                  <ul className="mt-1 space-y-1 border-l pl-3">
+                    {leadAbierto.evidence!.map((e, i) => (
+                      <li key={i}>
+                        <span className="text-muted-foreground">[{e.type}] </span>
+                        {e.statement || e.url}
+                        {e.url && e.statement ? <span className="text-muted-foreground"> — {e.url}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
               <div className="rounded-md border bg-muted/40 p-3">
-                <p className="font-medium text-muted-foreground">Mensaje en borrador</p>
+                <p className="font-medium text-muted-foreground">Mensaje en borrador{leadAbierto.channel ? ` · ${leadAbierto.channel}` : ""}</p>
                 {leadAbierto.subject && <p className="mt-1 font-medium">{leadAbierto.subject}</p>}
                 <p className="mt-1 whitespace-pre-wrap">{leadAbierto.message || "Sin mensaje redactado."}</p>
               </div>
