@@ -561,18 +561,26 @@ export function CanvasAgente({
         ) : (
           <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
             {leads.map((lead) => (
-              <div key={lead.companyId} className="flex items-center justify-between gap-2 px-3 py-1.5">
-                <button
-                  type="button"
-                  onClick={() => abrirLead(lead)}
-                  className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left hover:bg-black/3"
-                >
+              <div
+                key={lead.companyId}
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirLead(lead)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    abrirLead(lead);
+                  }
+                }}
+                className="relative z-20 flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 hover:bg-black/5"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   <IconoCaja icon={Building2} />
                   <span className="min-w-0">
                     <p className="truncate font-medium">{lead.name}</p>
                     <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
                   </span>
-                </button>
+                </div>
                 {lead.messageStatus === "draft" ? (
                   <div className="flex shrink-0 gap-1">
                     <button
@@ -666,18 +674,25 @@ export function CanvasAgente({
         ) : (
           <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
             {aprobados.map((lead) => (
-              <button
+              <div
                 key={lead.companyId}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => abrirLead(lead)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-black/3"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    abrirLead(lead);
+                  }
+                }}
+                className="relative z-20 flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-black/5"
               >
                 <IconoCaja icon={Mail} />
                 <span className="min-w-0">
                   <p className="truncate font-medium">{lead.name}</p>
                   <p className="truncate text-muted-foreground">{lead.subject || "Sin asunto"}</p>
                 </span>
-              </button>
+              </div>
             ))}
           </div>
         )}
