@@ -152,6 +152,16 @@
     @apply font-sans;
   }
 }
+
+/* Oculta la barra de scroll pero mantiene el scroll (rueda / arrastre /
+   teclado). Para paneles internos donde la barra gris distrae. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
 /*
  * Impresión: "Imprimir resguardo" abre el diálogo del navegador sobre la
  * página entera, así que sin esto saldría también la tabla de fondo. El

@@ -333,7 +333,7 @@ export function TrazaAgente({
   }
 
   return (
-    <div className="h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl bg-white p-4 text-sm">
+    <div className="scrollbar-none h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl bg-white p-4 text-sm">
       <div>
         <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2">
           <p className="flex flex-wrap items-center gap-1.5 text-xs">
