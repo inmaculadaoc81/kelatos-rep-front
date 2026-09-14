@@ -15,6 +15,7 @@ import { Campaign, AgentEvent, CampaignBudget, CAMPAIGN_STATUS_LABEL, CAMPAIGN_S
 import { TrazaAgente } from "../../[agentType]/[runId]/traza-agente";
 import { CanvasAgente } from "../../[agentType]/[runId]/canvas-agente";
 import { LinkedInContactsTable } from "../../[agentType]/[runId]/linkedin-contacts-table";
+import { CampaignLeadsTable } from "./campaign-leads-table";
 
 export default function CampanaDetallePage() {
   const params = useParams<{ id: string }>();
@@ -169,6 +170,11 @@ export default function CampanaDetallePage() {
           {campaign.status === "draft" ? "Pulsa «Lanzar campaña» para empezar." : "Preparando la ejecución…"}
         </div>
       )}
+
+      {/* El detalle por lead vivía en un modal disparado desde dentro del
+          canvas y dejó de abrirse sin error visible (bug real reportado
+          2026-09-14) -- se movió aquí, fuera del árbol del canvas. */}
+      <CampaignLeadsTable campanaId={campaign.id} />
 
       {/* Contactos de LinkedIn — el propio componente ya se oculta solo si
           no hay filas (contactos.length === 0 -> null), así que no hace
