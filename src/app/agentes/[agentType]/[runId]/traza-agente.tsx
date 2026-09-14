@@ -326,10 +326,23 @@ export function TrazaAgente({
   async function reintentar() {
     setEnviando(true);
     try {
-      const res = await fetch("/api/agentes/runs", {
+      // linkedin_intelligence no se relanza por el endpoint genérico:
+      // ese INSERT nunca pone campaign_id, y linkedinRunner.ts lo exige
+      // (necesita saber de qué campaña/run de origen tomar las empresas
+      // calificadas). Se relanza por su propia ruta, con los mismos
+      // sourceRunId/companyIds que ya traía este run (bug real,
+      // encontrado 2026-09-14: "Run linkedin_intelligence sin
+      // campaign_id (de origen)" al pulsar ↻ desde aquí).
+      const esLinkedIn = agentType === "linkedin_intelligence";
+      const url = esLinkedIn ? `/api/agentes/campanas/${run.campaignId}/linkedin-launch` : "/api/agentes/runs";
+      const body = esLinkedIn
+        ? { sourceRunId: run.input.sourceRunId, companyIds: run.input.companyIds }
+        : { agentType, goal: run.goalText, input: run.input };
+      if (esLinkedIn && !run.campaignId) throw new Error("Este run no tiene campaña de origen asociada.");
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentType, goal: run.goalText, input: run.input }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
