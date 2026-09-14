@@ -56,12 +56,6 @@ const ITEMS_ADMIN = [
   { href: "/asistencia/admin/informe", label: "Informe mensual", icon: DocumentDownload },
 ];
 
-/** Entrada a la sección "Remote Work" — se renderiza aparte de
-    ITEMS_ADMIN (no como una fila más de la lista) porque no es "una
-    pantalla más de Administración": al entrar, cambia el sidebar entero
-    (ver ES_RUTA_REMOTE_WORKERS más abajo). */
-const ENTRADA_REMOTE_WORKERS = { href: "/asistencia/admin/remote-workers", label: "Remote Work", icon: Monitor };
-
 /** Dentro de /asistencia/admin/remote-workers/*, el sidebar deja de
     mostrar Kiosco/Administración y muestra solo esto — es una sección
     dedicada a empleados remotos, con su propio dashboard y las mismas
@@ -137,17 +131,40 @@ export function AsistenciaSidebar({ session }: { session: Session | null }) {
         </p>
       </SidebarHeader>
       <SidebarContent>
+        {/* Conmutador de vista — arriba de todo, no como una fila más de
+            ninguna lista: "Remote Work"/"Asistencia Local" no son
+            pantallas, son las dos vistas completas entre las que se
+            cambia (petición del usuario, 2026-09-15: antes "Remote Work"
+            estaba enterrado al final de Administración y "Volver a
+            Asistencia" al principio de Remote Work, como si fueran una
+            opción más de cada lista). */}
+        {esManager && (
+          <SidebarGroup className="pb-0">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  {enRemoteWorkers ? (
+                    <SidebarMenuButton tooltip="Asistencia Local" render={<Link href="/asistencia/admin/fichajes" />}>
+                      <ArrowLeft2 />
+                      <span className="font-medium">Asistencia Local</span>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton tooltip="Remote Work" render={<Link href="/asistencia/admin/remote-workers" />}>
+                      <Monitor />
+                      <span className="font-medium">Remote Work</span>
+                    </SidebarMenuButton>
+                  )}
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {esManager && enRemoteWorkers ? (
           <SidebarGroup>
             <SidebarGroupLabel>Remote Work</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1.5">
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Volver a Asistencia" render={<Link href="/asistencia/admin/fichajes" />}>
-                    <ArrowLeft2 />
-                    <span>Volver a Asistencia</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
                 {ITEMS_REMOTE_WORKERS.filter((item) => !item.soloSuperadmin || esSuperadmin(email)).map((item) => {
                   const Icon = item.icon;
                   return (
@@ -200,12 +217,6 @@ export function AsistenciaSidebar({ session }: { session: Session | null }) {
                         </SidebarMenuItem>
                       );
                     })}
-                    <SidebarMenuItem>
-                      <SidebarMenuButton isActive={false} tooltip={ENTRADA_REMOTE_WORKERS.label} render={<Link href={ENTRADA_REMOTE_WORKERS.href} />}>
-                        <Monitor />
-                        <span>{ENTRADA_REMOTE_WORKERS.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
