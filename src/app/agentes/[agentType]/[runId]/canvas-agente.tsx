@@ -11,7 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import { Global, Cpu, Refresh2 } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import type { AgentEvent, CampaignLead, CampaignBudget } from "@/lib/campanas";
-import { SERVICE_LABEL, mapearLead } from "@/lib/campanas";
+import { SERVICE_LABEL } from "@/lib/campanas";
 import {
   ERROR_CLASE, tokensCompacto, duracionRunMs, formatearDuracion,
   FaviconApp, IconoCaja, PuntoConector, curvaConector, Tarjeta,
@@ -513,9 +513,18 @@ export function CanvasAgente({
   async function cargarLeads() {
     try {
       if (campanaId) {
+        // /api/agentes/campanas/[id]/leads YA devuelve las filas mapeadas
+        // con mapearLead (camelCase) -- volver a llamar a mapearLead()
+        // aquí buscaba r.company_id en un objeto que ya solo tenía
+        // r.companyId, dando NaN. Eso hacía leadAbiertoId=NaN al abrir un
+        // lead, y como NaN !== NaN, `leads.find(l => l.companyId ===
+        // leadAbiertoId)` nunca encontraba nada -- el modal nunca se
+        // abría, sin ningún error visible (bug real reportado
+        // 2026-09-14, confirmado con el alert() de diagnóstico: "abrirLead()
+        // llamado con companyId=NaN").
         const res = await fetch(`/api/agentes/campanas/${campanaId}/leads`);
         const data = await res.json();
-        if (data.ok) setLeads((data.leads as Record<string, unknown>[]).map((r) => campaignLeadToUI(mapearLead(r))));
+        if (data.ok) setLeads((data.leads as CampaignLead[]).map(campaignLeadToUI));
       } else {
         const res = await fetch(`/api/agentes/runs/${run.id}/leads`);
         const data = await res.json();
@@ -560,11 +569,6 @@ export function CanvasAgente({
   }
 
   function abrirLead(lead: LeadUI) {
-    // DIAGNÓSTICO TEMPORAL (quitar en cuanto se confirme la causa,
-    // 2026-09-14): mismo truco ya usado el 2026-09-11 para este mismo
-    // tipo de bug -- si este alert() NO aparece al pulsar "Ver", el clic
-    // ni siquiera está llegando a esta función.
-    alert(`abrirLead() llamado con companyId=${lead.companyId}`);
     // Si el canvas está a pantalla completa, el modal (portal en <body>)
     // quedaría detrás del elemento fullscreen — se sale de fullscreen para
     // que se vea centrado en la página.
