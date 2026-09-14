@@ -75,11 +75,12 @@ const ITEMS_REMOTE_WORKERS = [
   { href: "/asistencia/admin/remote-workers/agentes", label: "Agentes", icon: Cpu },
   { href: "/asistencia/admin/remote-workers/categorias", label: "Categorías", icon: Category2 },
   { href: "/asistencia/admin/remote-workers/reportes", label: "Reportes", icon: DocumentText },
-  // Empleados y Horarios NO se filtran "solo remotos" -- son la misma
-  // pantalla y los mismos datos compartidos de Administración
-  // (asistencia.empleados / asistencia.calendarios), no un directorio
-  // paralelo: se enlaza directo, igual que ya se hizo con Horarios.
-  { href: "/asistencia/admin/empleados", label: "Empleados", icon: Profile2User, soloSuperadmin: true },
+  // Empleados SÍ se filtra ahora ("solo remotos", ver empleados-view.tsx
+  // con soloRemotos) -- antes enlazaba directo a Administración y sacaba
+  // de esta sección sin avisar, mostrando además a TODOS los empleados
+  // (petición del usuario, 2026-09-15). Horarios sigue sin filtrar: no
+  // hay concepto de "horario remoto", es el mismo calendario para todos.
+  { href: "/asistencia/admin/remote-workers/empleados", label: "Empleados", icon: Profile2User, soloSuperadmin: true },
   { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
   { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
   { href: "/asistencia/admin/remote-workers/vacaciones", label: "Vacaciones", icon: Airplane },
