@@ -231,15 +231,25 @@ function ultimoRazonamiento(steps: AgentStep[]): string | null {
 }
 
 /** En campañas no hay pasos deep_analysis; el "razonamiento" más cercano
-    es el último resumen de una decisión del equipo (manager, calificación,
-    research u oferta). */
+    es un resumen de una decisión del equipo (manager, calificación,
+    research u oferta) -- petición del usuario 2026-09-14: un resumen de
+    verdad escrito por la IA, no solo números. Se prioriza SIEMPRE la
+    última decisión del Marketing Manager: es la única que resume el
+    ESTADO GENERAL del run ("ya se calificaron X leads...", "se para
+    aquí porque..."), no el detalle de una empresa concreta -- si no hay
+    ninguna, se cae al último evento de una empresa. ev.summary YA trae
+    el nombre de la empresa cuando aplica (lo pone el backend al emitir
+    el evento); anteponerlo aquí otra vez duplicaba el texto (bug real
+    reportado 2026-09-14: "SMILE FACTORY: SMILE FACTORY: ..."). */
 function ultimoRazonamientoEventos(eventos: AgentEvent[]): string | null {
-  const relevantes = new Set(["marketing_manager", "qualification", "offer_strategy", "web_research", "campaign_planner"]);
   for (let i = eventos.length - 1; i >= 0; i--) {
     const ev = eventos[i];
-    if (relevantes.has(ev.agentSlug) && ev.summary) {
-      return ev.companyName ? `${ev.companyName}: ${ev.summary}` : ev.summary;
-    }
+    if (ev.agentSlug === "marketing_manager" && ev.summary) return ev.summary;
+  }
+  const relevantes = new Set(["qualification", "offer_strategy", "web_research", "campaign_planner"]);
+  for (let i = eventos.length - 1; i >= 0; i--) {
+    const ev = eventos[i];
+    if (relevantes.has(ev.agentSlug) && ev.summary) return ev.summary;
   }
   return null;
 }
