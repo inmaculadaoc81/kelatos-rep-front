@@ -309,6 +309,101 @@ function LeadDetailModal({
   );
 }
 
+/** Lista completa de leads en un modal (botón "Ver todo" del header de la
+    tarjeta "Leads") -- mismo patrón de createPortal que LeadDetailModal.
+    Clicar una fila abre LeadDetailModal por encima (mismo leadAbiertoId
+    del padre), así que ambos modales pueden convivir apilados. */
+function LeadsListModal({
+  leads,
+  onClose,
+  onAbrirLead,
+  onRevisar,
+}: {
+  leads: LeadUI[];
+  onClose: () => void;
+  onAbrirLead: (lead: LeadUI) => void;
+  onRevisar: (lead: LeadUI, status: "approved" | "rejected") => void;
+}) {
+  useEffect(() => {
+    function alEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", alEscape);
+    return () => document.removeEventListener("keydown", alEscape);
+  }, [onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/45 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-2 border-b p-4">
+          <p className="font-heading text-base font-medium">Leads calificados ({leads.length})</p>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Cerrar"
+            className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto text-xs">
+          {leads.map((lead) => (
+            <div key={lead.companyId} className="flex items-center justify-between gap-2 px-4 py-2">
+              <button
+                type="button"
+                onClick={() => onAbrirLead(lead)}
+                className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left hover:bg-black/5"
+              >
+                <IconoCaja icon={Building2} />
+                <span className="min-w-0">
+                  <p className="truncate font-medium">{lead.name}</p>
+                  <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
+                </span>
+              </button>
+              {lead.messageStatus === "draft" ? (
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    title="Aprobar"
+                    onClick={(e) => { e.stopPropagation(); onRevisar(lead, "approved"); }}
+                    className="flex size-6 items-center justify-center rounded-sm border border-border text-emerald-600 hover:bg-emerald-50"
+                  >
+                    <Check className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Rechazar"
+                    onClick={(e) => { e.stopPropagation(); onRevisar(lead, "rejected"); }}
+                    className="flex size-6 items-center justify-center rounded-sm border border-border text-destructive hover:bg-destructive/10"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ) : (
+                lead.messageStatus && (
+                  <PillBadge bg={ESTADO_MENSAJE_COLOR[lead.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[lead.messageStatus].color} className="shrink-0 text-[10px]">
+                    {ESTADO_MENSAJE_LABEL[lead.messageStatus]}
+                  </PillBadge>
+                )
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export function CanvasAgente({
   run,
   steps,
@@ -335,6 +430,12 @@ export function CanvasAgente({
   // "Leads"). El objeto se refresca desde `leads` en cada render mientras
   // el modal está abierto, así el estado del mensaje no se queda viejo.
   const [leadAbiertoId, setLeadAbiertoId] = useState<number | null>(null);
+  // "Ver todo" en el header de la tarjeta "Leads" -- abre un modal con la
+  // lista completa (petición del usuario, 2026-09-14: el clic fila a fila
+  // dentro de la tarjeta del canvas seguía sin responder incluso ya
+  // arreglada la duplicación de leads; se prueba con esta interacción
+  // distinta, menos anidada, en vez de seguir depurando a ciegas la fila).
+  const [listaAbierta, setListaAbierta] = useState(false);
 
   // Botón "ampliar" en la esquina: pone el canvas a pantalla completa de
   // verdad (Fullscreen API). Las tarjetas usan coordenadas porcentuales,
@@ -633,10 +734,21 @@ export function CanvasAgente({
       <Tarjeta
         claseExterior="border-dashed border-sky-300 bg-sky-50"
         titulo={
-          <>
-            <span className={`size-1.5 shrink-0 rounded-full ${hayLeadsPendientes ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
-            <UserCheck className="size-3.5" /> Leads
-          </>
+          <span className="flex flex-1 items-center justify-between gap-1.5">
+            <span className="flex items-center gap-1.5">
+              <span className={`size-1.5 shrink-0 rounded-full ${hayLeadsPendientes ? "animate-pulse bg-blue-500" : "bg-muted-foreground/30"}`} />
+              <UserCheck className="size-3.5" /> Leads
+            </span>
+            {leads.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setListaAbierta(true)}
+                className="text-[11px] font-normal text-primary normal-case hover:underline"
+              >
+                Ver todo
+              </button>
+            )}
+          </span>
         }
       >
         {leads.length === 0 ? (
@@ -645,17 +757,13 @@ export function CanvasAgente({
           <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
             {leads.map((lead) => (
               <div key={lead.companyId} className="flex items-center justify-between gap-2 px-3 py-1.5">
-                <button
-                  type="button"
-                  onClick={() => abrirLead(lead)}
-                  className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left hover:bg-black/5"
-                >
+                <div className="-my-1 flex min-w-0 flex-1 items-center gap-2 py-1">
                   <IconoCaja icon={Building2} />
                   <span className="min-w-0">
                     <p className="truncate font-medium">{lead.name}</p>
                     <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
                   </span>
-                </button>
+                </div>
                 {lead.messageStatus === "draft" ? (
                   <div className="flex shrink-0 gap-1">
                     <button
@@ -797,6 +905,15 @@ export function CanvasAgente({
           </p>
         )}
       </div>
+
+      {listaAbierta && (
+        <LeadsListModal
+          leads={leads}
+          onClose={() => setListaAbierta(false)}
+          onAbrirLead={abrirLead}
+          onRevisar={revisar}
+        />
+      )}
 
       {leadAbierto && (
         <LeadDetailModal
