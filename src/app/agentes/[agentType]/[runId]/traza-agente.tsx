@@ -442,7 +442,12 @@ export function TrazaAgente({
         </details>
       )}
 
-      <ChainOfThought defaultOpen>
+      {/* Colapsado por defecto salvo que haya algo que de verdad haga
+          falta ver ya (en curso o con un fallo) -- petición del usuario,
+          2026-09-14: un usuario no técnico no necesita el pipeline paso
+          a paso nada más entrar en un run ya completado con éxito, igual
+          que ya pasaba con "Sub-agentes" más abajo. */}
+      <ChainOfThought defaultOpen={enCurso || grupos.some((g) => g.estado === "failed")}>
         <ChainOfThoughtHeader>Actividad</ChainOfThoughtHeader>
         <ChainOfThoughtContent>
         {grupos.map((g) => {
