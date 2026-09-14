@@ -170,11 +170,12 @@ export default function CampanaDetallePage() {
         </div>
       )}
 
-      {/* Contactos de LinkedIn (Sprint 8, opt-in) — se renderiza SOLO si hay
-          filas; no ocupa espacio ni añade scroll en campañas sin LinkedIn. */}
-      {campaign.sourceConfig?.enableLinkedin && (
-        <LinkedInContactsTable campanaId={campaign.id} />
-      )}
+      {/* Contactos de LinkedIn — el propio componente ya se oculta solo si
+          no hay filas (contactos.length === 0 -> null), así que no hace
+          falta condicionarlo a sourceConfig.enableLinkedin: eso solo
+          aplicaba al flujo embebido en la campaña; el Agente LinkedIn
+          independiente escribe aquí igual, sin ese flag. */}
+      <LinkedInContactsTable campanaId={campaign.id} />
     </div>
   );
 }
