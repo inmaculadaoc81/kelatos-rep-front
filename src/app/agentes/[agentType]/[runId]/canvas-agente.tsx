@@ -8,7 +8,7 @@ import {
   ClipboardList, Megaphone, Lightbulb, Users, BrainCircuit, MessageSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Global, Cpu } from "@/lib/icons";
+import { Global, Cpu, Refresh2 } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import type { AgentEvent, CampaignLead, CampaignBudget } from "@/lib/campanas";
 import { SERVICE_LABEL, mapearLead } from "@/lib/campanas";
@@ -463,6 +463,7 @@ export function CanvasAgente({
   const discoveryFallo = steps.some((s) => s.step === "discovery" && s.status === "failed");
   const pipelineFallo = steps.some((s) => ["cheap_pass", "deep_analysis", "message_writer"].includes(s.step) && s.status === "failed");
   const runFallo = run.status === "failed";
+  const enCurso = run.status === "queued" || run.status === "running";
   const hayLeadsPendientes = leads.some((l) => l.messageStatus === "draft");
   const leadAbierto = leads.find((l) => l.companyId === leadAbiertoId) || null;
 
@@ -606,7 +607,7 @@ export function CanvasAgente({
       <Tarjeta ref={agenteRef} claseExterior={runFallo ? ERROR_CLASE : undefined} titulo="Agente">
         <div className="mb-2 flex items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-600 text-white">
-            <Cpu className="size-3.5" />
+            {enCurso ? <Refresh2 className="size-3.5 animate-spin" /> : <Cpu className="size-3.5" />}
           </span>
           <p className="truncate text-sm font-medium">{tipoLabel}</p>
         </div>

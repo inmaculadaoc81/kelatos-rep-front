@@ -357,37 +357,40 @@ export function TrazaAgente({
 
   return (
     <div className="scrollbar-none h-full w-full max-w-110 shrink-0 space-y-4 overflow-y-auto rounded-xl bg-white p-4 text-sm">
-      <div>
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2">
-          <p className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="font-medium">Run</span>
-            <PillBadge bg="#e8edfc" color="#2451c4" className="text-[11px] font-normal">{tipoLabel}</PillBadge>
-            <span className="text-muted-foreground">{ESTADO_RUN_LABEL[run.status]} · {tiempoRelativo(run.createdAt)}</span>
-          </p>
-          {enCurso ? (
-            <button
-              type="button"
-              onClick={cancelar}
-              disabled={enviando}
-              title="Detener run"
-              className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background hover:opacity-90 disabled:opacity-50"
-            >
-              <Square className="size-2.5 fill-current" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={reintentar}
-              disabled={enviando}
-              title="Relanzar con el mismo objetivo"
-              className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
-            >
-              <RotateCcw className="size-3.5 text-muted-foreground" />
-            </button>
-          )}
-        </div>
-        <p className="mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
+      {/* Sticky como hijo directo del contenedor con scroll (no metido en
+          su propio div pequeño) -- si no, su "contenedor de sujeción" es
+          solo ese div corto y deja de seguir en cuanto se baja más allá
+          (bug real reportado 2026-09-14: no se quedaba fijo al bajar a
+          "Plan de campaña"/"Actividad"). */}
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2">
+        <p className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="font-medium">Run</span>
+          <PillBadge bg="#e8edfc" color="#2451c4" className="text-[11px] font-normal">{tipoLabel}</PillBadge>
+          <span className="text-muted-foreground">{ESTADO_RUN_LABEL[run.status]} · {tiempoRelativo(run.createdAt)}</span>
+        </p>
+        {enCurso ? (
+          <button
+            type="button"
+            onClick={cancelar}
+            disabled={enviando}
+            title="Detener run"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+          >
+            <Square className="size-2.5 fill-current" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={reintentar}
+            disabled={enviando}
+            title="Relanzar con el mismo objetivo"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
+          >
+            <RotateCcw className="size-3.5 text-muted-foreground" />
+          </button>
+        )}
       </div>
+      <p className="-mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
 
       {plan && (
         <details className="rounded-lg border border-border" open>
@@ -549,6 +552,18 @@ export function TrazaAgente({
         />
         <ReasoningContent>{razonamiento || "Todavía sin razonamiento disponible."}</ReasoningContent>
       </Reasoning>
+
+      {/* Resumen compacto al terminar (petición del usuario, 2026-09-14):
+          una línea con el embudo final, no el detalle paso a paso de
+          "Actividad" -- solo mientras haya algo que resumir. */}
+      {!enCurso && (prog.companiesFound || prog.companiesCandidate || prog.companiesCheapPass || prog.companiesQualified) ? (
+        <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Resumen: <span className="font-medium text-foreground tabular-nums">{prog.companiesFound ?? 0}</span> encontradas ·{" "}
+          <span className="font-medium text-foreground tabular-nums">{prog.companiesCandidate ?? 0}</span> candidatas ·{" "}
+          <span className="font-medium text-foreground tabular-nums">{prog.companiesCheapPass ?? 0}</span> pase rápido ·{" "}
+          <span className="font-medium text-foreground tabular-nums">{prog.companiesQualified ?? 0}</span> calificadas
+        </p>
+      ) : null}
     </div>
   );
 }
