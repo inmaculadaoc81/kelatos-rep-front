@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { PillBadge } from "@/components/pill-badge";
 import { AgentRun, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import { Refresh2 } from "@/lib/icons";
 
 /** Formulario de "nuevo run" — cada tipo de agente tiene su propia forma
     de arrancar (lead_research parte de sector/ubicación; linkedin_
@@ -187,6 +188,14 @@ export default function AgenteTipoPage() {
   const [runs, setRuns] = useState<AgentRun[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  // Campaña recién lanzada desde el formulario del Agente LinkedIn, cuyo
+  // run de linkedin_intelligence TODAVÍA no existe (el Equipo de Marketing
+  // IA va primero) -- mientras tanto se muestra un aviso aquí mismo, en la
+  // propia pantalla del agente, en vez de mandar al usuario a la interfaz
+  // de otro agente sin explicación (petición del usuario, 2026-09-14).
+  const [pendienteCampaignId, setPendienteCampaignId] = useState<number | null>(null);
+  const [pendienteNombre, setPendienteNombre] = useState<string | null>(null);
+
   async function cargarRuns() {
     setCargando(true);
     try {
@@ -202,7 +211,36 @@ export default function AgenteTipoPage() {
 
   useEffect(() => {
     cargarRuns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentType]);
+
+  useEffect(() => {
+    if (!pendienteCampaignId) return;
+    let cancelado = false;
+    async function refrescar() {
+      try {
+        const res = await fetch(`/api/agentes/campanas/${pendienteCampaignId}`);
+        const data = await res.json();
+        if (!cancelado && data.ok) setPendienteNombre(data.campaign.name);
+      } catch {
+        // silencioso — se reintenta en el siguiente tick
+      }
+      await cargarRuns();
+    }
+    refrescar();
+    const t = setInterval(refrescar, 4000);
+    return () => { cancelado = true; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendienteCampaignId]);
+
+  // En cuanto el run de linkedin_intelligence de esa campaña aparece en el
+  // historial (el auto-encadenado ya lo creó), se apaga el aviso solo.
+  useEffect(() => {
+    if (pendienteCampaignId && runs.some((r) => r.campaignId === pendienteCampaignId)) {
+      setPendienteCampaignId(null);
+      setPendienteNombre(null);
+    }
+  }, [runs, pendienteCampaignId]);
 
   return (
     <div className="space-y-6">
@@ -211,11 +249,30 @@ export default function AgenteTipoPage() {
           <CardTitle>Nuevo run</CardTitle>
         </CardHeader>
         {agentType === "linkedin_intelligence" ? (
-          <NuevoRunLinkedIn onLanzada={(campaignId) => router.push(`/agentes/campanas/${campaignId}`)} />
+          <NuevoRunLinkedIn onLanzada={(campaignId) => setPendienteCampaignId(campaignId)} />
         ) : (
           <NuevoRunLeadResearch agentType={agentType} onCreado={(runId) => router.push(`/agentes/${agentType}/${runId}`)} />
         )}
       </Card>
+
+      {pendienteCampaignId && (
+        <Card className="border-dashed border-sky-300 bg-sky-50/60">
+          <CardContent className="flex items-center gap-3 py-4">
+            <Refresh2 className="size-5 shrink-0 animate-spin text-sky-600" />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-medium">
+                Buscando y calificando empresas{pendienteNombre ? ` — "${pendienteNombre}"` : ""}…
+              </p>
+              <p className="text-muted-foreground">
+                El Equipo de Marketing IA va primero; el Agente LinkedIn arrancará solo en cuanto termine. Puede tardar unos minutos.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" render={<Link href={`/agentes/campanas/${pendienteCampaignId}`} />}>
+              Ver progreso
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
