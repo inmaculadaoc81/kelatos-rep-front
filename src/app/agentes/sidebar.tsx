@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { UserSearch, Cpu, SearchNormal1, Send2 } from "@/lib/icons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AgentType } from "@/lib/agentes";
+import { AgentType, hrefParaTipoAgente } from "@/lib/agentes";
 import { NavUser } from "../(app)/nav-user";
 
 // Un icono por tipo de agente conocido por el frontend; cualquier tipo
@@ -30,6 +30,7 @@ import { NavUser } from "../(app)/nav-user";
 // mapear todavía.
 const ICONO_POR_TIPO: Record<string, typeof UserSearch> = {
   lead_research: UserSearch,
+  campaign_pipeline: SearchNormal1,
   linkedin_intelligence: Send2,
 };
 
@@ -107,24 +108,6 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuSub className="mx-0 gap-1.5 border-none px-0">
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    isActive={pathname?.startsWith("/agentes/campanas") ?? false}
-                    render={<Link href="/agentes/campanas" />}
-                  >
-                    <SearchNormal1 />
-                    <span className="truncate">Campañas</span>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2 text-sidebar-foreground">
             <Cpu className="size-4 text-sidebar-primary" />
             <span>Agentes</span>
@@ -144,7 +127,7 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
               )}
               <SidebarMenuSub className="mx-0 gap-1.5 border-none px-0">
                 {tiposFiltrados.map((tipo) => {
-                  const href = `/agentes/${tipo.type}`;
+                  const href = hrefParaTipoAgente(tipo.type);
                   const Icono = ICONO_POR_TIPO[tipo.type] || Cpu;
                   return (
                     <SidebarMenuSubItem key={tipo.type}>

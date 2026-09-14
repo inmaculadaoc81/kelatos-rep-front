@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Cpu } from "@/lib/icons";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AgentType } from "@/lib/agentes";
+import { AgentType, hrefParaTipoAgente } from "@/lib/agentes";
 
 /** Landing de /agentes: una card por tipo de agente disponible. */
 export default function AgentesIndexPage() {
@@ -43,7 +43,7 @@ export default function AgentesIndexPage() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {tipos.map((tipo) => (
-        <Link key={tipo.type} href={`/agentes/${tipo.type}`}>
+        <Link key={tipo.type} href={hrefParaTipoAgente(tipo.type)}>
           <Card className="h-full transition-shadow hover:shadow-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

@@ -16,6 +16,22 @@ export interface AgentType {
   activo: boolean;
 }
 
+/** A dónde enlaza cada tipo de agente en el sidebar/landing de /agentes.
+    Por defecto es `/agentes/${type}` (la pantalla genérica de "Nuevo run
+    + Historial", la que sirve a lead_research/linkedin_intelligence) —
+    campaign_pipeline es la única excepción: su interfaz real (revisión
+    de leads, presupuesto, envío a n8n) ya vive en /agentes/campanas, así
+    que se enlaza ahí en vez de a la pantalla genérica. Centralizado aquí
+    (no duplicado en sidebar.tsx y en la landing /agentes) para que un
+    tipo nuevo con destino especial solo se declare una vez. */
+export const HREF_POR_TIPO_AGENTE: Record<string, string> = {
+  campaign_pipeline: "/agentes/campanas",
+};
+
+export function hrefParaTipoAgente(type: string): string {
+  return HREF_POR_TIPO_AGENTE[type] || `/agentes/${type}`;
+}
+
 export interface AgentRun {
   id: number;
   agentType: string;
