@@ -76,7 +76,12 @@ export default function AgenteRunDetallePage() {
   return (
     <div className="flex h-[calc(100svh-6.5rem)] gap-4 overflow-hidden">
       <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} agentType={params.agentType} onActualizado={cargar} />
-      <CanvasAgente run={run} steps={steps} tipoLabel={tipoLabel} />
+      {/* El canvas visual dibuja el pipeline de campaña (discovery ->
+          ... -> outreach) a mano, nodo por nodo -- no representa el
+          pipeline del Agente LinkedIn independiente (4 etapas propias).
+          Se oculta para ese tipo en vez de mostrar un diagrama que no
+          corresponde; la traza de la izquierda ya cubre sus pasos. */}
+      {params.agentType === "campaign_pipeline" && <CanvasAgente run={run} steps={steps} tipoLabel={tipoLabel} />}
     </div>
   );
 }

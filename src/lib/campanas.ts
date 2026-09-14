@@ -97,6 +97,9 @@ export interface AgentEvent {
 export type LeadMessageStatus = "draft" | "approved" | "rejected" | "dispatched" | null;
 
 export interface CampaignLead {
+  /** run de campaign_pipeline que produjo este lead — necesario como
+      sourceRunId al lanzar el Agente LinkedIn independiente sobre él. */
+  runId: number;
   companyId: number;
   name: string;
   website: string | null;
@@ -245,6 +248,7 @@ export function mapearEvento(r: Record<string, unknown>): AgentEvent {
 export function mapearLead(r: Record<string, unknown>): CampaignLead {
   const arr = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : []);
   return {
+    runId: Number(r.run_id),
     companyId: Number(r.company_id),
     name: String(r.name ?? ""),
     website: (r.website as string) ?? null,

@@ -67,6 +67,7 @@ const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: Luci
   web_research: { label: "Web Research", subtitulo: "Agente · modelo medio" },
   qualification: { label: "Calificación", subtitulo: "Fit comercial" },
   offer_strategy: { label: "Estrategia de oferta", subtitulo: "Qué servicio ofrecer" },
+  linkedin_import_companies: { label: "Importar empresas calificadas", subtitulo: "De la campaña de origen" },
   linkedin_contact_discovery: { label: "Contactos LinkedIn", subtitulo: "Agente · búsqueda pública" },
   linkedin_contact_analysis: { label: "Análisis de contactos", subtitulo: "Fit + perfil (modelo medio)" },
   linkedin_message_strategy: { label: "Mensajes LinkedIn", subtitulo: "Modelo medio" },

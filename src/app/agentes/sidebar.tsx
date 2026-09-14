@@ -19,7 +19,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
-import { UserSearch, Cpu, SearchNormal1 } from "@/lib/icons";
+import { UserSearch, Cpu, SearchNormal1, Send2 } from "@/lib/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentType } from "@/lib/agentes";
 import { NavUser } from "../(app)/nav-user";
@@ -30,6 +30,7 @@ import { NavUser } from "../(app)/nav-user";
 // mapear todavía.
 const ICONO_POR_TIPO: Record<string, typeof UserSearch> = {
   lead_research: UserSearch,
+  linkedin_intelligence: Send2,
 };
 
 /** Sidebar de la plataforma de Agentes IA — lista plana de tipos de
