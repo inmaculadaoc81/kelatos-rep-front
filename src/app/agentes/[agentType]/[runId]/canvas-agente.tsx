@@ -560,6 +560,11 @@ export function CanvasAgente({
   }
 
   function abrirLead(lead: LeadUI) {
+    // DIAGNÓSTICO TEMPORAL (quitar en cuanto se confirme la causa,
+    // 2026-09-14): mismo truco ya usado el 2026-09-11 para este mismo
+    // tipo de bug -- si este alert() NO aparece al pulsar "Ver", el clic
+    // ni siquiera está llegando a esta función.
+    alert(`abrirLead() llamado con companyId=${lead.companyId}`);
     // Si el canvas está a pantalla completa, el modal (portal en <body>)
     // quedaría detrás del elemento fullscreen — se sale de fullscreen para
     // que se vea centrado en la página.
