@@ -7,14 +7,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PillBadge } from "@/components/pill-badge";
 import { AgentRun, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
-import { type Campaign, type CampaignLead } from "@/lib/campanas";
 
 /** Formulario de "nuevo run" — cada tipo de agente tiene su propia forma
     de arrancar (lead_research parte de sector/ubicación; linkedin_
@@ -83,67 +80,53 @@ function NuevoRunLeadResearch({ agentType, onCreado }: { agentType: string; onCr
   );
 }
 
-/** Agente LinkedIn independiente: no busca empresas por su cuenta — parte
-    de una campaña que YA calificó empresas (con oferta decidida) y, sobre
-    ese subconjunto, busca decisores + redacta mensajes de LinkedIn en
-    borrador. Por eso el formulario es "elige campaña -> elige empresas",
-    no sector/ubicación. */
-function NuevoRunLinkedIn({ onCreado }: { onCreado: (campaignId: number, runId: number) => void }) {
-  const [campanas, setCampanas] = useState<Campaign[]>([]);
-  const [cargandoCampanas, setCargandoCampanas] = useState(true);
-  const [campaignId, setCampaignId] = useState<string>("");
-  const [leads, setLeads] = useState<CampaignLead[]>([]);
-  const [cargandoLeads, setCargandoLeads] = useState(false);
-  const [seleccionadas, setSeleccionadas] = useState<Set<number>>(new Set());
+/** Agente LinkedIn independiente: no busca empresas por su cuenta, así
+    que "lanzar" aquí en realidad crea y lanza una campaña normal del
+    Equipo de Marketing IA (sourceConfig.autoChainLinkedin=true) — en
+    cuanto esa campaña termina de calificar empresas, linkedinRunner.ts
+    lo detecta solo y encadena el Agente LinkedIn sobre las calificadas,
+    sin que el usuario tenga que volver aquí a elegir una "campaña de
+    origen" a mano (petición del usuario, 2026-09-14: cada agente lanza
+    con sus propios datos, no seleccionando un run ya existente). */
+function NuevoRunLinkedIn({ onLanzada }: { onLanzada: (campaignId: number) => void }) {
+  const [form, setForm] = useState({ name: "", goalText: "", sector: "", location: "", limit: "20", maxCostUsd: 10 });
   const [enviando, setEnviando] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/agentes/campanas")
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setCampanas(d.campaigns as Campaign[]); })
-      .catch(() => {})
-      .finally(() => setCargandoCampanas(false));
-  }, []);
-
-  useEffect(() => {
-    if (!campaignId) { setLeads([]); setSeleccionadas(new Set()); return; }
-    setCargandoLeads(true);
-    fetch(`/api/agentes/campanas/${campaignId}/leads`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.ok) { setLeads([]); return; }
-        // Solo empresas con oferta decidida (offer != none/null) -- sin
-        // eso no hay "ángulo" real al que anclar un mensaje de LinkedIn.
-        const conOferta = (d.leads as CampaignLead[]).filter((l) => l.offer && l.offer !== "none");
-        setLeads(conOferta);
-        setSeleccionadas(new Set(conOferta.map((l) => l.companyId)));
-      })
-      .catch(() => setLeads([]))
-      .finally(() => setCargandoLeads(false));
-  }, [campaignId]);
-
-  function alternar(companyId: number) {
-    setSeleccionadas((prev) => {
-      const next = new Set(prev);
-      if (next.has(companyId)) next.delete(companyId); else next.add(companyId);
-      return next;
-    });
-  }
-
   async function lanzar() {
-    if (!campaignId) return toast.error("Elige una campaña");
-    if (seleccionadas.size === 0) return toast.error("Selecciona al menos una empresa");
+    if (!form.name.trim() || !form.goalText.trim()) return toast.error("Nombre y objetivo son obligatorios");
+    if (!form.sector.trim() || !form.location.trim()) return toast.error("Sector y ubicación son obligatorios");
+    const limitNum = Number(form.limit);
+    if (!Number.isInteger(limitNum) || limitNum < 1) return toast.error("El límite debe ser un número entero mayor que 0");
+
     setEnviando(true);
     try {
-      const res = await fetch(`/api/agentes/campanas/${campaignId}/linkedin-launch`, {
+      const resCrear = await fetch("/api/agentes/campanas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceRunId: leads[0]?.runId, companyIds: [...seleccionadas] }),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          goalText: form.goalText.trim(),
+          maxCostUsd: form.maxCostUsd,
+          sourceConfig: {
+            mode: "external",
+            externalProviders: ["infoisinfo"],
+            sector: form.sector.trim(),
+            location: form.location.trim(),
+            limit: limitNum,
+            autoChainLinkedin: true,
+          },
+        }),
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Agente LinkedIn lanzado — se ejecutará en breve");
-      onCreado(Number(campaignId), data.runId);
+      const dataCrear = await resCrear.json();
+      if (!dataCrear.ok) throw new Error(dataCrear.error || "Error al crear la campaña");
+      const campaignId = Number(dataCrear.campaign.id);
+
+      const resLanzar = await fetch(`/api/agentes/campanas/${campaignId}/launch`, { method: "POST" });
+      const dataLanzar = await resLanzar.json();
+      if (!dataLanzar.ok) throw new Error(dataLanzar.error || "Error al lanzar la campaña");
+
+      toast.success("Campaña lanzada — el Agente LinkedIn arrancará solo en cuanto termine de calificar empresas");
+      onLanzada(campaignId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -152,57 +135,46 @@ function NuevoRunLinkedIn({ onCreado }: { onCreado: (campaignId: number, runId: 
   }
 
   return (
-    <CardContent className="space-y-4">
-      <div className="space-y-1.5 sm:max-w-sm">
-        <Label>Campaña de origen *</Label>
-        {cargandoCampanas ? (
-          <Skeleton className="h-9 w-full" />
-        ) : (
-          <Select value={campaignId} onValueChange={(v) => setCampaignId(v || "")}>
-            <SelectTrigger>
-              {/* Sin esto, Select.Value muestra el id crudo en vez del
-                  nombre de la campaña -- mismo bug ya resuelto antes en
-                  registrar-pedido-dialog.tsx (el popup con las opciones
-                  solo existe en el DOM mientras está abierto, así que no
-                  puede resolver la etiqueta del valor ya seleccionado
-                  salvo que se le indique explícitamente cómo hacerlo). */}
-              <SelectValue>
-                {(v: string) => (v ? campanas.find((c) => String(c.id) === v)?.name || v : "Selecciona una campaña")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {campanas.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+    <CardContent className="grid gap-3 sm:grid-cols-3">
+      <p className="text-sm text-muted-foreground sm:col-span-3">
+        El Agente LinkedIn no busca empresas por su cuenta: con estos datos, el Equipo de
+        Marketing IA busca y califica empresas primero y, en cuanto termina, el Agente LinkedIn
+        arranca automáticamente sobre las calificadas — sin pasos intermedios.
+      </p>
+      <div className="space-y-1.5">
+        <Label htmlFor="li-name">Nombre *</Label>
+        <Input id="li-name" placeholder="Ej: Seguros Madrid Septiembre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       </div>
-
-      {campaignId && (
-        cargandoLeads ? (
-          <Skeleton className="h-24 w-full" />
-        ) : leads.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Esta campaña no tiene empresas calificadas con oferta decidida todavía.</p>
-        ) : (
-          <div className="space-y-2">
-            <Label>Empresas ({seleccionadas.size} de {leads.length} seleccionadas)</Label>
-            <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-md border p-2">
-              {leads.map((l) => (
-                <label key={l.companyId} className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted/50">
-                  <Checkbox checked={seleccionadas.has(l.companyId)} onCheckedChange={() => alternar(l.companyId)} />
-                  <span className="flex-1 truncate">{l.name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{l.offer}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )
-      )}
-
-      <Button onClick={lanzar} disabled={enviando || !campaignId || seleccionadas.size === 0}>
-        {enviando ? "Lanzando..." : "Lanzar Agente LinkedIn"}
-      </Button>
+      <div className="space-y-1.5">
+        <Label htmlFor="li-sector">Sector *</Label>
+        <Input id="li-sector" placeholder="Ej: seguros" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="li-location">Ubicación *</Label>
+        <Input id="li-location" placeholder="Ej: Madrid" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+      </div>
+      <div className="space-y-1.5 sm:col-span-3">
+        <Label htmlFor="li-goal">Objetivo (lenguaje natural) *</Label>
+        <Input
+          id="li-goal"
+          placeholder="Ej: Conseguir 5 empresas de seguros en Madrid a las que ofrecer automatización"
+          value={form.goalText}
+          onChange={(e) => setForm({ ...form, goalText: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="li-limit">Límite de empresas</Label>
+        <Input id="li-limit" type="number" min={1} max={200} value={form.limit} onChange={(e) => setForm({ ...form, limit: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="li-budget">Presupuesto máx. (USD)</Label>
+        <Input id="li-budget" type="number" step="1" value={form.maxCostUsd} onChange={(e) => setForm({ ...form, maxCostUsd: Number(e.target.value) || 0 })} />
+      </div>
+      <div className="sm:col-span-3">
+        <Button onClick={lanzar} disabled={enviando}>
+          {enviando ? "Lanzando..." : "Buscar empresas y lanzar Agente LinkedIn"}
+        </Button>
+      </div>
     </CardContent>
   );
 }
@@ -239,7 +211,7 @@ export default function AgenteTipoPage() {
           <CardTitle>Nuevo run</CardTitle>
         </CardHeader>
         {agentType === "linkedin_intelligence" ? (
-          <NuevoRunLinkedIn onCreado={(_campaignId, runId) => router.push(`/agentes/${agentType}/${runId}`)} />
+          <NuevoRunLinkedIn onLanzada={(campaignId) => router.push(`/agentes/campanas/${campaignId}`)} />
         ) : (
           <NuevoRunLeadResearch agentType={agentType} onCreado={(runId) => router.push(`/agentes/${agentType}/${runId}`)} />
         )}
