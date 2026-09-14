@@ -361,36 +361,43 @@ export function TrazaAgente({
           su propio div pequeño) -- si no, su "contenedor de sujeción" es
           solo ese div corto y deja de seguir en cuanto se baja más allá
           (bug real reportado 2026-09-14: no se quedaba fijo al bajar a
-          "Plan de campaña"/"Actividad"). */}
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2">
-        <p className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="font-medium">Run</span>
-          <PillBadge bg="#e8edfc" color="#2451c4" className="text-[11px] font-normal">{tipoLabel}</PillBadge>
-          <span className="text-muted-foreground">{ESTADO_RUN_LABEL[run.status]} · {tiempoRelativo(run.createdAt)}</span>
-        </p>
-        {enCurso ? (
-          <button
-            type="button"
-            onClick={cancelar}
-            disabled={enviando}
-            title="Detener run"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background hover:opacity-90 disabled:opacity-50"
-          >
-            <Square className="size-2.5 fill-current" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={reintentar}
-            disabled={enviando}
-            title="Relanzar con el mismo objetivo"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
-          >
-            <RotateCcw className="size-3.5 text-muted-foreground" />
-          </button>
-        )}
+          "Plan de campaña"/"Actividad"). El wrapper de detrás es un
+          degradado blanco->transparente, más alto que el propio card, para
+          que el contenido que sube por debajo (p.ej. "Actividad") se
+          desvanezca antes de tocar el borde del card en vez de cortarse
+          en seco -- el card sigue teniendo su propio bg-white opaco
+          encima, en el mismo sitio de siempre. */}
+      <div className="sticky top-0 z-10 -mx-4 -mt-4 bg-linear-to-b from-white via-white to-white/0 px-4 pt-4 pb-8">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2">
+          <p className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-medium">Run</span>
+            <PillBadge bg="#e8edfc" color="#2451c4" className="text-[11px] font-normal">{tipoLabel}</PillBadge>
+            <span className="text-muted-foreground">{ESTADO_RUN_LABEL[run.status]} · {tiempoRelativo(run.createdAt)}</span>
+          </p>
+          {enCurso ? (
+            <button
+              type="button"
+              onClick={cancelar}
+              disabled={enviando}
+              title="Detener run"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+            >
+              <Square className="size-2.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={reintentar}
+              disabled={enviando}
+              title="Relanzar con el mismo objetivo"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
+            >
+              <RotateCcw className="size-3.5 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
-      <p className="-mt-2 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
+      <p className="-mt-6 px-1 text-xs text-muted-foreground" title={run.goalText}>{run.goalText}</p>
 
       {plan && (
         <details className="rounded-lg border border-border" open>
