@@ -159,7 +159,17 @@ function NuevoRunLinkedIn({ onCreado }: { onCreado: (campaignId: number, runId: 
           <Skeleton className="h-9 w-full" />
         ) : (
           <Select value={campaignId} onValueChange={(v) => setCampaignId(v || "")}>
-            <SelectTrigger><SelectValue placeholder="Selecciona una campaña" /></SelectTrigger>
+            <SelectTrigger>
+              {/* Sin esto, Select.Value muestra el id crudo en vez del
+                  nombre de la campaña -- mismo bug ya resuelto antes en
+                  registrar-pedido-dialog.tsx (el popup con las opciones
+                  solo existe en el DOM mientras está abierto, así que no
+                  puede resolver la etiqueta del valor ya seleccionado
+                  salvo que se le indique explícitamente cómo hacerlo). */}
+              <SelectValue>
+                {(v: string) => (v ? campanas.find((c) => String(c.id) === v)?.name || v : "Selecciona una campaña")}
+              </SelectValue>
+            </SelectTrigger>
             <SelectContent>
               {campanas.map((c) => (
                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
