@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { RemoteWorkerListItem } from "@/lib/remote-workers";
 
-interface Empleado { id: number; nombre: string; activo: boolean; }
+interface Empleado { id: number; nombre: string; activo: boolean; trabaja_remoto: boolean; }
 
 /** Vincula manualmente un dispositivo a un empleado real de
     asistencia.empleados — mismo patrón (Dialog + Select + toast) que
@@ -36,7 +36,21 @@ export function AsignarDispositivoDialog({
     setEmployeeId(dispositivo.employeeId != null ? String(dispositivo.employeeId) : "");
     fetch("/api/asistencia/admin/empleados")
       .then((r) => r.json())
-      .then((data) => { if (data.ok) setEmpleados((data.empleados as Empleado[]).filter((e) => e.activo)); })
+      .then((data) => {
+        if (!data.ok) return;
+        // Solo empleados activos Y marcados como "trabaja en remoto" (ver
+        // Empleados > Modalidad) -- antes salían TODOS los activos,
+        // fichaje local incluido (petición del usuario, 2026-09-15). Si el
+        // dispositivo ya estaba asignado a alguien que no tiene ese flag
+        // marcado (asignaciones de antes de que existiera este campo), se
+        // mantiene igual en la lista para no perder su nombre al editar.
+        const todos = data.empleados as Empleado[];
+        const filtrados = todos.filter((e) => e.activo && e.trabaja_remoto);
+        const yaAsignadoFuera = dispositivo.employeeId != null && !filtrados.some((e) => e.id === dispositivo.employeeId)
+          ? todos.find((e) => e.id === dispositivo.employeeId)
+          : null;
+        setEmpleados(yaAsignadoFuera ? [...filtrados, yaAsignadoFuera] : filtrados);
+      })
       .catch(() => {});
   }, [dispositivo]);
 

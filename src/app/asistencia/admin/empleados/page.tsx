@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,10 +23,11 @@ interface Empleado {
   dni: string | null;
   resource_calendar_id: number | null;
   activo: boolean;
+  trabaja_remoto: boolean;
 }
 
-interface FormEmpleado { nombre: string; email: string; dni: string; }
-const FORM_VACIO: FormEmpleado = { nombre: "", email: "", dni: "" };
+interface FormEmpleado { nombre: string; email: string; dni: string; trabajaRemoto: boolean; }
+const FORM_VACIO: FormEmpleado = { nombre: "", email: "", dni: "", trabajaRemoto: false };
 
 /** Alta/baja de empleados que pueden fichar — restringido a superadmin,
     tanto aquí (sidebar + esta página) como en el backend (las rutas POST/
@@ -68,7 +70,7 @@ export default function EmpleadosPage() {
 
   function abrirEditar(e: Empleado) {
     setEditando(e);
-    setForm({ nombre: e.nombre, email: e.email || "", dni: e.dni || "" });
+    setForm({ nombre: e.nombre, email: e.email || "", dni: e.dni || "", trabajaRemoto: e.trabaja_remoto });
     setDialogoAbierto(true);
   }
 
@@ -81,7 +83,7 @@ export default function EmpleadosPage() {
       const res = await fetch(url, {
         method: editando ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: form.nombre.trim(), email: form.email.trim(), dni: form.dni.trim() || null }),
+        body: JSON.stringify({ nombre: form.nombre.trim(), email: form.email.trim(), dni: form.dni.trim() || null, trabajaRemoto: form.trabajaRemoto }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -105,6 +107,27 @@ export default function EmpleadosPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(e.activo ? "Empleado desactivado — ya no puede fichar" : "Empleado reactivado");
+      await cargar();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error desconocido");
+    }
+  }
+
+  /** Modalidad declarada del empleado (petición del usuario, 2026-09-15):
+      antes no había forma de saber quién trabaja en remoto ANTES de
+      asignarle un dispositivo -- el desplegable de "Asignar dispositivo"
+      mostraba a todos los empleados activos, fichaje local incluido. Este
+      campo se filtra ahí; no cambia nada de la actividad ya registrada. */
+  async function alternarRemoto(e: Empleado) {
+    try {
+      const res = await fetch(`/api/asistencia/admin/empleados/${e.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trabajaRemoto: !e.trabaja_remoto }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(e.trabaja_remoto ? "Marcado como local" : "Marcado como remoto");
       await cargar();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error desconocido");
@@ -168,15 +191,16 @@ export default function EmpleadosPage() {
               <TableHead>DNI</TableHead>
               <TableHead>Horario</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Modalidad</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cargando && Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 6 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              <TableRow key={i}>{Array.from({ length: 7 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
             {!cargando && empleados.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Sin empleados dados de alta</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin empleados dados de alta</TableCell></TableRow>
             )}
             {!cargando && empleados.map((e) => (
               <TableRow key={e.id} className={cn(!e.activo && "opacity-60")}>
@@ -198,6 +222,19 @@ export default function EmpleadosPage() {
                   )}>
                     {e.activo ? "Activo" : "Inactivo"}
                   </span>
+                </TableCell>
+                <TableCell>
+                  <button
+                    type="button"
+                    title="Clic para cambiar"
+                    onClick={() => alternarRemoto(e)}
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium hover:opacity-80",
+                      e.trabaja_remoto ? "bg-sky-100 text-sky-800" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {e.trabaja_remoto ? "Remoto" : "Local"}
+                  </button>
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -241,6 +278,10 @@ export default function EmpleadosPage() {
               <Label>DNI/NIE (opcional)</Label>
               <Input value={form.dni} onChange={(ev) => setForm((f) => ({ ...f, dni: ev.target.value }))} />
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={form.trabajaRemoto} onCheckedChange={(v) => setForm((f) => ({ ...f, trabajaRemoto: v === true }))} />
+              Trabaja en remoto
+            </label>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setDialogoAbierto(false)} disabled={guardando}>Cancelar</Button>
