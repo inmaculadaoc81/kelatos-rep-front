@@ -357,24 +357,18 @@ function LeadsListModal({
 
         <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto text-xs">
           {leads.map((lead) => (
-            <div key={lead.companyId} className="flex items-center justify-between gap-2 px-4 py-2">
-              <button
-                type="button"
-                onClick={() => onAbrirLead(lead)}
-                className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left hover:bg-black/5"
-              >
-                <IconoCaja icon={Building2} />
-                <span className="min-w-0">
-                  <p className="truncate font-medium">{lead.name}</p>
-                  <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
-                </span>
-              </button>
-              {lead.messageStatus === "draft" ? (
+            <div key={lead.companyId} className="flex items-center gap-2 px-4 py-2">
+              <IconoCaja icon={Building2} />
+              <span className="min-w-0 flex-1">
+                <p className="truncate font-medium">{lead.name}</p>
+                <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
+              </span>
+              {lead.messageStatus === "draft" && (
                 <div className="flex shrink-0 gap-1">
                   <button
                     type="button"
                     title="Aprobar"
-                    onClick={(e) => { e.stopPropagation(); onRevisar(lead, "approved"); }}
+                    onClick={() => onRevisar(lead, "approved")}
                     className="flex size-6 items-center justify-center rounded-sm border border-border text-emerald-600 hover:bg-emerald-50"
                   >
                     <Check className="size-3" />
@@ -382,19 +376,25 @@ function LeadsListModal({
                   <button
                     type="button"
                     title="Rechazar"
-                    onClick={(e) => { e.stopPropagation(); onRevisar(lead, "rejected"); }}
+                    onClick={() => onRevisar(lead, "rejected")}
                     className="flex size-6 items-center justify-center rounded-sm border border-border text-destructive hover:bg-destructive/10"
                   >
                     <X className="size-3" />
                   </button>
                 </div>
-              ) : (
-                lead.messageStatus && (
-                  <PillBadge bg={ESTADO_MENSAJE_COLOR[lead.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[lead.messageStatus].color} className="shrink-0 text-[10px]">
-                    {ESTADO_MENSAJE_LABEL[lead.messageStatus]}
-                  </PillBadge>
-                )
               )}
+              {lead.messageStatus && lead.messageStatus !== "draft" && (
+                <PillBadge bg={ESTADO_MENSAJE_COLOR[lead.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[lead.messageStatus].color} className="shrink-0 text-[10px]">
+                  {ESTADO_MENSAJE_LABEL[lead.messageStatus]}
+                </PillBadge>
+              )}
+              <button
+                type="button"
+                onClick={() => onAbrirLead(lead)}
+                className="shrink-0 rounded-sm border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Ver
+              </button>
             </div>
           ))}
         </div>
@@ -764,12 +764,12 @@ export function CanvasAgente({
                     <p className="text-muted-foreground">Score {lead.score ?? "—"}</p>
                   </span>
                 </div>
-                {lead.messageStatus === "draft" ? (
+                {lead.messageStatus === "draft" && (
                   <div className="flex shrink-0 gap-1">
                     <button
                       type="button"
                       title="Aprobar"
-                      onClick={(e) => { e.stopPropagation(); revisar(lead, "approved"); }}
+                      onClick={() => revisar(lead, "approved")}
                       className="flex size-5 items-center justify-center rounded-sm border border-border text-emerald-600 hover:bg-emerald-50"
                     >
                       <Check className="size-3" />
@@ -777,19 +777,32 @@ export function CanvasAgente({
                     <button
                       type="button"
                       title="Rechazar"
-                      onClick={(e) => { e.stopPropagation(); revisar(lead, "rejected"); }}
+                      onClick={() => revisar(lead, "rejected")}
                       className="flex size-5 items-center justify-center rounded-sm border border-border text-destructive hover:bg-destructive/10"
                     >
                       <X className="size-3" />
                     </button>
                   </div>
-                ) : (
-                  lead.messageStatus && (
-                    <PillBadge bg={ESTADO_MENSAJE_COLOR[lead.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[lead.messageStatus].color} className="shrink-0 text-[10px]">
-                      {ESTADO_MENSAJE_LABEL[lead.messageStatus]}
-                    </PillBadge>
-                  )
                 )}
+                {lead.messageStatus && lead.messageStatus !== "draft" && (
+                  <PillBadge bg={ESTADO_MENSAJE_COLOR[lead.messageStatus].bg} color={ESTADO_MENSAJE_COLOR[lead.messageStatus].color} className="shrink-0 text-[10px]">
+                    {ESTADO_MENSAJE_LABEL[lead.messageStatus]}
+                  </PillBadge>
+                )}
+                {/* Botón "Ver" explícito en vez de hacer clicable la fila
+                    entera -- el clic en la fila (sin importar si era un
+                    <button> o un <div>, ni si vivía en el canvas o en un
+                    modal aparte) dejaba de responder sin ningún error
+                    visible; un botón chico y separado, igual que
+                    Aprobar/Rechazar (que sí funcionan), es el pedido
+                    explícito del usuario 2026-09-14. */}
+                <button
+                  type="button"
+                  onClick={() => abrirLead(lead)}
+                  className="shrink-0 rounded-sm border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Ver
+                </button>
               </div>
             ))}
           </div>
@@ -857,18 +870,20 @@ export function CanvasAgente({
         ) : (
           <div className="-mx-3 max-h-44 divide-y divide-border overflow-y-auto text-xs">
             {aprobados.map((lead) => (
-              <button
-                key={lead.companyId}
-                type="button"
-                onClick={() => abrirLead(lead)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-black/5"
-              >
+              <div key={lead.companyId} className="flex items-center gap-2 px-3 py-1.5">
                 <IconoCaja icon={Mail} />
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1">
                   <p className="truncate font-medium">{lead.name}</p>
                   <p className="truncate text-muted-foreground">{lead.subject || "Sin asunto"}</p>
                 </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => abrirLead(lead)}
+                  className="shrink-0 rounded-sm border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Ver
+                </button>
+              </div>
             ))}
           </div>
         )}
