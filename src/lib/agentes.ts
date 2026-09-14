@@ -31,6 +31,11 @@ export interface AgentRun {
   startedAt: string | null;
   finishedAt: string | null;
   error: string | null;
+  /** null salvo en runs ligados a una campaña (campaign_pipeline,
+      linkedin_intelligence) — para el Agente LinkedIn es la campaña de
+      la que tomó las empresas calificadas, necesaria para su canvas
+      (contactos/mensajes se leen por campaignId, no por runId). */
+  campaignId: number | null;
 }
 
 export interface AgentStep {
@@ -82,6 +87,7 @@ interface FilaAgentRunSql {
   started_at: string | null;
   finished_at: string | null;
   error?: string | null;
+  campaign_id?: number | string | null;
 }
 
 interface FilaAgentStepSql {
@@ -131,6 +137,7 @@ export function mapearAgentRun(row: FilaAgentRunSql): AgentRun {
     startedAt: row.started_at || null,
     finishedAt: row.finished_at || null,
     error: row.error || null,
+    campaignId: row.campaign_id === null || row.campaign_id === undefined ? null : Number(row.campaign_id),
   };
 }
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ChevronDown, UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles,
+  UserCheck, Check, X, Maximize2, Minimize2, Send, Sparkles,
   Briefcase, MapPin, Hash, Search, Filter, Zap, BadgeCheck, Building2, Mail,
   ClipboardList, Megaphone, Lightbulb, Users, BrainCircuit, MessageSquare,
 } from "lucide-react";
@@ -12,6 +12,10 @@ import { Global, Cpu } from "@/lib/icons";
 import { AgentLead, AgentRun, AgentStep, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import type { AgentEvent, CampaignLead, CampaignBudget } from "@/lib/campanas";
 import { SERVICE_LABEL, mapearLead } from "@/lib/campanas";
+import {
+  ERROR_CLASE, tokensCompacto, duracionRunMs, formatearDuracion,
+  FaviconApp, IconoCaja, PuntoConector, curvaConector, Tarjeta,
+} from "./canvas-shared";
 
 /** Lead que renderiza el canvas: AgentLead + extras de campaña (opcionales). */
 type LeadUI = AgentLead & {
@@ -92,40 +96,6 @@ const HERRAMIENTAS: { nombre: string; detalle: string; dominio: string }[] = [
   { nombre: "Google", detalle: "Places · resolución de webs", dominio: "google.com" },
 ];
 
-/** Favicon de un servicio (vía el servicio de favicons de Google). Si no
-    carga, cae a un icono genérico — nunca deja un hueco roto. */
-function FaviconApp({ dominio, alt }: { dominio: string; alt: string }) {
-  const [error, setError] = useState(false);
-  if (error) {
-    return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
-        <Global className="size-3.5" />
-      </span>
-    );
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`https://www.google.com/s2/favicons?domain=${dominio}&sz=64`}
-      alt={alt}
-      width={24}
-      height={24}
-      className="size-6 shrink-0 rounded-md border border-border bg-white object-contain p-0.5"
-      onError={() => setError(true)}
-    />
-  );
-}
-
-/** Icono pequeño dentro de una caja de 1px (mismo lenguaje visual que los
-    pasos del panel "Actividad"). Va a la izquierda de cada fila. */
-function IconoCaja({ icon: Icono, tint }: { icon: LucideIcon; tint?: string }) {
-  return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-white">
-      <Icono className={`size-3.5 ${tint ?? "text-muted-foreground"}`} strokeWidth={2} />
-    </span>
-  );
-}
-
 /** Los dos niveles de modelo del embudo de coste. Son los valores por
     defecto de AGENTES_OPENAI_MODEL_CHEAP/DEEP en el backend (mismo criterio
     que HERRAMIENTAS: se muestran fijos, no hay endpoint de config todavía). */
@@ -133,83 +103,6 @@ const MODELOS = [
   { nombre: "gpt-4o-mini", rol: "Filtro barato · todas las candidatas" },
   { nombre: "gpt-4o", rol: "Análisis profundo y redacción" },
 ];
-
-const ERROR_CLASE = "border-destructive bg-destructive/5";
-
-function tokensCompacto(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-}
-
-// Módulo (no en el render) para no llamar a Date.now() de forma impura.
-function duracionRunMs(run: AgentRun): number {
-  if (!run.startedAt) return 0;
-  const fin = run.finishedAt ? new Date(run.finishedAt).getTime() : Date.now();
-  return Math.max(0, fin - new Date(run.startedAt).getTime());
-}
-
-function formatearDuracion(ms: number): string {
-  if (!ms || ms <= 0) return "—";
-  if (ms < 1000) return `${ms} ms`;
-  const s = ms / 1000;
-  if (s < 60) return `${s.toFixed(1)} s`;
-  const m = Math.floor(s / 60);
-  return `${m}m ${Math.round(s % 60)}s`;
-}
-
-/** Punto de conexión: un <span> HTML redondeado (no un <circle> del SVG de
-    conectores) a propósito — ese SVG usa preserveAspectRatio="none" para
-    que sus coordenadas 0-100 calcen con el left/top % de las columnas, lo
-    que estira cualquier <circle> hasta convertirlo en una elipse. Un
-    <span> con tamaño fijo en px y border-radius siempre sale redondo,
-    esté el contenedor a la anchura que esté. */
-function PuntoConector({ x, y, color }: { x: number; y: number; color: string }) {
-  return (
-    <span
-      className="pointer-events-none absolute z-10 size-1.5 rounded-full"
-      style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)", backgroundColor: color }}
-    />
-  );
-}
-
-// Curva suave entre dos puntos medidos de verdad (ver medirConectores) —
-// mismo trazo en S que antes, pero genérico: ya no depende de coordenadas
-// fijas adivinadas, así que el punto de llegada de dos conectores al
-// mismo lado de una tarjeta (p.ej. Entrada Y Herramientas hacia Agente)
-// cae siempre en el mismo sitio: el centro vertical real de esa tarjeta,
-// nunca dos puntos distintos.
-function curvaConector(a: { x: number; y: number }, b: { x: number; y: number }): string {
-  const midX = (a.x + b.x) / 2;
-  return `M${a.x},${a.y} C ${midX},${a.y} ${midX},${b.y} ${b.x},${b.y}`;
-}
-
-// Mismo patrón que la referencia del usuario: título con flecha arriba
-// (sin caja propia) y el contenido en una caja aparte, ambas con
-// border-radius 24 (rounded-3xl). Sin posición propia: fluye dentro de su
-// columna con `gap` uniforme. Con ref (hacia el <div> exterior, el borde
-// real de la tarjeta) para que el canvas pueda medir su centro vertical y
-// enganchar ahí los conectores.
-const Tarjeta = forwardRef<
-  HTMLDivElement,
-  {
-    titulo: React.ReactNode;
-    children: React.ReactNode;
-    /** Sobrescribe fondo/borde del contenedor exterior (p.ej. "Leads" en
-        celeste con borde punteado) — la caja interior blanca no cambia. */
-    claseExterior?: string;
-  }
->(function Tarjeta({ titulo, children, claseExterior }, ref) {
-  return (
-    <div
-      ref={ref}
-      className={`shrink-0 rounded-[22px] border pt-3 pb-1 shadow-sm ${claseExterior || "border-border bg-[#F9FAFB]"}`}
-    >
-      <p className="mb-2 flex items-center gap-1.5 px-3 text-xs font-medium text-muted-foreground">
-        <ChevronDown className="size-3.5" /> {titulo}
-      </p>
-      <div className="mx-1 rounded-[16px] border bg-card p-3">{children}</div>
-    </div>
-  );
-});
 
 // Sub-agentes del equipo de marketing, en el orden del pipeline.
 const EQUIPO: { slug: string; label: string; icon: LucideIcon; tint: string; contar: (e: AgentEvent[]) => string }[] = [

@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AgentRun, AgentStep } from "@/lib/agentes";
 import { TrazaAgente } from "./traza-agente";
 import { CanvasAgente } from "./canvas-agente";
+import { CanvasLinkedIn } from "./canvas-linkedin";
 
 // Vista de detalle de un run — por ahora SOLO el panel de traza (cómo va
 // el agente) + un contenedor vacío a la derecha reservado para más
@@ -76,12 +77,13 @@ export default function AgenteRunDetallePage() {
   return (
     <div className="flex h-[calc(100svh-6.5rem)] gap-4 overflow-hidden">
       <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} agentType={params.agentType} onActualizado={cargar} />
-      {/* El canvas visual dibuja el pipeline de campaña (discovery ->
-          ... -> outreach) a mano, nodo por nodo -- no representa el
-          pipeline del Agente LinkedIn independiente (4 etapas propias).
-          Se oculta para ese tipo en vez de mostrar un diagrama que no
-          corresponde; la traza de la izquierda ya cubre sus pasos. */}
+      {/* Cada tipo de agente tiene su propio canvas -- el de campaign_pipeline
+          dibuja SU pipeline (discovery -> ... -> outreach), el de
+          linkedin_intelligence dibuja el suyo (4 etapas propias). No hay
+          fallback genérico: un tipo nuevo sin canvas propio simplemente no
+          lo muestra (la traza de la izquierda ya cubre sus pasos). */}
       {params.agentType === "campaign_pipeline" && <CanvasAgente run={run} steps={steps} tipoLabel={tipoLabel} />}
+      {params.agentType === "linkedin_intelligence" && <CanvasLinkedIn run={run} steps={steps} tipoLabel={tipoLabel} />}
     </div>
   );
 }

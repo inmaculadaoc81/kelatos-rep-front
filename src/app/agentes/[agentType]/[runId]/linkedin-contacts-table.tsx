@@ -10,13 +10,13 @@ import { useConfirm } from "@/components/confirm-provider";
 import type { LinkedInContact } from "@/lib/campanas";
 import { CONTACT_ROLE_LABEL } from "@/lib/campanas";
 
-const ESTADO_LABEL: Record<string, string> = {
+export const ESTADO_LABEL: Record<string, string> = {
   draft: "Borrador",
   approved: "Aprobado",
   rejected: "Rechazado",
   sent_manually: "Enviado",
 };
-const ESTADO_COLOR: Record<string, { bg: string; color: string }> = {
+export const ESTADO_COLOR: Record<string, { bg: string; color: string }> = {
   draft: { bg: "#e5e7eb", color: "#374151" },
   approved: { bg: "#dcfce7", color: "#166534" },
   rejected: { bg: "#fee2e2", color: "#991b1b" },
@@ -26,7 +26,7 @@ const ESTADO_COLOR: Record<string, { bg: string; color: string }> = {
 /** Modal de detalle de un contacto — mismo patrón createPortan(document.body)
     que LeadDetailModal en canvas-agente.tsx (no el <Dialog> de shadcn, ver
     commit 01690fc: se diagnosticó en vivo que no pintaba pese a open={true}). */
-function ContactoDetailModal({
+export function ContactoDetailModal({
   contacto,
   onClose,
   onAprobar,
