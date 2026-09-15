@@ -495,19 +495,29 @@ export function AccionRequerida({
     //   ya se generó en el flujo normal de Facturación (incluye ahí la
     //   línea de mensajería), así que solo hace falta el atajo de un clic
     //   "Marcar como enviado" (marcarEnviadoRapido, sin factura nueva).
+    // - "Reparado"+Garantía con devolución por mensajería: mismo atajo
+    //   "Marcar como enviado" también aquí — petición explícita del
+    //   usuario, 2026-09-15: "tengo este en garantía y no tengo que
+    //   generar ni ticket ni factura" para poder enviarlo. Antes este
+    //   botón se excluía en garantía y la única salida era una de las dos
+    //   de abajo (Factura/Ticket), que obligaban a generar un documento
+    //   solo para registrar el envío.
     // - Cualquier caso SIN mensajería: "Entregado en Local" (confirmación
     //   rápida si "Reparado" ya facturado, formulario completo en el resto)
     //   + "QR Recogida", salvo garantía recibida por mensajería que se
     //   recoge en local (_garantiaConRecojo), donde se cobra el trayecto y
     //   no se ofrece QR.
-    // - "Facturar y Enviar por Mensajería" solo en "No tiene Reparación" /
-    //   "Presupuesto Rechazado" / "Reparado"+Garantía — nunca en un
-    //   "Reparado" normal, porque ahí la mensajería no tiene factura propia
-    //   por separado.
+    // - "Factura y Enviar por Mensajería" / "Ticket y Enviar por
+    //   Mensajería" solo en "No tiene Reparación" / "Presupuesto
+    //   Rechazado" / "Reparado"+Garantía — nunca en un "Reparado" normal,
+    //   porque ahí la mensajería no tiene factura propia por separado.
+    //   Para "Reparado"+Garantía son ahora alternativas OPCIONALES junto a
+    //   "Marcar como enviado": solo hacen falta si además de enviar se
+    //   quiere cobrar el trayecto (p.ej. garantía no cubre el envío).
     const garantiaConRecojo = estado === "Reparado" && detalle.tipoIngreso === "GARANTIA" && detalle.tipoRecepcion === "ENVIO";
     const mensajeriaPendiente = detalle.entregaMensajeria === "SI";
 
-    if (estado === "Reparado" && detalle.tipoIngreso !== "GARANTIA" && mensajeriaPendiente) {
+    if (estado === "Reparado" && mensajeriaPendiente) {
       botones.push(
         <Button key="marcar-enviado" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onMarcarEnviadoRapido}>
           <TickCircle className="size-3.5" /> Marcar como enviado
