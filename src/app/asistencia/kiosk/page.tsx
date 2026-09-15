@@ -168,13 +168,13 @@ export default function KioskPage() {
     }
   }
 
-  async function confirmarSalida(firmaDataUrl: string) {
+  async function confirmarSalida(firmaDataUrl: string, resumenDia: string) {
     setFichando(true);
     try {
       const res = await fetch("/api/asistencia/kiosk/fichar-con-firma", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "salida", firma: firmaDataUrl }),
+        body: JSON.stringify({ tipo: "salida", firma: firmaDataUrl, observaciones: resumenDia || undefined }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");

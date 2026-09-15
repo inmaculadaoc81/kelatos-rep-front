@@ -68,7 +68,7 @@ export default function RemoteWorkerDetailPage() {
     return <p className="text-sm text-muted-foreground">{error || "Dispositivo no encontrado."}</p>;
   }
 
-  const { device, hoy, applications, windowEvents, productividadCategoria, horario } = detalle;
+  const { device, hoy, applications, windowEvents, productividadCategoria, resumenDia, horario } = detalle;
   const productividadHoy = calcularProductividad(hoy.activeSeconds, hoy.idleSeconds);
 
   return (
@@ -111,6 +111,14 @@ export default function RemoteWorkerDetailPage() {
               Sin calendario asignado — la productividad por horario no se puede calcular. Asígnalo desde{" "}
               <Link href="/asistencia/admin/horarios" className="underline">Horarios</Link>.
             </p>
+          )}
+          {/* Lo que el empleado escribió al fichar la salida hoy — solo
+              aparece si ya lo hizo. Petición del usuario, 2026-09-16. */}
+          {resumenDia && (
+            <div className="rounded-md border bg-muted/40 p-2.5">
+              <p className="mb-1 text-xs font-medium text-muted-foreground">Resumen del día (del empleado)</p>
+              <p className="whitespace-pre-wrap text-xs">{resumenDia}</p>
+            </div>
           )}
         </CardContent>
       </Card>

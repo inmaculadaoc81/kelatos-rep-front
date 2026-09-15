@@ -131,14 +131,15 @@ export default function RemoteWorkersPage() {
               <TableHead>Descanso</TableHead>
               <TableHead>Productividad</TableHead>
               <TableHead>Última actividad</TableHead>
+              <TableHead>Resumen del día</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cargando && Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 8 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              <TableRow key={i}>{Array.from({ length: 9 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
             {!cargando && dispositivos.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Todavía no ha sincronizado ningún dispositivo.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">Todavía no ha sincronizado ningún dispositivo.</TableCell></TableRow>
             )}
             {!cargando && dispositivos.map((d) => {
               // Productividad por horario si tiene calendario asignado;
@@ -161,6 +162,9 @@ export default function RemoteWorkersPage() {
                   <TableCell className="text-sm">{d.descansoSegHoy > 0 ? formatDuracion(d.descansoSegHoy) : "—"}</TableCell>
                   <TableCell className="text-sm">{productividad == null ? "—" : `${productividad}%`}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{hace(d.lastSeen)}</TableCell>
+                  <TableCell className="max-w-48 truncate text-sm text-muted-foreground" title={d.resumenDia || undefined}>
+                    {d.resumenDia || "—"}
+                  </TableCell>
                 </TableRow>
               );
             })}

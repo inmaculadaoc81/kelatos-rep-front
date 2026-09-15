@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 /**
@@ -9,11 +10,18 @@ import { toast } from "sonner";
  * de dibujo en canvas idéntica, solo restilizada con los componentes de
  * Kelatos en vez de kiosk.module.css.
  */
-export function FirmaPad({ onCancelar, onConfirmar }: { onCancelar: () => void; onConfirmar: (dataUrl: string) => void }) {
+export function FirmaPad({
+  onCancelar,
+  onConfirmar,
+}: {
+  onCancelar: () => void;
+  onConfirmar: (dataUrl: string, resumenDia: string) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
   const dibujadaRef = useRef(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [resumenDia, setResumenDia] = useState("");
 
   function getCtx() {
     const canvas = canvasRef.current;
@@ -56,11 +64,28 @@ export function FirmaPad({ onCancelar, onConfirmar }: { onCancelar: () => void; 
     if (confirmando) return;
     if (!dibujadaRef.current) return toast.error("Debes firmar antes de confirmar la salida");
     setConfirmando(true);
-    onConfirmar(canvasRef.current!.toDataURL("image/png"));
+    onConfirmar(canvasRef.current!.toDataURL("image/png"), resumenDia.trim());
   }
 
   return (
     <div className="space-y-3">
+      {/* Opcional — no bloquea la salida si se deja en blanco. Petición
+          del usuario, 2026-09-16: que el empleado pueda contar cómo le
+          fue el día al fichar la salida, visible luego para el admin en
+          el dashboard de Remote Work. */}
+      <div className="space-y-1.5">
+        <label htmlFor="resumenDia" className="text-sm font-medium">
+          Resumen del día <span className="font-normal text-muted-foreground">(opcional)</span>
+        </label>
+        <Textarea
+          id="resumenDia"
+          rows={2}
+          placeholder="¿Cómo te fue hoy? Algo que quieras contar…"
+          value={resumenDia}
+          onChange={(e) => setResumenDia(e.target.value)}
+          disabled={confirmando}
+        />
+      </div>
       <p className="text-sm text-muted-foreground">Firma en el recuadro para confirmar tu salida</p>
       <canvas
         ref={canvasRef}

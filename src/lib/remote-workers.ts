@@ -33,6 +33,9 @@ export interface RemoteWorkerListItem {
   activeSecondsHoy: number;
   idleSecondsHoy: number;
   appPrincipal: string | null;
+  /** Lo que el empleado escribió al fichar la salida hoy — null si aún
+      no ha fichado salida o lo dejó en blanco. */
+  resumenDia: string | null;
 }
 
 export interface AppCategory {
@@ -94,6 +97,7 @@ export interface RemoteWorkerDetail {
   applications: RemoteWorkerAppUsage[];
   windowEvents: RemoteWindowEvent[];
   productividadCategoria: ProductividadPorCategoria;
+  resumenDia: string | null;
   horario: {
     estadoActividad: EstadoActividad;
     horarioLabel: string | null;
@@ -199,6 +203,7 @@ export function mapearRemoteWorkerListItem(r: Record<string, unknown>): RemoteWo
     activeSecondsHoy: Number(r.active_seconds_hoy ?? 0),
     idleSecondsHoy: Number(r.idle_seconds_hoy ?? 0),
     appPrincipal: (r.app_principal as string) ?? null,
+    resumenDia: (r.resumen_dia as string) ?? null,
   };
 }
 
@@ -247,6 +252,7 @@ export function mapearDetalle(r: Record<string, unknown>): RemoteWorkerDetail {
       seconds: Number(w.seconds ?? 0),
     })),
     productividadCategoria: mapearProductividadCategoria((r.productividadCategoria as Record<string, unknown>) ?? {}),
+    resumenDia: (r.resumenDia as string) ?? null,
     horario: mapearHorario((r.horario as Record<string, unknown>) ?? {}),
   };
 }
