@@ -53,6 +53,7 @@ import { ClienteSeLoLlevoDialog } from "./cliente-se-lo-llevo-dialog";
 import { derivarEventoHistorial } from "./historial-evento";
 import { MarcarGarantiaBoton, ENTREGA_CERRADA } from "./marcar-garantia-boton";
 import { FacturaRevisionBoton } from "./factura-revision-boton";
+import { ComprobanteTransferenciaBoton } from "./comprobante-transferencia-boton";
 import { IniciarReparacionDialog } from "./iniciar-reparacion-dialog";
 import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
 import { ReportarProblemaPiezaDialog } from "./reportar-problema-pieza-dialog";
@@ -709,6 +710,7 @@ export function DetalleReparacionDialog({
                   <MarcarGarantiaBoton detalle={detalle} onActualizado={actualizarTodo} />
                   <FacturaRevisionBoton detalle={detalle} onActualizado={actualizarTodo} />
                   <EstadosEspecialesPanel detalle={detalle} onActualizado={actualizarTodo} />
+                  <ComprobanteTransferenciaBoton detalle={detalle} />
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t pt-3 sm:grid-cols-4">

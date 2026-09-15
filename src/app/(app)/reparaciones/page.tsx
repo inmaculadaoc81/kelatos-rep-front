@@ -34,6 +34,7 @@ import { DashboardMetricas } from "./dashboard-metricas";
 import { NuevaFacturaManualDialog } from "./nueva-factura-manual-dialog";
 import { FormulariosRechazadosDialog } from "./formularios-rechazados-dialog";
 import { TicketManualDialog } from "./ticket-manual-dialog";
+import { PagoTransferenciaPill } from "./comprobante-transferencia-boton";
 
 type Orden = { campo: "resguardo" | "fecha" | null; direccion: "asc" | "desc" | null };
 
@@ -185,6 +186,7 @@ export default function ReparacionesPage() {
   const [formulariosRechazadosAbierto, setFormulariosRechazadosAbierto] = useState(false);
   const [ticketManualAbierto, setTicketManualAbierto] = useState(false);
   const [eliminarResguardo, setEliminarResguardo] = useState<string | null>(null);
+  const [comprobantesEstado, setComprobantesEstado] = useState<Record<string, "Pendiente" | "Conciliada">>({});
   const esSuperadmin = useEsSuperadmin();
 
   const [metricas, setMetricas] = useState<MetricasDashboard | null>(null);
@@ -224,6 +226,21 @@ export default function ReparacionesPage() {
     cargar();
     cargarMetricas();
   }, []);
+
+  // Columna "Pago" de la tabla — una sola petición en bloque para toda la
+  // página en vez de una por fila (ver /v1/reparaciones/comprobantes-estado
+  // en el backend). Se repite cada vez que cambia la lista visible.
+  useEffect(() => {
+    if (!reparaciones.length) return;
+    fetch("/api/reparaciones/comprobantes-estado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resguardos: reparaciones.map((r) => r.resguardo) }),
+    })
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setComprobantesEstado(data.estados); })
+      .catch(() => {});
+  }, [reparaciones]);
 
   const tecnicosDisponibles = useMemo(() => {
     // Los técnicos deberían venir de un catálogo propio (empleados) — de
@@ -486,11 +503,12 @@ export default function ReparacionesPage() {
               <TableHead>Cliente</TableHead>
               <TableHead>Equipo</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Pago</TableHead>
               <TableHead>Técnico</TableHead>
               <TableHead>Días</TableHead>
               <TableHead>F. Entrega</TableHead>
               <TableHead>Obs.</TableHead>
-              {/* Fija a la derecha: con 10 columnas la tabla se desborda y,
+              {/* Fija a la derecha: con 11 columnas la tabla se desborda y,
                   sin esto, el botón de acción queda fuera de la pantalla. */}
               <TableHead className="sticky right-0 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
                 Acciones
@@ -501,7 +519,7 @@ export default function ReparacionesPage() {
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 10 }).map((__, j) => (
+                  {Array.from({ length: 11 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -511,7 +529,7 @@ export default function ReparacionesPage() {
 
             {!cargando && filtradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                   No se encontraron reparaciones
                 </TableCell>
               </TableRow>
@@ -574,6 +592,9 @@ export default function ReparacionesPage() {
                           </Badge>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <PagoTransferenciaPill estado={comprobantesEstado[rep.resguardo]} />
                     </TableCell>
                     <TableCell className="text-sm">{rep.tecnicoAsignado || "-"}</TableCell>
                     <TableCell className={`text-sm ${dias.clase}`}>{dias.texto}</TableCell>
