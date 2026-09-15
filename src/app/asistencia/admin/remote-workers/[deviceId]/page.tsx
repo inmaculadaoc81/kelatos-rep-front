@@ -85,44 +85,35 @@ export default function RemoteWorkerDetailPage() {
         <EstadoActividadPill estado={horario.estadoActividad} />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Card>
-          <CardContent className="space-y-2 pt-4 text-sm">
-            <p className="font-medium text-muted-foreground">Información</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <span className="text-muted-foreground">Usuario Windows</span><span>{device.username}</span>
-              <span className="text-muted-foreground">Hostname</span><span>{device.hostname}</span>
-              <span className="text-muted-foreground">Device ID</span><span className="truncate">{device.deviceUuid}</span>
-              <span className="text-muted-foreground">Versión agente</span><span>{device.agentVersion || "—"}</span>
-              <span className="text-muted-foreground">Sistema operativo</span><span className="truncate">{device.osVersion || "—"}</span>
-              <span className="text-muted-foreground">Última conexión</span><span>{fechaHora(device.lastSeen)}</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="space-y-2 pt-4 text-sm">
-            <p className="font-medium text-muted-foreground">Resumen de hoy</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <span className="text-muted-foreground">Horario</span><span>{horario.horarioLabel || "Sin horario asignado"}</span>
-              <span className="text-muted-foreground">Tiempo programado</span><span>{horario.tiempoLaboralEsperadoSeg ? formatDuracion(horario.tiempoLaboralEsperadoSeg) : "—"}</span>
-              <span className="text-muted-foreground">Tiempo trabajado</span><span>{formatDuracion(hoy.activeSeconds + hoy.idleSeconds)}</span>
-              <span className="text-muted-foreground">Tiempo activo</span><span>{formatDuracion(hoy.activeSeconds)}</span>
-              <span className="text-muted-foreground">Tiempo inactivo</span><span>{formatDuracion(hoy.idleSeconds)}</span>
-              <span className="text-muted-foreground">Tiempo descanso</span><span>{horario.descansoSegHoy > 0 ? formatDuracion(horario.descansoSegHoy) : "—"}</span>
-              <span className="text-muted-foreground">Primera actividad</span><span>{fechaHora(hoy.primeraActividad)}</span>
-              <span className="text-muted-foreground">Última actividad</span><span>{fechaHora(hoy.ultimaActividad)}</span>
-              <span className="text-muted-foreground">Nº de aplicaciones</span><span>{applications.length}</span>
-              <span className="text-muted-foreground">Nº de eventos</span><span>{windowEvents.length}</span>
-            </div>
-            {!horario.horarioLabel && (
-              <p className="text-xs text-muted-foreground">
-                Sin calendario asignado — la productividad por horario no se puede calcular. Asígnalo desde{" "}
-                <Link href="/asistencia/admin/horarios" className="underline">Horarios</Link>.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* "Resumen de hoy" primero: es lo que un administrador necesita
+          para juzgar el estado ahora mismo — los datos técnicos del
+          equipo (hostname/OS/versión de agente) son de consulta, no de
+          gestión diaria, así que bajan más abajo en la página. Petición
+          del usuario, 2026-09-15: "ordena bien el dashboard para el
+          administrador que gestiona todo eso". */}
+      <Card>
+        <CardContent className="space-y-2 pt-4 text-sm">
+          <p className="font-medium text-muted-foreground">Resumen de hoy</p>
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+            <span className="text-muted-foreground">Horario</span><span>{horario.horarioLabel || "Sin horario asignado"}</span>
+            <span className="text-muted-foreground">Tiempo programado</span><span>{horario.tiempoLaboralEsperadoSeg ? formatDuracion(horario.tiempoLaboralEsperadoSeg) : "—"}</span>
+            <span className="text-muted-foreground">Tiempo trabajado</span><span>{formatDuracion(hoy.activeSeconds + hoy.idleSeconds)}</span>
+            <span className="text-muted-foreground">Tiempo activo</span><span>{formatDuracion(hoy.activeSeconds)}</span>
+            <span className="text-muted-foreground">Tiempo inactivo</span><span>{formatDuracion(hoy.idleSeconds)}</span>
+            <span className="text-muted-foreground">Tiempo descanso</span><span>{horario.descansoSegHoy > 0 ? formatDuracion(horario.descansoSegHoy) : "—"}</span>
+            <span className="text-muted-foreground">Primera actividad</span><span>{fechaHora(hoy.primeraActividad)}</span>
+            <span className="text-muted-foreground">Última actividad</span><span>{fechaHora(hoy.ultimaActividad)}</span>
+            <span className="text-muted-foreground">Nº de aplicaciones</span><span>{applications.length}</span>
+            <span className="text-muted-foreground">Nº de eventos</span><span>{windowEvents.length}</span>
+          </div>
+          {!horario.horarioLabel && (
+            <p className="text-xs text-muted-foreground">
+              Sin calendario asignado — la productividad por horario no se puede calcular. Asígnalo desde{" "}
+              <Link href="/asistencia/admin/horarios" className="underline">Horarios</Link>.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-4 text-sm">
@@ -161,16 +152,20 @@ export default function RemoteWorkerDetailPage() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card>
           <CardContent className="pt-4">
-            <p className="mb-2 text-sm font-medium text-muted-foreground">Distribución de aplicaciones (hoy)</p>
-            <AppDistributionChart apps={applications} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
+            {/* Más reciente arriba (ORDER BY started_at DESC en el
+                backend) — lo primero que se quiere ver es qué está
+                haciendo AHORA, no desplazar hasta el final de la lista.
+                Petición del usuario, 2026-09-15. */}
             <p className="mb-2 text-sm font-medium text-muted-foreground">Actividad de hoy</p>
             <div className="max-h-56 overflow-y-auto">
               <Timeline eventos={windowEvents} />
             </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="mb-2 text-sm font-medium text-muted-foreground">Distribución de aplicaciones (hoy)</p>
+            <AppDistributionChart apps={applications} />
           </CardContent>
         </Card>
       </div>
@@ -207,6 +202,22 @@ export default function RemoteWorkerDetailPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Datos técnicos del equipo — de consulta puntual, no de gestión
+          diaria, así que van al final en vez de arriba del todo. */}
+      <Card>
+        <CardContent className="space-y-2 pt-4 text-sm">
+          <p className="font-medium text-muted-foreground">Información del equipo</p>
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+            <span className="text-muted-foreground">Usuario Windows</span><span>{device.username}</span>
+            <span className="text-muted-foreground">Hostname</span><span>{device.hostname}</span>
+            <span className="text-muted-foreground">Device ID</span><span className="truncate">{device.deviceUuid}</span>
+            <span className="text-muted-foreground">Versión agente</span><span>{device.agentVersion || "—"}</span>
+            <span className="text-muted-foreground">Sistema operativo</span><span className="truncate">{device.osVersion || "—"}</span>
+            <span className="text-muted-foreground">Última conexión</span><span>{fechaHora(device.lastSeen)}</span>
+          </div>
+        </CardContent>
+      </Card>
 
       {!device.employeeId && (
         <p className="text-xs text-muted-foreground">
