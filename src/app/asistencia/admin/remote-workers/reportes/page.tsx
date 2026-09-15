@@ -119,7 +119,15 @@ export default function ReportesRemoteWorkersPage() {
               <p className="pt-2 text-xs text-muted-foreground">Ningún dispositivo asignado todavía.</p>
             ) : (
               <Select value={empleadoId} onValueChange={(v) => setEmpleadoId(v || "")}>
-                <SelectTrigger><SelectValue placeholder="Selecciona un empleado" /></SelectTrigger>
+                <SelectTrigger>
+                  {/* SelectValue (base-ui) no resuelve la etiqueta desde los
+                      <SelectItem> en modo declarativo — sin este render-prop
+                      mostraba el value crudo (el id numérico, "14") en vez
+                      del nombre. Bug real reportado, 2026-09-15. */}
+                  <SelectValue placeholder="Selecciona un empleado">
+                    {(value: string) => empleados.find((e) => String(e.employeeId) === value)?.empleadoNombre || value}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {empleados.map((e) => (
                     <SelectItem key={e.employeeId} value={String(e.employeeId)}>{e.empleadoNombre}</SelectItem>
