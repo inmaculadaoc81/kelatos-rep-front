@@ -401,11 +401,14 @@ export function ConfirmarEntregaLocalDialog({
 }
 
 /**
- * Reproduce marcarEnviadoRapido() (Index.html) — atajo de un solo clic para
- * cuando la reparación "Reparado" (no garantía) ya está facturada por el
- * flujo normal de Facturación, que ya incluye la línea de mensajería: aquí
- * solo queda registrar la salida como ENVIO, sin generar ninguna factura
- * nueva (numeroFactura vacío → el backend conserva la ya existente).
+ * Reproduce marcarEnviadoRapido() (Index.html) — atajo de un solo clic que
+ * solo registra la salida como ENVIO, sin generar ninguna factura nueva
+ * (numeroFactura vacío → el backend conserva la ya existente, si la hay).
+ * Dos usos: (1) reparación "Reparado" (no garantía) ya facturada por el
+ * flujo normal de Facturación, que ya incluye ahí la línea de mensajería;
+ * (2) reparación "Reparado" en garantía, donde puede no hacer falta ningún
+ * documento en absoluto — petición del usuario, 2026-09-15: poder enviar el
+ * equipo sin verse obligado a generar factura ni ticket.
  */
 export function MarcarEnviadoDialog({
   resguardo,
