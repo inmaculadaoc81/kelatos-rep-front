@@ -69,7 +69,7 @@ export const GRUPO_REMOTE_WORK: GrupoNavegacionAsistencia = {
     { href: "/asistencia/admin/remote-workers/categorias", label: "Categorías", icon: Category2 },
     { href: "/asistencia/admin/remote-workers/reportes", label: "Reportes", icon: DocumentText },
     { href: "/asistencia/admin/remote-workers/empleados", label: "Empleados", icon: Profile2User, soloSuperadmin: true },
-    { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
+    { href: "/asistencia/admin/remote-workers/horarios", label: "Horarios", icon: Setting2 },
     { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
     { href: "/asistencia/admin/remote-workers/vacaciones", label: "Vacaciones", icon: Airplane },
     { href: "/asistencia/admin/remote-workers/correcciones", label: "Correcciones", icon: Edit2 },
