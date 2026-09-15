@@ -16,6 +16,7 @@ import {
   Clock,
   Setting2,
   Personalcard,
+  Bank,
   type Icon,
 } from "@/lib/icons";
 
@@ -75,6 +76,7 @@ const MAPA: Record<string, MetaEventoHistorial> = {
   anticipo_registrado: { icon: Wallet, clase: "bg-teal-500/10 text-teal-600" },
 
   observacion: { icon: Edit2, clase: "bg-slate-500/10 text-slate-600" },
+  comprobante_transferencia: { icon: Bank, clase: "bg-teal-500/10 text-teal-600" },
 
   reparacion_finalizada: { icon: TickCircle, clase: "bg-green-500/10 text-green-600" },
   actualizacion_equipo: { icon: Setting2, clase: "bg-blue-500/10 text-blue-600" },

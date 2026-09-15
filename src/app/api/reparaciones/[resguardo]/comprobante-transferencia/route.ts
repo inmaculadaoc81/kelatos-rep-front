@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 
+export interface MovimientoConciliado {
+  id: number;
+  estado: "Pendiente" | "Conciliada";
+  monto: string | null;
+  fecha_valor: string | null;
+  banco: string | null;
+  remitente: string | null;
+  concepto: string | null;
+  origen: string;
+  link_foto: string | null;
+  fecha_registro: string;
+}
+
 export interface ComprobanteTransferencia {
   id: number;
   estado: "Pendiente" | "Conciliada";
@@ -12,6 +25,7 @@ export interface ComprobanteTransferencia {
   link_foto: string | null;
   fecha_registro: string;
   fecha_conciliacion: string | null;
+  par: MovimientoConciliado | null;
 }
 
 interface RespuestaSubida {

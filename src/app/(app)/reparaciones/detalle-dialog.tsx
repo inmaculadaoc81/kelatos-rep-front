@@ -710,7 +710,7 @@ export function DetalleReparacionDialog({
                   <MarcarGarantiaBoton detalle={detalle} onActualizado={actualizarTodo} />
                   <FacturaRevisionBoton detalle={detalle} onActualizado={actualizarTodo} />
                   <EstadosEspecialesPanel detalle={detalle} onActualizado={actualizarTodo} />
-                  <ComprobanteTransferenciaBoton detalle={detalle} />
+                  <ComprobanteTransferenciaBoton detalle={detalle} onActualizado={actualizarTodo} />
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t pt-3 sm:grid-cols-4">

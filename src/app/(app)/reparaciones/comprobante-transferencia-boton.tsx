@@ -7,6 +7,19 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
 
+export interface MovimientoConciliado {
+  id: number;
+  estado: "Pendiente" | "Conciliada";
+  monto: string | null;
+  fecha_valor: string | null;
+  banco: string | null;
+  remitente: string | null;
+  concepto: string | null;
+  origen: "Cliente" | "Empresa" | string;
+  link_foto: string | null;
+  fecha_registro: string;
+}
+
 export interface ComprobanteTransferencia {
   id: number;
   estado: "Pendiente" | "Conciliada";
@@ -17,6 +30,11 @@ export interface ComprobanteTransferencia {
   link_foto: string | null;
   fecha_registro: string;
   fecha_conciliacion: string | null;
+  /** El otro lado del emparejamiento (el ingreso real subido por
+      tesorería vía Telegram) — solo presente cuando estado es
+      "Conciliada". Petición del usuario, 2026-09-15: ver los DOS lados
+      de la conciliación, no solo el comprobante que subió el empleado. */
+  par: MovimientoConciliado | null;
 }
 
 function leerComoBase64(file: File): Promise<{ base64: string; mime: string }> {
@@ -67,7 +85,7 @@ export function PagoTransferenciaPill({ estado }: { estado?: "Pendiente" | "Conc
  * "Pago realizado"). Petición del usuario, 2026-09-15: "para llevar un
  * mejor control" de qué reparaciones ya cobraron de verdad por transferencia.
  */
-export function ComprobanteTransferenciaBoton({ detalle }: { detalle: ReparacionDetalle }) {
+export function ComprobanteTransferenciaBoton({ detalle, onActualizado }: { detalle: ReparacionDetalle; onActualizado?: () => void }) {
   const [comprobante, setComprobante] = useState<ComprobanteTransferencia | null | undefined>(undefined);
   const [detalleAbierto, setDetalleAbierto] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
@@ -108,6 +126,10 @@ export function ComprobanteTransferenciaBoton({ detalle }: { detalle: Reparacion
         toast.success("Comprobante subido — pendiente de conciliar con el banco");
       }
       cargar();
+      // El evento nuevo queda en el Historial de la reparación (kelatos_app.historial,
+      // mismo dato que ya trae detalle.historialEventos) — sin esto la pestaña
+      // "Historial" seguiría mostrando la lista antigua hasta un refresco manual.
+      onActualizado?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -165,23 +187,53 @@ export function ComprobanteTransferenciaBoton({ detalle }: { detalle: Reparacion
                 </>
               )}
             </p>
-            <div className="space-y-1 rounded-md bg-muted/50 px-3 py-2 text-muted-foreground">
-              <p>Monto: <span className="text-foreground">{comprobante.monto ? `${Number(comprobante.monto).toFixed(2)} €` : "-"}</span></p>
-              <p>Fecha del comprobante: <span className="text-foreground">{comprobante.fecha_valor || "-"}</span></p>
-              <p>Banco: <span className="text-foreground">{comprobante.banco || "-"}</span></p>
-              <p>Remitente: <span className="text-foreground">{comprobante.remitente || "-"}</span></p>
-              <p>Subido: <span className="text-foreground">{formatearFechaHora(comprobante.fecha_registro)}</span></p>
-              {conciliado && <p>Conciliado: <span className="text-foreground">{formatearFechaHora(comprobante.fecha_conciliacion)}</span></p>}
+            <div>
+              {conciliado && <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subido desde la reparación</p>}
+              <div className="space-y-1 rounded-md bg-muted/50 px-3 py-2 text-muted-foreground">
+                <p>Monto: <span className="text-foreground">{comprobante.monto ? `${Number(comprobante.monto).toFixed(2)} €` : "-"}</span></p>
+                <p>Fecha del comprobante: <span className="text-foreground">{comprobante.fecha_valor || "-"}</span></p>
+                <p>Banco: <span className="text-foreground">{comprobante.banco || "-"}</span></p>
+                <p>Remitente: <span className="text-foreground">{comprobante.remitente || "-"}</span></p>
+                <p>Subido: <span className="text-foreground">{formatearFechaHora(comprobante.fecha_registro)}</span></p>
+                {conciliado && <p>Conciliado: <span className="text-foreground">{formatearFechaHora(comprobante.fecha_conciliacion)}</span></p>}
+              </div>
+              {comprobante.link_foto && (
+                <a
+                  href={`https://drive.google.com/file/d/${comprobante.link_foto}/view`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 flex items-center gap-1.5 text-primary hover:underline"
+                >
+                  <DocumentText className="size-3.5" /> Ver comprobante subido
+                </a>
+              )}
             </div>
-            {comprobante.link_foto && (
-              <a
-                href={`https://drive.google.com/file/d/${comprobante.link_foto}/view`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-primary hover:underline"
-              >
-                <DocumentText className="size-3.5" /> Ver comprobante subido
-              </a>
+
+            {/* El otro lado del emparejamiento — el ingreso real que llegó
+                al banco (subido por tesorería vía Telegram), con el que
+                este comprobante coincidió. Petición del usuario,
+                2026-09-15: "cuando se concilia debe salir ambas". */}
+            {conciliado && comprobante.par && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ingreso conciliado en el banco</p>
+                <div className="space-y-1 rounded-md bg-emerald-500/10 px-3 py-2 text-muted-foreground">
+                  <p>Monto: <span className="text-foreground">{comprobante.par.monto ? `${Number(comprobante.par.monto).toFixed(2)} €` : "-"}</span></p>
+                  <p>Fecha: <span className="text-foreground">{comprobante.par.fecha_valor || "-"}</span></p>
+                  <p>Banco: <span className="text-foreground">{comprobante.par.banco || "-"}</span></p>
+                  <p>Remitente: <span className="text-foreground">{comprobante.par.remitente || "-"}</span></p>
+                  <p>Concepto: <span className="text-foreground">{comprobante.par.concepto || "-"}</span></p>
+                </div>
+                {comprobante.par.link_foto && (
+                  <a
+                    href={`https://drive.google.com/file/d/${comprobante.par.link_foto}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1.5 flex items-center gap-1.5 text-primary hover:underline"
+                  >
+                    <DocumentText className="size-3.5" /> Ver comprobante del banco
+                  </a>
+                )}
+              </div>
             )}
           </div>
 
