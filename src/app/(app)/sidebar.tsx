@@ -10,99 +10,13 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowDown2 } from "@/lib/icons";
+import { ItemDirecto, GrupoColapsable } from "@/components/sidebar-grupo-colapsable";
 import type { Session } from "next-auth";
-import { GRUPOS, GRUPO_ADMIN, type GrupoNavegacion, type ItemNavegacion } from "./navegacion";
+import { GRUPOS, GRUPO_ADMIN } from "./navegacion";
 import { NavUser } from "./nav-user";
 import { esSuperadmin } from "@/lib/superadmin";
-
-function ItemDirecto({ item, pathname }: { item: ItemNavegacion; pathname: string }) {
-  const Icon = item.icon;
-  if (!item.href) {
-    return (
-      <SidebarMenuItem>
-        <SidebarMenuButton disabled tooltip={item.label}>
-          <Icon />
-          <span>{item.label}</span>
-        </SidebarMenuButton>
-        <SidebarMenuBadge className="text-[10px] text-sidebar-foreground/50">pronto</SidebarMenuBadge>
-      </SidebarMenuItem>
-    );
-  }
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton isActive={pathname === item.href} tooltip={item.label} render={<Link href={item.href} />}>
-        <Icon />
-        <span>{item.label}</span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-}
-
-function GrupoColapsable({ grupo, pathname }: { grupo: GrupoNavegacion; pathname: string }) {
-  const GrupoIcon = grupo.icon;
-  return (
-    // defaultOpen: los tres grupos empiezan desplegados — con 3-4 items cada
-    // uno, ocultarlos de entrada solo añadiría un clic para llegar a algo
-    // que antes estaba siempre a la vista.
-    <Collapsible defaultOpen className="group/collapsible">
-      <SidebarMenuItem>
-        {/* El encabezado de grupo solo alterna abierto/cerrado, no navega:
-            un hover en azul sólido ahí sugiere una acción que no es tal.
-            Se anula el hover heredado de sidebarMenuButtonVariants; el
-            chevron ya avisa de que es interactivo. */}
-        <SidebarMenuButton
-          tooltip={grupo.titulo}
-          className="hover:bg-transparent hover:text-sidebar-foreground"
-          render={<CollapsibleTrigger className="group/trigger" />}
-        >
-          <GrupoIcon className="text-sidebar-primary" />
-          <span>{grupo.titulo}</span>
-          <ArrowDown2 className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open/trigger:rotate-180" />
-        </SidebarMenuButton>
-        <CollapsibleContent>
-          {/* Indent algo más ajustado que el de shadcn (mx-3.5/px-2.5): a
-              17rem de ancho, "Seguimiento de Facturas" se recortaba con el
-              valor por defecto. La línea conectora va en azul de marca, no
-              en el gris neutro por defecto. */}
-          <SidebarMenuSub className="mx-2 gap-2.5 border-sidebar-primary/55 px-2">
-            {grupo.items.map((item) => {
-              const Icon = item.icon;
-              if (!item.href) {
-                return (
-                  <SidebarMenuSubItem key={item.label}>
-                    <SidebarMenuSubButton className="pointer-events-none opacity-60" aria-disabled>
-                      <Icon />
-                      <span>{item.label}</span>
-                      <span className="ml-auto text-[10px] text-sidebar-foreground/50">pronto</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                );
-              }
-              return (
-                <SidebarMenuSubItem key={item.label}>
-                  <SidebarMenuSubButton isActive={pathname === item.href} render={<Link href={item.href} />}>
-                    <Icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              );
-            })}
-          </SidebarMenuSub>
-        </CollapsibleContent>
-      </SidebarMenuItem>
-    </Collapsible>
-  );
-}
 
 export function AppSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
@@ -159,7 +73,7 @@ export function AppSidebar({ session }: { session: Session | null }) {
                   // llegar al mismo sitio.
                   <ItemDirecto key={grupo.titulo} item={grupo.items[0]} pathname={pathname} />
                 ) : (
-                  <GrupoColapsable key={grupo.titulo} grupo={grupo} pathname={pathname} />
+                  <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} items={grupo.items} pathname={pathname} />
                 )
               )}
             </SidebarMenu>

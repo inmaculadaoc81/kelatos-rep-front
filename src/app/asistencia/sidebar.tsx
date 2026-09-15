@@ -9,86 +9,27 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {
-  Clock,
-  Calendar,
-  ClipboardText,
-  Airplane,
-  Edit2,
-  CalendarRemove,
-  Health,
-  SecuritySafe,
-  DocumentDownload,
-  Setting2,
-  Profile2User,
-  Monitor,
-  ArrowLeft2,
-  Chart,
-  Cpu,
-  Category2,
-  DocumentText,
-} from "@/lib/icons";
+import { GrupoColapsable } from "@/components/sidebar-grupo-colapsable";
+import { ArrowLeft2, Monitor } from "@/lib/icons";
 import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
-
-const ITEMS_KIOSCO = [
-  { href: "/asistencia/kiosk", label: "Fichar", icon: Clock },
-  { href: "/asistencia/kiosk/mes", label: "Mi mes", icon: Calendar },
-  { href: "/asistencia/kiosk/solicitudes", label: "Solicitudes", icon: ClipboardText },
-];
-
-const ITEMS_ADMIN = [
-  { href: "/asistencia/admin/fichajes", label: "Fichajes", icon: Clock },
-  { href: "/asistencia/admin/empleados", label: "Empleados", icon: Profile2User, soloSuperadmin: true },
-  { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
-  { href: "/asistencia/admin/vacaciones", label: "Vacaciones", icon: Airplane },
-  { href: "/asistencia/admin/correcciones", label: "Correcciones", icon: Edit2 },
-  { href: "/asistencia/admin/marcaciones-olvidadas", label: "Marcaciones olvidadas", icon: CalendarRemove },
-  { href: "/asistencia/admin/ausencias-parciales", label: "Ausencias parciales", icon: Health },
-  { href: "/asistencia/admin/auditoria", label: "Auditoría", icon: SecuritySafe },
-  { href: "/asistencia/admin/informe", label: "Informe mensual", icon: DocumentDownload },
-];
-
-/** Dentro de /asistencia/admin/remote-workers/*, el sidebar deja de
-    mostrar Kiosco/Administración y muestra solo esto — es una sección
-    dedicada a empleados remotos, con su propio dashboard y las mismas
-    pantallas de solicitudes que ya existen en Administración
-    (Fichajes/Vacaciones/Correcciones/Marcaciones olvidadas/Ausencias
-    parciales), reutilizadas con un filtro "solo remotos" — no se crea
-    ninguna tabla paralela. */
-const ITEMS_REMOTE_WORKERS = [
-  { href: "/asistencia/admin/remote-workers", label: "Dashboard", icon: Chart },
-  { href: "/asistencia/admin/remote-workers/dispositivos", label: "Dispositivos", icon: Monitor },
-  { href: "/asistencia/admin/remote-workers/agentes", label: "Agentes", icon: Cpu },
-  { href: "/asistencia/admin/remote-workers/categorias", label: "Categorías", icon: Category2 },
-  { href: "/asistencia/admin/remote-workers/reportes", label: "Reportes", icon: DocumentText },
-  // Empleados SÍ se filtra ahora ("solo remotos", ver empleados-view.tsx
-  // con soloRemotos) -- antes enlazaba directo a Administración y sacaba
-  // de esta sección sin avisar, mostrando además a TODOS los empleados
-  // (petición del usuario, 2026-09-15). Horarios sigue sin filtrar: no
-  // hay concepto de "horario remoto", es el mismo calendario para todos.
-  { href: "/asistencia/admin/remote-workers/empleados", label: "Empleados", icon: Profile2User, soloSuperadmin: true },
-  { href: "/asistencia/admin/horarios", label: "Horarios", icon: Setting2 },
-  { href: "/asistencia/admin/remote-workers/fichajes", label: "Fichajes", icon: Clock },
-  { href: "/asistencia/admin/remote-workers/vacaciones", label: "Vacaciones", icon: Airplane },
-  { href: "/asistencia/admin/remote-workers/correcciones", label: "Correcciones", icon: Edit2 },
-  { href: "/asistencia/admin/remote-workers/marcaciones-olvidadas", label: "Marcaciones olvidadas", icon: CalendarRemove },
-  { href: "/asistencia/admin/remote-workers/ausencias-parciales", label: "Ausencias parciales", icon: Health },
-];
+import { GRUPO_KIOSCO, GRUPO_ADMINISTRACION, GRUPO_REMOTE_WORK } from "./navegacion";
 
 /** Puerto del sidebar de la app (mismo componente Sidebar de shadcn ya
     usado en Reparaciones y Transferencias) — dos secciones que aparecen
     según lo que la cuenta pueda usar: "Kiosco" para cualquiera dado de
     alta como empleado que ficha, "Administración" solo para managers.
     Alguien puede ver ambas (p.ej. un admin @kelatos.com que también
-    ficha él mismo). */
+    ficha él mismo). Mismo patrón de grupos colapsables que Reparaciones
+    (GrupoColapsable, ver src/components/sidebar-grupo-colapsable.tsx) —
+    petición del usuario, 2026-09-15: "utiliza el mismo ui de reparaciones
+    en el sidebar". */
 export function AsistenciaSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
   const email = session?.user?.email || "";
@@ -126,9 +67,6 @@ export function AsistenciaSidebar({ session }: { session: Session | null }) {
           </Link>
           <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
         </div>
-        <p className="px-2 pb-1 text-[11px] font-medium text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-          Dashboard Asistencia
-        </p>
       </SidebarHeader>
       <SidebarContent>
         {/* Conmutador de vista — arriba de todo, no como una fila más de
@@ -160,69 +98,34 @@ export function AsistenciaSidebar({ session }: { session: Session | null }) {
           </SidebarGroup>
         )}
 
-        {esManager && enRemoteWorkers ? (
-          <SidebarGroup>
-            <SidebarGroupLabel>Remote Work</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1.5">
-                {ITEMS_REMOTE_WORKERS.filter((item) => !item.soloSuperadmin || esSuperadmin(email)).map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton isActive={pathname === item.href} tooltip={item.label} render={<Link href={item.href} />}>
-                        <Icon />
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ) : (
-          <>
-            {tieneKiosco && (
-              <SidebarGroup>
-                <SidebarGroupLabel>Kiosco</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="gap-1.5">
-                    {ITEMS_KIOSCO.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton isActive={pathname === item.href} tooltip={item.label} render={<Link href={item.href} />}>
-                            <Icon />
-                            <span>{item.label}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
-            {esManager && (
-              <SidebarGroup>
-                <SidebarGroupLabel>Administración</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu className="gap-1.5">
-                    {ITEMS_ADMIN.filter((item) => !item.soloSuperadmin || esSuperadmin(email)).map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton isActive={pathname === item.href} tooltip={item.label} render={<Link href={item.href} />}>
-                            <Icon />
-                            <span>{item.label}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
-          </>
-        )}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1.5">
+              {esManager && enRemoteWorkers ? (
+                <GrupoColapsable
+                  titulo={GRUPO_REMOTE_WORK.titulo}
+                  icon={GRUPO_REMOTE_WORK.icon}
+                  items={GRUPO_REMOTE_WORK.items.filter((item) => !item.soloSuperadmin || esSuperadmin(email))}
+                  pathname={pathname}
+                />
+              ) : (
+                <>
+                  {tieneKiosco && (
+                    <GrupoColapsable titulo={GRUPO_KIOSCO.titulo} icon={GRUPO_KIOSCO.icon} items={GRUPO_KIOSCO.items} pathname={pathname} />
+                  )}
+                  {esManager && (
+                    <GrupoColapsable
+                      titulo={GRUPO_ADMINISTRACION.titulo}
+                      icon={GRUPO_ADMINISTRACION.icon}
+                      items={GRUPO_ADMINISTRACION.items.filter((item) => !item.soloSuperadmin || esSuperadmin(email))}
+                      pathname={pathname}
+                    />
+                  )}
+                </>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <NavUser session={session} />
     </Sidebar>
