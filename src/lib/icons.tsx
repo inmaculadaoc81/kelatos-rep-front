@@ -59,6 +59,7 @@ export const Chart = withDefaults(Iconsax.Chart);
 export const ClipboardText = withDefaults(Iconsax.ClipboardText);
 export const ClipboardTick = withDefaults(Iconsax.ClipboardTick);
 export const Clock = withDefaults(Iconsax.Clock);
+export const Code = withDefaults(Iconsax.Code);
 export const CloseCircle = withDefaults(Iconsax.CloseCircle);
 export const CloseSquare = withDefaults(Iconsax.CloseSquare);
 export const Copy = withDefaults(Iconsax.Copy);

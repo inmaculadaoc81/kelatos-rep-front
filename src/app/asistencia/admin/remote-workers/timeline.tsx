@@ -17,7 +17,12 @@ export function Timeline({ eventos }: { eventos: RemoteWindowEvent[] }) {
   return (
     <ol className="space-y-0">
       {eventos.map((ev, i) => (
-        <li key={i} className="flex gap-3 border-l-2 border-border py-2 pl-3">
+        // Clave anclada a datos reales (no solo el índice): si la lista se
+        // refresca con eventos reordenados, un key={i} reutilizaría el
+        // componente AppIcon de otra fila con su estado "fallo" ya en true,
+        // mostrando el icono de repuesto (Monitor) aunque el logo nuevo sí
+        // cargara bien. Bug real sospechado, 2026-09-15.
+        <li key={`${ev.startedAt}-${ev.application}-${i}`} className="flex gap-3 border-l-2 border-border py-2 pl-3">
           <span className="w-12 shrink-0 text-xs tabular-nums text-muted-foreground">{hora(ev.startedAt)}</span>
           <AppIcon applicationName={ev.application} windowTitle={ev.windowTitle} className="mt-0.5 size-4 shrink-0" />
           <div className="min-w-0 flex-1">

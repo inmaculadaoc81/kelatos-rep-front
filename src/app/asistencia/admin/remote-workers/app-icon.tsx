@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Monitor, DocumentText, Gallery, SearchNormal1, Magicpen, type Icon } from "@/lib/icons";
+import { Monitor, DocumentText, Gallery, SearchNormal1, Magicpen, Code, type Icon } from "@/lib/icons";
 
 /**
  * Logo REAL de la app (color oficial de marca, via cdn.simpleicons.org)
@@ -10,31 +10,31 @@ import { Monitor, DocumentText, Gallery, SearchNormal1, Magicpen, type Icon } fr
  * cae a un icono neutro (Monitor) en vez de inventar una marca que no
  * corresponde. Mapa curado a mano con los ejecutables mas comunes en un
  * puesto de oficina/desarrollo — no pretende cubrir todo.
+ *
+ * Verificado uno a uno contra el paquete `simple-icons` (2026-09-15,
+ * v16.31.0): Microsoft, Adobe, Slack y Canva retiraron sus marcas de
+ * Simple Icons en algún momento — msedge/outlook/teams/slack/skype/
+ * code(VS Code)/devenv(Visual Studio)/windowsterminal/powershell/canva/
+ * winword/excel/powerpnt/onenote/onedrive/acrobat/photoshop/explorer(
+ * Windows) apuntaban todos a slugs que ya no existen (404 silencioso,
+ * caían al Monitor genérico sin que se notara por qué). Se quitan del
+ * todo en vez de dejar una petición que siempre falla.
  */
 const EXE_ICON_SLUG: Record<string, string> = {
   "chrome.exe": "googlechrome",
   "firefox.exe": "firefox",
-  "msedge.exe": "microsoftedge",
   "brave.exe": "brave",
   "opera.exe": "opera",
   "vivaldi.exe": "vivaldi",
   "chromium.exe": "googlechrome",
 
-  "outlook.exe": "microsoftoutlook",
-  "teams.exe": "microsoftteams",
-  "slack.exe": "slack",
   "discord.exe": "discord",
   "whatsapp.exe": "whatsapp",
   "whatsapp.root.exe": "whatsapp",
   "telegram.exe": "telegram",
-  "skype.exe": "skype",
   "zoom.exe": "zoom",
   "thunderbird.exe": "thunderbird",
 
-  "code.exe": "visualstudiocode",
-  "devenv.exe": "visualstudio",
-  "windowsterminal.exe": "windowsterminal",
-  "powershell.exe": "powershell",
   "pycharm64.exe": "pycharm",
   "idea64.exe": "intellijidea",
   "sublime_text.exe": "sublimetext",
@@ -48,19 +48,10 @@ const EXE_ICON_SLUG: Record<string, string> = {
   "notion.exe": "notion",
   "obsidian.exe": "obsidian",
   "evernote.exe": "evernote",
-  "canva.exe": "canva",
 
-  "winword.exe": "microsoftword",
-  "excel.exe": "microsoftexcel",
-  "powerpnt.exe": "microsoftpowerpoint",
-  "onenote.exe": "microsoftonenote",
-  "onedrive.exe": "onedrive",
   "googledrivefs.exe": "googledrive",
   "dropbox.exe": "dropbox",
 
-  "acrobat.exe": "adobeacrobatreader",
-  "acrord32.exe": "adobeacrobatreader",
-  "photoshop.exe": "adobephotoshop",
   "vlc.exe": "vlcmediaplayer",
 
   "spotify.exe": "spotify",
@@ -73,23 +64,27 @@ const EXE_ICON_SLUG: Record<string, string> = {
   "vmware.exe": "vmware",
   "anydesk.exe": "anydesk",
   "teamviewer.exe": "teamviewer",
-
-  "explorer.exe": "windows",
 };
 
-/** Ejecutables sin marca propia real (utilidades del propio Windows, no
-    "productos" con logo) — no hay icono de Simple Icons honesto para
-    estos, así que en vez de caer siempre al Monitor neutro se usa un
+/** Ejecutables sin logo de marca disponible en Simple Icons — utilidades
+    del propio Windows sin "producto" con marca (Notepad, Snipping Tool,
+    búsqueda, Copilot), o marcas que Simple Icons retiró (VS Code,
+    Visual Studio, PowerShell, Windows Terminal, cmd — ver comentario de
+    EXE_ICON_SLUG). En vez de caer siempre al Monitor neutro se usa un
     icono genérico algo más descriptivo de qué hace la herramienta.
-    Añadido tras revisar el registro real de actividad (Gean Paul,
-    2026-09-15): Notepad/Snipping Tool/Search/Copilot aparecían todos
-    como el mismo Monitor sin distinguirse entre sí. */
+    Añadido/revisado tras el registro real de actividad (Gean Paul,
+    2026-09-15). */
 const EXE_ICON_FALLBACK: Record<string, Icon> = {
   "notepad.exe": DocumentText,
   "snippingtool.exe": Gallery,
   "screenclippinghost.exe": Gallery,
   "searchhost.exe": SearchNormal1,
   "m365copilot.exe": Magicpen,
+  "code.exe": Code,
+  "devenv.exe": Code,
+  "powershell.exe": Code,
+  "windowsterminal.exe": Code,
+  "cmd.exe": Code,
 };
 
 const NAVEGADORES = new Set(["chrome.exe", "firefox.exe", "msedge.exe", "brave.exe", "opera.exe", "vivaldi.exe", "chromium.exe"]);
