@@ -30,6 +30,34 @@ function horasSemana(franjas: Franja[]): number {
   return franjas.reduce((acc, f) => acc + Math.max(0, f.hour_to - f.hour_from), 0);
 }
 
+/** Diferencia horaria España→Perú EN ESTE INSTANTE (Perú no tiene horario
+    de verano, España sí — la diferencia real es de 6h en invierno y 7h en
+    verano). Se recalcula con la hora actual en vez de guardarse fija, así
+    la comparativa se autoajusta sola cuando España cambia de hora, sin
+    tener que tocar nada dos veces al año. Petición del usuario,
+    2026-09-15: mostrar los horarios "en comparativa" con banderas de
+    España y Perú, porque los horarios guardados son siempre hora de
+    España (ver MADRID_TZ_EXPR en el backend) y el equipo remoto está en
+    Perú. */
+function diferenciaHorasEspanaPeru(): number {
+  const ahora = new Date();
+  const horaEn = (tz: string) => {
+    const partes = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(ahora);
+    const h = Number(partes.find((p) => p.type === "hour")?.value ?? 0);
+    const m = Number(partes.find((p) => p.type === "minute")?.value ?? 0);
+    return h + m / 60;
+  };
+  let diff = horaEn("Europe/Madrid") - horaEn("America/Lima");
+  if (diff > 12) diff -= 24;
+  if (diff < -12) diff += 24;
+  return diff;
+}
+
+function horaEspanaAPeru(horaDecimal: number, diferencia: number): string {
+  const h = ((horaDecimal - diferencia) % 24 + 24) % 24;
+  return decimalAHHMM(h);
+}
+
 /** Panel "Horarios" — equivale a resource.calendar de Odoo: plantillas
     semanales asignables a empleados. Sin esto, "Horas extras" en el
     informe/detalle de fichaje no tiene un horario pactado real con el que
@@ -235,6 +263,7 @@ function CalendarioCard({
 
   const disponibles = empleados.filter((e) => e.resource_calendar_id !== calendario.id);
   const cambioSinGuardar = JSON.stringify(franjas) !== JSON.stringify(calendario.franjas);
+  const diferenciaPeru = diferenciaHorasEspanaPeru();
 
   return (
     <Card>
@@ -250,9 +279,18 @@ function CalendarioCard({
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Clock className="size-3.5" /> Franjas semanales · {horasSemana(franjas).toFixed(1)} h/semana
           </p>
+          {/* Lo guardado siempre es hora de España (así lo interpreta el
+              backend, ver MADRID_TZ_EXPR) — la columna 🇵🇪 es solo una
+              comparativa calculada al vuelo con la hora actual, para
+              equipos en Perú. No se guarda nada en Perú, así que se
+              autoajusta sola con el cambio de hora en España. */}
+          <p className="flex items-center gap-3 text-[10px] text-muted-foreground/70">
+            <span>🇪🇸 España (guardado)</span>
+            <span>🇵🇪 Perú (equivalente ahora)</span>
+          </p>
           <div className="space-y-1.5">
             {franjas.map((f, idx) => (
-              <div key={idx} className="flex items-center gap-1.5">
+              <div key={idx} className="flex flex-wrap items-center gap-1.5">
                 <Select value={f.dayofweek} onValueChange={(v) => actualizarFranja(idx, { dayofweek: v || f.dayofweek })}>
                   <SelectTrigger className="h-8 w-28 text-xs"><SelectValue>{(v: string) => DIAS[Number(v)] || v}</SelectValue></SelectTrigger>
                   <SelectContent>
@@ -262,6 +300,9 @@ function CalendarioCard({
                 <input type="time" className="h-8 w-24 rounded-md border border-input bg-background px-2 text-xs" value={decimalAHHMM(f.hour_from)} onChange={(e) => actualizarFranja(idx, { hour_from: hhmmADecimal(e.target.value) })} />
                 <span className="text-xs text-muted-foreground">a</span>
                 <input type="time" className="h-8 w-24 rounded-md border border-input bg-background px-2 text-xs" value={decimalAHHMM(f.hour_to)} onChange={(e) => actualizarFranja(idx, { hour_to: hhmmADecimal(e.target.value) })} />
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                  🇵🇪 {horaEspanaAPeru(f.hour_from, diferenciaPeru)}–{horaEspanaAPeru(f.hour_to, diferenciaPeru)}
+                </span>
                 <Button variant="ghost" size="icon-sm" onClick={() => quitarFranja(idx)}>
                   <Trash className="size-3.5 text-muted-foreground" />
                 </Button>
