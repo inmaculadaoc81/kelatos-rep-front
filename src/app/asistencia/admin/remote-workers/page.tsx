@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Monitor, Profile2User, Chart, Danger } from "@/lib/icons";
+import { Monitor, Profile2User, Chart, Danger, Clock, Edit2 } from "@/lib/icons";
 import { EstadoActividadPill } from "../../pills";
+import { AppIcon } from "./app-icon";
 import {
   type RemoteWorkerListItem,
   type RemoteWorkersDashboard,
@@ -119,58 +119,93 @@ export default function RemoteWorkersPage() {
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Empleado</TableHead>
-              <TableHead>Equipo</TableHead>
-              <TableHead>Estado actual</TableHead>
-              <TableHead>Horario</TableHead>
-              <TableHead>Activo hoy</TableHead>
-              <TableHead>Descanso</TableHead>
-              <TableHead>Productividad</TableHead>
-              <TableHead>Última actividad</TableHead>
-              <TableHead>Resumen del día</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {cargando && Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 9 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
-            ))}
-            {!cargando && dispositivos.length === 0 && (
-              <TableRow><TableCell colSpan={9} className="py-8 text-center text-muted-foreground">Todavía no ha sincronizado ningún dispositivo.</TableCell></TableRow>
-            )}
-            {!cargando && dispositivos.map((d) => {
-              // Productividad por horario si tiene calendario asignado;
-              // si no, cae a la técnica (activo/(activo+inactivo)) —
-              // mismo criterio que en el detalle del dispositivo.
-              const productividad = d.productividadHorario ?? calcularProductividad(d.activeSecondsHoy, d.idleSecondsHoy);
-              return (
-                <TableRow
-                  key={d.deviceId}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/asistencia/admin/remote-workers/${d.deviceId}`)}
-                >
-                  <TableCell className="font-medium">
-                    {d.empleadoNombre || <span className="text-muted-foreground">Sin asignar</span>}
-                  </TableCell>
-                  <TableCell className="text-sm">{d.hostname}</TableCell>
-                  <TableCell><EstadoActividadPill estado={d.estadoActividad} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{d.horarioLabel || "—"}</TableCell>
-                  <TableCell className="text-sm">{formatDuracion(d.activeSecondsHoy)}</TableCell>
-                  <TableCell className="text-sm">{d.descansoSegHoy > 0 ? formatDuracion(d.descansoSegHoy) : "—"}</TableCell>
-                  <TableCell className="text-sm">{productividad == null ? "—" : `${productividad}%`}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{hace(d.lastSeen)}</TableCell>
-                  <TableCell className="max-w-48 truncate text-sm text-muted-foreground" title={d.resumenDia || undefined}>
-                    {d.resumenDia || "—"}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Tarjeta por empleado en vez de tabla ancha: lo importante (estado,
+          actividad de hoy, resumen escrito) se ve entero de un vistazo, sin
+          celdas cortadas que obligan a pasar el ratón para leer nada.
+          Petición del usuario, 2026-09-16: "que en dashboard se vea
+          información útil más resumida [...] tiene que salir los
+          resúmenes de cada empleado ese día (actividad) y también el
+          mensaje de su resumen escrito". */}
+      {cargando && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
+        </div>
+      )}
+
+      {!cargando && dispositivos.length === 0 && (
+        <div className="rounded-lg border bg-card py-10 text-center text-sm text-muted-foreground">
+          Todavía no ha sincronizado ningún dispositivo.
+        </div>
+      )}
+
+      {!cargando && dispositivos.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {dispositivos.map((d) => {
+            // Productividad por horario si tiene calendario asignado; si
+            // no, cae a la técnica (activo/(activo+inactivo)) — mismo
+            // criterio que en el detalle del dispositivo.
+            const productividad = d.productividadHorario ?? calcularProductividad(d.activeSecondsHoy, d.idleSecondsHoy);
+            return (
+              <Card
+                key={d.deviceId}
+                className="cursor-pointer transition-colors hover:border-primary/40"
+                onClick={() => router.push(`/asistencia/admin/remote-workers/${d.deviceId}`)}
+              >
+                <CardContent className="space-y-3 pt-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {d.empleadoNombre || <span className="text-muted-foreground">Sin asignar</span>}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{d.hostname}</p>
+                    </div>
+                    <EstadoActividadPill estado={d.estadoActividad} />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/40 p-2 text-center">
+                    <div>
+                      <p className="text-sm font-semibold">{formatDuracion(d.activeSecondsHoy)}</p>
+                      <p className="text-[10px] text-muted-foreground">Activo hoy</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{productividad == null ? "—" : `${productividad}%`}</p>
+                      <p className="text-[10px] text-muted-foreground">Productividad</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{d.descansoSegHoy > 0 ? formatDuracion(d.descansoSegHoy) : "—"}</p>
+                      <p className="text-[10px] text-muted-foreground">Descanso</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <p className="flex items-center gap-1.5">
+                      <Clock className="size-3.5 shrink-0" /> {d.horarioLabel || "Sin horario asignado"}
+                    </p>
+                    <p>Última actividad: {hace(d.lastSeen)}</p>
+                    {d.appPrincipal && (
+                      <p className="flex items-center gap-1.5">
+                        <AppIcon applicationName={d.appPrincipal} className="size-3.5 shrink-0" /> App principal: {d.appPrincipal}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Lo que el empleado escribió al fichar la salida —
+                      siempre visible (no truncado a una línea), con un
+                      estado neutro cuando todavía no ha fichado. */}
+                  <div className="rounded-md border bg-muted/20 p-2">
+                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                      <Edit2 className="size-3" /> Resumen del día
+                    </p>
+                    <p className={`text-xs ${d.resumenDia ? "" : "text-muted-foreground italic"}`}>
+                      {d.resumenDia || "Sin resumen todavía"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
