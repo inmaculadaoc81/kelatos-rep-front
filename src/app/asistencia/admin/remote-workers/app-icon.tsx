@@ -4,21 +4,30 @@ import { useState } from "react";
 import { Monitor, DocumentText, Gallery, SearchNormal1, Magicpen, Code, type Icon } from "@/lib/icons";
 
 /**
- * Logo REAL de la app (color oficial de marca, via cdn.simpleicons.org)
- * para ejecutables reconocidos — nunca un icono generico puesto "porque
- * sí". Si el ejecutable no está en el mapa (o el logo falla al cargar),
- * cae a un icono neutro (Monitor) en vez de inventar una marca que no
- * corresponde. Mapa curado a mano con los ejecutables mas comunes en un
- * puesto de oficina/desarrollo — no pretende cubrir todo.
+ * Logo REAL de la app (color oficial de marca) para ejecutables
+ * reconocidos — nunca un icono generico puesto "porque sí". Si el
+ * ejecutable no está en el mapa cae a un icono neutro (Monitor) en vez de
+ * inventar una marca que no corresponde. Mapa curado a mano con los
+ * ejecutables mas comunes en un puesto de oficina/desarrollo — no
+ * pretende cubrir todo.
+ *
+ * Los SVG viven en local (public/logos/brands/, generados una vez desde
+ * el paquete `simple-icons` — ver historial de commits) en vez de pedirse
+ * a cdn.simpleicons.org: en producción (Hostinger) esa CDN no cargaba de
+ * forma fiable (bloqueada/lenta según el bloqueador de anuncios o la red
+ * del que mira la página) y todos los logos caían en silencio al Monitor
+ * genérico. Petición del usuario, 2026-09-15: "mejor busca la imagen...
+ * y la pones" — en vez de PNGs sueltos de una búsqueda, se generaron SVG
+ * con el path y el color de marca OFICIALES de Simple Icons, sin
+ * depender de ningún servicio externo.
  *
  * Verificado uno a uno contra el paquete `simple-icons` (2026-09-15,
  * v16.31.0): Microsoft, Adobe, Slack y Canva retiraron sus marcas de
  * Simple Icons en algún momento — msedge/outlook/teams/slack/skype/
  * code(VS Code)/devenv(Visual Studio)/windowsterminal/powershell/canva/
  * winword/excel/powerpnt/onenote/onedrive/acrobat/photoshop/explorer(
- * Windows) apuntaban todos a slugs que ya no existen (404 silencioso,
- * caían al Monitor genérico sin que se notara por qué). Se quitan del
- * todo en vez de dejar una petición que siempre falla.
+ * Windows) ya no tienen marca disponible ahí. Se quitan del mapa en vez
+ * de generar un SVG que no correspondería a la marca real.
  */
 const EXE_ICON_SLUG: Record<string, string> = {
   "chrome.exe": "googlechrome",
@@ -154,9 +163,9 @@ export function AppIcon({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- logo de marca externo (Simple Icons), no un asset del proyecto
+    // eslint-disable-next-line @next/next/no-img-element -- icono pequeño de tamaño variable (className), no encaja bien con next/image
     <img
-      src={`https://cdn.simpleicons.org/${slug}`}
+      src={`/logos/brands/${slug}.svg`}
       alt=""
       className={className}
       onError={() => setFallo(true)}
