@@ -12,10 +12,23 @@ import { Add, Trash, Save2, Clock, Setting2 } from "@/lib/icons";
 
 interface Franja { dayofweek: string; hour_from: number; hour_to: number; }
 interface EmpleadoResumen { id: number; nombre: string; }
-interface Calendario { id: number; nombre: string; franjas: Franja[]; empleados: EmpleadoResumen[]; }
+interface Calendario { id: number; nombre: string; zona_horaria: string; franjas: Franja[]; empleados: EmpleadoResumen[]; }
 interface Empleado { id: number; nombre: string; resource_calendar_id: number | null }
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+interface ZonaInfo { value: string; label: string; bandera: string; }
+const ZONAS: ZonaInfo[] = [
+  { value: "Europe/Madrid", label: "España", bandera: "🇪🇸" },
+  { value: "America/Lima", label: "Perú", bandera: "🇵🇪" },
+];
+
+function zonaInfo(zona: string): ZonaInfo {
+  return ZONAS.find((z) => z.value === zona) ?? ZONAS[0];
+}
+function otraZona(zona: string): ZonaInfo {
+  return zona === ZONAS[1].value ? ZONAS[0] : ZONAS[1];
+}
 
 function decimalAHHMM(h: number): string {
   const hh = Math.trunc(h);
@@ -30,16 +43,15 @@ function horasSemana(franjas: Franja[]): number {
   return franjas.reduce((acc, f) => acc + Math.max(0, f.hour_to - f.hour_from), 0);
 }
 
-/** Diferencia horaria España→Perú EN ESTE INSTANTE (Perú no tiene horario
-    de verano, España sí — la diferencia real es de 6h en invierno y 7h en
-    verano). Se recalcula con la hora actual en vez de guardarse fija, así
-    la comparativa se autoajusta sola cuando España cambia de hora, sin
-    tener que tocar nada dos veces al año. Petición del usuario,
-    2026-09-15: mostrar los horarios "en comparativa" con banderas de
-    España y Perú, porque los horarios guardados son siempre hora de
-    España (ver MADRID_TZ_EXPR en el backend) y el equipo remoto está en
-    Perú. */
-function diferenciaHorasEspanaPeru(): number {
+/** Diferencia horaria EN ESTE INSTANTE entre dos zonas (Perú no tiene
+    horario de verano, España sí — la diferencia real es de 6h en invierno
+    y 7h en verano). Se recalcula con la hora actual en vez de guardarse
+    fija, así la comparativa se autoajusta sola cuando España cambia de
+    hora, sin tener que tocar nada dos veces al año. Petición del usuario,
+    2026-09-15: cada horario se guarda en SU propia zona (ver zona_horaria
+    en el backend, migración 099) y la web solo muestra al lado la
+    conversión a la otra zona — no es un horario nuevo, es el mismo. */
+function diferenciaHorasEntreZonas(zonaA: string, zonaB: string): number {
   const ahora = new Date();
   const horaEn = (tz: string) => {
     const partes = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(ahora);
@@ -47,13 +59,13 @@ function diferenciaHorasEspanaPeru(): number {
     const m = Number(partes.find((p) => p.type === "minute")?.value ?? 0);
     return h + m / 60;
   };
-  let diff = horaEn("Europe/Madrid") - horaEn("America/Lima");
+  let diff = horaEn(zonaA) - horaEn(zonaB);
   if (diff > 12) diff -= 24;
   if (diff < -12) diff += 24;
   return diff;
 }
 
-function horaEspanaAPeru(horaDecimal: number, diferencia: number): string {
+function convertirHora(horaDecimal: number, diferencia: number): string {
   const h = ((horaDecimal - diferencia) % 24 + 24) % 24;
   return decimalAHHMM(h);
 }
@@ -68,6 +80,7 @@ export default function HorariosPage() {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [cargando, setCargando] = useState(true);
   const [nombreNuevo, setNombreNuevo] = useState("");
+  const [zonaNueva, setZonaNueva] = useState(ZONAS[0].value);
   const [creando, setCreando] = useState(false);
   const confirm = useConfirm();
 
@@ -94,7 +107,7 @@ export default function HorariosPage() {
       const res = await fetch("/api/asistencia/admin/calendarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombreNuevo.trim() }),
+        body: JSON.stringify({ nombre: nombreNuevo.trim(), zonaHoraria: zonaNueva }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -128,12 +141,18 @@ export default function HorariosPage() {
       <div>
         <h1 className="text-lg font-semibold">Horarios</h1>
         <p className="text-xs text-muted-foreground">
-          Plantillas semanales asignadas a cada empleado — el "Total Horas"/"Horas extras" de fichajes e informes se calculan contra esto.
+          Plantillas semanales asignadas a cada empleado — el "Total Horas"/"Horas extras" de fichajes e informes se calculan contra esto. Cada horario se guarda en la hora local del empleado (España o Perú); la web muestra al lado la conversión a la otra zona.
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Input placeholder="Nombre del nuevo horario (p. ej. Turno 08:00–17:00)" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} className="max-w-xs" />
+        <Select value={zonaNueva} onValueChange={(v) => setZonaNueva(v || ZONAS[0].value)}>
+          <SelectTrigger className="w-36"><SelectValue>{(v: string) => `${zonaInfo(v).bandera} ${zonaInfo(v).label}`}</SelectValue></SelectTrigger>
+          <SelectContent>
+            {ZONAS.map((z) => <SelectItem key={z.value} value={z.value}>{z.bandera} {z.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Button size="sm" className="gap-1.5" disabled={creando} onClick={crearCalendario}>
           <Add className="size-3.5" /> {creando ? "Creando…" : "Nuevo horario"}
         </Button>
@@ -176,6 +195,7 @@ function CalendarioCard({
   const [franjas, setFranjas] = useState<Franja[]>(calendario.franjas.map((f) => ({ ...f })));
   const [guardando, setGuardando] = useState(false);
   const [asignando, setAsignando] = useState(false);
+  const [cambiandoZona, setCambiandoZona] = useState(false);
 
   useEffect(() => { setNombre(calendario.nombre); setFranjas(calendario.franjas.map((f) => ({ ...f }))); }, [calendario]);
 
@@ -204,6 +224,26 @@ function CalendarioCard({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
       setNombre(calendario.nombre);
+    }
+  }
+
+  async function cambiarZona(zona: string | null) {
+    if (!zona || zona === calendario.zona_horaria) return;
+    setCambiandoZona(true);
+    try {
+      const res = await fetch(`/api/asistencia/admin/calendarios/${calendario.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ zonaHoraria: zona }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Zona horaria actualizada");
+      onCambiado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setCambiandoZona(false);
     }
   }
 
@@ -263,14 +303,22 @@ function CalendarioCard({
 
   const disponibles = empleados.filter((e) => e.resource_calendar_id !== calendario.id);
   const cambioSinGuardar = JSON.stringify(franjas) !== JSON.stringify(calendario.franjas);
-  const diferenciaPeru = diferenciaHorasEspanaPeru();
+  const zonaPropia = zonaInfo(calendario.zona_horaria);
+  const zonaOtra = otraZona(calendario.zona_horaria);
+  const diferencia = diferenciaHorasEntreZonas(calendario.zona_horaria, zonaOtra.value);
 
   return (
     <Card>
       <CardContent className="space-y-4 pt-5">
         <div className="flex items-center justify-between gap-2">
-          <Input value={nombre} onChange={(e) => setNombre(e.target.value)} onBlur={guardarNombre} className="h-8 max-w-56 font-medium" />
-          <Button variant="ghost" size="icon-sm" onClick={onEliminar} title="Eliminar horario">
+          <Input value={nombre} onChange={(e) => setNombre(e.target.value)} onBlur={guardarNombre} className="h-8 max-w-40 font-medium" />
+          <Select value={calendario.zona_horaria} onValueChange={cambiarZona} disabled={cambiandoZona}>
+            <SelectTrigger className="h-8 w-32 text-xs"><SelectValue>{(v: string) => `${zonaInfo(v).bandera} ${zonaInfo(v).label}`}</SelectValue></SelectTrigger>
+            <SelectContent>
+              {ZONAS.map((z) => <SelectItem key={z.value} value={z.value}>{z.bandera} {z.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" size="icon-sm" onClick={onEliminar} title="Eliminar horario" className="ml-auto">
             <Trash className="size-4 text-destructive" />
           </Button>
         </div>
@@ -279,14 +327,13 @@ function CalendarioCard({
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Clock className="size-3.5" /> Franjas semanales · {horasSemana(franjas).toFixed(1)} h/semana
           </p>
-          {/* Lo guardado siempre es hora de España (así lo interpreta el
-              backend, ver MADRID_TZ_EXPR) — la columna 🇵🇪 es solo una
-              comparativa calculada al vuelo con la hora actual, para
-              equipos en Perú. No se guarda nada en Perú, así que se
-              autoajusta sola con el cambio de hora en España. */}
+          {/* Lo guardado es la hora local del propio calendario (zonaPropia)
+              — la otra columna es solo una comparativa calculada al vuelo
+              con la hora actual, no se guarda nada en esa zona. Mismo
+              horario, dos lecturas. */}
           <p className="flex items-center gap-3 text-[10px] text-muted-foreground/70">
-            <span>🇪🇸 España (guardado)</span>
-            <span>🇵🇪 Perú (equivalente ahora)</span>
+            <span>{zonaPropia.bandera} {zonaPropia.label} (guardado)</span>
+            <span>{zonaOtra.bandera} {zonaOtra.label} (equivalente ahora)</span>
           </p>
           <div className="space-y-1.5">
             {franjas.map((f, idx) => (
@@ -301,7 +348,7 @@ function CalendarioCard({
                 <span className="text-xs text-muted-foreground">a</span>
                 <input type="time" className="h-8 w-24 rounded-md border border-input bg-background px-2 text-xs" value={decimalAHHMM(f.hour_to)} onChange={(e) => actualizarFranja(idx, { hour_to: hhmmADecimal(e.target.value) })} />
                 <span className="whitespace-nowrap text-xs text-muted-foreground">
-                  🇵🇪 {horaEspanaAPeru(f.hour_from, diferenciaPeru)}–{horaEspanaAPeru(f.hour_to, diferenciaPeru)}
+                  {zonaOtra.bandera} {convertirHora(f.hour_from, diferencia)}–{convertirHora(f.hour_to, diferencia)}
                 </span>
                 <Button variant="ghost" size="icon-sm" onClick={() => quitarFranja(idx)}>
                   <Trash className="size-3.5 text-muted-foreground" />
