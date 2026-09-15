@@ -34,6 +34,7 @@ interface RespuestaSubida {
   estado: "Pendiente" | "Conciliada";
   ambiguo?: boolean;
   duplicado?: boolean;
+  confianzaBaja?: boolean;
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ resguardo: string }> }) {
@@ -78,6 +79,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ resguar
       estado: resultado.estado,
       ambiguo: !!resultado.ambiguo,
       duplicado: !!resultado.duplicado,
+      confianzaBaja: !!resultado.confianzaBaja,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";

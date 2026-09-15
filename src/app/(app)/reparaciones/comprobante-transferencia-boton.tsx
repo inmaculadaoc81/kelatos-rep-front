@@ -125,6 +125,12 @@ export function ComprobanteTransferenciaBoton({ detalle, onActualizado }: { deta
       } else {
         toast.success("Comprobante subido — pendiente de conciliar con el banco");
       }
+      // Mismo aviso que ya manda el bot de Telegram cuando la IA no estaba
+      // muy segura de la lectura ("⚠️ Confianza baja. Verifica los datos
+      // manualmente.") — antes se perdía sin más en el camino del dashboard.
+      if (data.confianzaBaja && !data.duplicado) {
+        toast.warning("Confianza baja en la lectura del comprobante — verifica los datos manualmente");
+      }
       cargar();
       // El evento nuevo queda en el Historial de la reparación (kelatos_app.historial,
       // mismo dato que ya trae detalle.historialEventos) — sin esto la pestaña
