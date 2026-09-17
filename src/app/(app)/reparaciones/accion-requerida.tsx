@@ -512,14 +512,15 @@ export function AccionRequerida({
     //   reparación igual genera un cobro de logística).
     const garantiaConRecojo = estado === "Reparado" && detalle.tipoIngreso === "GARANTIA" && detalle.tipoRecepcion === "ENVIO";
     const mensajeriaPendiente = detalle.entregaMensajeria === "SI";
-
-    if (mensajeriaPendiente) {
-      botones.push(
-        <Button key="marcar-enviado" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onMarcarEnviadoRapido}>
-          <TickCircle className="size-3.5" /> Marcar como enviado
-        </Button>
-      );
-    }
+    // Se pushea al final del bloque (tras Facturación/Ticket Rápido si los
+    // hay): "Marcar como enviado" es el atajo rápido, va en tercera
+    // posición para que Facturación/Ticket queden primero. Petición del
+    // usuario, 2026-09-17.
+    const marcarEnviadoBtn = mensajeriaPendiente ? (
+      <Button key="marcar-enviado" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onMarcarEnviadoRapido}>
+        <TickCircle className="size-3.5" /> Marcar como enviado
+      </Button>
+    ) : null;
 
     if (!mensajeriaPendiente) {
       botones.push(
@@ -556,7 +557,6 @@ export function AccionRequerida({
         <Button
           key="facturacion-mensajeria"
           size="sm"
-          variant="outline"
           className="gap-1.5"
           onClick={callbacks.onFacturacion}
           disabled={!detalle.numeroFactura && !!detalle.numeroTicket}
@@ -579,6 +579,7 @@ export function AccionRequerida({
         </Button>
       );
     }
+    if (marcarEnviadoBtn) botones.push(marcarEnviadoBtn);
     // A diferencia del original, ahora también se ofrece con el equipo
     // "Reparado" — un equipo reparado que nunca se recoge también puede
     // acabar en punto limpio (petición explícita del usuario, 2026-08-22).
