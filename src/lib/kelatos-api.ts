@@ -13,6 +13,26 @@ if (!BASE_URL || !TOKEN) {
   );
 }
 
+/** El backend normalmente responde JSON, pero un 429 del rate limiter
+ * (express-rate-limit) o un error de gateway/proxy delante del API pueden
+ * devolver texto plano — hacer `res.json()` directo sobre eso explota con
+ * un "Unexpected token..." que confunde más que ayuda. Se lee como texto
+ * primero y solo si no es JSON válido se arma un mensaje claro. Bug real
+ * reportado, 2026-09-17: el dashboard de Reparaciones mostraba
+ * "Unexpected token 'T', 'Too many r'... is not valid JSON" en vez de
+ * avisar que había demasiadas solicitudes. */
+async function leerRespuestaApi(res: Response): Promise<unknown> {
+  const texto = await res.text();
+  try {
+    return texto ? JSON.parse(texto) : {};
+  } catch {
+    if (res.status === 429) {
+      throw new Error("Demasiadas solicitudes en poco tiempo — espera un momento e inténtalo de nuevo.");
+    }
+    throw new Error(`Respuesta inválida del servidor (HTTP ${res.status}).`);
+  }
+}
+
 export async function kelatosApiGet<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
   const qs = new URLSearchParams();
   if (params) {
@@ -28,7 +48,7 @@ export async function kelatosApiGet<T>(path: string, params?: Record<string, str
     cache: "no-store",
   });
 
-  const body = await res.json();
+  const body = (await leerRespuestaApi(res)) as { ok?: boolean; error?: string };
   if (!res.ok || body?.ok === false) {
     throw new Error(body?.error || `API HTTP ${res.status}`);
   }
@@ -50,7 +70,7 @@ export async function kelatosApiPost<T>(
     cache: "no-store",
   });
 
-  const body = await res.json();
+  const body = (await leerRespuestaApi(res)) as { ok?: boolean; error?: string };
   if (!res.ok || body?.ok === false) {
     throw new Error(body?.error || `API HTTP ${res.status}`);
   }
