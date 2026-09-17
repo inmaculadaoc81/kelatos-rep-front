@@ -373,12 +373,6 @@ export function DetalleReparacionDialog({
   const [gestionPptosAbierto, setGestionPptosAbierto] = useState(false);
   const [facturaAbierta, setFacturaAbierta] = useState(false);
   const [ticketRapidoAbierto, setTicketRapidoAbierto] = useState(false);
-  const [facturarMensajeriaAbierto, setFacturarMensajeriaAbierto] = useState(false);
-  // "Factura y Enviar por Mensajería" / "Ticket y Enviar por Mensajería" —
-  // dos botones separados, petición del usuario, 2026-09-09 (igual patrón
-  // que "Facturación"/"Ticket Rápido" para Reparado) — reutilizan el mismo
-  // EntregarConFacturaDialog, solo cambia qué documento llega ya elegido.
-  const [tipoDocumentoMensajeria, setTipoDocumentoMensajeria] = useState<"factura" | "ticket">("factura");
   const [anticipoAbierto, setAnticipoAbierto] = useState(false);
   const [editarPedidoAbierto, setEditarPedidoAbierto] = useState(false);
   const [recepcionAbierta, setRecepcionAbierta] = useState(false);
@@ -733,8 +727,6 @@ export function DetalleReparacionDialog({
                   onFinalizar: () => setFinalizarAbierto(true),
                   onMarcarEntregado: () => setEntregaAbierta(true),
                   onEntregadoLocal: () => setEntregaLocalAbierta(true),
-                  onFacturarMensajeria: () => { setTipoDocumentoMensajeria("factura"); setFacturarMensajeriaAbierto(true); },
-                  onTicketMensajeria: () => { setTipoDocumentoMensajeria("ticket"); setFacturarMensajeriaAbierto(true); },
                   onNoCubiertoPorGarantia: noCubiertoPorGarantia,
                   onClienteSeLlevaAnticipo: () => setAnticipoAbierto(true),
                   onClienteSeLoLlevo: () => setClienteSeLoLlevoAbierto(true),
@@ -1009,14 +1001,6 @@ export function DetalleReparacionDialog({
             tipoEntrega="ENTREGADO"
             open={entregaAbierta}
             onOpenChange={setEntregaAbierta}
-            onCompletado={actualizarTodo}
-          />
-          <EntregarConFacturaDialog
-            detalle={detalle}
-            tipoEntrega="ENVIO"
-            tipoDocumentoForzado={tipoDocumentoMensajeria}
-            open={facturarMensajeriaAbierto}
-            onOpenChange={setFacturarMensajeriaAbierto}
             onCompletado={actualizarTodo}
           />
           <EntregarConFacturaDialog

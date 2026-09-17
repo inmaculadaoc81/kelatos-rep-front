@@ -55,8 +55,6 @@ export interface CallbacksAccion {
   onFinalizar: () => void;
   onMarcarEntregado: () => void;
   onEntregadoLocal: () => void;
-  onFacturarMensajeria: () => void;
-  onTicketMensajeria: () => void;
   onNoCubiertoPorGarantia: () => void;
   onClienteSeLlevaAnticipo: () => void;
   onClienteSeLoLlevo: () => void;
@@ -491,33 +489,31 @@ export function AccionRequerida({
   }
   if (ESTADOS_LISTO_ENTREGA.includes(estado) && entregaAbierta) {
     // Reproduce la rama de renderizarAccion() (Index.html) exactamente:
-    // - "Reparado" (no garantía) con devolución por mensajería: la factura
-    //   ya se generó en el flujo normal de Facturación (incluye ahí la
-    //   línea de mensajería), así que solo hace falta el atajo de un clic
-    //   "Marcar como enviado" (marcarEnviadoRapido, sin factura nueva).
-    // - "Reparado"+Garantía con devolución por mensajería: mismo atajo
-    //   "Marcar como enviado" también aquí — petición explícita del
-    //   usuario, 2026-09-15: "tengo este en garantía y no tengo que
-    //   generar ni ticket ni factura" para poder enviarlo. Antes este
-    //   botón se excluía en garantía y la única salida era una de las dos
-    //   de abajo (Factura/Ticket), que obligaban a generar un documento
-    //   solo para registrar el envío.
+    // - Cualquier estado con devolución por mensajería: "Marcar como
+    //   enviado" (marcarEnviadoRapido, sin factura nueva) siempre
+    //   disponible como atajo de un clic — no depende de si ya existe
+    //   factura/ticket. Petición del usuario, 2026-09-15 (para Garantía) y
+    //   2026-09-17 (extendido a "No tiene Reparación"/"Presupuesto
+    //   Rechazado"): "en esos casos no tienen que estar factura con envío
+    //   en un botón... tiene que ser como en otros casos, Facturación,
+    //   Ticket Rápido, Marcar como enviado" — desacoplado en vez de forzar
+    //   generar un documento solo para registrar el envío.
     // - Cualquier caso SIN mensajería: "Entregado en Local" (confirmación
     //   rápida si "Reparado" ya facturado, formulario completo en el resto)
     //   + "QR Recogida", salvo garantía recibida por mensajería que se
     //   recoge en local (_garantiaConRecojo), donde se cobra el trayecto y
     //   no se ofrece QR.
-    // - "Factura y Enviar por Mensajería" / "Ticket y Enviar por
-    //   Mensajería" solo en "No tiene Reparación" / "Presupuesto
-    //   Rechazado" / "Reparado"+Garantía — nunca en un "Reparado" normal,
-    //   porque ahí la mensajería no tiene factura propia por separado.
-    //   Para "Reparado"+Garantía son ahora alternativas OPCIONALES junto a
-    //   "Marcar como enviado": solo hacen falta si además de enviar se
-    //   quiere cobrar el trayecto (p.ej. garantía no cubre el envío).
+    // - "Facturación"/"Ticket Rápido" (los MISMOS botones/diálogos que ya
+    //   existían para "Reparado", ver más abajo) también se ofrecen en
+    //   "No tiene Reparación"/"Presupuesto Rechazado"/"Reparado"+Garantía
+    //   cuando hay mensajería pendiente — opcionales junto a "Marcar como
+    //   enviado", solo hacen falta si además de enviar se quiere cobrar el
+    //   trayecto (p.ej. garantía no cubre el envío, o el punto limpio/no
+    //   reparación igual genera un cobro de logística).
     const garantiaConRecojo = estado === "Reparado" && detalle.tipoIngreso === "GARANTIA" && detalle.tipoRecepcion === "ENVIO";
     const mensajeriaPendiente = detalle.entregaMensajeria === "SI";
 
-    if (estado === "Reparado" && mensajeriaPendiente) {
+    if (mensajeriaPendiente) {
       botones.push(
         <Button key="marcar-enviado" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={callbacks.onMarcarEnviadoRapido}>
           <TickCircle className="size-3.5" /> Marcar como enviado
@@ -547,22 +543,39 @@ export function AccionRequerida({
 
     if (
       (estado === "No tiene Reparación" || estado === "Presupuesto Rechazado" || (estado === "Reparado" && detalle.tipoIngreso === "GARANTIA")) &&
-      mensajeriaPendiente &&
-      !detalle.numeroFacturaMensajeria &&
-      !detalle.numeroTicketMensajeria
+      mensajeriaPendiente
     ) {
-      // Dos botones separados (Factura / Ticket) en vez de uno solo con el
-      // documento elegido dentro — mismo patrón que "Facturación"/"Ticket
-      // Rápido" para "Reparado", petición del usuario, 2026-09-09: "se
-      // quiere que sean botones separados, así lo entienden más".
+      // Mismos botones "Facturación"/"Ticket Rápido" (mismos diálogos,
+      // mismos campos numeroFactura/numeroTicket) que ya se usan para
+      // "Reparado" más abajo — antes esto abría un diálogo especial
+      // combinado ("Factura y Enviar por Mensajería") que generaba el
+      // documento y marcaba el envío en un solo paso; ahora son acciones
+      // independientes, igual que en el resto de la app. Petición del
+      // usuario, 2026-09-17.
       botones.push(
-        <Button key="facturar-mensajeria" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onFacturarMensajeria}>
-          <Truck className="size-3.5" /> Factura y Enviar por Mensajería
+        <Button
+          key="facturacion-mensajeria"
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={callbacks.onFacturacion}
+          disabled={!detalle.numeroFactura && !!detalle.numeroTicket}
+          title={!detalle.numeroFactura && detalle.numeroTicket ? `Ya se generó el Ticket Rápido ${detalle.numeroTicket} para este resguardo` : undefined}
+        >
+          <Receipt className="size-3.5" /> Facturación
         </Button>
       );
       botones.push(
-        <Button key="ticket-mensajeria" size="sm" variant="outline" className="gap-1.5" onClick={callbacks.onTicketMensajeria}>
-          <Ticket className="size-3.5" /> Ticket y Enviar por Mensajería
+        <Button
+          key="ticket-mensajeria"
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={callbacks.onTicketRapido}
+          disabled={!detalle.numeroTicket && !!detalle.numeroFactura}
+          title={!detalle.numeroTicket && detalle.numeroFactura ? `Ya se generó la factura ${detalle.numeroFactura} para este resguardo` : undefined}
+        >
+          <Ticket className="size-3.5" /> Ticket Rápido
         </Button>
       );
     }
