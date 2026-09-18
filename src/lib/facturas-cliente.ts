@@ -242,8 +242,23 @@ const FORMA_PAGO_LABEL: Record<string, string> = {
   redsys: "Redsys",
 };
 
+// Compat: algunos flujos de guardado (anticipo-dialog.tsx,
+// entregar-con-factura-dialog.tsx, ventas/nuevo-pedido) guardan el banco ya
+// combinado en la propia columna forma_pago ("BBVA · tarjeta bancaria" /
+// "BBVA · Tarjeta bancaria") en vez de "tarjeta" + banco en columnas
+// separadas (patrón que sí sigue factura-reparacion-dialog.tsx/
+// ticket-manual-dialog.tsx) — de ahí que el filtro de esta columna mostrara
+// el mismo pago dos veces con formato distinto. Se normaliza aquí, a la
+// hora de mostrarlo, para que ambos formatos salgan igual sin necesitar
+// tocar los datos ya guardados. Petición del usuario, 2026-09-18.
+const FORMA_PAGO_COMBINADO_RE = /^(.+?)\s*·\s*tarjeta bancaria$/i;
+
 export function formaPagoLabel(f: Pick<FacturaCliente, "formaPago" | "banco">): string {
-  const raw = (f.formaPago || "").toLowerCase();
+  const rawOriginal = (f.formaPago || "").trim();
+  const combinado = FORMA_PAGO_COMBINADO_RE.exec(rawOriginal);
+  if (combinado) return `Tarjeta bancaria: ${combinado[1].trim()}`;
+
+  const raw = rawOriginal.toLowerCase();
   const label = FORMA_PAGO_LABEL[raw] || f.formaPago || "—";
   const banco = (f.banco || "").trim();
   return raw === "tarjeta" && banco ? `${label}: ${banco}` : label;
