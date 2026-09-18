@@ -305,6 +305,7 @@ interface FilaReparacionFacturadaSql {
   fecha_ticket_anticipo: string | null;
   total_ticket_anticipo: string | number | null;
   estado_ticket_anticipo: string | null;
+  forma_pago_ticket_anticipo: string | null;
 
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -354,6 +355,8 @@ interface FilaReparacionFacturadaSql {
   fecha_ticket_revision: string | null;
   total_ticket_revision: string | number | null;
   estado_ticket_revision: string | null;
+  forma_pago_ticket_revision: string | null;
+  banco_ticket_revision: string | null;
 
   numero_ticket_revision_rectificativa: string | null;
   url_ticket_revision_rectificativa: string | null;
@@ -506,7 +509,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       url: urlValida(texto(row.url_ticket_anticipo)),
       total: num(row.total_ticket_anticipo) || num(row.anticipo_importe),
       fecha: row.fecha_ticket_anticipo || row.fecha_factura || null,
-      formaPago: "",
+      formaPago: texto(row.forma_pago_ticket_anticipo),
       banco: "",
       estadoFactura: row.estado_ticket_anticipo === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "anticipo",
@@ -673,8 +676,8 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       url: urlValida(texto(row.url_ticket_revision)),
       total: num(row.total_ticket_revision) || 20,
       fecha: row.fecha_ticket_revision,
-      formaPago: "",
-      banco: "",
+      formaPago: texto(row.forma_pago_ticket_revision),
+      banco: texto(row.banco_ticket_revision),
       estadoFactura: row.estado_ticket_revision === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "revision",
       esTicket: true,
