@@ -44,6 +44,63 @@ const PASOS = [
   { titulo: "Foto y firma", icono: Camera },
 ];
 
+// Autoguardado del borrador — si el cliente se sale de la página (pestaña
+// cerrada, vuelve atrás, pierde la conexión) no tiene que rellenar todo el
+// formulario de nuevo. Petición del usuario, 2026-09-18: "que se guarde
+// pero que no le den a ningún lado ellos" — sin botón de guardar, se
+// persiste solo con cada cambio. Se guarda ligado al CÓDIGO de acceso (no
+// solo "hay un borrador") a propósito: este formulario normalmente se
+// rellena en una tablet/kiosco compartido de la tienda, así que si el
+// siguiente cliente entra con un código DISTINTO no debe ver ni heredar
+// los datos del cliente anterior — solo se restaura si vuelve a escribir
+// el mismo código que ya tenía.
+const BORRADOR_KEY = "kelatos_formulario_borrador_v1";
+const BORRADOR_MAX_EDAD_MS = 24 * 60 * 60 * 1000;
+
+interface BorradorGuardado {
+  codigo: string;
+  paso: number;
+  datos: DatosFormularioCliente;
+  guardadoEn: number;
+}
+
+function leerBorrador(): BorradorGuardado | null {
+  try {
+    const raw = localStorage.getItem(BORRADOR_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<BorradorGuardado> | null;
+    if (!parsed || typeof parsed !== "object" || !parsed.codigo || !parsed.datos) return null;
+    if (Date.now() - (parsed.guardadoEn || 0) > BORRADOR_MAX_EDAD_MS) return null;
+    return parsed as BorradorGuardado;
+  } catch {
+    return null;
+  }
+}
+
+function guardarBorrador(borrador: BorradorGuardado) {
+  try {
+    localStorage.setItem(BORRADOR_KEY, JSON.stringify(borrador));
+  } catch {
+    // Cuota de localStorage superada — normalmente por las fotos en
+    // base64. Se reintenta sin fotos/firma para no perder al menos los
+    // datos de texto, que son los tediosos de rellenar de nuevo; si ni
+    // así cabe, se deja sin guardar en silencio (no debe romper el envío).
+    try {
+      localStorage.setItem(BORRADOR_KEY, JSON.stringify({ ...borrador, datos: { ...borrador.datos, fotos: [], firmaBase64: "" } }));
+    } catch {
+      // Sin espacio ni para eso — se ignora.
+    }
+  }
+}
+
+function borrarBorrador() {
+  try {
+    localStorage.removeItem(BORRADOR_KEY);
+  } catch {
+    // No-op — si localStorage no está disponible, tampoco había nada que borrar.
+  }
+}
+
 /**
  * Chip blanco fijo alrededor del logo (igual que sidebar.tsx): el PNG
  * lleva el texto en azul oscuro sobre transparente, ilegible sobre el
@@ -212,10 +269,26 @@ export default function FormularioClientePage() {
   const [clienteEncontrado, setClienteEncontrado] = useState(false);
   const dniBuscadoRef = useRef("");
 
+  // Autoguardado en cada cambio, sin que el cliente tenga que darle a
+  // nada — se detiene tras enviar con éxito (ya no hace falta el borrador).
+  useEffect(() => {
+    if (!accesoConcedido || resultado) return;
+    guardarBorrador({ codigo: codigoAcceso, paso, datos, guardadoEn: Date.now() });
+  }, [accesoConcedido, resultado, codigoAcceso, paso, datos]);
+
   if (!accesoConcedido) {
     return (
       <PantallaCodigoAcceso
         onAcceso={(codigo) => {
+          // Mismo código que el del borrador guardado -> es el mismo
+          // cliente retomando donde lo dejó. Código distinto (o sin
+          // borrador) -> formulario en blanco, para no heredar los datos
+          // de otro cliente en un dispositivo compartido.
+          const borrador = leerBorrador();
+          if (borrador && borrador.codigo === codigo) {
+            setDatos(borrador.datos);
+            setPaso(borrador.paso);
+          }
           setCodigoAcceso(codigo);
           setAccesoConcedido(true);
         }}
@@ -399,6 +472,7 @@ export default function FormularioClientePage() {
       }
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo registrar la solicitud.");
+      borrarBorrador();
       setResultado({ resguardo: data.resguardo });
     } catch (e) {
       setErrorEnvio(e instanceof Error ? e.message : "Error desconocido");
