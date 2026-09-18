@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { toast } from "sonner";
 import {
   DatosFormularioCliente,
   datosVacios,
@@ -19,6 +18,7 @@ import { normalizarNumeroLocal } from "@/lib/telefono";
 import { corregirTypoDominioEmail } from "@/lib/validacion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,6 +38,7 @@ import {
   Lock,
   TickCircle,
   CloseCircle,
+  Warning2,
 } from "@/lib/icons";
 
 const PASOS = [
@@ -131,17 +132,8 @@ const ETIQUETAS_CAMPO_AVISO: Record<string, string> = {
   firma: "Firma",
 };
 
-function avisarCamposFaltantes(err: Record<string, string>) {
-  const claves = Object.keys(err);
-  if (claves.length === 0) return;
-  const etiquetas = claves.map((k) => ETIQUETAS_CAMPO_AVISO[k] || k);
-  if (etiquetas.length === 1) {
-    toast.error(`Falta: ${etiquetas[0]}`);
-  } else if (etiquetas.length <= 3) {
-    toast.error(`Faltan: ${etiquetas.join(", ")}`);
-  } else {
-    toast.error(`Faltan ${etiquetas.length} campos por completar`);
-  }
+function etiquetasCamposFaltantes(err: Record<string, string>): string[] {
+  return Object.keys(err).map((k) => ETIQUETAS_CAMPO_AVISO[k] || k);
 }
 
 function borrarBorrador() {
@@ -319,6 +311,12 @@ export default function FormularioClientePage() {
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [clienteEncontrado, setClienteEncontrado] = useState(false);
   const dniBuscadoRef = useRef("");
+  // Aviso de campos faltantes — modal en vez de toast, petición del
+  // usuario, 2026-09-18: en móvil un toast arriba se pierde/es incómodo;
+  // un modal pequeño con la lista es más claro y no depende de dónde
+  // esté mirando el cliente en la pantalla.
+  const [faltantesAbierto, setFaltantesAbierto] = useState(false);
+  const [faltantes, setFaltantes] = useState<string[]>([]);
 
   // Autoguardado en cada cambio, sin que el cliente tenga que darle a
   // nada — se detiene tras enviar con éxito (ya no hace falta el borrador).
@@ -491,7 +489,11 @@ export default function FormularioClientePage() {
       if (!datos.firmaBase64) err.firma = "Debes firmar el resguardo.";
     }
     setErrores(err);
-    avisarCamposFaltantes(err);
+    const etiquetas = etiquetasCamposFaltantes(err);
+    if (etiquetas.length > 0) {
+      setFaltantes(etiquetas);
+      setFaltantesAbierto(true);
+    }
     return Object.keys(err).length === 0;
   }
 
@@ -879,7 +881,7 @@ export default function FormularioClientePage() {
                 </ol>
               </div>
             )}
-            <label className="mb-1.5 flex items-start gap-2 text-sm">
+            <label className={cn("mb-1.5 flex items-start gap-2 text-sm", errores.aceptaCondiciones && "text-destructive")}>
               <Checkbox
                 className="mt-0.5"
                 checked={datos.aceptaCondiciones}
@@ -940,6 +942,35 @@ export default function FormularioClientePage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={faltantesAbierto} onOpenChange={setFaltantesAbierto}>
+        <DialogContent className="max-w-sm gap-0 p-0 sm:max-w-sm" showCloseButton={false}>
+          <header className="flex items-center gap-2 rounded-t-xl bg-destructive px-4 py-2.5 text-white">
+            <Warning2 className="size-4.5 shrink-0" />
+            <DialogTitle className="text-sm font-semibold text-white">Faltan datos por completar</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="ml-auto text-white hover:bg-white/15 hover:text-white"
+              onClick={() => setFaltantesAbierto(false)}
+            >
+              <CloseCircle className="size-4" />
+            </Button>
+          </header>
+          <div className="px-4 py-4">
+            <ul className="list-disc space-y-1 pl-5 text-sm">
+              {faltantes.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+          <footer className="flex justify-end border-t bg-muted/50 px-4 py-2.5">
+            <Button size="sm" onClick={() => setFaltantesAbierto(false)}>
+              Entendido
+            </Button>
+          </footer>
+        </DialogContent>
+      </Dialog>
     </FondoPagina>
   );
 }
