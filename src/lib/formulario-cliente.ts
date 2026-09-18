@@ -4,10 +4,15 @@
  */
 
 export const OPCIONES_TIPO_PRODUCTO = [
-  { grupo: "Equipos informáticos", opciones: ["Portátil", "Ordenador de sobremesa", "Consola"] },
-  { grupo: "Pequeño electrodoméstico / hogar", opciones: ["Aspirador", "Robot aspirador", "Robot de cocina", "Batidora", "Ventilador", "Purificador"] },
+  { grupo: "Equipos informáticos", opciones: ["Portátil/Laptop", "Ordenador de sobremesa", "Consola", "Mando"] },
+  { grupo: "Pequeño electrodoméstico / hogar", opciones: ["Aspirador", "Robot aspirador", "Robot de cocina", "Batidora", "Ventilador", "Purificador", "Secador"] },
   { grupo: "Otros servicios", opciones: ["Conversión de cintas", "Otro"] },
 ];
+
+/** Tipos de producto para los que tiene sentido pedir número de serie —
+ * el resto (aspiradoras, cintas, pequeño electrodoméstico...) no lo
+ * llevan de forma visible/útil. Petición del usuario, 2026-09-18. */
+export const TIPOS_CON_NUMERO_SERIE = ["Portátil/Laptop", "Ordenador de sobremesa"];
 
 /** Reproduce el <select id="fTelPrefijo"> de FormularioCliente.html (original) — mismo orden, mismos grupos, misma lista completa de países. */
 export const PREFIJOS_TELEFONO_FORMULARIO: { grupo: string; opciones: { value: string; label: string }[] }[] = [

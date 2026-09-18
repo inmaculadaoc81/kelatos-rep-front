@@ -6,8 +6,8 @@
 
 export type CategoriaCondiciones = "ordenador" | "cintas" | "electrodomestico";
 
-export const TIPOS_ORDENADOR = ["Portátil", "Ordenador de sobremesa", "Consola"];
-export const TIPOS_ELECTRODOMESTICO = ["Aspirador", "Robot aspirador", "Robot de cocina", "Batidora", "Ventilador", "Purificador"];
+export const TIPOS_ORDENADOR = ["Portátil/Laptop", "Ordenador de sobremesa", "Consola", "Mando"];
+export const TIPOS_ELECTRODOMESTICO = ["Aspirador", "Robot aspirador", "Robot de cocina", "Batidora", "Ventilador", "Purificador", "Secador"];
 
 export function categoriaDeCondiciones(tipoProducto: string): CategoriaCondiciones {
   if (tipoProducto === "Conversión de cintas") return "cintas";

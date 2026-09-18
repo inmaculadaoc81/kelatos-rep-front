@@ -9,6 +9,7 @@ import {
   OPCIONES_TIPO_PRODUCTO,
   PREFIJOS_TELEFONO_FORMULARIO,
   PREFIJOS_TELEFONO_VALIDOS,
+  TIPOS_CON_NUMERO_SERIE,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
 import { esHeic, resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
@@ -683,9 +684,11 @@ export default function FormularioClientePage() {
                     </Campo>
                   </div>
                 </div>
-                <Campo label="Número de serie (opcional — únicamente para portátiles)">
-                  <Input className="h-11 text-base" value={datos.serie} onChange={(e) => actualizar("serie", e.target.value)} />
-                </Campo>
+                {TIPOS_CON_NUMERO_SERIE.includes(datos.tipoProducto) && (
+                  <Campo label="Número de serie (opcional)">
+                    <Input className="h-11 text-base" value={datos.serie} onChange={(e) => actualizar("serie", e.target.value)} />
+                  </Campo>
+                )}
               </>
             )}
             {esCintas && (
