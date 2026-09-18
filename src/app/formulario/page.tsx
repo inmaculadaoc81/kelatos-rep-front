@@ -36,7 +36,7 @@ import {
 } from "@/lib/icons";
 
 const PASOS = [
-  { titulo: "Datos", icono: Personalcard },
+  { titulo: "DATOS DE FACTURACIÓN", icono: Personalcard },
   { titulo: "Contacto", icono: Call },
   { titulo: "Equipo", icono: Monitor },
   { titulo: "Síntoma", icono: DocumentText },
@@ -395,17 +395,17 @@ export default function FormularioClientePage() {
     if (paso === 1) {
       if (!datos.dniCif.trim()) err.dniCif = "Introduce tu DNI, NIF, Pasaporte o CIF.";
       if (!datos.nombre.trim()) err.nombre = "Introduce tu nombre o empresa.";
+      if (!datos.viaTipo) err.viaTipo = "Selecciona el tipo de vía.";
+      if (!datos.viaNombre.trim()) err.viaNombre = "Introduce el nombre de la vía.";
+      if (!datos.cp.trim()) err.cp = "Introduce el código postal.";
+      if (!datos.localidad.trim()) err.localidad = "Introduce la localidad.";
+      if (!datos.provincia.trim()) err.provincia = "Introduce la provincia.";
     }
     if (paso === 2) {
       if (!datos.telefono.trim()) err.telefono = "Introduce tu teléfono.";
       if (!datos.noTieneEmail) {
         if (!datos.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.email)) err.email = "Email obligatorio o no válido.";
       }
-      if (!datos.viaTipo) err.viaTipo = "Selecciona el tipo de vía.";
-      if (!datos.viaNombre.trim()) err.viaNombre = "Introduce el nombre de la vía.";
-      if (!datos.cp.trim()) err.cp = "Introduce el código postal.";
-      if (!datos.localidad.trim()) err.localidad = "Introduce la localidad.";
-      if (!datos.provincia.trim()) err.provincia = "Introduce la provincia.";
     }
     if (paso === 3) {
       if (!datos.tipoProducto) err.tipoProducto = "Selecciona el tipo de producto.";
@@ -546,53 +546,6 @@ export default function FormularioClientePage() {
             <Campo label="Nombre, apellidos o empresa" required error={errores.nombre}>
               <Input className="h-11 text-base" value={datos.nombre} onChange={(e) => actualizar("nombre", e.target.value)} />
             </Campo>
-          </>
-        )}
-
-        {paso === 2 && (
-          <>
-            <Campo label="Teléfono" required error={errores.telefono}>
-              <div className="flex gap-2">
-                <Select value={datos.telPrefijo} onValueChange={(v) => actualizar("telPrefijo", v || "+34")}>
-                  <SelectTrigger className="h-11 w-28 text-base">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PREFIJOS_TELEFONO_FORMULARIO.map((g) => (
-                      <SelectGroup key={g.grupo}>
-                        <SelectLabel>{g.grupo}</SelectLabel>
-                        {g.opciones.map((o) => (
-                          <SelectItem key={`${g.grupo}-${o.value}-${o.label}`} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  className="h-11 flex-1 text-base"
-                  value={datos.telefono}
-                  onChange={(e) =>
-                    actualizar("telefono", normalizarNumeroLocal(datos.telPrefijo, e.target.value.replace(/[^\d]/g, "")))
-                  }
-                />
-              </div>
-            </Campo>
-            <Campo label="Email" required={!datos.noTieneEmail} error={errores.email}>
-              <Input
-                className="mb-2 h-11 text-base"
-                type="email"
-                value={datos.email}
-                disabled={datos.noTieneEmail}
-                onChange={(e) => actualizar("email", e.target.value)}
-                onBlur={(e) => actualizar("email", corregirTypoDominioEmail(e.target.value))}
-              />
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <Checkbox checked={datos.noTieneEmail} onCheckedChange={(v) => actualizar("noTieneEmail", v === true)} />
-                No tiene email
-              </label>
-            </Campo>
             <div className="flex gap-3">
               <div className="flex-1">
                 <Campo label="Tipo de vía" required error={errores.viaTipo}>
@@ -640,6 +593,53 @@ export default function FormularioClientePage() {
                 </Campo>
               </div>
             </div>
+          </>
+        )}
+
+        {paso === 2 && (
+          <>
+            <Campo label="Teléfono" required error={errores.telefono}>
+              <div className="flex gap-2">
+                <Select value={datos.telPrefijo} onValueChange={(v) => actualizar("telPrefijo", v || "+34")}>
+                  <SelectTrigger className="h-11 w-28 text-base">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PREFIJOS_TELEFONO_FORMULARIO.map((g) => (
+                      <SelectGroup key={g.grupo}>
+                        <SelectLabel>{g.grupo}</SelectLabel>
+                        {g.opciones.map((o) => (
+                          <SelectItem key={`${g.grupo}-${o.value}-${o.label}`} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="h-11 flex-1 text-base"
+                  value={datos.telefono}
+                  onChange={(e) =>
+                    actualizar("telefono", normalizarNumeroLocal(datos.telPrefijo, e.target.value.replace(/[^\d]/g, "")))
+                  }
+                />
+              </div>
+            </Campo>
+            <Campo label="Email" required={!datos.noTieneEmail} error={errores.email}>
+              <Input
+                className="mb-2 h-11 text-base"
+                type="email"
+                value={datos.email}
+                disabled={datos.noTieneEmail}
+                onChange={(e) => actualizar("email", e.target.value)}
+                onBlur={(e) => actualizar("email", corregirTypoDominioEmail(e.target.value))}
+              />
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <Checkbox checked={datos.noTieneEmail} onCheckedChange={(v) => actualizar("noTieneEmail", v === true)} />
+                No tiene email
+              </label>
+            </Campo>
           </>
         )}
 
