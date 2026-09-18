@@ -14,6 +14,13 @@ export const OPCIONES_TIPO_PRODUCTO = [
  * llevan de forma visible/útil. Petición del usuario, 2026-09-18. */
 export const TIPOS_CON_NUMERO_SERIE = ["Portátil/Laptop", "Ordenador de sobremesa"];
 
+/** Tipos de producto con pantalla de bloqueo/PIN — se les pide la
+ * contraseña para poder diagnosticar el equipo. "Mando" no tiene PIN
+ * propio (es un accesorio de la consola), así que se excluye aunque esté
+ * en el mismo grupo "Equipos informáticos". Petición del usuario,
+ * 2026-09-18. */
+export const TIPOS_CON_PIN = ["Portátil/Laptop", "Ordenador de sobremesa", "Consola"];
+
 /** Reproduce el <select id="fTelPrefijo"> de FormularioCliente.html (original) — mismo orden, mismos grupos, misma lista completa de países. */
 export const PREFIJOS_TELEFONO_FORMULARIO: { grupo: string; opciones: { value: string; label: string }[] }[] = [
   { grupo: "España", opciones: [{ value: "+34", label: "🇪🇸 +34" }] },

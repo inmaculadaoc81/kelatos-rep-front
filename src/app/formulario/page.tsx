@@ -10,6 +10,7 @@ import {
   PREFIJOS_TELEFONO_FORMULARIO,
   PREFIJOS_TELEFONO_VALIDOS,
   TIPOS_CON_NUMERO_SERIE,
+  TIPOS_CON_PIN,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
 import { esHeic, resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
@@ -29,6 +30,7 @@ import {
   Call,
   Monitor,
   DocumentText,
+  Danger,
   ShieldTick,
   Camera,
   Lock,
@@ -40,7 +42,8 @@ const PASOS = [
   { titulo: "DATOS DE FACTURACIÓN", icono: Personalcard },
   { titulo: "Contacto", icono: Call },
   { titulo: "Equipo", icono: Monitor },
-  { titulo: "Síntoma", icono: DocumentText },
+  { titulo: "SÍNTOMA DE AVERÍA", icono: DocumentText },
+  { titulo: "Estado del equipo", icono: Danger },
   { titulo: "Condiciones", icono: ShieldTick },
   { titulo: "Foto y firma", icono: Camera },
 ];
@@ -420,15 +423,17 @@ export default function FormularioClientePage() {
     }
     if (paso === 4 && !esCintas) {
       if (!datos.sintoma.trim()) err.sintoma = "Describe la avería.";
+    }
+    if (paso === 5 && !esCintas) {
       if (!datos.enciende) err.enciende = "Selecciona una opción.";
       if (!datos.golpe) err.golpe = "Selecciona una opción.";
       if (!datos.humedad) err.humedad = "Selecciona una opción.";
       if (!datos.reparacionAnterior) err.reparacionAnterior = "Selecciona una opción.";
     }
-    if (paso === 5) {
+    if (paso === 6) {
       if (!datos.aceptaCondiciones) err.aceptaCondiciones = "Debes aceptar las condiciones del servicio.";
     }
-    if (paso === 6) {
+    if (paso === 7) {
       if (datos.fotos.length === 0) err.fotos = "Debes adjuntar al menos una foto del equipo.";
       if (!datos.firmaBase64) err.firma = "Debes firmar el resguardo.";
     }
@@ -725,9 +730,22 @@ export default function FormularioClientePage() {
                     onChange={(e) => actualizar("sintoma", e.target.value)}
                   />
                 </Campo>
-                <Campo label="Contraseña/PIN del equipo (opcional)">
-                  <Input className="h-11 text-base" value={datos.obs} onChange={(e) => actualizar("obs", e.target.value)} />
-                </Campo>
+                {TIPOS_CON_PIN.includes(datos.tipoProducto) && (
+                  <Campo label="Contraseña/PIN del equipo (opcional)">
+                    <Input className="h-11 text-base" value={datos.obs} onChange={(e) => actualizar("obs", e.target.value)} />
+                  </Campo>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {paso === 5 && (
+          <>
+            {esCintas ? (
+              <p className="text-sm text-muted-foreground">La digitalización y conversión de cintas no requiere esta información.</p>
+            ) : (
+              <>
                 <Campo label="¿El equipo enciende?" required error={errores.enciende}>
                   <CampoOpciones value={datos.enciende} onChange={(v) => actualizar("enciende", v)} opciones={["Sí", "No", "A veces"] as const} />
                 </Campo>
@@ -749,7 +767,7 @@ export default function FormularioClientePage() {
           </>
         )}
 
-        {paso === 5 && (
+        {paso === 6 && (
           <>
             {categoria && (
               <div className="mb-3 max-h-64 overflow-y-auto rounded-md border p-3 text-xs text-foreground">
@@ -782,7 +800,7 @@ export default function FormularioClientePage() {
           </>
         )}
 
-        {paso === 6 && (
+        {paso === 7 && (
           <PasoFotoFirma
             fotos={datos.fotos}
             firmaBase64={datos.firmaBase64}
