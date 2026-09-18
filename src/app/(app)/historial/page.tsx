@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Refresh2, SearchNormal1, Eye, ShieldTick, DocumentText, Copy,
-  BoxTick, Trash, Clock, Truck, Receipt, Danger, Calendar, Setting2,
+  BoxTick, Trash, Clock, Truck, Receipt, Danger, Calendar, Setting2, Ticket,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,10 @@ function EntregaBadge({ estado }: { estado: string }) {
 
 // Reproduce la celda de Factura de renderizarTablaHistorial(): garantía no
 // factura, Reparado/Presupuesto Aceptado sí (número si existe, si no
-// "Pendiente"), el resto sin nada que mostrar.
+// "Pendiente"), el resto sin nada que mostrar. Bug real reportado,
+// 2026-09-18: solo miraba numeroFactura — un resguardo cobrado con
+// "Ticket Rápido" (numeroTicket, sin factura formal) salía igual como
+// "Pendiente" aunque ya estuviera cobrado y cerrado.
 function FacturaCelda({ r }: { r: Reparacion }) {
   const esGarantia = r.tipoIngreso === "GARANTIA";
   const requiereFactura = !esGarantia && (r.estado === "Reparado" || r.estado === "Presupuesto Aceptado");
@@ -62,11 +65,13 @@ function FacturaCelda({ r }: { r: Reparacion }) {
     return <Badge className="gap-1 bg-muted-foreground text-white"><ShieldTick className="size-3" /> Garantía</Badge>;
   }
   if (requiereFactura) {
-    return r.numeroFactura ? (
-      <Badge className="gap-1 bg-emerald-600 text-white"><Receipt className="size-3" /> {r.numeroFactura}</Badge>
-    ) : (
-      <Badge className="gap-1 bg-amber-500 text-white"><Danger className="size-3" /> Pendiente</Badge>
-    );
+    if (r.numeroFactura) {
+      return <Badge className="gap-1 bg-emerald-600 text-white"><Receipt className="size-3" /> {r.numeroFactura}</Badge>;
+    }
+    if (r.numeroTicket) {
+      return <Badge className="gap-1 bg-sky-600 text-white"><Ticket className="size-3" /> {r.numeroTicket}</Badge>;
+    }
+    return <Badge className="gap-1 bg-amber-500 text-white"><Danger className="size-3" /> Pendiente</Badge>;
   }
   return <span className="text-muted-foreground">—</span>;
 }

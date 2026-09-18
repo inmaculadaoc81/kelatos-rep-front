@@ -69,6 +69,7 @@ export interface Reparacion {
   entregaMensajeria: string;
   observaciones: string;
   numeroFactura: string;
+  numeroTicket: string;
   resena: string;
   tipoIngreso: string;
   pptoDescripcion: string;
@@ -105,6 +106,7 @@ interface FilaReparacionSql {
   entrega_mensajeria: string | null;
   observaciones: string | null;
   numero_factura: string | null;
+  numero_ticket: string | null;
   resena: string | null;
   tipo_ingreso: string | null;
 }
@@ -170,6 +172,7 @@ export function mapearFilaReparacion(
     entregaMensajeria: row.entrega_mensajeria || "NO",
     observaciones: row.observaciones || "",
     numeroFactura: row.numero_factura || "",
+    numeroTicket: row.numero_ticket || "",
     resena: row.resena || "",
     tipoIngreso: row.tipo_ingreso || "",
     pptoDescripcion: ppto?.descripcion || "",
