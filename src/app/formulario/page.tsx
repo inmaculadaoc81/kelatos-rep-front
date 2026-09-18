@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { toast } from "sonner";
 import {
   DatosFormularioCliente,
   datosVacios,
@@ -96,6 +97,49 @@ function guardarBorrador(borrador: BorradorGuardado) {
     } catch {
       // Sin espacio ni para eso — se ignora.
     }
+  }
+}
+
+// Etiquetas cortas para el aviso resumido cuando falta algo por rellenar —
+// petición del usuario, 2026-09-18: "que salga un modal pequeño de aviso
+// encima [...] si son un montón de cosas un poco más resumido". Se separan
+// de los mensajes largos de `errores` (esos siguen bajo cada campo tal
+// cual) porque un toast con 5 frases completas no cabe ni se lee bien.
+const ETIQUETAS_CAMPO_AVISO: Record<string, string> = {
+  dniCif: "DNI/NIF",
+  nombre: "Nombre",
+  viaTipo: "Tipo de vía",
+  viaNombre: "Nombre de la vía",
+  cp: "Código postal",
+  localidad: "Localidad",
+  provincia: "Provincia",
+  telefono: "Teléfono",
+  email: "Email",
+  tipoProducto: "Tipo de producto",
+  tipoOtro: "Descripción del producto",
+  marca: "Marca",
+  modelo: "Modelo",
+  cintas: "Cantidad de cintas",
+  sintoma: "Síntoma de la avería",
+  enciende: "¿Enciende?",
+  golpe: "¿Ha sufrido golpe?",
+  humedad: "¿Ha sufrido humedad?",
+  reparacionAnterior: "¿Reparación anterior?",
+  aceptaCondiciones: "Aceptar las condiciones",
+  fotos: "Foto del equipo",
+  firma: "Firma",
+};
+
+function avisarCamposFaltantes(err: Record<string, string>) {
+  const claves = Object.keys(err);
+  if (claves.length === 0) return;
+  const etiquetas = claves.map((k) => ETIQUETAS_CAMPO_AVISO[k] || k);
+  if (etiquetas.length === 1) {
+    toast.error(`Falta: ${etiquetas[0]}`);
+  } else if (etiquetas.length <= 3) {
+    toast.error(`Faltan: ${etiquetas.join(", ")}`);
+  } else {
+    toast.error(`Faltan ${etiquetas.length} campos por completar`);
   }
 }
 
@@ -442,6 +486,7 @@ export default function FormularioClientePage() {
       if (!datos.firmaBase64) err.firma = "Debes firmar el resguardo.";
     }
     setErrores(err);
+    avisarCamposFaltantes(err);
     return Object.keys(err).length === 0;
   }
 
@@ -629,6 +674,9 @@ export default function FormularioClientePage() {
                 </Select>
                 <Input
                   className="h-11 flex-1 text-base"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="off"
                   value={datos.telefono}
                   onChange={(e) =>
                     actualizar("telefono", normalizarNumeroLocal(datos.telPrefijo, e.target.value.replace(/[^\d]/g, "")))
