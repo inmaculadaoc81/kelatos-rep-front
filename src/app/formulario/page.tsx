@@ -608,8 +608,8 @@ export default function FormularioClientePage() {
             </Campo>
 
             {!esTicket && (
-              <div className="mb-4 flex items-start gap-2 rounded-md bg-sky-500/5 p-3 text-xs text-sky-700 dark:text-sky-400">
-                <DocumentText className="mt-0.5 size-3.5 shrink-0" />
+              <div className="mb-4 flex items-start gap-2 rounded-md bg-sky-500/5 p-3 text-sm text-sky-700 dark:text-sky-400">
+                <DocumentText className="mt-0.5 size-4 shrink-0" />
                 <span>Estos datos son los que aparecerán en la factura.</span>
               </div>
             )}
