@@ -33,6 +33,7 @@ import {
   Danger,
   ShieldTick,
   Camera,
+  PenTool,
   Lock,
   TickCircle,
   CloseCircle,
@@ -45,7 +46,8 @@ const PASOS = [
   { titulo: "SÍNTOMA DE AVERÍA", icono: DocumentText },
   { titulo: "Estado del equipo", icono: Danger },
   { titulo: "Condiciones", icono: ShieldTick },
-  { titulo: "Foto y firma", icono: Camera },
+  { titulo: "Foto", icono: Camera },
+  { titulo: "Firma", icono: PenTool },
 ];
 
 // Autoguardado del borrador — si el cliente se sale de la página (pestaña
@@ -435,6 +437,8 @@ export default function FormularioClientePage() {
     }
     if (paso === 7) {
       if (datos.fotos.length === 0) err.fotos = "Debes adjuntar al menos una foto del equipo.";
+    }
+    if (paso === 8) {
       if (!datos.firmaBase64) err.firma = "Debes firmar el resguardo.";
     }
     setErrores(err);
@@ -801,12 +805,17 @@ export default function FormularioClientePage() {
         )}
 
         {paso === 7 && (
-          <PasoFotoFirma
+          <PasoFoto
             fotos={datos.fotos}
-            firmaBase64={datos.firmaBase64}
             errorFotos={errores.fotos}
-            errorFirma={errores.firma}
             onFotosChange={(fotos) => actualizar("fotos", fotos)}
+          />
+        )}
+
+        {paso === 8 && (
+          <PasoFirma
+            firmaBase64={datos.firmaBase64}
+            errorFirma={errores.firma}
             onFirmaChange={(firmaBase64) => actualizar("firmaBase64", firmaBase64)}
           />
         )}
@@ -838,20 +847,14 @@ export default function FormularioClientePage() {
   );
 }
 
-function PasoFotoFirma({
+function PasoFoto({
   fotos,
-  firmaBase64,
   errorFotos,
-  errorFirma,
   onFotosChange,
-  onFirmaChange,
 }: {
   fotos: FotoFormulario[];
-  firmaBase64: string;
   errorFotos?: string;
-  errorFirma?: string;
   onFotosChange: (fotos: FotoFormulario[]) => void;
-  onFirmaChange: (firmaBase64: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [procesando, setProcesando] = useState(false);
@@ -891,51 +894,61 @@ function PasoFotoFirma({
   }
 
   return (
-    <>
-      <Campo label="Foto del equipo / problema" required error={errorFotos}>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={procesando}
-          className="w-full rounded-lg border border-dashed border-input bg-muted/30 px-4 py-6 text-center transition-colors hover:bg-muted/50 disabled:opacity-60"
-        >
-          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} className="hidden" disabled={procesando} />
-          <Camera className="mx-auto mb-1.5 size-7 text-muted-foreground" />
-          <div className="text-sm text-muted-foreground">
-            {procesando
-              ? "Procesando foto…"
-              : fotos.length === 0
-                ? "Toca para hacer o seleccionar una foto"
-                : fotos.length === 1
-                  ? fotos[0].name
-                  : `${fotos.length} fotos seleccionadas`}
-          </div>
-        </button>
-        {errorProceso && <p className="mt-1.5 text-xs text-destructive">{errorProceso}</p>}
-        {fotos.length > 0 && (
-          <div className="mt-2.5 grid grid-cols-4 gap-2">
-            {fotos.map((f, i) => (
-              <div key={f.name + f.size} className="relative aspect-square overflow-hidden rounded-md border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`data:${f.mime};base64,${f.base64}`} alt={`foto ${i + 1}`} className="size-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => eliminarFoto(i)}
-                  title="Eliminar"
-                  className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
-                >
-                  <CloseCircle className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </Campo>
+    <Campo label="Foto del equipo / problema" required error={errorFotos}>
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={procesando}
+        className="w-full rounded-lg border border-dashed border-input bg-muted/30 px-4 py-6 text-center transition-colors hover:bg-muted/50 disabled:opacity-60"
+      >
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} className="hidden" disabled={procesando} />
+        <Camera className="mx-auto mb-1.5 size-7 text-muted-foreground" />
+        <div className="text-sm text-muted-foreground">
+          {procesando
+            ? "Procesando foto…"
+            : fotos.length === 0
+              ? "Toca para hacer o seleccionar una foto"
+              : fotos.length === 1
+                ? fotos[0].name
+                : `${fotos.length} fotos seleccionadas`}
+        </div>
+      </button>
+      {errorProceso && <p className="mt-1.5 text-xs text-destructive">{errorProceso}</p>}
+      {fotos.length > 0 && (
+        <div className="mt-2.5 grid grid-cols-4 gap-2">
+          {fotos.map((f, i) => (
+            <div key={f.name + f.size} className="relative aspect-square overflow-hidden rounded-md border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`data:${f.mime};base64,${f.base64}`} alt={`foto ${i + 1}`} className="size-full object-cover" />
+              <button
+                type="button"
+                onClick={() => eliminarFoto(i)}
+                title="Eliminar"
+                className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
+              >
+                <CloseCircle className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Campo>
+  );
+}
 
-      <Campo label="Firma del cliente" required error={errorFirma}>
-        <CanvasFirma value={firmaBase64} onChange={onFirmaChange} />
-      </Campo>
-    </>
+function PasoFirma({
+  firmaBase64,
+  errorFirma,
+  onFirmaChange,
+}: {
+  firmaBase64: string;
+  errorFirma?: string;
+  onFirmaChange: (firmaBase64: string) => void;
+}) {
+  return (
+    <Campo label="Firma del cliente" required error={errorFirma}>
+      <CanvasFirma value={firmaBase64} onChange={onFirmaChange} />
+    </Campo>
   );
 }
 
