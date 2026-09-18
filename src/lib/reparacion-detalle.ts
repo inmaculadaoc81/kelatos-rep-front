@@ -311,6 +311,19 @@ export function esPptoRechazado(estado: string | null | undefined): boolean {
   return (estado || "").toLowerCase() === "rechazado";
 }
 
+// El cliente eligió "Ticket (sin datos del cliente)" en el formulario
+// público — no dio DNI/dirección y no hay que generarle factura. Se marca
+// como una etiqueta dentro de `observaciones` (construirObservaciones en
+// api/formulario-cliente/route.ts) en vez de una columna nueva — no hace
+// falta migración, y el resto del texto libre de observaciones convive
+// igual. Petición del usuario, 2026-09-18: que se vea "en algún lado de
+// la reparación" y en el modal de entrega/factura, para que el personal
+// no intente facturarle después.
+const ETIQUETA_SIN_FACTURA = "[Sin factura: cliente eligió Ticket]";
+export function clienteEligioTicketSinFactura(observaciones: string | null | undefined): boolean {
+  return (observaciones || "").includes(ETIQUETA_SIN_FACTURA);
+}
+
 export interface Pedido {
   pedidoId: string;
   piezaId: string;

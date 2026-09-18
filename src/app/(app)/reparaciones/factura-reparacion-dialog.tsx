@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1, Star, Send2, TickCircle, DocumentDownload, Box1 } from "@/lib/icons";
+import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1, Star, Send2, TickCircle, DocumentDownload, Box1, Warning2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ReparacionDetalle, Presupuesto, esPptoAceptado } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, Presupuesto, esPptoAceptado, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
@@ -384,6 +384,12 @@ function VistaGenerada({
 
         <ScrollArea className="max-h-[75vh]">
           <div className="space-y-4 bg-muted/30 p-4">
+            {clienteEligioTicketSinFactura(detalle.observaciones) && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400">
+                <Warning2 className="mt-0.5 size-3.5 shrink-0" />
+                <span>El cliente eligió <strong>Ticket (sin datos del cliente)</strong> en el formulario — no dio DNI ni dirección. No se le debe facturar.</span>
+              </div>
+            )}
             <div className="grid gap-3 sm:grid-cols-5">
               <CampoLectura label="Tipo de factura" valor="Serie 1 — Cobros" />
               <CampoLectura label="N.º Factura" valor={detalle.numeroFactura || "—"} />
@@ -707,6 +713,12 @@ function VistaGenerar({
 
         <ScrollArea className="max-h-[75vh]">
           <div className="space-y-4 bg-muted/30 p-4">
+            {clienteEligioTicketSinFactura(detalle.observaciones) && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400">
+                <Warning2 className="mt-0.5 size-3.5 shrink-0" />
+                <span>El cliente eligió <strong>Ticket (sin datos del cliente)</strong> en el formulario — no dio DNI ni dirección. No se le debe facturar.</span>
+              </div>
+            )}
             <div className="grid gap-3 sm:grid-cols-5">
               <CampoLectura label="Nº Factura" valor={numeroPreview || "…"} />
               <CampoLectura label="Fecha de factura" valor={fechaHoyCorta()} />

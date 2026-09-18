@@ -106,6 +106,7 @@ function guardarBorrador(borrador: BorradorGuardado) {
 // de los mensajes largos de `errores` (esos siguen bajo cada campo tal
 // cual) porque un toast con 5 frases completas no cabe ni se lee bien.
 const ETIQUETAS_CAMPO_AVISO: Record<string, string> = {
+  tipoDocumento: "Factura o Ticket",
   dniCif: "DNI/NIF",
   nombre: "Nombre",
   viaTipo: "Tipo de vía",
@@ -438,18 +439,22 @@ export default function FormularioClientePage() {
 
   const esCintas = datos.tipoProducto === "Conversión de cintas";
   const esOtro = datos.tipoProducto === "Otro";
+  const esTicket = datos.tipoDocumento === "Ticket";
   const categoria = datos.tipoProducto ? categoriaDeCondiciones(datos.tipoProducto) : null;
 
   function validarPasoActual(): boolean {
     const err: Record<string, string> = {};
     if (paso === 1) {
-      if (!datos.dniCif.trim()) err.dniCif = "Introduce tu DNI, NIF, Pasaporte o CIF.";
+      if (!datos.tipoDocumento) err.tipoDocumento = "Selecciona si quieres factura o ticket.";
       if (!datos.nombre.trim()) err.nombre = "Introduce tu nombre o empresa.";
-      if (!datos.viaTipo) err.viaTipo = "Selecciona el tipo de vía.";
-      if (!datos.viaNombre.trim()) err.viaNombre = "Introduce el nombre de la vía.";
-      if (!datos.cp.trim()) err.cp = "Introduce el código postal.";
-      if (!datos.localidad.trim()) err.localidad = "Introduce la localidad.";
-      if (!datos.provincia.trim()) err.provincia = "Introduce la provincia.";
+      if (!esTicket) {
+        if (!datos.dniCif.trim()) err.dniCif = "Introduce tu DNI, NIF, Pasaporte o CIF.";
+        if (!datos.viaTipo) err.viaTipo = "Selecciona el tipo de vía.";
+        if (!datos.viaNombre.trim()) err.viaNombre = "Introduce el nombre de la vía.";
+        if (!datos.cp.trim()) err.cp = "Introduce el código postal.";
+        if (!datos.localidad.trim()) err.localidad = "Introduce la localidad.";
+        if (!datos.provincia.trim()) err.provincia = "Introduce la provincia.";
+      }
     }
     if (paso === 2) {
       if (!datos.telefono.trim()) err.telefono = "Introduce tu teléfono.";
@@ -573,81 +578,118 @@ export default function FormularioClientePage() {
 
           {paso === 1 && (
           <>
-            <div className="mb-4 flex items-start gap-2 rounded-md bg-sky-500/5 p-3 text-xs text-sky-700 dark:text-sky-400">
-              <DocumentText className="mt-0.5 size-3.5 shrink-0" />
-              <span>Estos datos son los que aparecerán en la factura.</span>
-            </div>
-            <Campo label="DNI / NIF / Pasaporte / CIF" required error={errores.dniCif}>
-              <Input
-                className="h-11 text-base"
-                value={datos.dniCif}
-                onChange={(e) => actualizar("dniCif", e.target.value)}
-                onBlur={(e) => buscarClientePorDni(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    buscarClientePorDni(datos.dniCif);
-                  }
-                }}
-              />
+            <Campo label="¿Factura o Ticket?" required error={errores.tipoDocumento}>
+              <RadioGroup
+                value={datos.tipoDocumento}
+                onValueChange={(v) => actualizar("tipoDocumento", (v || "") as DatosFormularioCliente["tipoDocumento"])}
+                className="flex flex-col gap-2 sm:flex-row"
+              >
+                <label
+                  className={cn(
+                    "flex flex-1 cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm font-medium transition-colors hover:bg-muted/40",
+                    "has-data-checked:border-primary has-data-checked:bg-primary/5 has-data-checked:text-primary has-data-checked:hover:bg-primary/5"
+                  )}
+                >
+                  <RadioGroupItem value="Factura" />
+                  Factura
+                </label>
+                <label
+                  className={cn(
+                    "flex flex-1 cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm font-medium transition-colors hover:bg-muted/40",
+                    "has-data-checked:border-primary has-data-checked:bg-primary/5 has-data-checked:text-primary has-data-checked:hover:bg-primary/5"
+                  )}
+                >
+                  <RadioGroupItem value="Ticket" />
+                  Ticket (sin datos del cliente)
+                </label>
+              </RadioGroup>
             </Campo>
-            {buscandoCliente && <p className="mb-4 text-xs text-muted-foreground">Buscando datos…</p>}
-            {clienteEncontrado && !buscandoCliente && (
-              <div className="mb-4 flex items-center gap-2 rounded-md bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400">
-                <TickCircle className="size-3.5 shrink-0" />
-                <span>Te reconocimos — completamos tus datos automáticamente. Revísalos y corrígelos si algo cambió.</span>
+
+            {!esTicket && (
+              <div className="mb-4 flex items-start gap-2 rounded-md bg-sky-500/5 p-3 text-xs text-sky-700 dark:text-sky-400">
+                <DocumentText className="mt-0.5 size-3.5 shrink-0" />
+                <span>Estos datos son los que aparecerán en la factura.</span>
               </div>
+            )}
+            {!esTicket && (
+              <>
+                <Campo label="DNI / NIF / Pasaporte / CIF" required error={errores.dniCif}>
+                  <Input
+                    className="h-11 text-base"
+                    value={datos.dniCif}
+                    onChange={(e) => actualizar("dniCif", e.target.value)}
+                    onBlur={(e) => buscarClientePorDni(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        buscarClientePorDni(datos.dniCif);
+                      }
+                    }}
+                  />
+                </Campo>
+                {buscandoCliente && <p className="mb-4 text-xs text-muted-foreground">Buscando datos…</p>}
+                {clienteEncontrado && !buscandoCliente && (
+                  <div className="mb-4 flex items-center gap-2 rounded-md bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400">
+                    <TickCircle className="size-3.5 shrink-0" />
+                    <span>Te reconocimos — completamos tus datos automáticamente. Revísalos y corrígelos si algo cambió.</span>
+                  </div>
+                )}
+              </>
             )}
             <Campo label="Nombre, apellidos o empresa" required error={errores.nombre}>
               <Input className="h-11 text-base" value={datos.nombre} onChange={(e) => actualizar("nombre", e.target.value)} />
             </Campo>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Campo label="Tipo de vía" required error={errores.viaTipo}>
-                  <Select value={datos.viaTipo} onValueChange={(v) => actualizar("viaTipo", v || "")}>
-                    <SelectTrigger className="h-11 w-full text-base">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["Calle", "Avenida", "Plaza", "Paseo", "Carretera", "Camino", "Urbanización", "Otra"].map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Campo>
-              </div>
-              <div className="flex-2">
-                <Campo label="Nombre de la vía" required error={errores.viaNombre}>
-                  <Input className="h-11 text-base" value={datos.viaNombre} onChange={(e) => actualizar("viaNombre", e.target.value)} />
-                </Campo>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Campo label="Número / Piso (opcional)">
-                  <Input className="h-11 text-base" value={datos.viaNumero} onChange={(e) => actualizar("viaNumero", e.target.value)} />
-                </Campo>
-              </div>
-              <div className="flex-1">
-                <Campo label="Código postal" required error={errores.cp}>
-                  <Input className="h-11 text-base" value={datos.cp} onChange={(e) => actualizar("cp", e.target.value)} />
-                </Campo>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Campo label="Localidad" required error={errores.localidad}>
-                  <Input className="h-11 text-base" value={datos.localidad} onChange={(e) => actualizar("localidad", e.target.value)} />
-                </Campo>
-              </div>
-              <div className="flex-1">
-                <Campo label="Provincia" required error={errores.provincia}>
-                  <Input className="h-11 text-base" value={datos.provincia} onChange={(e) => actualizar("provincia", e.target.value)} />
-                </Campo>
-              </div>
-            </div>
+            {!esTicket && (
+              <>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Campo label="Tipo de vía" required error={errores.viaTipo}>
+                      <Select value={datos.viaTipo} onValueChange={(v) => actualizar("viaTipo", v || "")}>
+                        <SelectTrigger className="h-11 w-full text-base">
+                          <SelectValue placeholder="Tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {["Calle", "Avenida", "Plaza", "Paseo", "Carretera", "Camino", "Urbanización", "Otra"].map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Campo>
+                  </div>
+                  <div className="flex-2">
+                    <Campo label="Nombre de la vía" required error={errores.viaNombre}>
+                      <Input className="h-11 text-base" value={datos.viaNombre} onChange={(e) => actualizar("viaNombre", e.target.value)} />
+                    </Campo>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Campo label="Número / Piso (opcional)">
+                      <Input className="h-11 text-base" value={datos.viaNumero} onChange={(e) => actualizar("viaNumero", e.target.value)} />
+                    </Campo>
+                  </div>
+                  <div className="flex-1">
+                    <Campo label="Código postal" required error={errores.cp}>
+                      <Input className="h-11 text-base" value={datos.cp} onChange={(e) => actualizar("cp", e.target.value)} />
+                    </Campo>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Campo label="Localidad" required error={errores.localidad}>
+                      <Input className="h-11 text-base" value={datos.localidad} onChange={(e) => actualizar("localidad", e.target.value)} />
+                    </Campo>
+                  </div>
+                  <div className="flex-1">
+                    <Campo label="Provincia" required error={errores.provincia}>
+                      <Input className="h-11 text-base" value={datos.provincia} onChange={(e) => actualizar("provincia", e.target.value)} />
+                    </Campo>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -827,6 +869,13 @@ export default function FormularioClientePage() {
                   {CONDICIONES_POR_CATEGORIA[categoria].map((c, i) => (
                     <li key={i}>{c}</li>
                   ))}
+                  {esTicket && (
+                    <li>
+                      Renuncia a factura. El cliente ha optado por recibir un ticket de venta en lugar de factura, por lo
+                      que no ha facilitado NIF/CIF ni dirección de facturación. En consecuencia, no será posible emitir
+                      ni solicitar una factura para esta reparación con posterioridad.
+                    </li>
+                  )}
                 </ol>
               </div>
             )}

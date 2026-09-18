@@ -26,6 +26,10 @@ function construirSintoma(datos: DatosFormularioCliente, esCintas: boolean): str
 // Reproduce _construirObservacionesFormularioSql.
 function construirObservaciones(datos: DatosFormularioCliente, esCintas: boolean): string {
   let obs = datos.obs.trim() ? (esCintas ? "Detalle: " : "Contraseña/PIN: ") + datos.obs.trim() : "";
+  // El cliente eligió "Ticket" (sin DNI/dirección) — el personal necesita
+  // verlo de un vistazo para no intentar generar una factura después.
+  // Petición del usuario, 2026-09-18.
+  if (datos.tipoDocumento === "Ticket") obs = (obs ? obs + " | " : "") + "[Sin factura: cliente eligió Ticket]";
   if (datos.aceptaMarketing) obs = (obs ? obs + " | " : "") + "[Marketing:Sí]";
   return obs;
 }

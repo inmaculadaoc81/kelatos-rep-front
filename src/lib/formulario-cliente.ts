@@ -125,6 +125,7 @@ export const PREFIJOS_TELEFONO_VALIDOS: string[] = Array.from(
 
 export type SiNo = "Sí" | "No";
 export type SiNoAVeces = "Sí" | "No" | "A veces";
+export type FacturaOTicket = "Factura" | "Ticket" | "";
 
 export interface DatosCintasForm {
   vhs: number;
@@ -144,6 +145,10 @@ export interface FotoFormulario {
 }
 
 export interface DatosFormularioCliente {
+  /** "Ticket" omite DNI/dirección — pensado para clientes que no quieren
+   * factura y prefieren no dar sus datos fiscales. Petición del usuario,
+   * 2026-09-18. */
+  tipoDocumento: FacturaOTicket;
   dniCif: string;
   nombre: string;
   telPrefijo: string;
@@ -176,6 +181,7 @@ export interface DatosFormularioCliente {
 
 export function datosVacios(): DatosFormularioCliente {
   return {
+    tipoDocumento: "",
     dniCif: "",
     nombre: "",
     telPrefijo: "+34",

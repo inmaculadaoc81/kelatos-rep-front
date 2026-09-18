@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket, Receipt, Send2 } from "@/lib/icons";
+import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket, Receipt, Send2, Warning2 } from "@/lib/icons";
 import { useConfirm } from "@/components/confirm-provider";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { guardarSuReferencia } from "@/lib/su-referencia";
@@ -554,6 +554,12 @@ function VistaConFactura({
       <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-2xl" showCloseButton={false}>
         <Cabecera titulo={titulo} icono={icono} onClose={() => cerrar(false)} />
         <div className="space-y-4 p-4">
+          {clienteEligioTicketSinFactura(detalle.observaciones) && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400">
+              <Warning2 className="mt-0.5 size-3.5 shrink-0" />
+              <span>El cliente eligió <strong>Ticket (sin datos del cliente)</strong> en el formulario — no dio DNI ni dirección. No se le debe facturar.</span>
+            </div>
+          )}
           <div className="space-y-3">
             <p className="flex items-center gap-1.5 border-b pb-2 text-sm font-semibold">
               {permiteTicket && !tipoDocumentoForzado ? (

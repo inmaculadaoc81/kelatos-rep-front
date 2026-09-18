@@ -34,7 +34,7 @@ import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { separarSintoma } from "@/lib/progreso-reparacion";
-import { ReparacionDetalle, type Pedido } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, type Pedido, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
 import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog, MarcarEnviadoDialog } from "./finalizar-dialog";
@@ -699,6 +699,11 @@ export function DetalleReparacionDialog({
                   {detalle.estado === "Garantía" && (
                     <Badge variant="outline" className="gap-1">
                       <ShieldTick className="size-3.5" /> Garantía
+                    </Badge>
+                  )}
+                  {clienteEligioTicketSinFactura(detalle.observaciones) && (
+                    <Badge variant="outline" className="gap-1 border-amber-300 text-amber-700 dark:border-amber-500/40 dark:text-amber-400">
+                      <Ticket className="size-3.5" /> Sin factura — eligió Ticket
                     </Badge>
                   )}
                   <MarcarGarantiaBoton detalle={detalle} onActualizado={actualizarTodo} />
