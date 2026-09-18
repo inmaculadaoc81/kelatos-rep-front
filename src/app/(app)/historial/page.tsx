@@ -58,6 +58,14 @@ function EntregaBadge({ estado }: { estado: string }) {
 // 2026-09-18: solo miraba numeroFactura — un resguardo cobrado con
 // "Ticket Rápido" (numeroTicket, sin factura formal) salía igual como
 // "Pendiente" aunque ya estuviera cobrado y cerrado.
+//
+// Segunda parte del mismo bug, reportada el mismo día: "Presupuesto
+// Rechazado"/"No tiene Reparación" (equipo sin reparar) puede llevar SU
+// PROPIA factura/ticket — no de la reparación (que nunca se hizo), sino
+// del ENVÍO al devolver el equipo por mensajería en vez de que el cliente
+// lo recoja en persona (numeroFacturaMensajeria/numeroTicketMensajeria,
+// mismo campo que ya usa EstadoFactura en el detalle). Antes esos casos
+// caían siempre en el "—" final aunque ese envío sí estuviera cobrado.
 function FacturaCelda({ r }: { r: Reparacion }) {
   const esGarantia = r.tipoIngreso === "GARANTIA";
   const requiereFactura = !esGarantia && (r.estado === "Reparado" || r.estado === "Presupuesto Aceptado");
@@ -72,6 +80,20 @@ function FacturaCelda({ r }: { r: Reparacion }) {
       return <Badge className="gap-1 bg-sky-600 text-white"><Ticket className="size-3" /> {r.numeroTicket}</Badge>;
     }
     return <Badge className="gap-1 bg-amber-500 text-white"><Danger className="size-3" /> Pendiente</Badge>;
+  }
+  if (r.numeroFacturaMensajeria) {
+    return (
+      <Badge className="gap-1 bg-emerald-600 text-white">
+        <Receipt className="size-3" /> {r.numeroFacturaMensajeria} <span className="opacity-80">· Envío</span>
+      </Badge>
+    );
+  }
+  if (r.numeroTicketMensajeria) {
+    return (
+      <Badge className="gap-1 bg-sky-600 text-white">
+        <Ticket className="size-3" /> {r.numeroTicketMensajeria} <span className="opacity-80">· Envío</span>
+      </Badge>
+    );
   }
   return <span className="text-muted-foreground">—</span>;
 }

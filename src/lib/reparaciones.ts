@@ -70,6 +70,12 @@ export interface Reparacion {
   observaciones: string;
   numeroFactura: string;
   numeroTicket: string;
+  /** Factura/ticket del ENVÍO de vuelta al cliente — distinto del anterior:
+      se genera para "Presupuesto Rechazado"/"No tiene Reparación"/etc.
+      (equipo sin reparar) cuando se devuelve por mensajería, no cuando el
+      cliente lo recoge en persona. */
+  numeroFacturaMensajeria: string;
+  numeroTicketMensajeria: string;
   resena: string;
   tipoIngreso: string;
   pptoDescripcion: string;
@@ -107,6 +113,8 @@ interface FilaReparacionSql {
   observaciones: string | null;
   numero_factura: string | null;
   numero_ticket: string | null;
+  numero_factura_mensajeria: string | null;
+  numero_ticket_mensajeria: string | null;
   resena: string | null;
   tipo_ingreso: string | null;
 }
@@ -173,6 +181,8 @@ export function mapearFilaReparacion(
     observaciones: row.observaciones || "",
     numeroFactura: row.numero_factura || "",
     numeroTicket: row.numero_ticket || "",
+    numeroFacturaMensajeria: row.numero_factura_mensajeria || "",
+    numeroTicketMensajeria: row.numero_ticket_mensajeria || "",
     resena: row.resena || "",
     tipoIngreso: row.tipo_ingreso || "",
     pptoDescripcion: ppto?.descripcion || "",
