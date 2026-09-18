@@ -776,7 +776,7 @@ export function DetalleReparacionDialog({
                         <FilaDato etiqueta="Email" valor={detalle.cliente.email} />
                         <FilaDato etiqueta="Equipo" valor={detalle.equipo.modelo} />
                         <FilaDato etiqueta="Síntoma" valor={detalle.equipo.sintoma} />
-                        <FilaDato etiqueta="Factura" valor={<EstadoFactura detalle={detalle} />} />
+                        <FilaDato etiqueta="Factura/Ticket" valor={<EstadoFactura detalle={detalle} />} />
                       </dl>
                       {/* Reproduce vfResenaCard (Index.html): en el original solo
                           vive dentro del modal de factura de reparación
