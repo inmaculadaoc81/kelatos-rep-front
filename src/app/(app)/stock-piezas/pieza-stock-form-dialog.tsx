@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock } from "@/lib/stock-piezas";
+import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock, mapearEnlaceCompra, mapearPedidoStock } from "@/lib/stock-piezas";
 
 function vacio(): DatosStockPiezaForm {
   return { referencia: "", nombre: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
@@ -99,8 +99,13 @@ export function PiezaStockFormDialog({
       fetch(`/api/stock-piezas/${encodeURIComponent(referencia)}/pedidos`).then((r) => r.json()),
     ])
       .then(([datosEnlaces, datosPedidos]) => {
-        if (datosEnlaces.ok) setEnlaces(datosEnlaces.enlaces);
-        if (datosPedidos.ok) setPedidos(datosPedidos.pedidos);
+        // Postgres devuelve NUMERIC como string ("42.92") — sin pasar por
+        // el mapper, `costo` quedaba como string en un campo tipado
+        // `number | null`, y e.costo.toFixed(2) explotaba en cuanto una
+        // pieza tenía algún enlace de compra con costo cargado, tirando
+        // abajo toda la página. Bug real reportado, 2026-09-18.
+        if (datosEnlaces.ok) setEnlaces((datosEnlaces.enlaces as Parameters<typeof mapearEnlaceCompra>[0][]).map(mapearEnlaceCompra));
+        if (datosPedidos.ok) setPedidos((datosPedidos.pedidos as Parameters<typeof mapearPedidoStock>[0][]).map(mapearPedidoStock));
       })
       .finally(() => setCargandoEnlaces(false));
   }
