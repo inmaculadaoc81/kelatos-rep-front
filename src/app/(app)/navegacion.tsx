@@ -28,6 +28,8 @@ export interface ItemNavegacion {
   /** `null` = todavía no construido en Next.js (sigue solo en Apps Script). */
   href: string | null;
   icon: React.ElementType;
+  /** Clases opcionales para destacar un item (p. ej. texto en verde). */
+  claseColor?: string;
 }
 
 export interface GrupoNavegacion {
@@ -78,7 +80,7 @@ export const GRUPOS: GrupoNavegacion[] = [
       { label: "Facturas de Clientes", href: "/facturas-clientes", icon: Receipt },
       { label: "Seguimiento de Facturas", href: "/seguimiento-facturas", icon: Money },
       { label: "Reporte de Facturas", href: "/reporte-facturas", icon: ClipboardText },
-      { label: "Efectivo", href: "/efectivo", icon: Coin1 },
+      { label: "Efectivo", href: "/efectivo", icon: Coin1, claseColor: "text-green-600 hover:text-green-700 data-active:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:data-active:text-green-300 [&>svg]:text-current" },
     ],
   },
   {

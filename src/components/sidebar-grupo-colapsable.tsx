@@ -17,6 +17,8 @@ export interface ItemNavegacionBase {
   /** `null` = todavía no construido / sin enlace propio (se pinta "pronto"). */
   href: string | null;
   icon: React.ElementType;
+  /** Clases opcionales para destacar un item (p. ej. texto en verde). */
+  claseColor?: string;
 }
 
 export interface GrupoNavegacionBase {
@@ -109,7 +111,7 @@ export function GrupoColapsable({
               }
               return (
                 <SidebarMenuSubItem key={item.label}>
-                  <SidebarMenuSubButton isActive={pathname === item.href} render={<Link href={item.href} />}>
+                  <SidebarMenuSubButton isActive={pathname === item.href} className={item.claseColor} render={<Link href={item.href} />}>
                     <Icon />
                     <span>{item.label}</span>
                   </SidebarMenuSubButton>
