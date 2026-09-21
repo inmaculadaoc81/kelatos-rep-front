@@ -13,6 +13,7 @@ import type { Empleado } from "@/app/api/empleados/route";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { usuarioIdentificado } from "@/lib/usuario-identificado";
+import { formatoPedidoDe } from "@/lib/formato-pedido";
 
 function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -140,6 +141,22 @@ export function RegistrarPedidoDialog({
     setPiezas((prev) => prev.map((p, idx) => (idx === i ? { ...p, [campo]: valor } : p)));
   }
 
+  /** Formato del número de pedido según el proveedor elegido en esa pieza. */
+  function formatoDe(proveedorId: string) {
+    return formatoPedidoDe(proveedores.find((prov) => prov.proveedorId === proveedorId)?.nombre);
+  }
+
+  /** Al cambiar de proveedor, el número ya escrito se recoloca con el formato del nuevo (guiones de eBay/Amazon). */
+  function cambiarProveedor(i: number, proveedorId: string) {
+    setPiezas((prev) =>
+      prev.map((p, idx) => {
+        if (idx !== i) return p;
+        const f = formatoDe(proveedorId);
+        return { ...p, proveedor: proveedorId, numeroPedido: f ? f.formatear(p.numeroPedido) : p.numeroPedido };
+      })
+    );
+  }
+
   function validar(): string | null {
     if (!compradoPor) return "El responsable de compra es obligatorio";
     if (!fechaPedido) return "La fecha de pedido es obligatoria";
@@ -149,6 +166,12 @@ export function RegistrarPedidoDialog({
       if (!p.proveedor.trim()) return `Pieza ${i + 1}: falta proveedor`;
       if (!p.enlace.trim()) return `Pieza ${i + 1}: falta enlace`;
       if (!p.numeroPedido.trim()) return `Pieza ${i + 1}: falta número de pedido`;
+      const f = formatoDe(p.proveedor);
+      // Se normaliza antes de validar: un número guardado sin guiones (o con
+      // espacios) de eBay/Amazon se acepta y se guarda ya bien formateado.
+      if (f && !f.esValido(f.formatear(p.numeroPedido))) {
+        return `Pieza ${i + 1}: el número de pedido de ${f.nombre} no es válido (${f.descripcion}, p. ej. ${f.ejemplo})`;
+      }
       if (!p.fechaEstimada) return `Pieza ${i + 1}: falta fecha estimada`;
     }
     return null;
@@ -160,7 +183,11 @@ export function RegistrarPedidoDialog({
 
     setEnviando(true);
     try {
-      const datos: DatosRegistrarPedido = { compradoPor, fechaPedido, piezas };
+      const piezasNormalizadas = piezas.map((p) => {
+        const f = formatoDe(p.proveedor);
+        return f ? { ...p, numeroPedido: f.formatear(p.numeroPedido) } : p;
+      });
+      const datos: DatosRegistrarPedido = { compradoPor, fechaPedido, piezas: piezasNormalizadas };
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/pedidos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -243,7 +270,7 @@ export function RegistrarPedidoDialog({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label>Proveedor *</Label>
-                        <Select value={p.proveedor} onValueChange={(v) => actualizarPieza(i, "proveedor", v || "")}>
+                        <Select value={p.proveedor} onValueChange={(v) => cambiarProveedor(i, v || "")}>
                           <SelectTrigger className="w-full">
                             {/* El popup solo existe en el DOM mientras está abierto, así que
                                 Select.Value no puede resolver la etiqueta del valor ya
@@ -267,7 +294,29 @@ export function RegistrarPedidoDialog({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label htmlFor={`pedNum-${i}`}>Número de Pedido *</Label>
-                        <Input id={`pedNum-${i}`} value={p.numeroPedido} onChange={(e) => actualizarPieza(i, "numeroPedido", e.target.value)} />
+                        {(() => {
+                          const f = formatoDe(p.proveedor);
+                          const invalido = !!f && !!p.numeroPedido && !f.esValido(f.formatear(p.numeroPedido));
+                          return (
+                            <>
+                              <Input
+                                id={`pedNum-${i}`}
+                                value={p.numeroPedido}
+                                inputMode={f ? "numeric" : undefined}
+                                maxLength={f?.maxLength}
+                                placeholder={f?.ejemplo}
+                                aria-invalid={invalido || undefined}
+                                onChange={(e) => actualizarPieza(i, "numeroPedido", f ? f.formatear(e.target.value) : e.target.value)}
+                              />
+                              {f && (
+                                <p className={`text-xs ${invalido ? "text-destructive" : "text-muted-foreground"}`}>
+                                  {invalido ? "Número incompleto o no válido. " : ""}
+                                  Formato {f.nombre}: {f.descripcion}. Ej.: <span className="font-medium">{f.ejemplo}</span>
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pedFechaEst-${i}`}>Fecha Estimada de Entrega *</Label>
