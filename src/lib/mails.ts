@@ -73,6 +73,8 @@ export interface MensajeDetalle {
   adjuntos: { nombre: string; tipo?: string; tamano?: number }[];
   leido: boolean;
   es_rebote: boolean;
+  /** Quién lo envió desde el app (null si viene de la sincronización IMAP). */
+  enviado_por: string | null;
   clientes: ClienteVinculado[];
 }
 

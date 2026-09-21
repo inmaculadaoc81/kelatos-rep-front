@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2, Edit2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Buzon, ClienteVinculado, ContadoresMensajes, MensajeDetalle, MensajeLista, nombreOCorreo } from "@/lib/mails";
 import { codigoClienteFormateado } from "@/lib/clientes";
+import { BorradorCorreo, RedactarDialog } from "./redactar-dialog";
 
 const ZONA = "Europe/Madrid";
 const PAGINA = 50;
@@ -41,8 +42,26 @@ function documentoSeguro(html: string): string {
 </head><body>${html}</body></html>`;
 }
 
+const BORRADOR_VACIO: BorradorCorreo = { buzonId: null, para: "", cc: "", asunto: "", texto: "", respondeA: null };
+
+/** Prepara la respuesta a un correo recibido: destinatario, "Re:" y el original citado. */
+function borradorRespuesta(d: MensajeDetalle, fecha: string): BorradorCorreo {
+  const asunto = /^\s*(re|rv)\s*:/i.test(d.asunto) ? d.asunto : `Re: ${d.asunto || ""}`.trim();
+  const quien = d.remitente_nombre ? `${d.remitente_nombre} <${d.remitente}>` : d.remitente;
+  const cita = (d.cuerpo_texto || "")
+    .slice(0, 4000)
+    .split("\n")
+    .slice(0, 60)
+    .map((l) => `> ${l}`)
+    .join("\n");
+  return { buzonId: d.buzon_id, para: d.remitente, cc: "", asunto, texto: `\n\n${fecha}, ${quien} escribió:\n${cita}`, respondeA: d.id };
+}
+
 export default function BandejaPage() {
   const [buzones, setBuzones] = useState<Buzon[]>([]);
+  // Enviar/responder es solo del superadmin (el backend lo vuelve a comprobar).
+  const [puedeEnviar, setPuedeEnviar] = useState(false);
+  const [redactar, setRedactar] = useState<{ abierto: boolean; n: number; borrador: BorradorCorreo }>({ abierto: false, n: 0, borrador: BORRADOR_VACIO });
   const [cargandoBuzones, setCargandoBuzones] = useState(true);
   const [buzonSel, setBuzonSel] = useState<number | null>(null);
   const [vista, setVista] = useState<Vista>("entrada");
@@ -72,7 +91,10 @@ export default function BandejaPage() {
     try {
       const res = await fetch("/api/mails/buzones");
       const data = await res.json();
-      if (data.ok) setBuzones(data.buzones as Buzon[]);
+      if (data.ok) {
+        setBuzones(data.buzones as Buzon[]);
+        setPuedeEnviar(!!data.puedeGestionar);
+      }
     } catch {
       /* la lista de buzones es secundaria: la bandeja sigue funcionando */
     } finally {
@@ -183,9 +205,20 @@ export default function BandejaPage() {
             {buzonActual ? buzonActual.email : "Todos los buzones"} · entrada, enviados y rebotes
           </p>
         </div>
-        <Button variant="outline" size="icon" className="size-8" onClick={() => { cargar(); cargarBuzones(); }} title="Actualizar">
-          <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          {puedeEnviar && buzones.some((b) => b.activo) && (
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setRedactar((r) => ({ abierto: true, n: r.n + 1, borrador: { ...BORRADOR_VACIO, buzonId: buzonSel } }))}
+            >
+              <Edit2 className="size-4" /> Redactar
+            </Button>
+          )}
+          <Button variant="outline" size="icon" className="size-8" onClick={() => { cargar(); cargarBuzones(); }} title="Actualizar">
+            <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -332,7 +365,19 @@ export default function BandejaPage() {
           {seleccionado && !cargandoDetalle && detalle && (
             <>
               <div className="space-y-1 border-b p-4">
-                <h2 className="text-base font-semibold">{detalle.asunto || "(sin asunto)"}</h2>
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-base font-semibold">{detalle.asunto || "(sin asunto)"}</h2>
+                  {puedeEnviar && detalle.direccion === "entrada" && !detalle.es_rebote && buzones.some((b) => b.id === detalle.buzon_id && b.activo) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 shrink-0 gap-1.5"
+                      onClick={() => setRedactar((r) => ({ abierto: true, n: r.n + 1, borrador: borradorRespuesta(detalle, fechaLarga(detalle.fecha)) }))}
+                    >
+                      <Send2 className="size-3.5" /> Responder
+                    </Button>
+                  )}
+                </div>
                 <p className="text-sm">
                   <span className="text-muted-foreground">De: </span>
                   {detalle.remitente_nombre ? `${detalle.remitente_nombre} <${detalle.remitente}>` : detalle.remitente}
@@ -370,7 +415,8 @@ export default function BandejaPage() {
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  {fechaLarga(detalle.fecha)} · Buzón {detalle.buzon_email} · {detalle.carpeta}
+                  {fechaLarga(detalle.fecha)} · Buzón {detalle.buzon_email} · {detalle.carpeta === "__APP__" ? "Enviado desde el app" : detalle.carpeta}
+                  {detalle.enviado_por ? ` por ${detalle.enviado_por}` : ""}
                 </p>
                 {detalle.adjuntos.length > 0 && (
                   <p className="flex flex-wrap items-center gap-1.5 pt-1 text-xs text-muted-foreground">
@@ -404,6 +450,17 @@ export default function BandejaPage() {
           )}
         </div>
       </div>
+
+      {puedeEnviar && (
+        <RedactarDialog
+          key={redactar.n}
+          buzones={buzones}
+          borrador={redactar.borrador}
+          open={redactar.abierto}
+          onOpenChange={(o) => setRedactar((r) => ({ ...r, abierto: o }))}
+          onEnviado={() => { cargar(); cargarBuzones(); }}
+        />
+      )}
     </div>
   );
 }

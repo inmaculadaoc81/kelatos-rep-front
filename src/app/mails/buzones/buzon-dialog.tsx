@@ -215,7 +215,7 @@ export function BuzonDialog({
             <Sms className="size-5" /> {esEdicion ? "Editar buzón" : "Añadir buzón"}
           </DialogTitle>
           <DialogDescription>
-            La contraseña se guarda cifrada y no se vuelve a mostrar. El app solo lee el buzón: no marca, mueve ni borra nada en el servidor de correo.
+            La contraseña se guarda cifrada y no se vuelve a mostrar. El app lee el buzón sin modificarlo (no marca, mueve ni borra nada) y solo envía cuando tú redactas o respondes un correo.
           </DialogDescription>
         </DialogHeader>
 
