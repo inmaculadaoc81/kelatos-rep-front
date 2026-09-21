@@ -30,7 +30,7 @@ import { Reparacion } from "@/lib/reparaciones";
 import { normalizarNumeroLocal } from "@/lib/telefono";
 import { PiezaForm, TipoLineaPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { esEmailValido } from "@/lib/validacion";
 import { FacturaRevisionDialog } from "./factura-revision-dialog";
 import { METODOS_PAGO, BANCOS } from "./factura-acciones-tabs";
@@ -207,6 +207,10 @@ export function ReparacionSheet({
 
   const esConfirmar = modo === "confirmar";
   const esAceptarAhora = datos.estado === "aceptar_ahora";
+  // El cliente eligió "Ticket" en el formulario de la tablet: por diseño no
+  // da DNI/CIF ni dirección (renuncia a factura), así que aquí no pueden ser
+  // obligatorios — si no, esa recepción no se podía confirmar nunca.
+  const sinDatosFactura = esConfirmar && clienteEligioTicketSinFactura(reparacionPendiente?.observaciones);
 
   useEffect(() => {
     if (!open) return;
@@ -264,8 +268,8 @@ export function ReparacionSheet({
 
   function validar(): string | null {
     if (!datos.clienteNombre.trim()) return "El nombre del cliente es obligatorio";
-    if (!datos.dniCif.trim()) return "El DNI / CIF del cliente es obligatorio";
-    if (!datos.direccionEnvio.trim()) return "La dirección del cliente es obligatoria";
+    if (!sinDatosFactura && !datos.dniCif.trim()) return "El DNI / CIF del cliente es obligatorio";
+    if (!sinDatosFactura && !datos.direccionEnvio.trim()) return "La dirección del cliente es obligatoria";
     if (!datos.noTieneTelefono && !datos.clienteTelefono.trim()) return 'El teléfono es obligatorio. Si el cliente no tiene, marca "No tiene".';
     if (!datos.noTieneEmail) {
       if (!datos.clienteEmail.trim()) return 'El email es obligatorio. Si el cliente no tiene, marca "No tiene".';
@@ -461,13 +465,18 @@ export function ReparacionSheet({
                 </label>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="dniCif">DNI / CIF *</Label>
+                <Label htmlFor="dniCif">DNI / CIF{sinDatosFactura ? "" : " *"}</Label>
                 <Input id="dniCif" value={datos.dniCif} onChange={(e) => actualizar("dniCif", e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="direccionEnvio">Dirección *</Label>
+                <Label htmlFor="direccionEnvio">Dirección{sinDatosFactura ? "" : " *"}</Label>
                 <Input id="direccionEnvio" value={datos.direccionEnvio} onChange={(e) => actualizar("direccionEnvio", e.target.value)} />
               </div>
+              {sinDatosFactura && (
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  El cliente eligió Ticket (sin factura): DNI/CIF y dirección son opcionales.
+                </p>
+              )}
             </div>
           </div>
 
