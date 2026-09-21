@@ -108,6 +108,7 @@ export const Save2 = withDefaults(Iconsax.Save2);
 export const ScanBarcode = withDefaults(Iconsax.ScanBarcode);
 export const SearchNormal1 = withDefaults(Iconsax.SearchNormal1);
 export const Send2 = withDefaults(Iconsax.Send2);
+export const Paperclip2 = withDefaults(Iconsax.Paperclip2);
 export const Setting2 = withDefaults(Iconsax.Setting2);
 export const Sort = withDefaults(Iconsax.Sort);
 export const ShieldTick = withDefaults(Iconsax.ShieldTick);

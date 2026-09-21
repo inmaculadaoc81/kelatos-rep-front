@@ -45,6 +45,16 @@ export default auth((req) => {
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Gestión MAILS — vista aparte, solo administradores (mismo criterio que
+  // Agentes; los buzones guardan credenciales de correo). Las rutas de API
+  // repiten la comprobación (src/lib/mails-auth.ts).
+  if (
+    (req.nextUrl.pathname.startsWith("/mails") || req.nextUrl.pathname.startsWith("/api/mails")) &&
+    req.auth?.user?.role !== "admin" &&
+    !esSuperadmin(req.auth?.user?.email)
+  ) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Dashboard de Asistencia (fichajes) — un empleado que ficha puede no
   // tener cuenta @kelatos.com (login ampliado en src/auth.ts); esa cuenta
   // solo puede entrar a /asistencia/kiosk (y a sus propias llamadas API

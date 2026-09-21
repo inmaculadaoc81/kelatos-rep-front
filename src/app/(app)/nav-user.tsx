@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, Global, Cpu } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, Global, Cpu, Sms } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -65,9 +65,11 @@ export function NavUser({ session }: { session: Session | null }) {
   const enAsistencia = pathname?.startsWith("/asistencia") ?? false;
   const enWebsKelatos = pathname?.startsWith("/webs-kelatos") ?? false;
   const enAgentes = pathname?.startsWith("/agentes") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes;
+  const enMails = pathname?.startsWith("/mails") ?? false;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enMails;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
+  const puedeVerMails = esAdmin || esSuperadmin(email);
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -163,6 +165,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/agentes" />}>
                   <IconoDashboard icon={Cpu} className="from-cyan-500 to-teal-600" />
                   Agentes
+                </DropdownMenuItem>
+              )}
+              {puedeVerMails && !enMails && (
+                <DropdownMenuItem render={<Link href="/mails" />}>
+                  <IconoDashboard icon={Sms} className="from-rose-500 to-pink-600" />
+                  Gestión MAILS
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
