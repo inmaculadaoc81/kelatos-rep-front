@@ -45,7 +45,7 @@ export function AnularRetiradaDialog({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Retirada anulada");
+      toast.success(retirada.tipo === "ingreso" ? "Ingreso anulado" : "Retirada anulada");
       setMotivo("");
       onOpenChange(false);
       onAnulada();
@@ -61,10 +61,10 @@ export function AnularRetiradaDialog({
       <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
-            <CloseCircle className="size-5" /> Anular retirada
+            <CloseCircle className="size-5" /> {retirada?.tipo === "ingreso" ? "Anular ingreso" : "Anular retirada"}
           </DialogTitle>
           <DialogDescription>
-            La retirada dejará de restar de la caja, pero se conserva en la lista como &quot;Anulada&quot; junto con el motivo.
+            {retirada?.tipo === "ingreso" ? "El ingreso dejará de sumar a la caja" : "La retirada dejará de restar de la caja"}, pero se conserva en la lista como &quot;Anulada&quot; junto con el motivo.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,7 +102,7 @@ export function AnularRetiradaDialog({
             Cancelar
           </Button>
           <Button variant="destructive" disabled={enviando || !motivo.trim()} onClick={anular}>
-            {enviando ? "Anulando…" : "Anular retirada"}
+            {enviando ? "Anulando…" : retirada?.tipo === "ingreso" ? "Anular ingreso" : "Anular retirada"}
           </Button>
         </DialogFooter>
       </DialogContent>

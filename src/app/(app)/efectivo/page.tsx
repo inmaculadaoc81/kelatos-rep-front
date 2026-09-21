@@ -22,6 +22,7 @@ const ESTILO_TIPO: Record<TipoMovimientoEfectivo, { etiqueta: string; clase: str
   cobro: { etiqueta: "Cobro", clase: "bg-green-500/10 text-green-600" },
   devolucion: { etiqueta: "Devolución", clase: "bg-red-500/10 text-red-600" },
   retirada: { etiqueta: "Retirada", clase: "bg-amber-500/10 text-amber-600" },
+  ingreso: { etiqueta: "Ingreso", clase: "bg-sky-500/10 text-sky-600" },
 };
 
 function euros(n: number): string {
@@ -93,7 +94,8 @@ export default function EfectivoPage() {
   const [filtroConcepto, setFiltroConcepto] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
-  const [retirarAbierto, setRetirarAbierto] = useState(false);
+  // Diálogo de movimiento manual abierto: retirar o añadir efectivo (null = cerrado).
+  const [movimientoManual, setMovimientoManual] = useState<"retirada" | "ingreso" | null>(null);
   const [anulando, setAnulando] = useState<MovimientoEfectivo | null>(null);
 
   async function cargar() {
@@ -144,7 +146,7 @@ export default function EfectivoPage() {
   const origenes = useMemo(() => Array.from(new Set(visibles.map((m) => m.origen).filter(Boolean))).sort(), [visibles]);
 
   const conceptos = useMemo(
-    () => Array.from(new Set(visibles.filter((m) => m.tipo !== "retirada").map((m) => m.concepto).filter(Boolean))).sort(),
+    () => Array.from(new Set(visibles.filter((m) => m.tipo !== "retirada" && m.tipo !== "ingreso").map((m) => m.concepto).filter(Boolean))).sort(),
     [visibles]
   );
 
@@ -235,7 +237,7 @@ export default function EfectivoPage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Efectivo</h1>
-          <p className="text-sm text-muted-foreground">Cobros y devoluciones en efectivo de tickets y facturas, y retiradas de caja</p>
+          <p className="text-sm text-muted-foreground">Cobros y devoluciones en efectivo de tickets y facturas, y movimientos manuales de caja</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-md border bg-card p-0.5" role="group" aria-label="Qué días cuentan en la caja">
@@ -266,14 +268,19 @@ export default function EfectivoPage() {
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
           {puedeRetirar && (
-            <Button size="sm" className="gap-1.5" onClick={() => setRetirarAbierto(true)}>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setMovimientoManual("ingreso")}>
+              <MoneyRecive className="size-4" /> Añadir efectivo
+            </Button>
+          )}
+          {puedeRetirar && (
+            <Button size="sm" className="gap-1.5" onClick={() => setMovimientoManual("retirada")}>
               <MoneySend className="size-4" /> Retirar efectivo
             </Button>
           )}
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <button
           type="button"
           onClick={() => setFiltroTipo("")}
@@ -324,6 +331,22 @@ export default function EfectivoPage() {
         </button>
         <button
           type="button"
+          onClick={() => alternarTipo("ingreso")}
+          aria-pressed={filtroTipo === "ingreso"}
+          title="Filtrar por efectivo añadido a mano"
+          className={`rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 ${filtroTipo === "ingreso" ? "ring-2 ring-sky-600/60" : ""}`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="mb-1 text-sm text-muted-foreground">Añadido</p>
+              <p className="text-2xl font-bold tabular-nums text-sky-600">{cargando ? "…" : euros(resumen.ingresos)}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Efectivo añadido a mano</p>
+            </div>
+            <MoneyRecive className="size-8 text-sky-600/40" />
+          </div>
+        </button>
+        <button
+          type="button"
           onClick={() => alternarTipo("retirada")}
           aria-pressed={filtroTipo === "retirada"}
           title="Filtrar por retiradas"
@@ -353,6 +376,7 @@ export default function EfectivoPage() {
             <SelectItem value="__todos__">Todos los movimientos</SelectItem>
             <SelectItem value="cobro">Cobros</SelectItem>
             <SelectItem value="devolucion">Devoluciones</SelectItem>
+            <SelectItem value="ingreso">Ingresos</SelectItem>
             <SelectItem value="retirada">Retiradas</SelectItem>
           </SelectContent>
         </Select>
@@ -480,7 +504,7 @@ export default function EfectivoPage() {
                     <TableCell className="text-sm">{m.origen || "-"}</TableCell>
                     <TableCell className="max-w-56 text-sm">
                       <span className="line-clamp-2">{m.concepto}</span>
-                      {m.tipo === "retirada" && m.usuario && <span className="block text-xs text-muted-foreground">{m.usuario}</span>}
+                      {m.retiradaId !== undefined && m.usuario && <span className="block text-xs text-muted-foreground">{m.usuario}</span>}
                     </TableCell>
                     <TableCell className="text-sm">{m.referencia || "-"}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{m.numero || "-"}</TableCell>
@@ -499,8 +523,8 @@ export default function EfectivoPage() {
                     <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">{euros(m.saldo)}</TableCell>
                     {puedeRetirar && (
                       <TableCell>
-                        {m.tipo === "retirada" && !m.anulada && (
-                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" onClick={() => setAnulando(m)} title="Anular esta retirada">
+                        {m.retiradaId !== undefined && !m.anulada && (
+                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" onClick={() => setAnulando(m)} title="Anular este movimiento">
                             <CloseCircle className="size-3.5" /> Anular
                           </Button>
                         )}
@@ -513,7 +537,16 @@ export default function EfectivoPage() {
         </Table>
       </div>
 
-      {puedeRetirar && <RetirarEfectivoDialog open={retirarAbierto} onOpenChange={setRetirarAbierto} saldo={saldoActual} onRegistrada={cargar} />}
+      {puedeRetirar && (
+        <RetirarEfectivoDialog
+          key={movimientoManual ?? "cerrado"}
+          modo={movimientoManual ?? "retirada"}
+          open={movimientoManual !== null}
+          onOpenChange={(o) => !o && setMovimientoManual(null)}
+          saldo={saldoActual}
+          onRegistrada={cargar}
+        />
+      )}
       {puedeRetirar && <AnularRetiradaDialog retirada={anulando} onOpenChange={(o) => !o && setAnulando(null)} onAnulada={cargar} />}
     </div>
   );
