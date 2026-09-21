@@ -11,5 +11,8 @@ import { esSuperadmin } from "@/lib/superadmin";
  */
 export async function GET() {
   const session = await auth();
-  return NextResponse.json({ ok: true, esSuperadmin: esSuperadmin(session?.user?.email) });
+  const superadmin = esSuperadmin(session?.user?.email);
+  // Además de superadmin: quién puede entrar a Gestión MAILS (administradores y superadmins),
+  // para decidir si se muestran los enlaces a esa vista.
+  return NextResponse.json({ ok: true, esSuperadmin: superadmin, puedeVerMails: superadmin || session?.user?.role === "admin" });
 }

@@ -21,10 +21,9 @@ import { Sms, Setting2, Building } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const ITEMS: { label: string; href: string | null; icon: typeof Sms }[] = [
-  { label: "Bandeja", href: "/mails/bandeja", icon: Sms },
+  { label: "Centro de mails", href: "/mails/bandeja", icon: Sms },
+  { label: "Leads", href: "/mails/leads", icon: Building },
   { label: "Buzones", href: "/mails/buzones", icon: Setting2 },
-  // Pendiente de definir de dónde salen las empresas a contactar.
-  { label: "Empresas y envíos", href: null, icon: Building },
 ];
 
 /** Sidebar de Gestión MAILS — mismo esquema que el de Agentes (logo +

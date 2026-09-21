@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, UserAdd, Edit2, Trash, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3 } from "@/lib/icons";
+import Link from "next/link";
+import { Refresh2, SearchNormal1, UserAdd, Edit2, Trash, Sms, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +19,7 @@ import { Cliente, codigoClienteFormateado } from "@/lib/clientes";
 import { ClienteFormDialog } from "./cliente-form-dialog";
 import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
+import { usePuedeVerMails } from "@/hooks/use-puede-ver-mails";
 import { ColumnaFiltro } from "../facturas-clientes/columna-filtro";
 
 type ColumnaFiltrable = "codigo" | "nombre" | "dniCif" | "telefono" | "email" | "localidad";
@@ -46,6 +48,7 @@ export default function ClientesPage() {
   const [pagina, setPagina] = useState(1);
   const [filasPorPagina, setFilasPorPagina] = useState(15);
   const esSuperadmin = useEsSuperadmin();
+  const puedeVerMails = usePuedeVerMails();
 
   async function cargar(filtro?: string) {
     setCargando(true);
@@ -235,6 +238,17 @@ export default function ClientesPage() {
                     >
                       <Edit2 className="size-3.5" /> Editar
                     </Button>
+                    {puedeVerMails && c.email && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1"
+                        nativeButton={false}
+                        render={<Link href={`/mails/bandeja?cliente=${encodeURIComponent(c.codigo)}`} title="Todos los correos enviados y recibidos con este cliente" />}
+                      >
+                        <Sms className="size-3.5" /> Correos
+                      </Button>
+                    )}
                     {esSuperadmin && (
                       <Button
                         size="sm"

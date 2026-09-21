@@ -37,6 +37,25 @@ export interface ClienteVinculado {
   email: string;
 }
 
+/** Lead (empresa/contacto de la base de envíos) cuyo correo coincide con el de la otra parte. */
+export interface LeadVinculado {
+  id: number;
+  nombre: string;
+  estado: EstadoLead;
+}
+
+/** Carpetas del Centro de mails. */
+export type Vista = "todos" | "entrada" | "destacados" | "enviados" | "archivo" | "rebotes" | "papelera";
+
+export interface AdjuntoMail {
+  id: number;
+  nombre: string;
+  tipo: string | null;
+  tamano: number | null;
+  /** false = era demasiado grande y solo se conserva el nombre. */
+  guardado: boolean;
+}
+
 export interface MensajeLista {
   id: number;
   buzon_id: number;
@@ -49,18 +68,25 @@ export interface MensajeLista {
   fecha: string | null;
   leido: boolean;
   es_rebote: boolean;
+  destacado: boolean;
+  archivado: boolean;
+  hilo: string | null;
   tiene_adjuntos: boolean;
   resumen: string;
+  /** Mensajes de la conversación (1 si no se agrupa). */
+  n_mensajes: number;
+  /** Recibidos sin leer dentro de la conversación. */
+  no_leidos: number;
   clientes: ClienteVinculado[];
+  leads: LeadVinculado[];
 }
 
-export interface MensajeDetalle {
+export interface MensajeHilo {
   id: number;
   buzon_id: number;
   buzon_email: string;
   carpeta: string;
   direccion: "entrada" | "salida";
-  message_id: string | null;
   remitente: string;
   remitente_nombre: string | null;
   destinatarios: string;
@@ -70,19 +96,116 @@ export interface MensajeDetalle {
   cuerpo_texto: string | null;
   cuerpo_html: string | null;
   truncado: boolean;
-  adjuntos: { nombre: string; tipo?: string; tamano?: number }[];
   leido: boolean;
   es_rebote: boolean;
-  /** Quién lo envió desde el app (null si viene de la sincronización IMAP). */
+  destacado: boolean;
+  archivado: boolean;
+  eliminado_en: string | null;
   enviado_por: string | null;
+  adjuntos: AdjuntoMail[];
+}
+
+export interface MensajeDetalle extends MensajeHilo {
+  message_id: string | null;
+  hilo: string | null;
+  /** Mensaje al que contesta (si está guardado). */
+  en_respuesta_a: { id: number; asunto: string; fecha: string | null; direccion: "entrada" | "salida" } | null;
   clientes: ClienteVinculado[];
+  leads: LeadVinculado[];
 }
 
 export interface ContadoresMensajes {
+  todos: number;
   entrada: number;
-  salida: number;
-  rebotes: number;
   sin_leer: number;
+  destacados: number;
+  enviados: number;
+  archivo: number;
+  rebotes: number;
+  papelera: number;
+}
+
+export const CONTADORES_VACIOS: ContadoresMensajes = { todos: 0, entrada: 0, sin_leer: 0, destacados: 0, enviados: 0, archivo: 0, rebotes: 0, papelera: 0 };
+
+// ── Leads ────────────────────────────────────────────────────────────────
+
+export type EstadoLead = "Pendiente" | "Enviado" | "Follow up" | "Respondió" | "No contactar" | "Inválido";
+
+export const ESTADOS_LEAD: EstadoLead[] = ["Pendiente", "Enviado", "Follow up", "Respondió", "No contactar", "Inválido"];
+
+/** Colores de la pastilla de estado (mismo criterio en la lista, la ficha y la bandeja). */
+export const COLOR_ESTADO_LEAD: Record<EstadoLead, string> = {
+  Pendiente: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
+  Enviado: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  "Follow up": "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  Respondió: "bg-green-500/10 text-green-600 dark:text-green-400",
+  "No contactar": "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300",
+  Inválido: "bg-red-500/10 text-red-600 dark:text-red-400",
+};
+
+export interface LeadLista {
+  id: number;
+  nombre: string;
+  contacto: string | null;
+  email: string | null;
+  emails_extra: string[];
+  telefono: string | null;
+  web: string | null;
+  ciudad: string | null;
+  provincia: string | null;
+  pais: string | null;
+  sector: string | null;
+  estado: EstadoLead;
+  paso: number;
+  grupo_envio: string | null;
+  notas: string | null;
+  origen: string | null;
+  creado_en: string;
+  actualizado_en: string;
+  enviados: number;
+  recibidos: number;
+  rebotes: number;
+  ultimo_envio: string | null;
+  ultima_respuesta: string | null;
+}
+
+export type KpisLeads = { total: number } & Record<EstadoLead, number>;
+
+export interface MensajeLead {
+  id: number;
+  direccion: "entrada" | "salida";
+  asunto: string;
+  fecha: string | null;
+  es_rebote: boolean;
+  leido: boolean;
+  buzon_email: string;
+  remitente: string;
+  destinatarios: string;
+  resumen: string;
+  tiene_adjuntos: boolean;
+  en_respuesta_a: { id: number; asunto: string; fecha: string | null; direccion: "entrada" | "salida" } | null;
+}
+
+export interface LeadDetalle {
+  lead: LeadLista & { datos_extra: Record<string, unknown> };
+  mensajes: MensajeLead[];
+  invalidas: { email: string; motivo: string | null; detectado_en: string }[];
+}
+
+export interface ResultadoImportacion {
+  creados: number;
+  actualizados: number;
+  omitidos: number;
+  sin_datos: number;
+  sin_email: number;
+}
+
+/** Tamaño legible: 1,2 MB, 340 KB… */
+export function tamanoLegible(bytes: number | null | undefined): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toLocaleString("es-ES", { maximumFractionDigits: 1 })} MB`;
 }
 
 export interface ResultadoPrueba {

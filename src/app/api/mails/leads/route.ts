@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { kelatosApiGet } from "@/lib/kelatos-api";
 import { accesoMails } from "@/lib/mails-auth";
-import type { ContadoresMensajes, MensajeLista } from "@/lib/mails";
+import type { KpisLeads, LeadLista } from "@/lib/mails";
 
-const PARAMETROS = ["vista", "buzon", "sinLeer", "agrupar", "q", "cliente", "lead", "email", "limit", "offset"];
+const PARAMETROS = ["estado", "q", "grupo", "paso", "orden", "limit", "offset"];
 
-/** Lista paginada de mensajes (sin cuerpo) + contadores. Filtra el servidor. */
+/** Lista paginada de leads con sus KPIs por estado y sus envíos/respuestas. */
 export async function GET(req: Request) {
   const a = await accesoMails();
   if (!a.ok) return a.respuesta;
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
       const v = p.get(k);
       if (v) params[k] = v;
     }
-    const data = await kelatosApiGet<{ ok: boolean; total: number; contadores: ContadoresMensajes; mensajes: MensajeLista[] }>("/v1/mails/mensajes", params);
+    const data = await kelatosApiGet<{ ok: boolean; total: number; kpis: KpisLeads; leads: LeadLista[] }>("/v1/mails/leads", params);
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Error desconocido" }, { status: 502 });

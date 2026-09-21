@@ -20,6 +20,8 @@ export async function POST(req: Request) {
         asunto: b.asunto,
         texto: b.texto,
         respondeA: b.respondeA,
+        adjuntos: b.adjuntos,
+        forzar: b.forzar === true,
         usuario: a.email,
       }
     );

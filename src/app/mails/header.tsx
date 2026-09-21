@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/breadcrumb";
 
 const SECCIONES: Record<string, string> = {
-  "/mails/bandeja": "Bandeja",
+  "/mails/bandeja": "Centro de mails",
+  "/mails/leads": "Leads",
   "/mails/buzones": "Buzones",
 };
 
@@ -20,7 +21,7 @@ const SECCIONES: Record<string, string> = {
     migas), con la sección actual. */
 export function MailsHeader() {
   const pathname = usePathname() || "";
-  const seccion = SECCIONES[pathname];
+  const seccion = Object.entries(SECCIONES).find(([ruta]) => pathname === ruta || pathname.startsWith(`${ruta}/`))?.[1];
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-4 bg-primary px-4 shadow-sm">
       <Breadcrumb>

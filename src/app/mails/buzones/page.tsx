@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Refresh2, Add, Edit2 } from "@/lib/icons";
+import Link from "next/link";
+import { Refresh2, Add, Edit2, Sms, Clock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Buzon, etiquetaProveedor } from "@/lib/mails";
 import { BuzonDialog } from "./buzon-dialog";
+import { HistoricoDialog } from "./historico-dialog";
 
 function fechaHora(iso: string | null): string {
   if (!iso) return "Nunca";
@@ -23,6 +25,7 @@ export default function BuzonesPage() {
   // `n` cambia en cada apertura: el formulario arranca limpio (o con el buzón elegido).
   const [dialogo, setDialogo] = useState<{ abierto: boolean; buzon: Buzon | null; n: number }>({ abierto: false, buzon: null, n: 0 });
   const [sincronizando, setSincronizando] = useState<number | null>(null);
+  const [historico, setHistorico] = useState<Buzon | null>(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -108,6 +111,7 @@ export default function BuzonesPage() {
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Mensajes</TableHead>
               <TableHead>Última sincronización</TableHead>
+              <TableHead />
               {puedeGestionar && <TableHead />}
             </TableRow>
           </TableHeader>
@@ -115,7 +119,7 @@ export default function BuzonesPage() {
             {cargando &&
               Array.from({ length: 3 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: puedeGestionar ? 7 : 6 }).map((__, j) => (
+                  {Array.from({ length: puedeGestionar ? 8 : 7 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -124,7 +128,7 @@ export default function BuzonesPage() {
               ))}
             {!cargando && buzones.length === 0 && (
               <TableRow>
-                <TableCell colSpan={puedeGestionar ? 7 : 6} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={puedeGestionar ? 8 : 7} className="py-8 text-center text-muted-foreground">
                   Todavía no hay buzones{puedeGestionar ? ". Pulsa «Añadir buzón» para conectar el primero." : "."}
                 </TableCell>
               </TableRow>
@@ -133,8 +137,10 @@ export default function BuzonesPage() {
               buzones.map((b) => (
                 <TableRow key={b.id} className={b.activo ? undefined : "opacity-60"}>
                   <TableCell>
-                    <div className="text-sm font-medium">{b.nombre}</div>
-                    <div className="text-xs text-muted-foreground">{b.email}</div>
+                    <Link href={`/mails/bandeja?buzon=${b.id}&vista=todos`} className="block hover:underline" title="Ver todos los correos de este buzón">
+                      <div className="text-sm font-medium">{b.nombre}</div>
+                      <div className="text-xs text-muted-foreground">{b.email}</div>
+                    </Link>
                   </TableCell>
                   <TableCell className="text-sm">{etiquetaProveedor(b.proveedor)}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
@@ -160,9 +166,19 @@ export default function BuzonesPage() {
                     {b.sin_leer > 0 && <span className="ml-1.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{b.sin_leer}</span>}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fechaHora(b.ultima_sincronizacion)}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" className="h-7 gap-1" nativeButton={false} render={<Link href={`/mails/bandeja?buzon=${b.id}&vista=todos`} />}>
+                        <Sms className="size-3.5" /> Ver correos
+                      </Button>
+                    </div>
+                  </TableCell>
                   {puedeGestionar && (
                     <TableCell>
                       <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => setHistorico(b)}>
+                          <Clock className="size-3.5" /> Histórico
+                        </Button>
                         <Button size="sm" variant="ghost" className="h-7 gap-1" disabled={sincronizando === b.id || !b.activo} onClick={() => sincronizar(b)}>
                           <Refresh2 className={`size-3.5 ${sincronizando === b.id ? "animate-spin" : ""}`} /> Sincronizar
                         </Button>
@@ -180,6 +196,10 @@ export default function BuzonesPage() {
           </TableBody>
         </Table>
       </div>
+
+      {puedeGestionar && historico && (
+        <HistoricoDialog key={historico.id} buzon={historico} open onOpenChange={(o) => !o && setHistorico(null)} onHecho={cargar} />
+      )}
 
       {puedeGestionar && (
         <BuzonDialog
