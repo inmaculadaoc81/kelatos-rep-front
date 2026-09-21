@@ -94,8 +94,7 @@ export default function EfectivoPage() {
   const [filtroConcepto, setFiltroConcepto] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
-  // Diálogo de movimiento manual abierto: retirar o añadir efectivo (null = cerrado).
-  const [movimientoManual, setMovimientoManual] = useState<"retirada" | "ingreso" | null>(null);
+  const [retirarAbierto, setRetirarAbierto] = useState(false);
   const [anulando, setAnulando] = useState<MovimientoEfectivo | null>(null);
 
   async function cargar() {
@@ -268,12 +267,7 @@ export default function EfectivoPage() {
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
           {puedeRetirar && (
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setMovimientoManual("ingreso")}>
-              <MoneyRecive className="size-4" /> Añadir efectivo
-            </Button>
-          )}
-          {puedeRetirar && (
-            <Button size="sm" className="gap-1.5" onClick={() => setMovimientoManual("retirada")}>
+            <Button size="sm" className="gap-1.5" onClick={() => setRetirarAbierto(true)}>
               <MoneySend className="size-4" /> Retirar efectivo
             </Button>
           )}
@@ -537,16 +531,7 @@ export default function EfectivoPage() {
         </Table>
       </div>
 
-      {puedeRetirar && (
-        <RetirarEfectivoDialog
-          key={movimientoManual ?? "cerrado"}
-          modo={movimientoManual ?? "retirada"}
-          open={movimientoManual !== null}
-          onOpenChange={(o) => !o && setMovimientoManual(null)}
-          saldo={saldoActual}
-          onRegistrada={cargar}
-        />
-      )}
+      {puedeRetirar && <RetirarEfectivoDialog open={retirarAbierto} onOpenChange={setRetirarAbierto} saldo={saldoActual} onRegistrada={cargar} />}
       {puedeRetirar && <AnularRetiradaDialog retirada={anulando} onOpenChange={(o) => !o && setAnulando(null)} onAnulada={cargar} />}
     </div>
   );

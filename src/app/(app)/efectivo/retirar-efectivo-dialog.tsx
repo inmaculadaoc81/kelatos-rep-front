@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoneyRecive, MoneySend } from "@/lib/icons";
+import { MoneySend } from "@/lib/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,11 +21,7 @@ export function RetirarEfectivoDialog({
   onOpenChange,
   saldo,
   onRegistrada,
-  modo = "retirada",
 }: {
-  /** "retirada" resta de la caja; "ingreso" suma efectivo que no viene de ningún
-      documento (p. ej. el que ya había en el local). */
-  modo?: "retirada" | "ingreso";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   saldo: number;
@@ -46,13 +42,11 @@ export function RetirarEfectivoDialog({
     setConfirmaExceso(false);
   }
 
-  const esIngreso = modo === "ingreso";
-  const excede = !esIngreso && importe > saldo;
+  const excede = importe > saldo;
 
   async function registrar() {
     if (!(importe > 0)) return toast.error("Indica el importe que se retira");
-    if (!fechaHora) return toast.error(esIngreso ? "Indica cuándo se añadió" : "Indica cuándo se retiró");
-    if (esIngreso && !motivo.trim()) return toast.error("Explica de dónde sale este efectivo");
+    if (!fechaHora) return toast.error("Indica cuándo se retiró");
     if (excede && !confirmaExceso) {
       setConfirmaExceso(true);
       return;
@@ -63,11 +57,11 @@ export function RetirarEfectivoDialog({
       const res = await fetch("/api/efectivo/retiradas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: modo, importe, motivo: motivo.trim(), fechaHora: new Date(fechaHora).toISOString() }),
+        body: JSON.stringify({ importe, motivo: motivo.trim(), fechaHora: new Date(fechaHora).toISOString() }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(esIngreso ? "Efectivo añadido" : "Retirada registrada");
+      toast.success("Retirada registrada");
       reiniciar();
       onOpenChange(false);
       onRegistrada();
@@ -90,12 +84,10 @@ export function RetirarEfectivoDialog({
       <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {esIngreso ? <MoneyRecive className="size-5" /> : <MoneySend className="size-5" />} {esIngreso ? "Añadir efectivo" : "Retirar efectivo"}
+            <MoneySend className="size-5" /> Retirar efectivo
           </DialogTitle>
           <DialogDescription>
-            {esIngreso
-              ? "Registra efectivo que entra en caja sin ticket ni factura, por ejemplo el que ya había en el local. No modifica ningún documento: solo suma al saldo de esta vista."
-              : "Registra una salida de efectivo de caja. No modifica ningún ticket ni factura: solo resta del saldo de esta vista."}
+            Registra una salida de efectivo de caja. No modifica ningún ticket ni factura: solo resta del saldo de esta vista.
           </DialogDescription>
         </DialogHeader>
 
@@ -120,10 +112,10 @@ export function RetirarEfectivoDialog({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="motivoRetirada">{esIngreso ? "Motivo *" : "Motivo (opcional)"}</Label>
+            <Label htmlFor="motivoRetirada">Motivo (opcional)</Label>
             <Input
               id="motivoRetirada"
-              placeholder={esIngreso ? "Efectivo que ya había en el local…" : "Ingreso en banco, pago a proveedor…"}
+              placeholder="Ingreso en banco, pago a proveedor…"
               maxLength={500}
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
@@ -144,7 +136,7 @@ export function RetirarEfectivoDialog({
             Cancelar
           </Button>
           <Button disabled={enviando} onClick={registrar}>
-            {enviando ? "Registrando…" : confirmaExceso && excede ? "Retirar igualmente" : esIngreso ? "Añadir efectivo" : "Registrar retirada"}
+            {enviando ? "Registrando…" : confirmaExceso && excede ? "Retirar igualmente" : "Registrar retirada"}
           </Button>
         </DialogFooter>
       </DialogContent>
