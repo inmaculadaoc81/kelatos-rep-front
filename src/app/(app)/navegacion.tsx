@@ -13,6 +13,7 @@ import {
   Chart,
   Receipt,
   Money,
+  Coin1,
   ClipboardText,
   Wallet,
   Hierarchy,
@@ -77,6 +78,7 @@ export const GRUPOS: GrupoNavegacion[] = [
       { label: "Facturas de Clientes", href: "/facturas-clientes", icon: Receipt },
       { label: "Seguimiento de Facturas", href: "/seguimiento-facturas", icon: Money },
       { label: "Reporte de Facturas", href: "/reporte-facturas", icon: ClipboardText },
+      { label: "Efectivo", href: "/efectivo", icon: Coin1 },
     ],
   },
   {

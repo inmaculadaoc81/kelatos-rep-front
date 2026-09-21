@@ -643,7 +643,10 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
 
   // Pasada 8: rectificativa de ticket (Serie 3, secuencia propia
   // ticket_rectificativa_seq) — mismo tipo "rectificativa" que ya usan
-  // reparación/revisión, distinguido por tipoOriginal: "ticket".
+  // reparación/revisión, distinguido por tipoOriginal: "ticket". Las
+  // rectificativas/corregidas de ticket no tienen forma de pago propia en
+  // BD: heredan la del ticket original (devolver un ticket pagado en
+  // efectivo es devolver efectivo — así la vista Efectivo puede restarlo).
   const numTicketRect = texto(row.numero_ticket_rectificativa);
   if (numTicketRect && numeroValido(numTicketRect)) {
     facturas.push({
@@ -652,8 +655,8 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       url: urlValida(texto(row.url_ticket_rectificativa)),
       total: num(row.total_ticket_rectificativa),
       fecha: row.fecha_ticket_rectificativa,
-      formaPago: "",
-      banco: "",
+      formaPago: texto(row.forma_pago_ticket),
+      banco: texto(row.banco_ticket),
       estadoFactura: "Devolución",
       tipo: "rectificativa",
       tipoOriginal: "ticket",
@@ -671,8 +674,8 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       url: urlValida(texto(row.url_ticket_corregida)),
       total: num(row.total_ticket_corregida),
       fecha: row.fecha_ticket_corregida,
-      formaPago: "",
-      banco: "",
+      formaPago: texto(row.forma_pago_ticket),
+      banco: texto(row.banco_ticket),
       estadoFactura: row.estado_ticket_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "corregida",
       tipoOriginal: "ticket",
@@ -710,8 +713,8 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       url: urlValida(texto(row.url_ticket_revision_rectificativa)),
       total: num(row.total_ticket_revision_rectificativa),
       fecha: row.fecha_ticket_revision_rectificativa,
-      formaPago: "",
-      banco: "",
+      formaPago: texto(row.forma_pago_ticket_revision),
+      banco: texto(row.banco_ticket_revision),
       estadoFactura: "Devolución",
       tipo: "rectificativa",
       tipoOriginal: "ticket_revision",
@@ -728,8 +731,8 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       url: urlValida(texto(row.url_ticket_revision_corregida)),
       total: num(row.total_ticket_revision_corregida),
       fecha: row.fecha_ticket_revision_corregida,
-      formaPago: "",
-      banco: "",
+      formaPago: texto(row.forma_pago_ticket_revision),
+      banco: texto(row.banco_ticket_revision),
       estadoFactura: row.estado_ticket_revision_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "corregida",
       tipoOriginal: "ticket_revision",
@@ -1192,8 +1195,8 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
         url: urlValida(texto(row.url_ticket_rectificativa)),
         total: num(row.total_ticket_rectificativa),
         fecha: row.fecha_ticket_rectificativa,
-        formaPago: "",
-        banco: "",
+        formaPago: texto(row.forma_pago_ticket),
+        banco: texto(row.banco_ticket),
         estadoFactura: "Devolución",
         tipo: "rectificativa",
         tipoOriginal: "ticket",
@@ -1208,8 +1211,8 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
         url: urlValida(texto(row.url_ticket_corregida)),
         total: num(row.total_ticket_corregida) || totalT,
         fecha: row.fecha_ticket_corregida,
-        formaPago: "",
-        banco: "",
+        formaPago: texto(row.forma_pago_ticket),
+        banco: texto(row.banco_ticket),
         estadoFactura: row.estado_ticket_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
         tipo: "corregida",
         tipoOriginal: "ticket",
@@ -1359,8 +1362,8 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
         url: urlValida(texto(row.url_ticket_rectificativa)),
         total: num(row.total_ticket_rectificativa),
         fecha: row.fecha_ticket_rectificativa,
-        formaPago: "",
-        banco: "",
+        formaPago: texto(row.forma_pago_ticket),
+        banco: texto(row.banco_ticket),
         estadoFactura: "Devolución",
         tipo: "rectificativa",
         tipoOriginal: "venta_ticket",
@@ -1375,8 +1378,8 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
         url: urlValida(texto(row.url_ticket_corregida)),
         total: num(row.total_ticket_corregida),
         fecha: row.fecha_ticket_corregida,
-        formaPago: "",
-        banco: "",
+        formaPago: texto(row.forma_pago_ticket),
+        banco: texto(row.banco_ticket),
         estadoFactura: row.estado_ticket_corregida === "Pendiente" ? "Pendiente" : "Cobrada",
         tipo: "corregida",
         tipoOriginal: "venta_ticket",
