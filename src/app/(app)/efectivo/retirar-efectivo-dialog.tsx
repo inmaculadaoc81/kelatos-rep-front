@@ -31,17 +31,26 @@ export function RetirarEfectivoDialog({
   const [fechaHora, setFechaHora] = useState(ahoraLocal);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // Retirar más de lo que hay en caja pide una segunda confirmación, dentro
+  // del propio modal (no un window.confirm del navegador).
+  const [confirmaExceso, setConfirmaExceso] = useState(false);
 
   function reiniciar() {
     setImporte(0);
     setFechaHora(ahoraLocal());
     setMotivo("");
+    setConfirmaExceso(false);
   }
+
+  const excede = importe > saldo;
 
   async function registrar() {
     if (!(importe > 0)) return toast.error("Indica el importe que se retira");
     if (!fechaHora) return toast.error("Indica cuándo se retiró");
-    if (importe > saldo && !window.confirm(`Vas a retirar más de lo que hay en caja (${saldo.toFixed(2)} €). ¿Registrar la retirada igualmente?`)) return;
+    if (excede && !confirmaExceso) {
+      setConfirmaExceso(true);
+      return;
+    }
 
     setEnviando(true);
     try {
@@ -86,7 +95,16 @@ export function RetirarEfectivoDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="importeRetirada">Importe (€)</Label>
-              <DecimalInput id="importeRetirada" placeholder="0.00" value={importe} onChange={setImporte} autoFocus />
+              <DecimalInput
+                id="importeRetirada"
+                placeholder="0.00"
+                value={importe}
+                onChange={(n) => {
+                  setImporte(n);
+                  setConfirmaExceso(false);
+                }}
+                autoFocus
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="fechaRetirada">Fecha y hora</Label>
@@ -103,6 +121,11 @@ export function RetirarEfectivoDialog({
               onChange={(e) => setMotivo(e.target.value)}
             />
           </div>
+          {confirmaExceso && excede && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+              Vas a retirar más de lo que hay en caja ({saldo.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}). El saldo quedará en negativo.
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
             Saldo actual en caja: <span className="font-medium text-foreground">{saldo.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span>
           </p>
@@ -113,7 +136,7 @@ export function RetirarEfectivoDialog({
             Cancelar
           </Button>
           <Button disabled={enviando} onClick={registrar}>
-            {enviando ? "Registrando…" : "Registrar retirada"}
+            {enviando ? "Registrando…" : confirmaExceso && excede ? "Retirar igualmente" : "Registrar retirada"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { MovimientoConSaldo, MovimientoEfectivo, TipoMovimientoEfectivo, conSaldoAcumulado, resumir } from "@/lib/efectivo";
 import { RetirarEfectivoDialog } from "./retirar-efectivo-dialog";
+import { AnularRetiradaDialog } from "./anular-retirada-dialog";
 
 const TIMEZONE = "Europe/Madrid";
 
@@ -86,6 +87,7 @@ export default function EfectivoPage() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [retirarAbierto, setRetirarAbierto] = useState(false);
+  const [anulando, setAnulando] = useState<MovimientoEfectivo | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -187,25 +189,6 @@ export default function EfectivoPage() {
       (o "En caja ahora") vuelve a mostrar todos los movimientos. */
   function alternarTipo(tipo: TipoMovimientoEfectivo) {
     setFiltroTipo((actual) => (actual === tipo ? "" : tipo));
-  }
-
-  async function anular(m: MovimientoEfectivo) {
-    const motivo = window.prompt(`Anular la retirada de ${euros(Math.abs(m.importe))}.\nIndica el motivo (obligatorio):`);
-    if (motivo === null) return;
-    if (!motivo.trim()) return toast.error("El motivo de la anulación es obligatorio");
-    try {
-      const res = await fetch(`/api/efectivo/retiradas/${m.retiradaId}/anular`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ motivo: motivo.trim() }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Retirada anulada");
-      cargar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    }
   }
 
   function limpiarFiltros() {
@@ -461,7 +444,7 @@ export default function EfectivoPage() {
                     {puedeRetirar && (
                       <TableCell>
                         {m.tipo === "retirada" && !m.anulada && (
-                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" onClick={() => anular(m)} title="Anular esta retirada">
+                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" onClick={() => setAnulando(m)} title="Anular esta retirada">
                             <CloseCircle className="size-3.5" /> Anular
                           </Button>
                         )}
@@ -475,6 +458,7 @@ export default function EfectivoPage() {
       </div>
 
       {puedeRetirar && <RetirarEfectivoDialog open={retirarAbierto} onOpenChange={setRetirarAbierto} saldo={saldoActual} onRegistrada={cargar} />}
+      {puedeRetirar && <AnularRetiradaDialog retirada={anulando} onOpenChange={(o) => !o && setAnulando(null)} onAnulada={cargar} />}
     </div>
   );
 }
