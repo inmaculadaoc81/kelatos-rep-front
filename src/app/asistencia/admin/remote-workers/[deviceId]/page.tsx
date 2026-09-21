@@ -192,18 +192,20 @@ export default function RemoteWorkerDetailPage() {
               <TableHead>Día</TableHead>
               <TableHead>Horas activas</TableHead>
               <TableHead>Horas inactivas</TableHead>
+              <TableHead>Total conectado</TableHead>
               <TableHead>Productividad</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {historial.length === 0 && (
-              <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Sin histórico todavía</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Sin histórico todavía</TableCell></TableRow>
             )}
             {historial.map((f) => (
               <TableRow key={f.dia}>
                 <TableCell>{new Date(f.dia).toLocaleDateString("es-ES")}</TableCell>
                 <TableCell>{formatDuracion(f.activeSeconds)}</TableCell>
                 <TableCell>{formatDuracion(f.idleSeconds)}</TableCell>
+                <TableCell className="font-medium">{formatDuracion(f.activeSeconds + f.idleSeconds)}</TableCell>
                 <TableCell>{f.productividad == null ? "—" : `${f.productividad}%`}</TableCell>
               </TableRow>
             ))}
