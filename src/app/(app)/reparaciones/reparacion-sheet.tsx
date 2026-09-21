@@ -15,6 +15,7 @@ import {
   Video,
   CloseCircle,
   TickCircle,
+  InfoCircle,
 } from "@/lib/icons";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -473,9 +474,10 @@ export function ReparacionSheet({
                 <Input id="direccionEnvio" value={datos.direccionEnvio} onChange={(e) => actualizar("direccionEnvio", e.target.value)} />
               </div>
               {sinDatosFactura && (
-                <p className="text-xs text-muted-foreground sm:col-span-2">
-                  El cliente eligió Ticket (sin factura): DNI/CIF y dirección son opcionales.
-                </p>
+                <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-900 sm:col-span-2 dark:text-amber-200">
+                  <InfoCircle className="mt-0.5 size-4 shrink-0" />
+                  <p>El cliente eligió Ticket (sin factura): DNI/CIF y dirección son opcionales.</p>
+                </div>
               )}
             </div>
           </div>
