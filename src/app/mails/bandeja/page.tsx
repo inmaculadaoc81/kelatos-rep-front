@@ -6,7 +6,7 @@ import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Papercl
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Buzon, ContadoresMensajes, MensajeDetalle, MensajeLista, nombreOCorreo } from "@/lib/mails";
+import { Buzon, ClienteVinculado, ContadoresMensajes, MensajeDetalle, MensajeLista, nombreOCorreo } from "@/lib/mails";
 import { codigoClienteFormateado } from "@/lib/clientes";
 
 const ZONA = "Europe/Madrid";
@@ -59,6 +59,8 @@ export default function BandejaPage() {
   const [detalle, setDetalle] = useState<MensajeDetalle | null>(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [verTexto, setVerTexto] = useState(false);
+  // Cliente por el que se está filtrando ("Ver sus correos"); null = todos.
+  const [clienteFiltro, setClienteFiltro] = useState<ClienteVinculado | null>(null);
   const consulta = useRef(0);
 
   useEffect(() => {
@@ -96,9 +98,10 @@ export default function BandejaPage() {
       }
       if (soloSinLeer && vista === "entrada") p.set("sinLeer", "true");
       if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
+      if (clienteFiltro) p.set("cliente", clienteFiltro.codigo);
       return p.toString();
     },
-    [buzonSel, vista, soloSinLeer, busquedaAplicada]
+    [buzonSel, vista, soloSinLeer, busquedaAplicada, clienteFiltro]
   );
 
   const cargar = useCallback(async () => {
@@ -253,6 +256,16 @@ export default function BandejaPage() {
             <SearchNormal1 className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Asunto, remitente o destinatario…" className="h-8 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
           </div>
+          {clienteFiltro && (
+            <div className="flex items-center justify-between gap-2 border-b bg-cyan-500/5 px-3 py-1.5 text-xs">
+              <span className="min-w-0 truncate">
+                Correos de <strong className="font-semibold">{clienteFiltro.nombre}</strong>
+              </span>
+              <button type="button" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => setClienteFiltro(null)}>
+                Quitar filtro
+              </button>
+            </div>
+          )}
           <div className="max-h-[70vh] flex-1 overflow-y-auto">
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
@@ -338,8 +351,20 @@ export default function BandejaPage() {
                   <p className="flex flex-wrap items-center gap-1.5 text-sm">
                     <span className="text-muted-foreground">Cliente: </span>
                     {detalle.clientes.map((c) => (
-                      <span key={c.codigo} className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-xs font-medium text-cyan-700 dark:text-cyan-400">
-                        {c.nombre} · nº {codigoClienteFormateado(c.codigo)}
+                      <span key={c.codigo} className="inline-flex items-center gap-1.5 rounded bg-cyan-500/10 px-1.5 py-0.5 text-xs">
+                        <Link
+                          href={`/clientes?buscar=${encodeURIComponent(c.email || c.nombre)}`}
+                          target="_blank"
+                          className="font-medium text-cyan-700 hover:underline dark:text-cyan-400"
+                          title="Abrir en Clientes"
+                        >
+                          {c.nombre} · nº {codigoClienteFormateado(c.codigo)}
+                        </Link>
+                        {clienteFiltro?.codigo !== c.codigo && (
+                          <button type="button" className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={() => setClienteFiltro(c)}>
+                            Ver sus correos
+                          </button>
+                        )}
                       </span>
                     ))}
                   </p>

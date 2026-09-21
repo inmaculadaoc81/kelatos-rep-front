@@ -3,7 +3,7 @@ import { kelatosApiGet } from "@/lib/kelatos-api";
 import { accesoMails } from "@/lib/mails-auth";
 import type { ContadoresMensajes, MensajeLista } from "@/lib/mails";
 
-const PARAMETROS = ["buzon", "direccion", "rebote", "sinLeer", "q", "limit", "offset"];
+const PARAMETROS = ["buzon", "direccion", "rebote", "sinLeer", "q", "cliente", "limit", "offset"];
 
 /** Lista paginada de mensajes (sin cuerpo) + contadores. Filtra el servidor. */
 export async function GET(req: Request) {

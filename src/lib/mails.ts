@@ -33,6 +33,8 @@ export interface Buzon {
 export interface ClienteVinculado {
   codigo: string;
   nombre: string;
+  /** Email del cliente con el que coincidió el correo (en minúsculas). */
+  email: string;
 }
 
 export interface MensajeLista {

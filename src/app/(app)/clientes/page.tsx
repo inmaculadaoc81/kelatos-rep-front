@@ -63,6 +63,13 @@ export default function ClientesPage() {
     }
   }
 
+  // Enlace desde otras vistas (p. ej. un correo de Gestión MAILS): /clientes?buscar=texto.
+  // Se lee en el navegador tras montar, no en el render, para no desajustar la hidratación.
+  useEffect(() => {
+    const buscar = new URLSearchParams(window.location.search).get("buscar");
+    if (buscar) setBusqueda(buscar);
+  }, []);
+
   useEffect(() => {
     cargar();
   }, []);
