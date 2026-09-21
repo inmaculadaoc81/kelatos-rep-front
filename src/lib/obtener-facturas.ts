@@ -1,5 +1,5 @@
 import { kelatosApiGet } from "@/lib/kelatos-api";
-import { FacturaCliente, expandirFacturas, expandirFacturaHistorica, expandirAlquiler, expandirManuales, expandirTicketsManuales, expandirVenta } from "@/lib/facturas-cliente";
+import { COLUMNAS_REPARACION_FACTURADA, FacturaCliente, expandirFacturas, expandirFacturaHistorica, expandirAlquiler, expandirManuales, expandirTicketsManuales, expandirVenta } from "@/lib/facturas-cliente";
 
 interface RespuestaReparacionesFacturadas {
   ok: boolean;
@@ -55,10 +55,18 @@ export async function lookupCodigoCliente(): Promise<(dni: string, telefono: str
  * (la columna "Tipo" ya es filtrable de forma genérica, así que basta con
  * que la fila "venta" exista aquí para que aparezca como opción).
  */
-export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
+export async function obtenerTodasLasFacturas(opciones: { soloEfectivo?: boolean } = {}): Promise<FacturaCliente[]> {
+  // soloEfectivo (vista "Efectivo"): del volumen grande —las reparaciones
+  // facturadas— solo se baja lo que tiene algún documento en efectivo, y se
+  // salta el directorio de clientes y las "Su Referencia" (esa vista no
+  // muestra código de cliente ni referencia). Las demás fuentes son pequeñas.
+  const soloEfectivo = opciones.soloEfectivo === true;
   const [reparaciones, historicas, alquileres, fechasAlquiler, manuales, ticketsManuales, ventas, lookup, suReferencias] = await Promise.all([
-    kelatosApiGet<RespuestaReparacionesFacturadas>("/v1/lecturas/reparaciones-facturadas"),
-    kelatosApiGet<RespuestaFacturasHistoricas>("/v1/lecturas/reparaciones-facturas-historicas"),
+    kelatosApiGet<RespuestaReparacionesFacturadas>("/v1/lecturas/reparaciones-facturadas", {
+      columnas: COLUMNAS_REPARACION_FACTURADA.join(","),
+      soloEfectivo: soloEfectivo || undefined,
+    }),
+    kelatosApiGet<RespuestaFacturasHistoricas>("/v1/lecturas/reparaciones-facturas-historicas", { soloEfectivo: soloEfectivo || undefined }),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirAlquiler>[0]>>("/v1/alquileres", { limit: 1000 }),
     // kelatos_app.alquileres solo guarda fecha_inicio (una por alquiler,
     // no una por documento) — la fecha real de cada factura de alquiler
@@ -73,12 +81,14 @@ export async function obtenerTodasLasFacturas(): Promise<FacturaCliente[]> {
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirManuales>[0][number]>>("/v1/facturas_manuales", { limit: 1000 }),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirTicketsManuales>[0][number]>>("/v1/tickets_manuales", { limit: 1000 }),
     kelatosApiGet<RespuestaTabla<Parameters<typeof expandirVenta>[0]>>("/v1/ventas", { limit: 1000 }),
-    lookupCodigoCliente(),
+    soloEfectivo ? Promise.resolve((() => "") as (dni: string, telefono: string) => string) : lookupCodigoCliente(),
     // "Su Referencia" (PO del cliente, opcional, nunca en el PDF) — cada
     // fila ya tiene su propio numero_factura/numero_ticket único, así que
     // un único mapa global (por numero) basta para las 11 pasadas de
     // arriba sin tocar cada expandir*() individualmente.
-    kelatosApiGet<{ ok: boolean; referencias: Record<string, string> }>("/v1/lecturas/documentos-su-referencia").then((r) => r.referencias),
+    soloEfectivo
+      ? Promise.resolve({} as Record<string, string>)
+      : kelatosApiGet<{ ok: boolean; referencias: Record<string, string> }>("/v1/lecturas/documentos-su-referencia").then((r) => r.referencias),
   ]);
 
   const facturas = [

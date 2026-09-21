@@ -17,7 +17,7 @@ export async function GET() {
     const session = await auth();
     const email = session?.user?.email?.toLowerCase() || "";
     const [facturas, retiradas] = await Promise.all([
-      obtenerTodasLasFacturas(),
+      obtenerTodasLasFacturas({ soloEfectivo: true }),
       kelatosApiGet<{ ok: boolean; retiradas: RetiradaEfectivoApi[] }>("/v1/lecturas/efectivo-retiradas"),
     ]);
     const movimientos = [...movimientosDeFacturas(facturas), ...movimientosDeRetiradas(retiradas.retiradas)];

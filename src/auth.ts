@@ -7,6 +7,8 @@ import { esDominioKelatos, EMAILS_ADMIN } from "@/lib/dominio-kelatos";
 
 export { esDominioKelatos };
 
+const REVISAR_EMPLEADO_CADA_MS = 5 * 60 * 1000;
+
 function rolPara(email: string): RolUsuario {
   return EMAILS_ADMIN.has(email.toLowerCase()) ? "admin" : "usuario";
 }
@@ -19,7 +21,10 @@ function rolPara(email: string): RolUsuario {
  * puede iniciar sesión, aunque no sea del dominio — pero solo entra a
  * /asistencia (ver src/proxy.ts), nunca al resto del dashboard.
  */
-async function buscarEmpleadoAsistencia(email: string): Promise<number | null> {
+/** `undefined` = no se pudo consultar (error del API), distinto de `null`
+    (consultado: esa cuenta no es empleada) — así un fallo puntual no se
+    cachea como "no es empleado". */
+async function buscarEmpleadoAsistencia(email: string): Promise<number | null | undefined> {
   try {
     const data = await kelatosApiGet<{ ok: boolean; empleado: { id: number } | null }>(
       "/v1/asistencia/empleados",
@@ -31,7 +36,7 @@ async function buscarEmpleadoAsistencia(email: string): Promise<number | null> {
     // @kelatos.com normales — solo se pierde temporalmente el acceso al
     // kiosco para cuentas ajenas al dominio (best-effort, igual que el
     // resto de llamadas no críticas de esta app).
-    return null;
+    return undefined;
   }
 }
 
@@ -81,7 +86,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === "credentials") return true;
       const email = profile?.email || "";
       if (esDominioKelatos(email)) return true;
-      return (await buscarEmpleadoAsistencia(email)) !== null;
+      return ((await buscarEmpleadoAsistencia(email)) ?? null) !== null;
     },
     async jwt({ token, account }) {
       // "account" solo llega en el login inicial, no en refrescos
@@ -93,7 +98,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // cuenta @kelatos.com también puede estar dada de alta como
         // empleado que ficha (p.ej. Daniela), y necesita su propio id de
         // asistencia.empleados para poder fichar ella misma.
-        token.asistenciaEmpleadoId = await buscarEmpleadoAsistencia(token.email);
+        //
+        // Pero no en CADA evaluación del token: este callback corre en cada
+        // petición autenticada (proxy.ts + cada auth() de una ruta API), y
+        // esa consulta traía la lista de empleados del backend una vez por
+        // petición — más de la mitad de todo el tráfico a la API medido el
+        // 2026-09-21. Se consulta al iniciar sesión y luego como mucho cada
+        // 5 minutos (una cuenta recién dada de alta como empleada la ve como
+        // tarde en ese plazo). Un fallo del API no se cachea: se conserva el
+        // valor anterior y se reintenta en la siguiente petición.
+        const ahora = Date.now();
+        const vigente =
+          !account &&
+          token.asistenciaEmpleadoId !== undefined &&
+          typeof token.asistenciaComprobadaEn === "number" &&
+          ahora - token.asistenciaComprobadaEn < REVISAR_EMPLEADO_CADA_MS;
+        if (!vigente) {
+          const id = await buscarEmpleadoAsistencia(token.email);
+          if (id !== undefined) {
+            token.asistenciaEmpleadoId = id;
+            token.asistenciaComprobadaEn = ahora;
+          } else if (token.asistenciaEmpleadoId === undefined) {
+            token.asistenciaEmpleadoId = null;
+          }
+        }
       }
       return token;
     },

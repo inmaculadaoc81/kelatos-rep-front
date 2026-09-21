@@ -22,6 +22,9 @@ declare module "@auth/core/jwt" {
   interface JWT {
     role?: RolUsuario;
     asistenciaEmpleadoId?: number | null;
+    /** Cuándo (ms epoch) se consultó por última vez asistencia.empleados —
+        ver src/auth.ts. */
+    asistenciaComprobadaEn?: number;
     viaCredentials?: boolean;
   }
 }

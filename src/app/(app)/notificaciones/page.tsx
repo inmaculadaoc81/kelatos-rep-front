@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Refresh2, SearchNormal1, Notification, TickCircle, CloseCircle, Sms } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +14,15 @@ import {
   ESTADOS,
   NotificacionApi,
   ORDEN_CATEGORIAS,
+  RespuestaNotificaciones,
+  TIPOS_CONOCIDOS,
   categoriaDe,
   etiquetaTipo,
 } from "@/lib/notificaciones";
 import { DetalleNotificacionDialog } from "./detalle-notificacion-dialog";
 
 const ZONA = "Europe/Madrid";
+const TAMANO_PAGINA = 100;
 
 /** Filtro de estado que controlan los KPI de arriba. "sin_email" = fallos
     por no tener el cliente un email válido (nunca se le pudo avisar). */
@@ -65,16 +68,27 @@ const PERIODOS: { id: string; etiqueta: string; rango: (hoy: string) => [string,
   { id: "mes", etiqueta: "Este mes", rango: (h) => [`${h.slice(0, 8)}01`, h] },
 ];
 
-const TANDA = 400;
-
 type FilaTabla = { clase: "dia"; dia: string; n: number; fallidas: number } | { clase: "fila"; n: NotificacionApi };
 
+const KPI_VACIO = { total: 0, enviado: 0, fallido: 0, sin_email: 0 };
+
+/**
+ * Filtros, KPI y paginación los resuelve el servidor (una consulta por
+ * cambio de filtro): el navegador solo recibe la página que se ve (100
+ * filas) más los totales, aunque el registro tenga decenas de miles.
+ */
 export default function CentroNotificacionesPage() {
-  const [datos, setDatos] = useState<NotificacionApi[]>([]);
+  const [filas, setFilas] = useState<NotificacionApi[]>([]);
+  const [total, setTotal] = useState(0);
+  const [kEstado, setKEstado] = useState(KPI_VACIO);
+  const [kTipos, setKTipos] = useState<Record<string, number>>({});
+  const [porDia, setPorDia] = useState<Record<string, { n: number; fallidas: number }>>({});
   const [dias, setDias] = useState("180");
   const [cargando, setCargando] = useState(true);
+  const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("");
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaNotificacion | "">("");
   const [filtroTipo, setFiltroTipo] = useState("");
@@ -82,114 +96,94 @@ export default function CentroNotificacionesPage() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [detalle, setDetalle] = useState<NotificacionApi | null>(null);
-  // Se pintan por tandas: con varios miles de notificaciones, renderizarlas
-  // todas de golpe hace lenta la página.
-  const [visibles, setVisibles] = useState(TANDA);
+  // Descarta respuestas de una consulta anterior si el usuario ya cambió el filtro.
+  const consultaActual = useRef(0);
 
-  async function cargar(diasCarga = dias) {
+  // La búsqueda de texto espera a que se deje de teclear (evita una consulta por letra).
+  useEffect(() => {
+    const t = setTimeout(() => setBusquedaAplicada(busqueda), 350);
+    return () => clearTimeout(t);
+  }, [busqueda]);
+
+  const parametros = useCallback(
+    (offset: number) => {
+      const p = new URLSearchParams({ dias, limit: String(TAMANO_PAGINA), offset: String(offset) });
+      if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
+      if (filtroEstado) p.set("estado", filtroEstado);
+      if (filtroCategoria) p.set("categoria", filtroCategoria);
+      if (filtroTipo) p.set("tipo", filtroTipo);
+      if (filtroCanal) p.set("canal", filtroCanal);
+      if (desde) p.set("desde", desde);
+      if (hasta) p.set("hasta", hasta);
+      return p.toString();
+    },
+    [dias, busquedaAplicada, filtroEstado, filtroCategoria, filtroTipo, filtroCanal, desde, hasta]
+  );
+
+  const cargar = useCallback(async () => {
+    const id = ++consultaActual.current;
     setCargando(true);
     setError(null);
     try {
-      const res = await fetch(`/api/notificaciones?dias=${diasCarga}`);
-      const data = await res.json();
+      const res = await fetch(`/api/notificaciones?${parametros(0)}`);
+      const data = (await res.json()) as RespuestaNotificaciones & { error?: string };
+      if (id !== consultaActual.current) return;
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setDatos(data.notificaciones as NotificacionApi[]);
+      setFilas(data.notificaciones);
+      setTotal(data.total);
+      setKEstado(data.kpiEstado);
+      setKTipos(data.kpiTipos);
+      setPorDia(Object.fromEntries(data.porDia.map((d) => [d.dia, { n: d.n, fallidas: d.fallidas }])));
+    } catch (e) {
+      if (id === consultaActual.current) setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      if (id === consultaActual.current) setCargando(false);
+    }
+  }, [parametros]);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  async function mostrarMas() {
+    const id = consultaActual.current;
+    setCargandoMas(true);
+    try {
+      const res = await fetch(`/api/notificaciones?${parametros(filas.length)}`);
+      const data = (await res.json()) as RespuestaNotificaciones & { error?: string };
+      if (id !== consultaActual.current) return;
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setFilas((prev) => {
+        const vistos = new Set(prev.map((f) => f.id));
+        return [...prev, ...data.notificaciones.filter((f) => !vistos.has(f.id))];
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
-      setCargando(false);
+      setCargandoMas(false);
     }
   }
 
-  useEffect(() => {
-    cargar(dias);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dias]);
-
-  const tiposPresentes = useMemo(() => Array.from(new Set(datos.map((d) => d.tipo))).sort((a, b) => etiquetaTipo(a).localeCompare(etiquetaTipo(b), "es")), [datos]);
-  const canalesPresentes = useMemo(() => Array.from(new Set(datos.map((d) => d.canal))).sort(), [datos]);
-
-  // Filtros que no son ni el de estado ni el de categoría: los KPI de cada
-  // dimensión se calculan sin su propio filtro, para que al pulsar uno los
-  // demás sigan mostrando cuántos habría.
-  const baseComun = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    return datos.filter((n) => {
-      if (filtroTipo && n.tipo !== filtroTipo) return false;
-      if (filtroCanal && n.canal !== filtroCanal) return false;
-      if (desde || hasta) {
-        const dia = diaMadrid(n.fecha);
-        if (!dia) return false;
-        if (desde && dia < desde) return false;
-        if (hasta && dia > hasta) return false;
-      }
-      if (q) {
-        const texto = `${n.referencia || ""} ${n.destinatario} ${n.cliente || ""} ${n.asunto || ""} ${n.documento || ""} ${etiquetaTipo(n.tipo)}`.toLowerCase();
-        if (!texto.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [datos, busqueda, filtroTipo, filtroCanal, desde, hasta]);
-
-  const cumpleEstado = (n: NotificacionApi, f: FiltroEstado) =>
-    !f || (f === "sin_email" ? n.estado === "fallido" && n.error === "sin_email_valido" : n.estado === f);
-
-  const deCategoria = (n: NotificacionApi, c: CategoriaNotificacion | "") => !c || categoriaDe(n.tipo) === c;
-
-  // KPI de estado: respetan la categoría elegida. KPI de categoría: respetan el estado elegido.
-  const paraKpiEstado = useMemo(() => baseComun.filter((n) => deCategoria(n, filtroCategoria)), [baseComun, filtroCategoria]);
-  const paraKpiCategoria = useMemo(() => baseComun.filter((n) => cumpleEstado(n, filtroEstado)), [baseComun, filtroEstado]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const kEstado = useMemo(
-    () => ({
-      total: paraKpiEstado.length,
-      enviado: paraKpiEstado.filter((n) => n.estado === "enviado").length,
-      fallido: paraKpiEstado.filter((n) => n.estado === "fallido").length,
-      sin_email: paraKpiEstado.filter((n) => n.estado === "fallido" && n.error === "sin_email_valido").length,
-    }),
-    [paraKpiEstado]
-  );
-
   const kCategoria = useMemo(() => {
     const c: Record<string, number> = {};
-    for (const n of paraKpiCategoria) c[categoriaDe(n.tipo)] = (c[categoriaDe(n.tipo)] || 0) + 1;
+    for (const [tipo, n] of Object.entries(kTipos)) c[categoriaDe(tipo)] = (c[categoriaDe(tipo)] || 0) + n;
     return c;
-  }, [paraKpiCategoria]);
+  }, [kTipos]);
 
-  const filtrados = useMemo(
-    () => baseComun.filter((n) => cumpleEstado(n, filtroEstado) && deCategoria(n, filtroCategoria)),
-    [baseComun, filtroEstado, filtroCategoria] // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  // Reinicia la paginación al cambiar cualquier filtro o el rango cargado.
-  useEffect(() => {
-    setVisibles(TANDA);
-  }, [busqueda, filtroEstado, filtroCategoria, filtroTipo, filtroCanal, desde, hasta, dias]);
-
-  const filas = useMemo(() => {
-    // Totales por día sobre TODO lo filtrado (no solo lo ya pintado), para que
-    // la cabecera del último día no cuente de menos.
-    const porDia = new Map<string, { n: number; fallidas: number }>();
-    for (const n of filtrados) {
-      const dia = diaMadrid(n.fecha);
-      const acc = porDia.get(dia) || { n: 0, fallidas: 0 };
-      acc.n += 1;
-      if (n.estado === "fallido") acc.fallidas += 1;
-      porDia.set(dia, acc);
-    }
+  const tabla = useMemo(() => {
     const out: FilaTabla[] = [];
     let diaActual: string | null = null;
-    for (const n of filtrados.slice(0, visibles)) {
+    for (const n of filas) {
       const dia = diaMadrid(n.fecha);
       if (diaActual !== dia) {
         diaActual = dia;
-        const t = porDia.get(dia)!;
-        out.push({ clase: "dia", dia, n: t.n, fallidas: t.fallidas });
+        const t = porDia[dia];
+        out.push({ clase: "dia", dia, n: t?.n ?? 0, fallidas: t?.fallidas ?? 0 });
       }
       out.push({ clase: "fila", n });
     }
     return out;
-  }, [filtrados, visibles]);
+  }, [filas, porDia]);
 
   const hoy = new Date().toLocaleDateString("sv-SE", { timeZone: ZONA });
   const periodoActivo = PERIODOS.find((p) => {
@@ -213,6 +207,7 @@ export default function CentroNotificacionesPage() {
   const hayFiltros = !!(busqueda || filtroEstado || filtroCategoria || filtroTipo || filtroCanal || desde || hasta);
   function limpiarFiltros() {
     setBusqueda("");
+    setBusquedaAplicada("");
     setFiltroEstado("");
     setFiltroCategoria("");
     setFiltroTipo("");
@@ -226,6 +221,7 @@ export default function CentroNotificacionesPage() {
 
   const claseKpi = (activo: boolean, anillo: string) =>
     `rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 ${activo ? anillo : ""}`;
+  const num = (n: number) => (cargando ? "…" : n.toLocaleString("es-ES"));
 
   return (
     <div className="p-6">
@@ -258,7 +254,7 @@ export default function CentroNotificacionesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold tabular-nums">{cargando ? "…" : kEstado.total.toLocaleString("es-ES")}</p>
+              <p className="text-2xl font-bold tabular-nums">{num(kEstado.total)}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Notificaciones · ver todas</p>
             </div>
             <Notification className="size-8 text-primary/40" />
@@ -268,7 +264,7 @@ export default function CentroNotificacionesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Enviadas</p>
-              <p className="text-2xl font-bold tabular-nums text-green-600">{cargando ? "…" : kEstado.enviado.toLocaleString("es-ES")}</p>
+              <p className="text-2xl font-bold tabular-nums text-green-600">{num(kEstado.enviado)}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Entregadas al servidor de correo</p>
             </div>
             <TickCircle className="size-8 text-green-600/40" />
@@ -278,7 +274,7 @@ export default function CentroNotificacionesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Fallidas</p>
-              <p className="text-2xl font-bold tabular-nums text-red-600">{cargando ? "…" : kEstado.fallido.toLocaleString("es-ES")}</p>
+              <p className="text-2xl font-bold tabular-nums text-red-600">{num(kEstado.fallido)}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">No llegaron a enviarse</p>
             </div>
             <CloseCircle className="size-8 text-red-600/40" />
@@ -288,7 +284,7 @@ export default function CentroNotificacionesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Sin email válido</p>
-              <p className="text-2xl font-bold tabular-nums text-amber-600">{cargando ? "…" : kEstado.sin_email.toLocaleString("es-ES")}</p>
+              <p className="text-2xl font-bold tabular-nums text-amber-600">{num(kEstado.sin_email)}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Cliente sin poder ser avisado</p>
             </div>
             <Sms className="size-8 text-amber-600/40" />
@@ -309,7 +305,7 @@ export default function CentroNotificacionesPage() {
               className={`rounded-lg border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/40 ${activa ? "ring-2 ring-primary/50" : ""}`}
             >
               <p className="truncate text-xs text-muted-foreground">{CATEGORIAS[c].etiqueta}</p>
-              <p className="text-lg font-semibold tabular-nums">{cargando ? "…" : (kCategoria[c] || 0).toLocaleString("es-ES")}</p>
+              <p className="text-lg font-semibold tabular-nums">{num(kCategoria[c] || 0)}</p>
             </button>
           );
         })}
@@ -326,7 +322,7 @@ export default function CentroNotificacionesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__todos__">Todos los tipos</SelectItem>
-            {tiposPresentes.map((t) => (
+            {TIPOS_CONOCIDOS.map((t) => (
               <SelectItem key={t} value={t}>
                 {etiquetaTipo(t)}
               </SelectItem>
@@ -339,9 +335,9 @@ export default function CentroNotificacionesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__todos__">Todos los canales</SelectItem>
-            {canalesPresentes.map((c) => (
+            {Object.entries(CANALES).map(([c, etiqueta]) => (
               <SelectItem key={c} value={c}>
-                {CANALES[c] || c}
+                {etiqueta}
               </SelectItem>
             ))}
           </SelectContent>
@@ -395,7 +391,7 @@ export default function CentroNotificacionesPage() {
                 </TableRow>
               ))}
 
-            {!cargando && filas.length === 0 && (
+            {!cargando && tabla.length === 0 && (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   {hayFiltros ? "Ninguna notificación coincide con los filtros" : "Todavía no hay notificaciones registradas"}
@@ -404,7 +400,7 @@ export default function CentroNotificacionesPage() {
             )}
 
             {!cargando &&
-              filas.map((fila) => {
+              tabla.map((fila) => {
                 if (fila.clase === "dia") {
                   return (
                     <TableRow key={`dia:${fila.dia}`} className="bg-muted hover:bg-muted">
@@ -449,16 +445,13 @@ export default function CentroNotificacionesPage() {
         </Table>
       </div>
 
-      {!cargando && filtrados.length > visibles && (
+      {!cargando && filas.length < total && (
         <div className="mt-3 flex items-center justify-center gap-3 text-sm text-muted-foreground">
           <span>
-            Mostrando {Math.min(visibles, filtrados.length).toLocaleString("es-ES")} de {filtrados.length.toLocaleString("es-ES")}
+            Mostrando {filas.length.toLocaleString("es-ES")} de {total.toLocaleString("es-ES")}
           </span>
-          <Button variant="outline" size="sm" onClick={() => setVisibles((v) => v + TANDA)}>
-            Mostrar {TANDA} más
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setVisibles(filtrados.length)}>
-            Mostrar todas
+          <Button variant="outline" size="sm" disabled={cargandoMas} onClick={mostrarMas}>
+            {cargandoMas ? "Cargando…" : `Mostrar ${TAMANO_PAGINA} más`}
           </Button>
         </div>
       )}

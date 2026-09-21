@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { MOTIVO_LABELS, esConsultaCliente, type WebhookEvento } from "@/lib/webhook-eventos";
 import { limpiarRespuestaCliente } from "@/lib/texto";
 import { toast } from "sonner";
+import { useSondeoVisible } from "@/hooks/use-sondeo-visible";
 
 interface PresupuestoPendiente {
   presupuestoId: string;
@@ -144,12 +145,8 @@ export function NotificacionesBell() {
   // hasta recargar la página a mano (petición del usuario, 2026-09-03).
   // Se pausa mientras el panel está abierto (no tiene sentido, ya se
   // marcan como leídas al abrir) y arranca de nuevo al cerrarlo.
-  useEffect(() => {
-    cargarBadge();
-    if (abierto) return;
-    const id = setInterval(cargarBadge, 25_000);
-    return () => clearInterval(id);
-  }, [abierto]);
+  // Solo con la pestaña visible (ver useSondeoVisible).
+  useSondeoVisible(cargarBadge, 25_000, !abierto);
 
   async function abrir() {
     setAbierto(true);

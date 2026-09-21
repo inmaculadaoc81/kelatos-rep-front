@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 import { CodigoAcceso } from "@/lib/formulario-acceso";
+import { useSondeoVisible } from "@/hooks/use-sondeo-visible";
 
 interface CodigoAccesoContextValue {
   codigo: CodigoAcceso | null;
@@ -47,11 +48,9 @@ export function CodigoAccesoProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    recargar();
-    const id = setInterval(recargar, 30_000);
-    return () => clearInterval(id);
-  }, [recargar]);
+  // Solo con la pestaña visible (ver useSondeoVisible): una pestaña olvidada
+  // en segundo plano no debe seguir consultando al servidor todo el día.
+  useSondeoVisible(recargar, 30_000);
 
   const generarNuevo = useCallback(async () => {
     setGenerando(true);

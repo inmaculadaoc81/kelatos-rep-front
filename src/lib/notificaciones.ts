@@ -7,6 +7,18 @@
 
 export type EstadoNotificacion = "enviado" | "fallido" | "desconocido";
 
+/** Respuesta paginada de /api/notificaciones. */
+export interface RespuestaNotificaciones {
+  ok: boolean;
+  total: number;
+  /** KPI de estado — respetan todos los filtros salvo el de estado. */
+  kpiEstado: { total: number; enviado: number; fallido: number; sin_email: number };
+  /** Conteo por tipo — respetan todos los filtros salvo el de categoría/tipo de KPI. */
+  kpiTipos: Record<string, number>;
+  porDia: { dia: string; n: number; fallidas: number }[];
+  notificaciones: NotificacionApi[];
+}
+
 export interface NotificacionApi {
   id: string;
   fecha: string | null;
@@ -103,6 +115,22 @@ const TIPOS: Record<string, { etiqueta: string; categoria: CategoriaNotificacion
   alerta_interna: { etiqueta: "Alerta interna", categoria: "interno" },
   alerta_sin_canal: { etiqueta: "Alerta: cliente sin canal de contacto", categoria: "interno" },
 };
+
+/** Todos los tipos conocidos, ordenados por etiqueta (para el desplegable de tipos). */
+export const TIPOS_CONOCIDOS: string[] = Object.keys(TIPOS).sort((a, b) => TIPOS[a].etiqueta.localeCompare(TIPOS[b].etiqueta, "es"));
+
+/** Tipos que pertenecen a una categoría ("otros" = los que no están en el mapa). */
+export function tiposDeCategoria(categoria: CategoriaNotificacion): string[] {
+  return Object.keys(TIPOS).filter((t) => TIPOS[t].categoria === categoria);
+}
+
+/** Tipos cuya etiqueta legible contiene el texto — para que la búsqueda libre
+    también encuentre "Pieza pedida" aunque el código sea estado_pieza_pendiente. */
+export function tiposQueCoinciden(texto: string): string[] {
+  const q = texto.trim().toLowerCase();
+  if (!q) return [];
+  return Object.keys(TIPOS).filter((t) => TIPOS[t].etiqueta.toLowerCase().includes(q));
+}
 
 export function etiquetaTipo(tipo: string): string {
   return TIPOS[tipo]?.etiqueta || tipo.replace(/_/g, " ");
