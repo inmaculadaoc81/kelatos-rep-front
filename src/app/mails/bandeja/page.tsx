@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Buzon, ContadoresMensajes, MensajeDetalle, MensajeLista, nombreOCorreo } from "@/lib/mails";
+import { codigoClienteFormateado } from "@/lib/clientes";
 
 const ZONA = "Europe/Madrid";
 const PAGINA = 50;
@@ -285,6 +286,12 @@ export default function BandejaPage() {
                     {m.tiene_adjuntos && <Paperclip2 className="size-3.5 shrink-0 text-muted-foreground" />}
                     {m.es_rebote && <span className="shrink-0 rounded bg-red-500/10 px-1 text-[10px] font-medium text-red-600">Rebote</span>}
                   </div>
+                  {m.clientes?.length > 0 && (
+                    <p className="truncate text-[11px] font-medium text-cyan-700 dark:text-cyan-400">
+                      Cliente: {m.clientes[0].nombre}
+                      {m.clientes.length > 1 ? ` (+${m.clientes.length - 1})` : ""}
+                    </p>
+                  )}
                   <p className="truncate text-xs text-muted-foreground">{m.resumen}</p>
                   {!buzonSel && <p className="truncate text-[11px] text-muted-foreground/70">{m.buzon_email}</p>}
                 </button>
@@ -325,6 +332,16 @@ export default function BandejaPage() {
                   <p className="text-sm">
                     <span className="text-muted-foreground">CC: </span>
                     {detalle.cc}
+                  </p>
+                )}
+                {detalle.clientes?.length > 0 && (
+                  <p className="flex flex-wrap items-center gap-1.5 text-sm">
+                    <span className="text-muted-foreground">Cliente: </span>
+                    {detalle.clientes.map((c) => (
+                      <span key={c.codigo} className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-xs font-medium text-cyan-700 dark:text-cyan-400">
+                        {c.nombre} · nº {codigoClienteFormateado(c.codigo)}
+                      </span>
+                    ))}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">

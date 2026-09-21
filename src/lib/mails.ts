@@ -29,6 +29,12 @@ export interface Buzon {
   sin_leer: number;
 }
 
+/** Cliente cuyo correo coincide con el de la otra parte de la conversación. */
+export interface ClienteVinculado {
+  codigo: string;
+  nombre: string;
+}
+
 export interface MensajeLista {
   id: number;
   buzon_id: number;
@@ -43,6 +49,7 @@ export interface MensajeLista {
   es_rebote: boolean;
   tiene_adjuntos: boolean;
   resumen: string;
+  clientes: ClienteVinculado[];
 }
 
 export interface MensajeDetalle {
@@ -64,6 +71,7 @@ export interface MensajeDetalle {
   adjuntos: { nombre: string; tipo?: string; tamano?: number }[];
   leido: boolean;
   es_rebote: boolean;
+  clientes: ClienteVinculado[];
 }
 
 export interface ContadoresMensajes {
