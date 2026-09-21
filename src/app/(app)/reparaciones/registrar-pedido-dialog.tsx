@@ -13,7 +13,7 @@ import type { Empleado } from "@/app/api/empleados/route";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { usuarioIdentificado } from "@/lib/usuario-identificado";
-import { formatoPedidoDe } from "@/lib/formato-pedido";
+import { esProveedorOtro, formatoPedidoDe } from "@/lib/formato-pedido";
 
 function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -69,6 +69,7 @@ function piezasParaEditar(detalle: ReparacionDetalle): PiezaPedidoForm[] {
     piezaId: p.piezaId,
     descripcion: p.notas || "",
     proveedor: p.proveedorId || "",
+    proveedorOtro: p.proveedorOtro || "",
     enlace: p.enlace || "",
     numeroPedido: p.numeroPedido || "",
     fechaEstimada: p.fechaEstimada ? p.fechaEstimada.slice(0, 10) : "",
@@ -146,13 +147,23 @@ export function RegistrarPedidoDialog({
     return formatoPedidoDe(proveedores.find((prov) => prov.proveedorId === proveedorId)?.nombre);
   }
 
+  function esOtro(proveedorId: string): boolean {
+    return esProveedorOtro(proveedores.find((prov) => prov.proveedorId === proveedorId)?.nombre);
+  }
+
   /** Al cambiar de proveedor, el número ya escrito se recoloca con el formato del nuevo (guiones de eBay/Amazon). */
   function cambiarProveedor(i: number, proveedorId: string) {
     setPiezas((prev) =>
       prev.map((p, idx) => {
         if (idx !== i) return p;
         const f = formatoDe(proveedorId);
-        return { ...p, proveedor: proveedorId, numeroPedido: f ? f.formatear(p.numeroPedido) : p.numeroPedido };
+        return {
+          ...p,
+          proveedor: proveedorId,
+          // El nombre libre solo tiene sentido con "Otro": al cambiar a otro proveedor se descarta.
+          proveedorOtro: esOtro(proveedorId) ? p.proveedorOtro : "",
+          numeroPedido: f ? f.formatear(p.numeroPedido) : p.numeroPedido,
+        };
       })
     );
   }
@@ -164,6 +175,7 @@ export function RegistrarPedidoDialog({
       const p = piezas[i];
       if (!p.descripcion.trim()) return `Pieza ${i + 1}: falta descripción`;
       if (!p.proveedor.trim()) return `Pieza ${i + 1}: falta proveedor`;
+      if (esOtro(p.proveedor) && !p.proveedorOtro?.trim()) return `Pieza ${i + 1}: falta el nombre del proveedor`;
       if (!p.enlace.trim()) return `Pieza ${i + 1}: falta enlace`;
       if (!p.numeroPedido.trim()) return `Pieza ${i + 1}: falta número de pedido`;
       const f = formatoDe(p.proveedor);
@@ -185,7 +197,8 @@ export function RegistrarPedidoDialog({
     try {
       const piezasNormalizadas = piezas.map((p) => {
         const f = formatoDe(p.proveedor);
-        return f ? { ...p, numeroPedido: f.formatear(p.numeroPedido) } : p;
+        const proveedorOtro = esOtro(p.proveedor) ? (p.proveedorOtro || "").trim() : "";
+        return { ...p, proveedorOtro, numeroPedido: f ? f.formatear(p.numeroPedido) : p.numeroPedido };
       });
       const datos: DatosRegistrarPedido = { compradoPor, fechaPedido, piezas: piezasNormalizadas };
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/pedidos`, {
@@ -285,6 +298,16 @@ export function RegistrarPedidoDialog({
                             {proveedores.map((prov) => <SelectItem key={prov.proveedorId} value={prov.proveedorId}>{prov.nombre}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                        {esOtro(p.proveedor) && (
+                          <Input
+                            id={`pedProvOtro-${i}`}
+                            aria-label="Nombre del proveedor"
+                            placeholder="Nombre del proveedor *"
+                            maxLength={80}
+                            value={p.proveedorOtro || ""}
+                            onChange={(e) => actualizarPieza(i, "proveedorOtro", e.target.value)}
+                          />
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`pedEnlace-${i}`}>Enlace de Compra</Label>
@@ -304,7 +327,6 @@ export function RegistrarPedidoDialog({
                                 value={p.numeroPedido}
                                 inputMode={f ? "numeric" : undefined}
                                 maxLength={f?.maxLength}
-                                placeholder={f?.ejemplo}
                                 aria-invalid={invalido || undefined}
                                 onChange={(e) => actualizarPieza(i, "numeroPedido", f ? f.formatear(e.target.value) : e.target.value)}
                               />

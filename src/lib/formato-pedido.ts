@@ -68,6 +68,11 @@ const AMAZON: FormatoPedido = {
   esValido: (v) => /^\d{3}-\d{7}-\d{7}$/.test(v),
 };
 
+/** true si el proveedor es el comodín "Otro" del catálogo (el nombre real se escribe aparte). */
+export function esProveedorOtro(nombreProveedor: string | undefined | null): boolean {
+  return (nombreProveedor || "").trim().toLowerCase() === "otro";
+}
+
 /** Formato del número de pedido para un proveedor, o null si no tiene uno fijo. */
 export function formatoPedidoDe(nombreProveedor: string | undefined | null): FormatoPedido | null {
   const n = (nombreProveedor || "")

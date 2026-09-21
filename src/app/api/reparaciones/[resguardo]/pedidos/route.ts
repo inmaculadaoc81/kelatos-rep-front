@@ -9,6 +9,8 @@ export interface PiezaPedidoForm {
   pedidoId?: string;
   descripcion: string;
   proveedor: string;
+  /** Nombre real del proveedor cuando se elige "Otro". */
+  proveedorOtro?: string;
   enlace: string;
   numeroPedido: string;
   fechaEstimada: string;
@@ -63,6 +65,7 @@ export async function POST(
           pedidoId: p.pedidoId || "",
           descripcion: p.descripcion.trim(),
           proveedor: p.proveedor.trim(),
+          proveedorOtro: (p.proveedorOtro || "").replace(/\s+/g, " ").trim().slice(0, 80),
           enlace: p.enlace.trim(),
           numeroPedido: p.numeroPedido.trim(),
           fechaEstimada: p.fechaEstimada,

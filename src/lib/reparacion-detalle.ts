@@ -243,6 +243,7 @@ interface FilaPedidoSql {
   notas: string | null;
   enlace: string | null;
   proveedor_id: string | null;
+  proveedor_otro?: string | null;
 }
 
 interface FilaHistorialSql {
@@ -346,6 +347,8 @@ export interface Pedido {
       Pedidos pueda mostrar de dónde se compró la pieza (antes solo se
       veía el código de pedido, que no identifica la plataforma). */
   proveedorNombre: string;
+  /** Nombre libre escrito cuando el proveedor es "Otro" ("" para el resto). */
+  proveedorOtro: string;
 }
 
 export interface HistorialEvento {
@@ -551,7 +554,9 @@ function mapearPedido(row: FilaPedidoSql, proveedoresPorId: Record<string, strin
     notas: row.notas || "",
     enlace: row.enlace || "",
     proveedorId,
-    proveedorNombre: proveedoresPorId[proveedorId] || "",
+    // Con "Otro" se muestra el nombre que escribió el usuario, no la palabra genérica.
+    proveedorNombre: row.proveedor_otro?.trim() || proveedoresPorId[proveedorId] || "",
+    proveedorOtro: row.proveedor_otro?.trim() || "",
   };
 }
 
