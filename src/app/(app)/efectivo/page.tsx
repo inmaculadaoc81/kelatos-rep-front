@@ -8,11 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { MovimientoConSaldo, MovimientoEfectivo, TipoMovimientoEfectivo, conSaldoAcumulado, resumir } from "@/lib/efectivo";
+import { EFECTIVO_INICIO_CONTEO, MovimientoConSaldo, MovimientoEfectivo, TipoMovimientoEfectivo, conSaldoAcumulado, resumir } from "@/lib/efectivo";
 import { RetirarEfectivoDialog } from "./retirar-efectivo-dialog";
 import { AnularRetiradaDialog } from "./anular-retirada-dialog";
 
 const TIMEZONE = "Europe/Madrid";
+
+type ModoConteo = "desde_inicio" | "todo";
+const CLAVE_MODO = "kelatos-efectivo-modo-conteo";
+const INICIO_ETIQUETA = EFECTIVO_INICIO_CONTEO.split("-").reverse().join("/");
 
 const ESTILO_TIPO: Record<TipoMovimientoEfectivo, { etiqueta: string; clase: string }> = {
   cobro: { etiqueta: "Cobro", clase: "bg-green-500/10 text-green-600" },
@@ -77,6 +81,9 @@ type FilaTabla = { clase: "dia"; dia: string; n: number; neto: number } | { clas
 
 export default function EfectivoPage() {
   const [movimientos, setMovimientos] = useState<MovimientoEfectivo[]>([]);
+  // Por defecto la caja cuenta desde EFECTIVO_INICIO_CONTEO; "todo" suma también
+  // lo anterior. La elección se recuerda en este navegador.
+  const [modoConteo, setModoConteo] = useState<ModoConteo>("desde_inicio");
   const [puedeRetirar, setPuedeRetirar] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,17 +114,38 @@ export default function EfectivoPage() {
 
   useEffect(() => {
     cargar();
+    try {
+      if (window.localStorage.getItem(CLAVE_MODO) === "todo") setModoConteo("todo");
+    } catch {
+      /* sin almacenamiento (ventana privada…): se queda en el valor por defecto */
+    }
   }, []);
 
-  // El saldo se calcula sobre TODO el historial (una fila filtrada sigue
+  function cambiarModo(modo: ModoConteo) {
+    setModoConteo(modo);
+    try {
+      window.localStorage.setItem(CLAVE_MODO, modo);
+    } catch {
+      /* ignorar */
+    }
+  }
+
+  // Movimientos que cuentan según el modo: desde el día de inicio de caja, o todos.
+  const visibles = useMemo(
+    () => (modoConteo === "todo" ? movimientos : movimientos.filter((m) => diaMadrid(m.fecha) >= EFECTIVO_INICIO_CONTEO)),
+    [movimientos, modoConteo]
+  );
+  const textoAlcance = modoConteo === "todo" ? "Todo el historial" : `Desde el ${INICIO_ETIQUETA}`;
+
+  // El saldo se calcula sobre todo lo que cuenta (una fila filtrada sigue
   // mostrando cuánto había en caja justo después de ese movimiento).
-  const todos = useMemo(() => conSaldoAcumulado(movimientos), [movimientos]);
+  const todos = useMemo(() => conSaldoAcumulado(visibles), [visibles]);
   const saldoActual = todos.length ? todos[0].saldo : 0;
-  const origenes = useMemo(() => Array.from(new Set(movimientos.map((m) => m.origen).filter(Boolean))).sort(), [movimientos]);
+  const origenes = useMemo(() => Array.from(new Set(visibles.map((m) => m.origen).filter(Boolean))).sort(), [visibles]);
 
   const conceptos = useMemo(
-    () => Array.from(new Set(movimientos.filter((m) => m.tipo !== "retirada").map((m) => m.concepto).filter(Boolean))).sort(),
-    [movimientos]
+    () => Array.from(new Set(visibles.filter((m) => m.tipo !== "retirada").map((m) => m.concepto).filter(Boolean))).sort(),
+    [visibles]
   );
 
   // Todos los filtros MENOS el de tipo: los KPI se calculan sobre esto, para
@@ -210,6 +238,30 @@ export default function EfectivoPage() {
           <p className="text-sm text-muted-foreground">Cobros y devoluciones en efectivo de tickets y facturas, y retiradas de caja</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border bg-card p-0.5" role="group" aria-label="Qué días cuentan en la caja">
+            <Button
+              type="button"
+              size="sm"
+              variant={modoConteo === "desde_inicio" ? "default" : "ghost"}
+              className="h-7"
+              aria-pressed={modoConteo === "desde_inicio"}
+              title={`La caja cuenta desde el ${INICIO_ETIQUETA}`}
+              onClick={() => cambiarModo("desde_inicio")}
+            >
+              Desde el {INICIO_ETIQUETA}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={modoConteo === "todo" ? "default" : "ghost"}
+              className="h-7"
+              aria-pressed={modoConteo === "todo"}
+              title="Contar también todo lo anterior"
+              onClick={() => cambiarModo("todo")}
+            >
+              Todos los días
+            </Button>
+          </div>
           <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
@@ -233,7 +285,7 @@ export default function EfectivoPage() {
             <div>
               <p className="mb-1 text-sm text-muted-foreground">En caja ahora</p>
               <p className="text-2xl font-bold tabular-nums">{cargando ? "…" : euros(saldoActual)}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Todo el historial · ver todos</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{textoAlcance} · ver todos</p>
             </div>
             <Coin1 className="size-8 text-primary/40" />
           </div>
@@ -249,7 +301,7 @@ export default function EfectivoPage() {
             <div>
               <p className="mb-1 text-sm text-muted-foreground">Cobrado</p>
               <p className="text-2xl font-bold tabular-nums text-green-600">{cargando ? "…" : euros(resumen.cobros)}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{hayFiltros && !soloFiltroTipo ? "Según filtros" : "Todo el historial"}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{hayFiltros && !soloFiltroTipo ? "Según filtros" : textoAlcance}</p>
             </div>
             <MoneyRecive className="size-8 text-green-600/40" />
           </div>
@@ -387,7 +439,11 @@ export default function EfectivoPage() {
             {!cargando && filas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={columnas} className="py-8 text-center text-muted-foreground">
-                  {hayFiltros ? "Ningún movimiento coincide con los filtros" : "Todavía no hay movimientos en efectivo"}
+                  {hayFiltros
+                    ? "Ningún movimiento coincide con los filtros"
+                    : modoConteo === "todo"
+                      ? "Todavía no hay movimientos en efectivo"
+                      : `Todavía no hay movimientos en efectivo desde el ${INICIO_ETIQUETA}`}
                 </TableCell>
               </TableRow>
             )}

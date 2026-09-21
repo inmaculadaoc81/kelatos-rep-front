@@ -10,6 +10,11 @@
  */
 import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConIva } from "@/lib/facturas-cliente";
 
+/** La caja de efectivo empieza a contarse este día (AAAA-MM-DD, hora de
+    Madrid): lo cobrado antes no entra en el saldo salvo que se elija
+    "Todo el historial" en la vista. Petición del usuario, 2026-09-21. */
+export const EFECTIVO_INICIO_CONTEO = "2026-09-21";
+
 export type TipoMovimientoEfectivo = "cobro" | "devolucion" | "retirada";
 
 export interface MovimientoEfectivo {
