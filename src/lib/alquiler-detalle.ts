@@ -6,6 +6,8 @@
  * de solo lectura).
  */
 
+import { totalFacturaPrincipalAlquiler, totalRectificativaAlquiler } from "@/lib/alquiler-totales";
+
 interface FilaAlquilerRaw {
   alquiler_id: string;
   equipo_id: string;
@@ -134,11 +136,11 @@ export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFactura
     tarifas: { precioDia: numero(row.precio_dia), precioSemana: numero(row.precio_semana), precioMes: numero(row.precio_mes) },
     numeroFactura: row.numero_factura || "",
     urlFactura: row.url_factura || "",
-    totalFactura: numero(row.total_cobrado) || numero(row.total_previsto),
+    totalFactura: totalFacturaPrincipalAlquiler({ cobrado: numero(row.total_cobrado), previsto: numero(row.total_previsto), fianzaBase: numero(row.fianza_cobrada) }),
     formaPago: row.metodo_pago || "",
     estadoFactura: row.estado_factura || "",
     rectificativa: row.numero_factura_rectificativa
-      ? { numeroFactura: row.numero_factura_rectificativa, urlFactura: row.url_factura_rectificativa || "", totalFactura: numero(row.total_factura_rectificativa) }
+      ? { numeroFactura: row.numero_factura_rectificativa, urlFactura: row.url_factura_rectificativa || "", totalFactura: totalRectificativaAlquiler({ guardado: numero(row.total_factura_rectificativa), previsto: numero(row.total_previsto), fianzaBase: numero(row.fianza_cobrada) }) }
       : null,
     corregida: row.numero_factura_corregida
       ? { numeroFactura: row.numero_factura_corregida, urlFactura: row.url_factura_corregida || "", totalFactura: numero(row.total_factura_corregida) }

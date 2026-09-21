@@ -10,6 +10,8 @@
  * GET /v1/alquileres, GET /v1/facturas_manuales).
  */
 
+import { totalFacturaPrincipalAlquiler, totalRectificativaAlquiler } from "@/lib/alquiler-totales";
+
 export type TipoFactura =
   | "reparacion"
   | "revision"
@@ -1014,7 +1016,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         numero,
         fecha: fechaDe(numero),
         url: urlValida(url),
-        total: cobrado > 0 ? Math.round(cobrado * 100) / 100 : Math.round((previsto + fianza + envio) * 100) / 100,
+        total: totalFacturaPrincipalAlquiler({ cobrado, previsto, fianzaBase: fianza, envio }),
         formaPago: texto(row.metodo_pago),
         banco: "",
         estadoFactura: texto(row.estado_factura),
@@ -1033,7 +1035,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         numero,
         fecha: fechaDe(numero),
         url: urlValida(url),
-        total: totalRect !== 0 ? totalRect : Math.round(-(previsto + fianza) * 100) / 100,
+        total: totalRectificativaAlquiler({ guardado: totalRect, previsto, fianzaBase: fianza }),
         formaPago: texto(row.metodo_pago),
         banco: "",
         estadoFactura: "",
@@ -1086,7 +1088,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
       numero: numRectAnt,
       fecha: fechaDe(numRectAnt),
       url: urlValida(texto(row.url_factura_rectificativa_anterior)),
-      total: num(row.total_factura_rectificativa_anterior),
+      total: totalRectificativaAlquiler({ guardado: num(row.total_factura_rectificativa_anterior), previsto, fianzaBase: fianza }),
       formaPago: texto(row.metodo_pago),
       banco: "",
       estadoFactura: "",
@@ -1121,7 +1123,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         numero,
         fecha: fechaDe(numero),
         url: urlValida(url),
-        total: totalInicial > 0 ? totalInicial : Math.round((previsto + fianza + envio) * 100) / 100,
+        total: totalInicial > 0 ? totalInicial : totalFacturaPrincipalAlquiler({ cobrado: 0, previsto, fianzaBase: fianza, envio }),
         formaPago: texto(row.metodo_pago),
         banco: "",
         estadoFactura: "",

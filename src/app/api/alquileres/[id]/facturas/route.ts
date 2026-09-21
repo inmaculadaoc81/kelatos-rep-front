@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import type { SolicitudFacturaAlquiler, ResultadoFacturaAlquiler, LineaFacturaAlquiler } from "@/lib/alquiler-factura";
+import { fianzaConIva } from "@/lib/alquiler-totales";
 
 interface FilaAlquilerSql {
   equipo_id: string | null;
@@ -240,7 +241,7 @@ export async function POST(
         urlPdf: doc.url,
         alquilerId: id,
         columnas: {
-          numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: -fianza,
+          numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: -fianzaConIva(fianza),
           cliente_factura: JSON.stringify(solicitud.cliente),
         },
       });
