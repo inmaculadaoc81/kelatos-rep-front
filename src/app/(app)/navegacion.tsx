@@ -21,6 +21,7 @@ import {
   ScanBarcode,
   Trash,
   Save2,
+  Notification,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -91,6 +92,7 @@ export const GRUPOS: GrupoNavegacion[] = [
       { label: "Reportes", href: "/reportes", icon: Chart },
       { label: "Registro de Acciones", href: "/registro-acciones", icon: Hierarchy },
       { label: "Reporte Equipos", href: "/reporte-equipos", icon: Monitor },
+      { label: "Centro de notificaciones", href: "/notificaciones", icon: Notification },
     ],
   },
 ];
