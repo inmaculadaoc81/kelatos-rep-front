@@ -15,9 +15,7 @@ import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConI
     "Todo el historial" en la vista. Petición del usuario, 2026-09-21. */
 export const EFECTIVO_INICIO_CONTEO = "2026-09-21";
 
-/** cobro/devolución salen de facturas y tickets; retirada e ingreso los
-    registra a mano un superadmin (ingreso = efectivo que ya había, sin documento). */
-export type TipoMovimientoEfectivo = "cobro" | "devolucion" | "retirada" | "ingreso";
+export type TipoMovimientoEfectivo = "cobro" | "devolucion" | "retirada";
 
 export interface MovimientoEfectivo {
   id: string;
@@ -50,7 +48,8 @@ export interface RetiradaEfectivoApi {
   id: number | string;
   fecha_hora: string;
   importe: number;
-  /** Ausente en registros anteriores a la migración 102 (= "retirada"). */
+  /** "ingreso" = efectivo que ya había en caja y se registró a mano (migración
+      102): en la vista cuenta como un cobro más. Ausente/"retirada" = salida. */
   tipo?: "retirada" | "ingreso";
   motivo: string | null;
   usuario: string;
@@ -118,21 +117,23 @@ export function movimientosDeFacturas(facturas: FacturaCliente[]): MovimientoEfe
 
 export function movimientosDeRetiradas(retiradas: RetiradaEfectivoApi[]): MovimientoEfectivo[] {
   return retiradas.map((r) => {
-    const esIngreso = r.tipo === "ingreso";
+    // Un ingreso manual (p. ej. el efectivo que ya había en el local) es un
+    // cobro normal: suma en "Cobrado" y en la caja, sin tipo propio.
+    const esCobro = r.tipo === "ingreso";
     return {
-    id: `ret:${r.id}`,
-    fecha: r.fecha_hora,
-    tipo: (esIngreso ? "ingreso" : "retirada") as TipoMovimientoEfectivo,
-    origen: "",
-    concepto: (r.motivo || "").trim() || (esIngreso ? "Ingreso de efectivo" : "Retirada de efectivo"),
-    referencia: "",
-    numero: "",
-    cliente: "",
-    importe: esIngreso ? redondear(Number(r.importe) || 0) : -redondear(Number(r.importe) || 0),
-    retiradaId: Number(r.id),
-    usuario: r.usuario,
-    anulada: !!r.anulada_en,
-    anuladaMotivo: r.anulada_motivo || undefined,
+      id: `ret:${r.id}`,
+      fecha: r.fecha_hora,
+      tipo: (esCobro ? "cobro" : "retirada") as TipoMovimientoEfectivo,
+      origen: "",
+      concepto: (r.motivo || "").trim() || (esCobro ? "Efectivo en caja" : "Retirada de efectivo"),
+      referencia: "",
+      numero: "",
+      cliente: "",
+      importe: esCobro ? redondear(Number(r.importe) || 0) : -redondear(Number(r.importe) || 0),
+      retiradaId: Number(r.id),
+      usuario: r.usuario,
+      anulada: !!r.anulada_en,
+      anuladaMotivo: r.anulada_motivo || undefined,
     };
   });
 }
@@ -161,8 +162,6 @@ export function conSaldoAcumulado(movimientos: MovimientoEfectivo[]): Movimiento
 
 export interface ResumenEfectivo {
   cobros: number;
-  /** Efectivo añadido a mano (p. ej. el que ya había en el local). */
-  ingresos: number;
   devoluciones: number;
   retiradas: number;
   neto: number;
@@ -172,21 +171,18 @@ export interface ResumenEfectivo {
     para poder mostrarlas como "− X" sin doble negación). */
 export function resumir(movimientos: MovimientoEfectivo[]): ResumenEfectivo {
   let cobros = 0;
-  let ingresos = 0;
   let devoluciones = 0;
   let retiradas = 0;
   for (const m of movimientos) {
     if (m.anulada) continue;
     if (m.tipo === "cobro") cobros += m.importe;
-    else if (m.tipo === "ingreso") ingresos += m.importe;
     else if (m.tipo === "devolucion") devoluciones += -m.importe;
     else retiradas += -m.importe;
   }
   return {
     cobros: redondear(cobros),
-    ingresos: redondear(ingresos),
     devoluciones: redondear(devoluciones),
     retiradas: redondear(retiradas),
-    neto: redondear(cobros + ingresos - devoluciones - retiradas),
+    neto: redondear(cobros - devoluciones - retiradas),
   };
 }
