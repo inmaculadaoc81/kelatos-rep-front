@@ -126,6 +126,10 @@ export function FacturaRecibidaFormDialog({
   // vieja, así que sin este estado propio el enlace "Ver archivo adjunto"
   // nunca aparecería hasta cerrar y reabrir.
   const [driveFileId, setDriveFileId] = useState<string | null>(null);
+  // Al crear una factura nueva todavía no hay id, así que el archivo no se
+  // puede subir hasta que exista el registro — se queda "en espera" aquí y
+  // se sube justo después de que guardar() cree la factura (ver más abajo).
+  const [archivoPendiente, setArchivoPendiente] = useState<File | null>(null);
   const inputArchivo = useRef<HTMLInputElement>(null);
   const esEdicion = facturaExistente !== null;
 
@@ -133,6 +137,7 @@ export function FacturaRecibidaFormDialog({
     if (open) {
       setDatos(facturaExistente ? desdeExistente(facturaExistente) : vacio());
       setDriveFileId(facturaExistente?.driveFileId ?? null);
+      setArchivoPendiente(null);
     }
   }, [open, facturaExistente]);
 
@@ -183,7 +188,17 @@ export function FacturaRecibidaFormDialog({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (data.factura.posibleDuplicado) toast.warning(`Aviso: ya existe otra factura del mismo proveedor con el número "${datos.numeroFacturaProveedor}"`);
-      toast.success(esEdicion ? "Factura actualizada" : `Factura registrada (${data.factura.numeroRecepcion})`);
+
+      if (!esEdicion && archivoPendiente) {
+        try {
+          await subirArchivoA(data.factura.id, archivoPendiente);
+          toast.success(`Factura registrada (${data.factura.numeroRecepcion}) con el archivo adjunto`);
+        } catch (e) {
+          toast.warning(`Factura registrada (${data.factura.numeroRecepcion}), pero el archivo no se pudo subir: ${e instanceof Error ? e.message : "error desconocido"}. Ábrela de nuevo para reintentarlo.`);
+        }
+      } else {
+        toast.success(esEdicion ? "Factura actualizada" : `Factura registrada (${data.factura.numeroRecepcion})`);
+      }
       onOpenChange(false);
       onGuardado();
     } catch (e) {
@@ -193,20 +208,34 @@ export function FacturaRecibidaFormDialog({
     }
   }
 
-  async function subirArchivo(archivo: File | undefined) {
-    if (!archivo || !facturaExistente) return;
-    if (archivo.size > 8 * 1024 * 1024) return toast.error("El archivo no puede superar 8 MB");
+  async function subirArchivoA(id: number, archivo: File): Promise<string> {
+    const base64 = await leerBase64(archivo);
+    const res = await fetch(`/api/facturas-recibidas/${id}/archivo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base64, mimeType: archivo.type || "application/octet-stream", nombre: archivo.name }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Error desconocido");
+    return data.factura.driveFileId as string;
+  }
+
+  async function manejarArchivoSeleccionado(archivo: File | undefined) {
+    if (!archivo) return;
+    if (archivo.size > 8 * 1024 * 1024) {
+      toast.error("El archivo no puede superar 8 MB");
+      if (inputArchivo.current) inputArchivo.current.value = "";
+      return;
+    }
+    // Sin id todavía (factura nueva) — se sube automáticamente al registrar.
+    if (!esEdicion) {
+      setArchivoPendiente(archivo);
+      return;
+    }
     setSubiendoArchivo(true);
     try {
-      const base64 = await leerBase64(archivo);
-      const res = await fetch(`/api/facturas-recibidas/${facturaExistente.id}/archivo`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64, mimeType: archivo.type || "application/octet-stream", nombre: archivo.name }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setDriveFileId(data.factura.driveFileId);
+      const nuevoId = await subirArchivoA(facturaExistente!.id, archivo);
+      setDriveFileId(nuevoId);
       toast.success("Archivo adjuntado");
       onGuardado();
     } catch (e) {
@@ -438,22 +467,28 @@ export function FacturaRecibidaFormDialog({
               </div>
             </Seccion>
 
-            {/* Archivo — solo tiene sentido una vez creada la factura (necesita su id) */}
-            {esEdicion && (
-              <Seccion titulo="Archivo">
-                <div className="flex items-center gap-2 rounded-md border p-3">
-                  <input ref={inputArchivo} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => subirArchivo(e.target.files?.[0])} />
-                  <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={subiendoArchivo} onClick={() => inputArchivo.current?.click()}>
-                    <DocumentUpload className="size-4" /> {subiendoArchivo ? "Subiendo…" : "Subir archivo"}
-                  </Button>
-                  {driveFileId && (
-                    <a href={`/api/formulario-cliente/archivo/${driveFileId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                      <Paperclip2 className="size-3.5" /> Ver archivo adjunto
-                    </a>
-                  )}
-                </div>
-              </Seccion>
-            )}
+            <Seccion titulo="Archivo">
+              <div className="flex items-center gap-2 rounded-md border p-3">
+                <input ref={inputArchivo} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => manejarArchivoSeleccionado(e.target.files?.[0])} />
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={subiendoArchivo} onClick={() => inputArchivo.current?.click()}>
+                  <DocumentUpload className="size-4" /> {subiendoArchivo ? "Subiendo…" : esEdicion ? "Subir archivo" : archivoPendiente ? "Cambiar archivo" : "Adjuntar archivo"}
+                </Button>
+                {esEdicion && driveFileId && (
+                  <a href={`/api/formulario-cliente/archivo/${driveFileId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    <Paperclip2 className="size-3.5" /> Ver archivo adjunto
+                  </a>
+                )}
+                {!esEdicion && archivoPendiente && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Paperclip2 className="size-3.5" /> {archivoPendiente.name}
+                    <button type="button" className="text-destructive hover:underline" onClick={() => setArchivoPendiente(null)}>Quitar</button>
+                  </span>
+                )}
+                {!esEdicion && !archivoPendiente && (
+                  <span className="text-xs text-muted-foreground">Se subirá al registrar la factura</span>
+                )}
+              </div>
+            </Seccion>
           </div>
 
           <DialogFooter>
