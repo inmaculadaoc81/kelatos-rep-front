@@ -3,7 +3,7 @@ import { kelatosApiGet } from "@/lib/kelatos-api";
 import { accesoMails } from "@/lib/mails-auth";
 import type { KpisLeads, LeadLista } from "@/lib/mails";
 
-const PARAMETROS = ["estado", "q", "grupo", "paso", "orden", "limit", "offset"];
+const PARAMETROS = ["estado", "q", "grupo", "paso", "sector", "origen", "orden", "limit", "offset"];
 
 /** Lista paginada de leads con sus KPIs por estado y sus envíos/respuestas. */
 export async function GET(req: Request) {

@@ -20,10 +20,10 @@ import {
 import { Sms, Setting2, Building } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
-const ITEMS: { label: string; href: string | null; icon: typeof Sms; color: string }[] = [
-  { label: "Centro de mails", href: "/mails/bandeja", icon: Sms, color: "from-rose-500 to-pink-600" },
-  { label: "Leads", href: "/mails/leads", icon: Building, color: "from-cyan-500 to-blue-600" },
-  { label: "Buzones", href: "/mails/buzones", icon: Setting2, color: "from-amber-500 to-orange-600" },
+const ITEMS: { label: string; href: string | null; icon: typeof Sms }[] = [
+  { label: "Centro de mails", href: "/mails/bandeja", icon: Sms },
+  { label: "Leads", href: "/mails/leads", icon: Building },
+  { label: "Buzones", href: "/mails/buzones", icon: Setting2 },
 ];
 
 /** Sidebar de Gestión MAILS — mismo esquema que el de Agentes (logo +
@@ -86,9 +86,7 @@ export function MailsSidebar({ session }: { session: Session | null }) {
                   return (
                     <SidebarMenuSubItem key={item.label}>
                       <SidebarMenuSubButton isActive={pathname?.startsWith(item.href) ?? false} render={<Link href={item.href} />}>
-                        <span className={`flex size-5 shrink-0 items-center justify-center rounded-md bg-linear-to-br text-white ${item.color}`}>
-                          <Icono className="size-3" />
-                        </span>
+                        <Icono />
                         <span className="truncate">{item.label}</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
