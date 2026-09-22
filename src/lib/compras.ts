@@ -32,6 +32,8 @@ export interface CompraFila {
   proveedorId: string;
   proveedorNombre: string;
   proveedorOtro: string;
+  /** Pedido activo cuya fecha estimada ya pasó sin haber llegado (calculado en el servidor). */
+  retrasado: boolean;
 }
 
 interface FilaCompraSql {
@@ -56,6 +58,7 @@ interface FilaCompraSql {
   proveedor_id: string | null;
   proveedor_nombre: string | null;
   proveedor_otro: string | null;
+  retrasado: boolean | null;
 }
 
 export function mapearCompra(row: FilaCompraSql): CompraFila {
@@ -81,6 +84,9 @@ export function mapearCompra(row: FilaCompraSql): CompraFila {
     proveedorId: row.proveedor_id || "",
     proveedorNombre: row.proveedor_nombre || "",
     proveedorOtro: row.proveedor_otro || "",
+    // Calculado en el servidor (kelatos_app.pedidos no tiene columna para esto):
+    // pedido activo cuya fecha estimada ya pasó sin haber llegado.
+    retrasado: row.retrasado === true,
   };
 }
 
@@ -92,9 +98,42 @@ export interface KpisCompras {
   recibido: number;
   cancelado: number;
   con_problema: number;
+  retrasado: number;
 }
 
-export const KPIS_COMPRAS_VACIOS: KpisCompras = { total: 0, pendiente: 0, pedido: 0, en_transito: 0, recibido: 0, cancelado: 0, con_problema: 0 };
+export const KPIS_COMPRAS_VACIOS: KpisCompras = { total: 0, pendiente: 0, pedido: 0, en_transito: 0, recibido: 0, cancelado: 0, con_problema: 0, retrasado: 0 };
+
+// Un color por proveedor — se reconoce por el nombre (normalizado, igual
+// criterio que formatoPedidoDe en lib/formato-pedido.ts) para que un
+// proveedor "Otro" con nombre libre ("Gise", "TiendaMóvil"…) también caiga
+// en un color estable (gris neutro) en vez de quedar sin pill.
+function normalizarNombreProveedor(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z]/g, "");
+}
+
+const COLOR_PROVEEDOR: [string, string][] = [
+  ["amazon", "bg-orange-500/10 text-orange-700 dark:text-orange-400"],
+  ["aliexpress", "bg-red-500/10 text-red-700 dark:text-red-400"],
+  ["ebay", "bg-blue-500/10 text-blue-700 dark:text-blue-400"],
+  ["asus", "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400"],
+  ["aswoo", "bg-teal-500/10 text-teal-700 dark:text-teal-400"],
+  ["lenovo", "bg-rose-500/10 text-rose-700 dark:text-rose-400"],
+  ["msi", "bg-violet-500/10 text-violet-700 dark:text-violet-400"],
+  ["pccomponentes", "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400"],
+  ["techsparts", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"],
+];
+const COLOR_PROVEEDOR_OTRO = "bg-slate-500/10 text-slate-600 dark:text-slate-300";
+
+/** Clases de la pill de un proveedor a partir de su nombre. */
+export function colorProveedor(nombre: string): string {
+  const n = normalizarNombreProveedor(nombre);
+  const encontrado = COLOR_PROVEEDOR.find(([clave]) => n.includes(clave));
+  return encontrado ? encontrado[1] : COLOR_PROVEEDOR_OTRO;
+}
 
 export const ESTADOS_PEDIDO = ["Pendiente", "Pedido", "En Tránsito", "Recibido", "Cancelado", "Problema", "Pieza Rota", "Pieza Defectuosa"] as const;
 

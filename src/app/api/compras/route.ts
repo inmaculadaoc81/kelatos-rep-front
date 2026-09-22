@@ -16,10 +16,13 @@ export async function GET(request: NextRequest) {
   try {
     const data = await kelatosApiGet<RespuestaCompras>("/v1/compras", {
       estado: searchParams.get("estado") ?? undefined,
+      retrasado: searchParams.get("retrasado") ?? undefined,
       proveedorId: searchParams.get("proveedorId") ?? undefined,
+      compradoPor: searchParams.get("compradoPor") ?? undefined,
       busqueda: searchParams.get("busqueda") ?? undefined,
       fechaDesde: searchParams.get("fechaDesde") ?? undefined,
       fechaHasta: searchParams.get("fechaHasta") ?? undefined,
+      orden: searchParams.get("orden") ?? undefined,
       pagina: searchParams.get("pagina") ?? "1",
       porPagina: searchParams.get("porPagina") ?? "50",
     });
