@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Refresh2, SearchNormal1, Add, ReceiptItem, Category, ClipboardTick, Warning2, Wallet, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Add, Book1, Category, ClipboardTick, Warning2, Wallet, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -96,11 +96,11 @@ export default function FacturasRecibidasPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-blue-600 text-white">
-            <ReceiptItem className="size-4.5" />
+            <Book1 className="size-4.5" />
           </span>
           <div>
-            <h1 className="text-lg font-semibold">Facturas Recibidas</h1>
-            <p className="text-sm text-muted-foreground">Facturas de proveedores (AliExpress, eBay, Amazon...) para control contable y fiscal</p>
+            <h1 className="text-lg font-semibold">Libro de Compras</h1>
+            <p className="text-sm text-muted-foreground">Registro de compras a proveedores (AliExpress, eBay, Amazon...) para control contable y fiscal</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

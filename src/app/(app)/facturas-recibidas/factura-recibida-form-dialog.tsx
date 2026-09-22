@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ReceiptItem, DocumentUpload, Paperclip2 } from "@/lib/icons";
+import { Book1, DocumentUpload, Paperclip2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -223,7 +223,7 @@ export function FacturaRecibidaFormDialog({
         <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto lg:max-w-5xl" showCloseButton={!enviando}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ReceiptItem className="size-5" /> {esEdicion ? `Factura ${facturaExistente!.numeroRecepcion}` : "Nueva factura recibida"}
+              <Book1 className="size-5" /> {esEdicion ? `Factura ${facturaExistente!.numeroRecepcion}` : "Nueva factura recibida"}
             </DialogTitle>
           </DialogHeader>
 
