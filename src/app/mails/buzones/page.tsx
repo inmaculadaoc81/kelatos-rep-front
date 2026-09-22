@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Refresh2, Add, Edit2, Sms, Clock } from "@/lib/icons";
+import { Refresh2, Add, Edit2, Sms, Clock, Setting2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Buzon, etiquetaProveedor } from "@/lib/mails";
+import { Buzon, colorProveedor, etiquetaProveedor } from "@/lib/mails";
 import { BuzonDialog } from "./buzon-dialog";
 import { HistoricoDialog } from "./historico-dialog";
 
@@ -83,9 +83,14 @@ export default function BuzonesPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Buzones</h1>
-          <p className="text-sm text-muted-foreground">Correos conectados (IMAP para leer, SMTP para enviar) de cualquier dominio</p>
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-amber-500 to-orange-600 text-white">
+            <Setting2 className="size-4.5" />
+          </span>
+          <div>
+            <h1 className="text-lg font-semibold">Buzones</h1>
+            <p className="text-sm text-muted-foreground">Correos conectados (IMAP para leer, SMTP para enviar) de cualquier dominio</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
@@ -142,7 +147,9 @@ export default function BuzonesPage() {
                       <div className="text-xs text-muted-foreground">{b.email}</div>
                     </Link>
                   </TableCell>
-                  <TableCell className="text-sm">{etiquetaProveedor(b.proveedor)}</TableCell>
+                  <TableCell>
+                    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${colorProveedor(b.proveedor)}`}>{etiquetaProveedor(b.proveedor)}</span>
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div>IMAP {b.imap_host}:{b.imap_port}</div>
                     <div>SMTP {b.smtp_host}:{b.smtp_port}</div>

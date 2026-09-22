@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Refresh2, SearchNormal1, DocumentUpload } from "@/lib/icons";
+import { Refresh2, SearchNormal1, DocumentUpload, Building } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,9 +109,14 @@ export default function LeadsPage() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-semibold">Leads</h1>
-          <p className="text-sm text-muted-foreground">Empresas y contactos a los que se escribe: su estado, lo que se les envió y lo que respondieron</p>
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-blue-600 text-white">
+            <Building className="size-4.5" />
+          </span>
+          <div>
+            <h1 className="text-lg font-semibold">Leads</h1>
+            <p className="text-sm text-muted-foreground">Empresas y contactos a los que se escribe: su estado, lo que se les envió y lo que respondieron</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {esSuperadmin && (

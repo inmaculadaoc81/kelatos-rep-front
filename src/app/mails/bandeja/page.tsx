@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2, Edit2, Star, Trash, Folder2, RotateLeft, Eye, Category } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2, Edit2, Star, Trash, Folder2, RotateLeft, Eye, Category, Forward, Copy } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,19 +11,23 @@ import { Buzon, CONTADORES_VACIOS, ContadoresMensajes, MensajeDetalle, MensajeHi
 import { codigoClienteFormateado } from "@/lib/clientes";
 import { useSondeoVisible } from "@/hooks/use-sondeo-visible";
 import { BorradorCorreo, RedactarDialog } from "./redactar-dialog";
+import { SeleccionarBuzonDialog } from "./seleccionar-buzon-dialog";
 import { CuerpoMensaje, LinksAdjuntos, fechaCorta, fechaLarga } from "../componentes-correo";
 
 const PAGINA = 40;
 const REFRESCO_MS = 60_000;
+// La tarjeta "Buzones" solo enseña estos de entrada; con más, el botón
+// "Buscar buzón…" abre el modal con todos (si no, la tarjeta crece sin límite).
+const BUZONES_VISIBLES = 5;
 
-const CARPETAS: { vista: Vista; etiqueta: string; icono: typeof Sms; contador: keyof ContadoresMensajes }[] = [
-  { vista: "todos", etiqueta: "Todos", icono: Category, contador: "todos" },
-  { vista: "entrada", etiqueta: "Entrada", icono: Sms, contador: "entrada" },
-  { vista: "destacados", etiqueta: "Destacados", icono: Star, contador: "destacados" },
-  { vista: "enviados", etiqueta: "Enviados", icono: Send2, contador: "enviados" },
-  { vista: "archivo", etiqueta: "Archivo", icono: Folder2, contador: "archivo" },
-  { vista: "rebotes", etiqueta: "Rebotes", icono: CloseCircle, contador: "rebotes" },
-  { vista: "papelera", etiqueta: "Papelera", icono: Trash, contador: "papelera" },
+const CARPETAS: { vista: Vista; etiqueta: string; icono: typeof Sms; contador: keyof ContadoresMensajes; color: string }[] = [
+  { vista: "todos", etiqueta: "Todos", icono: Category, contador: "todos", color: "from-slate-500 to-slate-600" },
+  { vista: "entrada", etiqueta: "Entrada", icono: Sms, contador: "entrada", color: "from-blue-500 to-blue-600" },
+  { vista: "destacados", etiqueta: "Destacados", icono: Star, contador: "destacados", color: "from-amber-500 to-amber-600" },
+  { vista: "enviados", etiqueta: "Enviados", icono: Send2, contador: "enviados", color: "from-indigo-500 to-indigo-600" },
+  { vista: "archivo", etiqueta: "Archivo", icono: Folder2, contador: "archivo", color: "from-violet-500 to-violet-600" },
+  { vista: "rebotes", etiqueta: "Rebotes", icono: CloseCircle, contador: "rebotes", color: "from-red-500 to-red-600" },
+  { vista: "papelera", etiqueta: "Papelera", icono: Trash, contador: "papelera", color: "from-zinc-500 to-zinc-600" },
 ];
 
 const BORRADOR_VACIO: BorradorCorreo = { buzonId: null, para: "", cc: "", asunto: "", texto: "", respondeA: null };
@@ -39,6 +43,33 @@ function borradorRespuesta(d: Pick<MensajeHilo, "id" | "buzon_id" | "asunto" | "
     .map((l) => `> ${l}`)
     .join("\n");
   return { buzonId: d.buzon_id, para: d.remitente, cc: "", asunto, texto: `\n\n${fechaLarga(d.fecha)}, ${quien} escribió:\n${cita}`, respondeA: d.id };
+}
+
+/** Prepara el reenvío de un correo (recibido o enviado): sin destinatario
+    prellenado, "Fwd:" y el original citado con su cabecera. A diferencia de
+    responder, no encadena la conversación (respondeA: null) y no restringe
+    la dirección del mensaje original. */
+function borradorReenvio(
+  d: Pick<MensajeHilo, "buzon_id" | "asunto" | "remitente" | "remitente_nombre" | "destinatarios" | "cuerpo_texto" | "fecha">
+): BorradorCorreo {
+  const asunto = /^\s*fwd\s*:/i.test(d.asunto) ? d.asunto : `Fwd: ${d.asunto || ""}`.trim();
+  const quien = d.remitente_nombre ? `${d.remitente_nombre} <${d.remitente}>` : d.remitente;
+  const cita = (d.cuerpo_texto || "")
+    .slice(0, 4000)
+    .split("\n")
+    .slice(0, 60)
+    .join("\n");
+  const cabecera = `---------- Mensaje reenviado ----------\nDe: ${quien}\nFecha: ${fechaLarga(d.fecha)}\nPara: ${d.destinatarios || "—"}\nAsunto: ${d.asunto || "(sin asunto)"}`;
+  return { buzonId: d.buzon_id, para: "", cc: "", asunto, texto: `\n\n${cabecera}\n\n${cita}`, respondeA: null, esReenvio: true };
+}
+
+async function copiarAlPortapapeles(texto: string, etiqueta: string) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    toast.success(`${etiqueta} copiado`);
+  } catch {
+    toast.error("No se pudo copiar");
+  }
 }
 
 interface FiltroExterno {
@@ -72,6 +103,7 @@ export default function CentroMailsPage() {
   const [detalle, setDetalle] = useState<MensajeDetalle | null>(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [abiertos, setAbiertos] = useState<Set<number>>(new Set());
+  const [seleccionarBuzonAbierto, setSeleccionarBuzonAbierto] = useState(false);
   const consulta = useRef(0);
 
   useEffect(() => {
@@ -277,9 +309,14 @@ export default function CentroMailsPage() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-semibold">Centro de mails</h1>
-          <p className="text-sm text-muted-foreground">{buzonActual ? buzonActual.email : "Todos los buzones"} · se actualiza solo cada minuto</p>
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-rose-500 to-pink-600 text-white">
+            <Sms className="size-4.5" />
+          </span>
+          <div>
+            <h1 className="text-lg font-semibold">Centro de mails</h1>
+            <p className="text-sm text-muted-foreground">{buzonActual ? buzonActual.email : "Todos los buzones"} · se actualiza solo cada minuto</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {puedeEnviar && buzones.some((b) => b.activo) && (
@@ -301,7 +338,7 @@ export default function CentroMailsPage() {
 
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Error al cargar: {error}</div>}
 
-      <div className="grid min-h-[65vh] gap-3 lg:grid-cols-[13.5rem_minmax(20rem,27rem)_1fr]">
+      <div className="grid min-h-[65vh] gap-3 lg:grid-cols-[17rem_minmax(20rem,27rem)_1fr]">
         {/* Carpetas y buzones */}
         <div className="space-y-3">
           <div className="rounded-lg border bg-card p-1">
@@ -315,9 +352,11 @@ export default function CentroMailsPage() {
                   type="button"
                   aria-pressed={activa}
                   onClick={() => { setVista(c.vista); setSoloSinLeer(false); }}
-                  className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-muted ${activa ? "bg-muted font-medium" : ""}`}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted ${activa ? "bg-muted font-medium" : ""}`}
                 >
-                  <Icono className="size-4 shrink-0 text-muted-foreground" />
+                  <span className={`flex size-6 shrink-0 items-center justify-center rounded-md bg-linear-to-br text-white ${c.color}`}>
+                    <Icono className="size-3.5" />
+                  </span>
                   <span className="flex-1">{c.etiqueta}</span>
                   <span className="text-xs tabular-nums text-muted-foreground">{cargando && !mensajes.length ? "…" : n.toLocaleString("es-ES")}</span>
                 </button>
@@ -327,17 +366,28 @@ export default function CentroMailsPage() {
               type="button"
               aria-pressed={soloSinLeer}
               onClick={() => { setVista("entrada"); setSoloSinLeer((v) => !(v && vista === "entrada")); }}
-              className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-muted ${soloSinLeer ? "bg-muted font-medium" : ""}`}
+              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted ${soloSinLeer ? "bg-muted font-medium" : ""}`}
             >
-              <Notification className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-linear-to-br from-rose-500 to-red-600 text-white">
+                <Notification className="size-3.5" />
+              </span>
               <span className="flex-1">Sin leer</span>
               <span className="text-xs font-semibold tabular-nums text-primary">{contadores.sin_leer.toLocaleString("es-ES")}</span>
             </button>
           </div>
 
           <div className="rounded-lg border bg-card">
-            <p className="border-b px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">Buzones</p>
-            <div className="max-h-[40vh] overflow-y-auto p-1">
+            <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+                <Sms className="size-3.5 text-rose-500" /> Buzones
+              </p>
+              {buzones.length > BUZONES_VISIBLES && (
+                <button type="button" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => setSeleccionarBuzonAbierto(true)}>
+                  <SearchNormal1 className="size-3" /> Buscar
+                </button>
+              )}
+            </div>
+            <div className="p-1">
               <button
                 type="button"
                 onClick={() => setBuzonSel(null)}
@@ -347,7 +397,7 @@ export default function CentroMailsPage() {
                 {totalSinLeerBuzones > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{totalSinLeerBuzones}</span>}
               </button>
               {cargandoBuzones && <Skeleton className="m-2 h-6" />}
-              {buzones.map((b) => (
+              {buzones.slice(0, BUZONES_VISIBLES).map((b) => (
                 <button
                   key={b.id}
                   type="button"
@@ -364,6 +414,15 @@ export default function CentroMailsPage() {
                   </span>
                 </button>
               ))}
+              {buzones.length > BUZONES_VISIBLES && (
+                <button
+                  type="button"
+                  onClick={() => setSeleccionarBuzonAbierto(true)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <SearchNormal1 className="size-3.5" /> Ver los {buzones.length} buzones…
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -484,6 +543,20 @@ export default function CentroMailsPage() {
                     <Send2 className="size-3.5" /> Responder
                   </Button>
                 )}
+                {puedeEnviar && !mensajeActivo.es_rebote && buzones.some((b) => b.id === mensajeActivo.buzon_id && b.activo) && (
+                  <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={() => abrirRedactar(borradorReenvio(mensajeActivo))}>
+                    <Forward className="size-3.5" /> Reenviar
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1"
+                  title="Copiar dirección del remitente"
+                  onClick={() => copiarAlPortapapeles(mensajeActivo.remitente, "Correo")}
+                >
+                  <Copy className="size-3.5" /> Copiar correo
+                </Button>
                 {!enPapelera && (
                   <>
                     <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => accionSeleccion("no_leido", "Marcado como no leído")}>
@@ -668,6 +741,8 @@ export default function CentroMailsPage() {
           onEnviado={() => { cargar(); cargarBuzones(); }}
         />
       )}
+
+      <SeleccionarBuzonDialog buzones={buzones} open={seleccionarBuzonAbierto} onOpenChange={setSeleccionarBuzonAbierto} onElegir={setBuzonSel} />
     </div>
   );
 }

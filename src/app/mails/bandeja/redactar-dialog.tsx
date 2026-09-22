@@ -19,6 +19,9 @@ export interface BorradorCorreo {
   texto: string;
   /** id del mensaje que se responde (para encadenar la conversación). */
   respondeA: number | null;
+  /** Solo para el título del diálogo — un reenvío no encadena (respondeA
+      va null, igual que un correo nuevo), así que hace falta distinguirlo. */
+  esReenvio?: boolean;
 }
 
 interface AdjuntoNuevo {
@@ -68,6 +71,7 @@ export function RedactarDialog({
   const [forzar, setForzar] = useState(false);
   const inputArchivo = useRef<HTMLInputElement>(null);
   const esRespuesta = borrador.respondeA !== null;
+  const esReenvio = borrador.esReenvio === true;
 
   function set<K extends keyof BorradorCorreo>(campo: K, valor: BorradorCorreo[K]) {
     setF((prev) => ({ ...prev, [campo]: valor }));
@@ -146,9 +150,12 @@ export function RedactarDialog({
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto sm:max-w-2xl" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Send2 className="size-5" /> {esRespuesta ? "Responder" : "Nuevo correo"}
+            <Send2 className="size-5" /> {esRespuesta ? "Responder" : esReenvio ? "Reenviar" : "Nuevo correo"}
           </DialogTitle>
-          <DialogDescription>Se envía por SMTP desde el buzón elegido, como texto sin formato. Los enviados quedan en la carpeta Enviados.</DialogDescription>
+          <DialogDescription>
+            Se envía por SMTP desde el buzón elegido, como texto sin formato. Los enviados quedan en la carpeta Enviados.
+            {esReenvio && " Los adjuntos originales no se incluyen: descárgalos y vuelve a adjuntarlos si hacen falta."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">

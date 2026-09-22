@@ -265,6 +265,17 @@ export function etiquetaProveedor(p: string): string {
   return PROVEEDORES[p]?.etiqueta || p;
 }
 
+/** Color de la pastilla de proveedor en Buzones. */
+export const COLOR_PROVEEDOR: Record<string, string> = {
+  hostinger: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
+  webempresa: "bg-teal-500/10 text-teal-700 dark:text-teal-400",
+  otro: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
+};
+
+export function colorProveedor(p: string): string {
+  return COLOR_PROVEEDOR[p] || COLOR_PROVEEDOR.otro;
+}
+
 /** Nombre del remitente si lo hay; si no, su dirección. */
 export function nombreOCorreo(m: Pick<MensajeLista, "remitente" | "remitente_nombre">): string {
   return (m.remitente_nombre || "").trim() || m.remitente || "(sin remitente)";
