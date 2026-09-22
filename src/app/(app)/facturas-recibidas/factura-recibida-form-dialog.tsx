@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Book1, DocumentUpload, Paperclip2 } from "@/lib/icons";
+import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category } from "@/lib/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Proveedor } from "@/lib/proveedores";
 import { ProveedorFormDialog } from "../proveedores/proveedor-form-dialog";
 import {
   FacturaRecibida, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura,
-  ETIQUETA_TIPO_DOCUMENTO, ETIQUETA_CATEGORIA,
+  ETIQUETA_TIPO_DOCUMENTO, ETIQUETA_CATEGORIA, euros,
 } from "@/lib/facturas-recibidas";
 
 interface Formulario {
@@ -88,14 +89,35 @@ function leerBase64(archivo: File): Promise<string> {
   });
 }
 
-function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+/** Cada sección se ve como un panel propio (cabecera con icono + cuerpo con
+    fondo de tarjeta) en vez de un simple título — con 20+ campos en un solo
+    diálogo, la separación visual es lo que evita que se lea como una pared
+    de inputs. La de Importes lleva además un acento verde: es el bloque que
+    de verdad hay que revisar antes de registrar. */
+function Seccion({
+  titulo, icono: Icono, acento, className, children,
+}: {
+  titulo: string;
+  icono: React.ElementType;
+  acento?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <h3 className="mb-2 text-sm font-semibold text-primary">{titulo}</h3>
-      {children}
+    <div className={cn("overflow-hidden rounded-lg border", acento && "border-emerald-200 dark:border-emerald-900", className)}>
+      <div className={cn(
+        "flex items-center gap-2 border-b px-4 py-2.5",
+        acento ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40" : "border-border bg-muted/40"
+      )}>
+        <Icono className={cn("size-4", acento ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")} />
+        <h3 className={cn("text-sm font-semibold", acento && "text-emerald-800 dark:text-emerald-300")}>{titulo}</h3>
+      </div>
+      <div className="p-4">{children}</div>
     </div>
   );
 }
+
+const CLASE_IMPORTE = "text-right tabular-nums";
 
 /**
  * Formulario de Facturas Recibidas — todas las secciones de la hoja de
@@ -251,32 +273,38 @@ export function FacturaRecibidaFormDialog({
       <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
         <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto lg:max-w-5xl" showCloseButton={!enviando}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Book1 className="size-5" /> {esEdicion ? `Factura ${facturaExistente!.numeroRecepcion}` : "Nueva factura recibida"}
+            <DialogTitle className="flex items-center justify-between gap-3 pr-6">
+              <span className="flex items-center gap-2">
+                <Book1 className="size-5" /> {esEdicion ? `Factura ${facturaExistente!.numeroRecepcion}` : "Nueva factura recibida"}
+              </span>
+              {datos.importeTotal > 0 && (
+                <span className="text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{euros(datos.importeTotal)}</span>
+              )}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5">
-            <Seccion titulo="Proveedor">
-              <div className="flex gap-2">
-                <Select value={datos.proveedorId} onValueChange={(v) => set("proveedorId", v || "")}>
-                  {/* Select.Value no resuelve la etiqueta de un valor precargado (p.ej. al
-                      editar una factura existente) salvo que se le indique explícitamente. */}
-                  <SelectTrigger className="w-full max-w-sm">
-                    <SelectValue>{(v: string) => (v ? proveedores.find((p) => p.proveedorId === v)?.nombre || v : "— Selecciona —")}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {proveedores.map((p) => (
-                      <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setNuevoProveedorAbierto(true)}>Nuevo proveedor</Button>
+          <div className="space-y-4">
+            <Seccion titulo="Proveedor y factura" icono={Truck}>
+              <div className="space-y-1.5">
+                <Label>Proveedor *</Label>
+                <div className="flex gap-2">
+                  <Select value={datos.proveedorId} onValueChange={(v) => set("proveedorId", v || "")}>
+                    {/* Select.Value no resuelve la etiqueta de un valor precargado (p.ej. al
+                        editar una factura existente) salvo que se le indique explícitamente. */}
+                    <SelectTrigger className="w-full max-w-sm">
+                      <SelectValue>{(v: string) => (v ? proveedores.find((p) => p.proveedorId === v)?.nombre || v : "— Selecciona —")}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proveedores.map((p) => (
+                        <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setNuevoProveedorAbierto(true)}>Nuevo proveedor</Button>
+                </div>
               </div>
-            </Seccion>
 
-            <Seccion titulo="Identificación">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="frNumero">Nº de factura del proveedor *</Label>
                   <Input id="frNumero" value={datos.numeroFacturaProveedor} onChange={(e) => set("numeroFacturaProveedor", e.target.value)} />
@@ -318,15 +346,15 @@ export function FacturaRecibidaFormDialog({
               </div>
             </Seccion>
 
-            <Seccion titulo="Importes e impuestos">
+            <Seccion titulo="Importes e impuestos" icono={MoneyRecive} acento>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="frBase">Base imponible (€) *</Label>
-                  <DecimalInput id="frBase" value={datos.baseImponible} onChange={(n) => set("baseImponible", n)} />
+                  <DecimalInput id="frBase" className={CLASE_IMPORTE} value={datos.baseImponible} onChange={(n) => set("baseImponible", n)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frTipoIva">% IVA</Label>
-                  <DecimalInput id="frTipoIva" value={datos.tipoIva} onChange={(n) => {
+                  <DecimalInput id="frTipoIva" className={CLASE_IMPORTE} value={datos.tipoIva} onChange={(n) => {
                     set("tipoIva", n);
                     const cuota = Math.round(datos.baseImponible * n) / 100;
                     set("cuotaIvaSoportado", cuota);
@@ -336,23 +364,23 @@ export function FacturaRecibidaFormDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frCuotaSoportado">Cuota de IVA soportado (€)</Label>
-                  <DecimalInput id="frCuotaSoportado" value={datos.cuotaIvaSoportado} onChange={(n) => set("cuotaIvaSoportado", n)} />
+                  <DecimalInput id="frCuotaSoportado" className={CLASE_IMPORTE} value={datos.cuotaIvaSoportado} onChange={(n) => set("cuotaIvaSoportado", n)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frCuotaDeducible">Cuota de IVA deducible (€) *</Label>
-                  <DecimalInput id="frCuotaDeducible" value={datos.cuotaIvaDeducible} onChange={(n) => set("cuotaIvaDeducible", n)} />
+                  <DecimalInput id="frCuotaDeducible" className={CLASE_IMPORTE} value={datos.cuotaIvaDeducible} onChange={(n) => set("cuotaIvaDeducible", n)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frIvaNoDeducible">IVA no deducible (€)</Label>
-                  <DecimalInput id="frIvaNoDeducible" value={datos.ivaNoDeducible} onChange={(n) => set("ivaNoDeducible", n)} />
+                  <DecimalInput id="frIvaNoDeducible" className={CLASE_IMPORTE} value={datos.ivaNoDeducible} onChange={(n) => set("ivaNoDeducible", n)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frTotal">Importe total (€) *</Label>
-                  <DecimalInput id="frTotal" value={datos.importeTotal} onChange={(n) => set("importeTotal", n)} />
+                  <DecimalInput id="frTotal" className={cn(CLASE_IMPORTE, "font-semibold")} value={datos.importeTotal} onChange={(n) => set("importeTotal", n)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frIrpf">Retención de IRPF (€)</Label>
-                  <DecimalInput id="frIrpf" value={datos.retencionIrpf} onChange={(n) => set("retencionIrpf", n)} />
+                  <DecimalInput id="frIrpf" className={CLASE_IMPORTE} value={datos.retencionIrpf} onChange={(n) => set("retencionIrpf", n)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frMoneda">Moneda</Label>
@@ -360,30 +388,41 @@ export function FacturaRecibidaFormDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frTipoCambio">Tipo de cambio</Label>
-                  <DecimalInput id="frTipoCambio" value={datos.tipoCambio} onChange={(n) => set("tipoCambio", n)} />
+                  <DecimalInput id="frTipoCambio" className={CLASE_IMPORTE} value={datos.tipoCambio} onChange={(n) => set("tipoCambio", n)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frConvertidoEur">Importe convertido a EUR (€)</Label>
-                  <DecimalInput id="frConvertidoEur" value={datos.importeConvertidoEur} onChange={(n) => set("importeConvertidoEur", n)} />
+                  <DecimalInput id="frConvertidoEur" className={CLASE_IMPORTE} value={datos.importeConvertidoEur} onChange={(n) => set("importeConvertidoEur", n)} />
                 </div>
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={datos.operacionExenta} onCheckedChange={(v) => set("operacionExenta", v === true)} /> Operación exenta o no sujeta
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={datos.inversionSujetoPasivo} onCheckedChange={(v) => set("inversionSujetoPasivo", v === true)} /> Inversión del sujeto pasivo
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={datos.adquisicionIntracomunitaria} onCheckedChange={(v) => set("adquisicionIntracomunitaria", v === true)} /> Adquisición intracomunitaria / importación
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={datos.regimenCriterioCaja} onCheckedChange={(v) => set("regimenCriterioCaja", v === true)} /> Régimen especial del criterio de caja
-                </label>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm dark:bg-emerald-950/40">
+                <span className="text-emerald-800/80 dark:text-emerald-300/80">
+                  Base {euros(datos.baseImponible)} + IVA {euros(datos.cuotaIvaSoportado)}
+                </span>
+                <span className="text-base font-semibold tabular-nums text-emerald-800 dark:text-emerald-300">= {euros(datos.importeTotal)}</span>
+              </div>
+
+              <div className="mt-4 rounded-md border border-dashed p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Indicadores fiscales — marcar solo si aplica</p>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox checked={datos.operacionExenta} onCheckedChange={(v) => set("operacionExenta", v === true)} /> Operación exenta o no sujeta
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox checked={datos.inversionSujetoPasivo} onCheckedChange={(v) => set("inversionSujetoPasivo", v === true)} /> Inversión del sujeto pasivo
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox checked={datos.adquisicionIntracomunitaria} onCheckedChange={(v) => set("adquisicionIntracomunitaria", v === true)} /> Adquisición intracomunitaria / importación
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox checked={datos.regimenCriterioCaja} onCheckedChange={(v) => set("regimenCriterioCaja", v === true)} /> Régimen especial del criterio de caja
+                  </label>
+                </div>
               </div>
             </Seccion>
 
-            <Seccion titulo="Pagos">
+            <Seccion titulo="Pagos" icono={Wallet}>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="frFormaPago">Forma de pago prevista</Label>
@@ -413,7 +452,7 @@ export function FacturaRecibidaFormDialog({
               </div>
             </Seccion>
 
-            <Seccion titulo="Clasificación y control interno">
+            <Seccion titulo="Clasificación y control interno" icono={Category}>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label>Almacén</Label>
@@ -467,8 +506,8 @@ export function FacturaRecibidaFormDialog({
               </div>
             </Seccion>
 
-            <Seccion titulo="Archivo">
-              <div className="flex items-center gap-2 rounded-md border p-3">
+            <Seccion titulo="Archivo" icono={DocumentUpload}>
+              <div className="flex items-center gap-2">
                 <input ref={inputArchivo} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => manejarArchivoSeleccionado(e.target.files?.[0])} />
                 <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={subiendoArchivo} onClick={() => inputArchivo.current?.click()}>
                   <DocumentUpload className="size-4" /> {subiendoArchivo ? "Subiendo…" : esEdicion ? "Subir archivo" : archivoPendiente ? "Cambiar archivo" : "Adjuntar archivo"}
