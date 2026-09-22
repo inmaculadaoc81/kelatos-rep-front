@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { toast } from "sonner";
 import type { Pedido } from "@/lib/reparacion-detalle";
 import type { Proveedor } from "@/app/api/proveedores/route";
@@ -26,6 +27,7 @@ interface FilaProblema {
   nuevoEnlace: string;
   nuevoNumeroPedido: string;
   nuevaFechaEstimada: string;
+  nuevoCosto: number;
 }
 
 function filaVacia(pedido: Pedido): FilaProblema {
@@ -37,6 +39,7 @@ function filaVacia(pedido: Pedido): FilaProblema {
     nuevoEnlace: "",
     nuevoNumeroPedido: "",
     nuevaFechaEstimada: "",
+    nuevoCosto: 0,
   };
 }
 
@@ -104,6 +107,7 @@ export function ReportarProblemaPiezaDialog({
       if (!esUrlValida(f.nuevoEnlace)) return toast.error(`${nombre}: el enlace debe ser una URL válida (https://...)`);
       if (!f.nuevoNumeroPedido.trim()) return toast.error(`${nombre}: el número de pedido es obligatorio`);
       if (!f.nuevaFechaEstimada) return toast.error(`${nombre}: la fecha estimada es obligatoria`);
+      if (!(f.nuevoCosto > 0)) return toast.error(`${nombre}: el precio de compra es obligatorio`);
     }
 
     setEnviando(true);
@@ -122,6 +126,7 @@ export function ReportarProblemaPiezaDialog({
             nuevoEnlace: f.nuevoEnlace,
             nuevoNumeroPedido: f.nuevoNumeroPedido,
             nuevaFechaEstimada: f.nuevaFechaEstimada,
+            nuevoCosto: f.nuevoCosto,
             piezaId: pedido?.piezaId || "",
           }),
         });
@@ -229,6 +234,11 @@ export function ReportarProblemaPiezaDialog({
                           <Label htmlFor={`fecha-${pedido.pedidoId}`}>Fecha Estimada Entrega *</Label>
                           <Input id={`fecha-${pedido.pedidoId}`} type="date" min={hoyISO()} value={f.nuevaFechaEstimada} onChange={(e) => actualizarFila(pedido.pedidoId, "nuevaFechaEstimada", e.target.value)} />
                         </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`costo-${pedido.pedidoId}`}>Precio de Compra (€) *</Label>
+                        <DecimalInput id={`costo-${pedido.pedidoId}`} placeholder="0,00" value={f.nuevoCosto} onChange={(n) => actualizarFila(pedido.pedidoId, "nuevoCosto", n)} />
                       </div>
                     </div>
                   )}

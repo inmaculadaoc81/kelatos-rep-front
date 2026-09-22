@@ -24,8 +24,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ pedidoI
     nuevoEnlace?: string;
     nuevoNumeroPedido?: string;
     nuevaFechaEstimada?: string;
+    nuevoCosto?: number;
     piezaId?: string;
   };
+
+  if (body.nuevoCosto === undefined || body.nuevoCosto === null || !(body.nuevoCosto > 0)) {
+    return NextResponse.json({ ok: false, error: "El precio de compra es obligatorio" }, { status: 400 });
+  }
 
   try {
     const resultado = await kelatosApiPost<{
@@ -43,6 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ pedidoI
       nuevoEnlace: body.nuevoEnlace || "",
       nuevoNumeroPedido: body.nuevoNumeroPedido || "",
       nuevaFechaEstimada: body.nuevaFechaEstimada || "",
+      nuevoCosto: body.nuevoCosto,
       piezaId: body.piezaId || "",
     });
     return NextResponse.json({

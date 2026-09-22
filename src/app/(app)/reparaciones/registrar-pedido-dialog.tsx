@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { DatosRegistrarPedido, PiezaPedidoForm } from "@/app/api/reparaciones/[resguardo]/pedidos/route";
@@ -20,7 +21,7 @@ function hoyISO(): string {
 }
 
 function piezaVacia(): PiezaPedidoForm {
-  return { descripcion: "", proveedor: "", enlace: "", numeroPedido: "", fechaEstimada: "" };
+  return { descripcion: "", proveedor: "", enlace: "", numeroPedido: "", fechaEstimada: "", costo: 0 };
 }
 
 /**
@@ -47,6 +48,8 @@ function piezasIniciales(detalle: ReparacionDetalle): PiezaPedidoForm[] {
           enlace: pz.enlace || "",
           numeroPedido: "",
           fechaEstimada: "",
+          // El costo estimado ya se puso al presupuestar — se precarga y se puede ajustar al precio real de compra.
+          costo: pz.costo || 0,
         });
       }
     }
@@ -73,6 +76,7 @@ function piezasParaEditar(detalle: ReparacionDetalle): PiezaPedidoForm[] {
     enlace: p.enlace || "",
     numeroPedido: p.numeroPedido || "",
     fechaEstimada: p.fechaEstimada ? p.fechaEstimada.slice(0, 10) : "",
+    costo: p.costo || 0,
   }));
 }
 
@@ -185,6 +189,7 @@ export function RegistrarPedidoDialog({
         return `Pieza ${i + 1}: el número de pedido de ${f.nombre} no es válido (${f.descripcion}, p. ej. ${f.ejemplo})`;
       }
       if (!p.fechaEstimada) return `Pieza ${i + 1}: falta fecha estimada`;
+      if (!(p.costo > 0)) return `Pieza ${i + 1}: falta el precio de compra`;
     }
     return null;
   }
@@ -344,6 +349,10 @@ export function RegistrarPedidoDialog({
                         <Label htmlFor={`pedFechaEst-${i}`}>Fecha Estimada de Entrega *</Label>
                         <Input id={`pedFechaEst-${i}`} type="date" min={hoyISO()} value={p.fechaEstimada} onChange={(e) => actualizarPieza(i, "fechaEstimada", e.target.value)} />
                       </div>
+                    </div>
+                    <div className="max-w-48 space-y-1.5">
+                      <Label htmlFor={`pedCosto-${i}`}>Precio de Compra (€) *</Label>
+                      <DecimalInput id={`pedCosto-${i}`} placeholder="0,00" value={p.costo} onChange={(n) => actualizarPieza(i, "costo", n)} />
                     </div>
                   </div>
                 </div>

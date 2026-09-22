@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CompraFila, ESTILO_BADGE_ESTADO, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor } from "@/lib/compras";
+import { CompraFila, ESTILO_BADGE_ESTADO, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor, precioLegible } from "@/lib/compras";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import type { Empleado } from "@/app/api/empleados/route";
 
@@ -241,6 +241,7 @@ export default function ComprasPage() {
               <TableHead>Proveedor</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Nº de pedido</TableHead>
+              <TableHead>Precio</TableHead>
               <TableHead>Comprado por</TableHead>
               <TableHead>Fecha pedido</TableHead>
               <TableHead>Fecha estimada</TableHead>
@@ -253,14 +254,14 @@ export default function ComprasPage() {
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 11 }).map((__, j) => (
+                  {Array.from({ length: 12 }).map((__, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))}
             {!cargando && compras.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="py-8 text-center text-muted-foreground">
                   Ningún pedido de piezas coincide con los filtros
                 </TableCell>
               </TableRow>
@@ -271,11 +272,15 @@ export default function ComprasPage() {
                 return (
                   <TableRow key={c.pedidoId}>
                     <TableCell className="whitespace-nowrap font-mono text-xs">{c.pedidoId}</TableCell>
-                    <TableCell className="min-w-40">
+                    <TableCell className="max-w-48">
                       {c.resguardo ? (
-                        <Link href={`/reparaciones?resguardo=${encodeURIComponent(c.resguardo)}`} className="block hover:underline">
-                          <span className="block text-sm font-medium">{c.clienteNombre || c.resguardo}</span>
-                          <span className="block text-xs text-muted-foreground">{c.resguardo}{c.equipoModelo ? ` · ${c.equipoModelo}` : ""}</span>
+                        <Link
+                          href={`/reparaciones?resguardo=${encodeURIComponent(c.resguardo)}`}
+                          className="block hover:underline"
+                          title={`${c.clienteNombre || c.resguardo} — ${c.resguardo}${c.equipoModelo ? ` · ${c.equipoModelo}` : ""}`}
+                        >
+                          <span className="block truncate text-sm font-medium">{c.clienteNombre || c.resguardo}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{c.resguardo}{c.equipoModelo ? ` · ${c.equipoModelo}` : ""}</span>
                         </Link>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -292,6 +297,7 @@ export default function ComprasPage() {
                     </TableCell>
                     <TableCell className="max-w-56 truncate text-sm" title={c.descripcion}>{c.descripcion || "—"}</TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs">{c.numeroPedido || "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap text-sm tabular-nums">{precioLegible(c.costo) || <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{c.compradoPor || "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{fechaCorta(c.fechaPedido)}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">

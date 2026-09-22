@@ -14,6 +14,8 @@ export interface PiezaPedidoForm {
   enlace: string;
   numeroPedido: string;
   fechaEstimada: string;
+  /** Precio de compra pagado (kelatos_app.pedidos.costo). */
+  costo: number;
 }
 
 export interface DatosRegistrarPedido {
@@ -50,6 +52,7 @@ export async function POST(
     if (!p.enlace?.trim()) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta enlace` }, { status: 400 });
     if (!p.numeroPedido?.trim()) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta número de pedido` }, { status: 400 });
     if (!p.fechaEstimada) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta fecha estimada` }, { status: 400 });
+    if (!(p.costo > 0)) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta el precio de compra` }, { status: 400 });
   }
 
   try {
@@ -69,6 +72,7 @@ export async function POST(
           enlace: p.enlace.trim(),
           numeroPedido: p.numeroPedido.trim(),
           fechaEstimada: p.fechaEstimada,
+          costo: p.costo,
         })),
       }
     );

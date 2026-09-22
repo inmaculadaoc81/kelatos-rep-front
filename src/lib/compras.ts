@@ -34,6 +34,8 @@ export interface CompraFila {
   proveedorOtro: string;
   /** Pedido activo cuya fecha estimada ya pasó sin haber llegado (calculado en el servidor). */
   retrasado: boolean;
+  /** Precio de compra pagado (null si el pedido no lo tiene registrado — pedidos anteriores a este campo). */
+  costo: number | null;
 }
 
 interface FilaCompraSql {
@@ -59,6 +61,7 @@ interface FilaCompraSql {
   proveedor_nombre: string | null;
   proveedor_otro: string | null;
   retrasado: boolean | null;
+  costo: string | number | null;
 }
 
 export function mapearCompra(row: FilaCompraSql): CompraFila {
@@ -87,7 +90,13 @@ export function mapearCompra(row: FilaCompraSql): CompraFila {
     // Calculado en el servidor (kelatos_app.pedidos no tiene columna para esto):
     // pedido activo cuya fecha estimada ya pasó sin haber llegado.
     retrasado: row.retrasado === true,
+    costo: row.costo === null || row.costo === undefined ? null : Number(row.costo),
   };
+}
+
+/** "45,50 €" — vacío si el pedido no tiene precio registrado (pedidos anteriores a este campo). */
+export function precioLegible(costo: number | null): string {
+  return costo === null ? "" : costo.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 }
 
 export interface KpisCompras {

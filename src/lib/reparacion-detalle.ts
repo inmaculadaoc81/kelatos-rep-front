@@ -244,6 +244,8 @@ interface FilaPedidoSql {
   enlace: string | null;
   proveedor_id: string | null;
   proveedor_otro?: string | null;
+  /** Precio de compra pagado, kelatos_app.pedidos.costo — distinto del costo estimado del presupuesto. */
+  costo?: string | number | null;
 }
 
 interface FilaHistorialSql {
@@ -349,6 +351,8 @@ export interface Pedido {
   proveedorNombre: string;
   /** Nombre libre escrito cuando el proveedor es "Otro" ("" para el resto). */
   proveedorOtro: string;
+  /** Precio de compra pagado (0 si aún no se registró — pedidos anteriores a esta función). */
+  costo: number;
 }
 
 export interface HistorialEvento {
@@ -556,6 +560,7 @@ function mapearPedido(row: FilaPedidoSql, proveedoresPorId: Record<string, strin
     proveedorId,
     // Con "Otro" se muestra el nombre que escribió el usuario, no la palabra genérica.
     proveedorNombre: row.proveedor_otro?.trim() || proveedoresPorId[proveedorId] || "",
+    costo: numero(row.costo),
     proveedorOtro: row.proveedor_otro?.trim() || "",
   };
 }
