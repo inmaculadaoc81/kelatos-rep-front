@@ -46,6 +46,9 @@ interface FilaAlquilerRaw {
   envio_activado: boolean | string | null;
   recogida_activada: boolean | string | null;
   cliente_factura: unknown;
+  estado: string | null;
+  /** NULL/"NO"/"SI"/"PROGRAMADA" — mismo esquema que reparaciones.resena. */
+  resena: string | null;
 }
 
 export interface AlquilerFacturaDetalle {
@@ -77,6 +80,9 @@ export interface AlquilerFacturaDetalle {
   envioActivado: boolean;
   recogidaActivada: boolean;
   fianzaCobrada: number;
+  /** "ACTIVO" / "FINALIZADO" — la tarjeta de Reseña solo tiene sentido con el alquiler ya devuelto. */
+  estado: string;
+  resena: string;
 }
 
 function numero(v: unknown): number {
@@ -154,5 +160,7 @@ export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFactura
     envioActivado: activo(row.envio_activado),
     recogidaActivada: activo(row.recogida_activada),
     fianzaCobrada: numero(row.fianza_cobrada),
+    estado: (row.estado || "").toUpperCase(),
+    resena: row.resena || "NO",
   };
 }

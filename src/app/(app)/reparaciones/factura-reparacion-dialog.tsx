@@ -255,10 +255,13 @@ const ETIQUETA_METODO_PAGO: Record<string, string> = Object.fromEntries(METODOS_
 export function TarjetaResena({
   resguardo,
   resena,
+  tipo = "reparacion",
   onActualizado,
 }: {
   resguardo: string;
   resena: string;
+  /** "alquiler" reutiliza el mismo componente contra /api/alquileres/:id/resena — mismo mecanismo, copiado para alquileres. */
+  tipo?: "reparacion" | "alquiler";
   onActualizado: () => void;
 }) {
   const [enviando, setEnviando] = useState(false);
@@ -266,7 +269,8 @@ export function TarjetaResena({
   async function ejecutar(accion: "programar" | "cancelar" | "marcar_si") {
     setEnviando(true);
     try {
-      const res = await fetch(`/api/reparaciones/${resguardo}/resena`, {
+      const base = tipo === "alquiler" ? `/api/alquileres/${resguardo}/resena` : `/api/reparaciones/${resguardo}/resena`;
+      const res = await fetch(base, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accion }),

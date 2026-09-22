@@ -9,6 +9,7 @@ import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import type { AlquilerFacturaDetalle } from "@/lib/alquiler-detalle";
 import { TabPdfEnviar, TabDevolucionRectificativo, euros } from "../reparaciones/factura-acciones-tabs";
+import { TarjetaResena } from "../reparaciones/factura-reparacion-dialog";
 
 /**
  * Reproduce _mfaRenderResumen()/mfaGenerarRectificativa() en su rama
@@ -78,6 +79,10 @@ export function AlquilerModalShell({
     ...(detalle.recogidaActivada ? [{ descripcion: "Recogida a domicilio", cantidad: 1, precio: 0 }] : []),
   ];
   const duracionAlquiler = { inicial: detalle.duracion, tarifas: detalle.tarifas, equipoNombre: detalle.equipoNombre || "Equipo" };
+  // Reproduce vfResenaCard tal cual la usa Reparaciones (factura-reparacion-dialog.tsx),
+  // copiado para alquileres: solo tiene sentido pedir la reseña con el
+  // alquiler ya devuelto, nunca mientras sigue activo.
+  const alquilerFinalizado = !esHistorico && detalle.estado === "FINALIZADO";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,6 +121,7 @@ export function AlquilerModalShell({
             <TabsList className="w-full">
               <TabsTrigger value="pdf">PDF / Enviar</TabsTrigger>
               {!esHistorico && <TabsTrigger value="devolucion">Devolución</TabsTrigger>}
+              {alquilerFinalizado && <TabsTrigger value="resena">Reseña</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="pdf" className="p-4">
@@ -161,6 +167,12 @@ export function AlquilerModalShell({
                   duracionAlquiler={duracionAlquiler}
                   onGenerada={onActualizado}
                 />
+              </TabsContent>
+            )}
+
+            {alquilerFinalizado && (
+              <TabsContent value="resena" className="p-4">
+                <TarjetaResena resguardo={detalle.resguardo} resena={detalle.resena} tipo="alquiler" onActualizado={onActualizado} />
               </TabsContent>
             )}
           </Tabs>
