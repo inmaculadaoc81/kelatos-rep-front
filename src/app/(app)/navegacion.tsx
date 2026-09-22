@@ -22,6 +22,7 @@ import {
   Trash,
   Save2,
   Notification,
+  MoneySend,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -72,6 +73,7 @@ export const GRUPOS: GrupoNavegacion[] = [
     items: [
       { label: "Productos e Inventario", href: "/productos", icon: Box },
       { label: "Stock de Piezas", href: "/stock-piezas", icon: Element3 },
+      { label: "Compras", href: "/compras", icon: MoneySend, claseColor: "text-red-600 hover:text-red-700 data-active:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:data-active:text-red-300 [&>svg]:text-current" },
     ],
   },
   {

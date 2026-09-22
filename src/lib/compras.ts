@@ -1,0 +1,113 @@
+/**
+ * Vista "Compras" (Stock > Compras) — todos los pedidos de piezas de todas
+ * las reparaciones en una sola tabla (backend: GET /v1/compras, server.js).
+ * Es el mismo kelatos_app.pedidos que ya se registra desde el modal
+ * "Registrar Pedido de Pieza" en cada reparación (ver
+ * app/(app)/reparaciones/registrar-pedido-dialog.tsx); esta vista solo los
+ * agrupa a todos, con su enlace de compra, proveedor y a qué cliente/equipo
+ * pertenecen. Los cambios de estado (recibir/cancelar) reutilizan las rutas
+ * ya existentes de Reparaciones (/api/pedidos/cambiar-estado).
+ */
+
+export interface CompraFila {
+  pedidoId: string;
+  piezaId: string;
+  resguardo: string;
+  clienteNombre: string;
+  equipoModelo: string;
+  reparacionEstado: string;
+  compradoPor: string;
+  numeroPedido: string;
+  fechaPedido: string | null;
+  fechaEstimada: string | null;
+  fechaRecepcion: string | null;
+  estado: string;
+  recibidoPor: string;
+  problemaTipo: string;
+  codigoDevolucion: string;
+  pedidoRemplazoId: string;
+  /** Descripción de la pieza (columna `notas` en kelatos_app.pedidos). */
+  descripcion: string;
+  enlace: string;
+  proveedorId: string;
+  proveedorNombre: string;
+  proveedorOtro: string;
+}
+
+interface FilaCompraSql {
+  pedido_id: string;
+  pieza_id: string | null;
+  resguardo: string | null;
+  cliente_nombre: string | null;
+  equipo_modelo: string | null;
+  reparacion_estado: string | null;
+  comprado_por: string | null;
+  numero_pedido: string | null;
+  fecha_pedido: string | null;
+  fecha_estimada: string | null;
+  fecha_recepcion: string | null;
+  estado: string | null;
+  recibido_por: string | null;
+  problema_tipo: string | null;
+  codigo_devolucion: string | null;
+  pedido_remplazo_id: string | null;
+  notas: string | null;
+  enlace: string | null;
+  proveedor_id: string | null;
+  proveedor_nombre: string | null;
+  proveedor_otro: string | null;
+}
+
+export function mapearCompra(row: FilaCompraSql): CompraFila {
+  return {
+    pedidoId: row.pedido_id || "",
+    piezaId: row.pieza_id || "",
+    resguardo: row.resguardo || "",
+    clienteNombre: row.cliente_nombre || "",
+    equipoModelo: row.equipo_modelo || "",
+    reparacionEstado: row.reparacion_estado || "",
+    compradoPor: row.comprado_por || "",
+    numeroPedido: row.numero_pedido || "",
+    fechaPedido: row.fecha_pedido,
+    fechaEstimada: row.fecha_estimada,
+    fechaRecepcion: row.fecha_recepcion,
+    estado: row.estado || "",
+    recibidoPor: row.recibido_por || "",
+    problemaTipo: row.problema_tipo || "",
+    codigoDevolucion: row.codigo_devolucion || "",
+    pedidoRemplazoId: row.pedido_remplazo_id || "",
+    descripcion: row.notas || "",
+    enlace: row.enlace || "",
+    proveedorId: row.proveedor_id || "",
+    proveedorNombre: row.proveedor_nombre || "",
+    proveedorOtro: row.proveedor_otro || "",
+  };
+}
+
+export interface KpisCompras {
+  total: number;
+  pendiente: number;
+  pedido: number;
+  en_transito: number;
+  recibido: number;
+  cancelado: number;
+  con_problema: number;
+}
+
+export const KPIS_COMPRAS_VACIOS: KpisCompras = { total: 0, pendiente: 0, pedido: 0, en_transito: 0, recibido: 0, cancelado: 0, con_problema: 0 };
+
+export const ESTADOS_PEDIDO = ["Pendiente", "Pedido", "En Tránsito", "Recibido", "Cancelado", "Problema", "Pieza Rota", "Pieza Defectuosa"] as const;
+
+// Mismos colores que ESTILO_BADGE_PEDIDO en reparaciones/detalle-dialog.tsx
+// (colorPedido del original), con Pendiente y Cancelado añadidos porque en
+// Compras sí se pueden ver (allí no aparecían en los datos reales).
+export const ESTILO_BADGE_ESTADO: Record<string, string> = {
+  Pendiente: "border-slate-400/40 text-slate-600 dark:text-slate-300",
+  Pedido: "border-sky-500/40 text-sky-700 dark:text-sky-400",
+  "En Tránsito": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  Recibido: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+  Cancelado: "border-muted-foreground/30 text-muted-foreground",
+  Problema: "border-destructive/40 text-destructive",
+  "Pieza Rota": "border-destructive/40 text-destructive",
+  "Pieza Defectuosa": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+};
