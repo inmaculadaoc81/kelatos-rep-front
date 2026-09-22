@@ -21,6 +21,29 @@ import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const IVA_PCT = 0.21;
 
+// "Multiforma" es solo de este diálogo por ahora (petición del usuario,
+// 2026-09-22: "por el momento añádela a factura manual, luego lo pruebo y
+// lo implementamos en todos lados") — no se añade a METODOS_PAGO (compartida
+// por todos los demás diálogos de factura/ticket) para no hacerla aparecer
+// ahí todavía. El backend no valida forma_pago contra una lista fija (es
+// texto libre, ver /v1/facturas-manuales/confirmar): el desglose se manda
+// como una única cadena descriptiva en el mismo campo "formaPago" de
+// siempre, así que no hace falta tocar nada del backend ni de la plantilla
+// del PDF (que ya imprime el texto que reciba tal cual).
+const METODO_MULTIFORMA = "multiforma";
+
+function etiquetaMetodo(valor: string): string {
+  return METODOS_PAGO.find((m) => m.value === valor)?.label || valor;
+}
+
+/** "Efectivo 30,00 € + Transferencia bancaria (BBVA) 20,00 €" — el texto
+    completo que se guarda como forma_pago y se imprime en el PDF. */
+function textoMultiforma(formaA: string, bancoA: string, montoA: number, formaB: string, bancoB: string, montoB: number): string {
+  const parte = (forma: string, banco: string, monto: number) =>
+    `${etiquetaMetodo(forma)}${forma === "tarjeta" && banco ? ` (${banco})` : ""} ${euros(monto)}`;
+  return `Multiforma: ${parte(formaA, bancoA, montoA)} + ${parte(formaB, bancoB, montoB)}`;
+}
+
 function CabeceraFactura({ titulo, onClose }: { titulo: string; onClose: () => void }) {
   return (
     <header className="flex items-center gap-2 rounded-t-xl bg-primary px-4 py-3 text-primary-foreground">
@@ -71,6 +94,12 @@ export function NuevaFacturaManualDialog({
   const [buscarStockAbierto, setBuscarStockAbierto] = useState(false);
   const [metodo, setMetodo] = useState("");
   const [banco, setBanco] = useState("");
+  const [multiFormaA, setMultiFormaA] = useState("");
+  const [multiBancoA, setMultiBancoA] = useState("");
+  const [multiMontoA, setMultiMontoA] = useState(0);
+  const [multiFormaB, setMultiFormaB] = useState("");
+  const [multiBancoB, setMultiBancoB] = useState("");
+  const [multiMontoB, setMultiMontoB] = useState(0);
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
   const [suReferencia, setSuReferencia] = useState("");
   const [lineas, setLineas] = useState<LineaFactura[]>([{ descripcion: "", cantidad: 1, precio: 0 }]);
@@ -91,6 +120,9 @@ export function NuevaFacturaManualDialog({
   const base = subtotal - descuentoAmt;
   const iva = base * IVA_PCT;
   const totalConIva = base + iva;
+  const sumaMultiforma = Math.round((multiMontoA + multiMontoB) * 100) / 100;
+  const totalRedondeado = Math.round(totalConIva * 100) / 100;
+  const multiformaCoincide = Math.abs(sumaMultiforma - totalRedondeado) < 0.01;
 
   function actualizarLinea(i: number, campo: keyof LineaFactura, valor: string | number) {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, [campo]: valor } : l)));
@@ -126,6 +158,8 @@ export function NuevaFacturaManualDialog({
   function reiniciar() {
     setSerie("1"); setNombre(""); setDireccion(""); setDni(""); setTelefono(""); setEmail("");
     setMetodo(""); setBanco(""); setEstadoFactura("Cobrada");
+    setMultiFormaA(""); setMultiBancoA(""); setMultiMontoA(0);
+    setMultiFormaB(""); setMultiBancoB(""); setMultiMontoB(0);
     setLineas([{ descripcion: "", cantidad: 1, precio: 0 }]);
     setDescuentoGlobalPct(0);
     setRequestId(null); setResultado(null);
@@ -143,6 +177,14 @@ export function NuevaFacturaManualDialog({
     if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
     if (!metodo) return toast.error("Selecciona la forma de pago");
     if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para tarjeta bancaria");
+    if (metodo === METODO_MULTIFORMA) {
+      if (!multiFormaA || !multiFormaB) return toast.error("Elige las 2 formas de pago del desglose");
+      if (multiFormaA === "tarjeta" && !multiBancoA) return toast.error("Selecciona el banco de la primera forma de pago");
+      if (multiFormaB === "tarjeta" && !multiBancoB) return toast.error("Selecciona el banco de la segunda forma de pago");
+      if (!multiformaCoincide) {
+        return toast.error(`La suma del desglose (${euros(sumaMultiforma)}) no coincide con el total de la factura (${euros(totalRedondeado)})`);
+      }
+    }
 
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
@@ -152,6 +194,9 @@ export function NuevaFacturaManualDialog({
       const lineasConDescuento = pctGlobal > 0 && importeGlobal > 0
         ? [...validas, { descripcion: `Descuento global (${pctGlobal}%)`, cantidad: 1, precio: -importeGlobal }]
         : validas;
+      const formaPagoEnviar = metodo === METODO_MULTIFORMA
+        ? textoMultiforma(multiFormaA, multiBancoA, multiMontoA, multiFormaB, multiBancoB, multiMontoB)
+        : metodo;
       const res = await fetch("/api/facturas-manuales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -159,7 +204,7 @@ export function NuevaFacturaManualDialog({
           requestId: rid,
           serie,
           cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: email.trim() },
-          formaPago: metodo,
+          formaPago: formaPagoEnviar,
           banco: metodo === "tarjeta" ? banco : "",
           estadoFactura,
           lineas: lineasConDescuento,
@@ -248,21 +293,93 @@ export function NuevaFacturaManualDialog({
                 <Label className="text-xs text-muted-foreground">Su Referencia</Label>
                 <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultado} />
               </div>
-              <div className="space-y-1">
+              <div className={`space-y-1 ${metodo === METODO_MULTIFORMA ? "sm:col-span-3" : ""}`}>
                 <Label className="text-xs text-muted-foreground">Forma de pago</Label>
-                <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={!!resultado}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                  <SelectContent>
-                    {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {metodo === "tarjeta" && (
-                  <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultado}>
-                    <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                    <SelectContent>
-                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="flex flex-wrap items-start gap-2">
+                  <div className="w-full sm:w-auto sm:min-w-44 sm:flex-1">
+                    <Select
+                      value={metodo}
+                      onValueChange={(v) => {
+                        setMetodo(v || "");
+                        if (v !== "tarjeta") setBanco("");
+                        if (v !== METODO_MULTIFORMA) {
+                          setMultiFormaA(""); setMultiBancoA(""); setMultiMontoA(0);
+                          setMultiFormaB(""); setMultiBancoB(""); setMultiMontoB(0);
+                        }
+                      }}
+                      disabled={!!resultado}
+                    >
+                      <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+                      <SelectContent>
+                        {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                        <SelectItem value={METODO_MULTIFORMA}>Multiforma (varias formas de pago)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {metodo === "tarjeta" && (
+                      <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultado}>
+                        <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                        <SelectContent>
+                          {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  {metodo === METODO_MULTIFORMA && (
+                    <div className="flex flex-1 flex-wrap items-start gap-2">
+                      <div className="min-w-40 flex-1 space-y-1.5 rounded-md border bg-card p-2">
+                        <Label className="text-[11px] text-muted-foreground">1ª forma de pago</Label>
+                        <Select value={multiFormaA} onValueChange={(v) => { setMultiFormaA(v || ""); if (v !== "tarjeta") setMultiBancoA(""); }} disabled={!!resultado}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+                          <SelectContent>
+                            {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        {multiFormaA === "tarjeta" && (
+                          <Select value={multiBancoA} onValueChange={(v) => setMultiBancoA(v || "")} disabled={!!resultado}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                            <SelectContent>
+                              {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Input
+                          type="number" min={0} step="0.01" placeholder="Importe"
+                          value={multiMontoA || ""} onChange={(e) => setMultiMontoA(parseFloat(e.target.value) || 0)}
+                          disabled={!!resultado}
+                        />
+                      </div>
+                      <div className="min-w-40 flex-1 space-y-1.5 rounded-md border bg-card p-2">
+                        <Label className="text-[11px] text-muted-foreground">2ª forma de pago</Label>
+                        <Select value={multiFormaB} onValueChange={(v) => { setMultiFormaB(v || ""); if (v !== "tarjeta") setMultiBancoB(""); }} disabled={!!resultado}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+                          <SelectContent>
+                            {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        {multiFormaB === "tarjeta" && (
+                          <Select value={multiBancoB} onValueChange={(v) => setMultiBancoB(v || "")} disabled={!!resultado}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                            <SelectContent>
+                              {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Input
+                          type="number" min={0} step="0.01" placeholder="Importe"
+                          value={multiMontoB || ""} onChange={(e) => setMultiMontoB(parseFloat(e.target.value) || 0)}
+                          disabled={!!resultado}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {metodo === METODO_MULTIFORMA && (
+                  <p className={`text-xs font-medium ${multiformaCoincide ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                    {multiformaCoincide
+                      ? `Suma ${euros(sumaMultiforma)} — coincide con el total`
+                      : `Suma ${euros(sumaMultiforma)} de ${euros(totalRedondeado)} — no coincide con el total`}
+                  </p>
                 )}
               </div>
               <div className="space-y-1">
@@ -421,7 +538,7 @@ export function NuevaFacturaManualDialog({
             {resultado ? "Cerrar" : "Cancelar"}
           </Button>
           {!resultado && (
-            <Button className="gap-1.5" onClick={generar} disabled={enviando}>
+            <Button className="gap-1.5" onClick={generar} disabled={enviando || (metodo === METODO_MULTIFORMA && !multiformaCoincide)}>
               <ArrowRight2 className="size-4" /> {enviando ? "Generando…" : "Generar Factura"}
             </Button>
           )}
