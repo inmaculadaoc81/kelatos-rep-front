@@ -60,9 +60,23 @@ export interface RetiradaEfectivoApi {
 
 /** "efectivo" / "Efectivo" / " EFECTIVO " — los distintos formularios lo
     guardan con mayúsculas distintas. Un pago combinado ("BBVA · tarjeta
-    bancaria") nunca es efectivo. */
+    bancaria") nunca es efectivo. Una factura "multiforma" tampoco es esto
+    (puede tener 0 € en efectivo) — ver montoEfectivoDeFactura() para la
+    parte que sí hay que contar. */
 export function esFormaPagoEfectivo(formaPago: string | null | undefined): boolean {
   return (formaPago || "").trim().toLowerCase() === "efectivo";
+}
+
+/** Parte en efectivo de una factura "Multiforma" (Nueva Factura Manual:
+    parte en efectivo, parte en otra forma) — la suma de sus entradas
+    "efectivo" en el desglose, que ya es el importe real (con IVA incluido,
+    validado en el propio diálogo contra el total de la factura). 0 si no
+    tiene ninguna parte en efectivo. Sin esto, una factura Multiforma
+    quedaba fuera del todo de la vista "Efectivo": su parte en efectivo no
+    aparecía en ningún sitio, ni contaba en el saldo de caja real. */
+export function montoEfectivoDesglose(formaPagoDesglose: FacturaCliente["formaPagoDesglose"]): number {
+  if (!formaPagoDesglose?.length) return 0;
+  return redondear(formaPagoDesglose.filter((d) => d.forma === "efectivo").reduce((acc, d) => acc + d.monto, 0));
 }
 
 function origenDe(f: FacturaCliente): string {
@@ -91,20 +105,30 @@ function redondear(n: number): number {
 export function movimientosDeFacturas(facturas: FacturaCliente[]): MovimientoEfectivo[] {
   const out: MovimientoEfectivo[] = [];
   for (const f of facturas) {
-    if (!esFormaPagoEfectivo(f.formaPago)) continue;
+    const esMultiforma = (f.formaPago || "").trim().toLowerCase() === "multiforma";
+    const montoEfectivoMulti = esMultiforma ? montoEfectivoDesglose(f.formaPagoDesglose) : 0;
+    if (!esFormaPagoEfectivo(f.formaPago) && !(esMultiforma && montoEfectivoMulti > 0)) continue;
 
     const esRectificativa = f.tipo === "rectificativa";
     // Un documento Pendiente/Anulado aún no ha movido dinero; una
     // rectificativa sí, siempre (es la devolución del cobro original).
     if (!esRectificativa && estadoFacturaDerivado(f) !== "Cobrada") continue;
 
-    const importeAbs = redondear(Math.abs(montoConIva(f)));
+    // Multiforma: solo la parte en efectivo entra en caja, no el total de
+    // la factura (el resto se cobró por otra forma, ya fuera de este libro).
+    // Limitación conocida: una rectificativa de una factura Multiforma
+    // reutiliza el desglose de LA ORIGINAL entera (el backend no admite hoy
+    // un desglose propio por rectificativa) — para una devolución total
+    // esto es correcto, pero una rectificativa PARCIAL de una Multiforma
+    // devolvería la parte en efectivo completa de la original, no la
+    // proporción real de esa devolución parcial.
+    const importeAbs = redondear(esMultiforma ? montoEfectivoMulti : Math.abs(montoConIva(f)));
     out.push({
       id: `doc:${f.numero}`,
       fecha: f.fecha,
       tipo: esRectificativa ? "devolucion" : "cobro",
       origen: origenDe(f),
-      concepto: conceptoDe(f),
+      concepto: esMultiforma ? `${conceptoDe(f)} (parte en efectivo)` : conceptoDe(f),
       referencia: f.resguardo,
       numero: f.numero,
       cliente: f.cliente,

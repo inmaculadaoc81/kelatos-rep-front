@@ -25,24 +25,18 @@ const IVA_PCT = 0.21;
 // 2026-09-22: "por el momento añádela a factura manual, luego lo pruebo y
 // lo implementamos en todos lados") — no se añade a METODOS_PAGO (compartida
 // por todos los demás diálogos de factura/ticket) para no hacerla aparecer
-// ahí todavía. El backend no valida forma_pago contra una lista fija (es
-// texto libre, ver /v1/facturas-manuales/confirmar): el desglose se manda
-// como una única cadena descriptiva en el mismo campo "formaPago" de
-// siempre, así que no hace falta tocar nada del backend ni de la plantilla
-// del PDF (que ya imprime el texto que reciba tal cual).
+// ahí todavía.
+//
+// forma_pago se manda como el valor plano "multiforma" (igual que
+// "efectivo"/"tarjeta"/...), NUNCA el desglose completo — así el PDF solo
+// imprime "FORMA DE PAGO: Multiforma" (petición del usuario, 2026-09-22:
+// "que no salga [el desglose en el PDF], que solo salga una forma de
+// pago"). El desglose real (cada forma + su importe) va aparte, en
+// formaPagoDesglose (columna forma_pago_desglose, jsonb, migración 110) —
+// eso es lo que sí se muestra en Facturas de Clientes y lo que el reporte
+// de Efectivo usa para contar solo la parte en efectivo (ver
+// montoEfectivoDesglose en lib/efectivo.ts).
 const METODO_MULTIFORMA = "multiforma";
-
-function etiquetaMetodo(valor: string): string {
-  return METODOS_PAGO.find((m) => m.value === valor)?.label || valor;
-}
-
-/** "Efectivo 30,00 € + Transferencia bancaria (BBVA) 20,00 €" — el texto
-    completo que se guarda como forma_pago y se imprime en el PDF. */
-function textoMultiforma(formaA: string, bancoA: string, montoA: number, formaB: string, bancoB: string, montoB: number): string {
-  const parte = (forma: string, banco: string, monto: number) =>
-    `${etiquetaMetodo(forma)}${forma === "tarjeta" && banco ? ` (${banco})` : ""} ${euros(monto)}`;
-  return `Multiforma: ${parte(formaA, bancoA, montoA)} + ${parte(formaB, bancoB, montoB)}`;
-}
 
 function CabeceraFactura({ titulo, onClose }: { titulo: string; onClose: () => void }) {
   return (
@@ -194,9 +188,12 @@ export function NuevaFacturaManualDialog({
       const lineasConDescuento = pctGlobal > 0 && importeGlobal > 0
         ? [...validas, { descripcion: `Descuento global (${pctGlobal}%)`, cantidad: 1, precio: -importeGlobal }]
         : validas;
-      const formaPagoEnviar = metodo === METODO_MULTIFORMA
-        ? textoMultiforma(multiFormaA, multiBancoA, multiMontoA, multiFormaB, multiBancoB, multiMontoB)
-        : metodo;
+      const formaPagoDesglose = metodo === METODO_MULTIFORMA
+        ? [
+            { forma: multiFormaA, monto: multiMontoA, banco: multiFormaA === "tarjeta" ? multiBancoA : undefined },
+            { forma: multiFormaB, monto: multiMontoB, banco: multiFormaB === "tarjeta" ? multiBancoB : undefined },
+          ]
+        : undefined;
       const res = await fetch("/api/facturas-manuales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -204,8 +201,9 @@ export function NuevaFacturaManualDialog({
           requestId: rid,
           serie,
           cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: email.trim() },
-          formaPago: formaPagoEnviar,
+          formaPago: metodo,
           banco: metodo === "tarjeta" ? banco : "",
+          formaPagoDesglose,
           estadoFactura,
           lineas: lineasConDescuento,
         }),

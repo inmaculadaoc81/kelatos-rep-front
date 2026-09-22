@@ -29,10 +29,11 @@ export async function POST(req: Request) {
     cliente: ClienteFactura;
     formaPago: string;
     banco: string;
+    formaPagoDesglose?: { forma: string; monto: number; banco?: string }[];
     estadoFactura: string;
     lineas: LineaFactura[];
   };
-  const { requestId, serie, cliente, formaPago, banco, estadoFactura, lineas } = body;
+  const { requestId, serie, cliente, formaPago, banco, formaPagoDesglose, estadoFactura, lineas } = body;
 
   if (!requestId || !/^[0-9a-f-]{36}$/i.test(requestId)) {
     return NextResponse.json({ ok: false, error: "requestId inválido" }, { status: 400 });
@@ -41,6 +42,9 @@ export async function POST(req: Request) {
   if (!cliente?.nombre?.trim()) return NextResponse.json({ ok: false, error: "El nombre del cliente es obligatorio" }, { status: 400 });
   if (!formaPago) return NextResponse.json({ ok: false, error: "Selecciona la forma de pago" }, { status: 400 });
   if (formaPago === "tarjeta" && !banco) return NextResponse.json({ ok: false, error: "Selecciona el banco" }, { status: 400 });
+  if (formaPago === "multiforma" && (!Array.isArray(formaPagoDesglose) || formaPagoDesglose.length < 2)) {
+    return NextResponse.json({ ok: false, error: "El desglose de Multiforma debe traer al menos 2 formas de pago" }, { status: 400 });
+  }
   if (!lineas?.length) return NextResponse.json({ ok: false, error: "Añade al menos un concepto" }, { status: 400 });
 
   const payloadHash = crypto.createHash("sha256").update(JSON.stringify({ tipo: "manual", serie, lineas })).digest("hex");
@@ -88,7 +92,14 @@ export async function POST(req: Request) {
 
     const confirmar = await kelatosApiPost<{ ok: boolean; numeroFactura: string; entidadId: string; facturaManual: Record<string, unknown> }>(
       "/v1/facturas-manuales/confirmar",
-      { requestId, usuario, urlPdf: generado.url, datosFactura: { cliente, lineas, formaPago, banco: formaPago === "tarjeta" ? banco : "", estadoFactura } }
+      {
+        requestId, usuario, urlPdf: generado.url,
+        datosFactura: {
+          cliente, lineas, formaPago, banco: formaPago === "tarjeta" ? banco : "",
+          formaPagoDesglose: formaPago === "multiforma" ? formaPagoDesglose : undefined,
+          estadoFactura,
+        },
+      }
     );
 
     return NextResponse.json({ ok: true, numeroFactura: preparar.numeroFactura, urlPdf: generado.url, entidadId: confirmar.entidadId });

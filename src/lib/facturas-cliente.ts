@@ -62,6 +62,12 @@ export interface FacturaCliente {
   total: number;
   formaPago: string;
   banco: string;
+  /** Solo cuando formaPago === "multiforma" (Nueva Factura Manual) — cada
+      forma de pago con su importe y, si es tarjeta, su banco. Ver
+      formaPagoLabel() (desglose para Facturas de Clientes) y
+      movimientosDeFacturas() en lib/efectivo.ts (solo la parte en efectivo
+      cuenta como movimiento de caja, no el total de la factura). */
+  formaPagoDesglose?: { forma: string; monto: number; banco: string | null }[] | null;
   /** Crudo, tal como llega de la fila de origen — usar
       `estadoFacturaDerivado()` para el badge (aplica los mismos fallbacks
       que el original). */
@@ -242,7 +248,12 @@ const FORMA_PAGO_LABEL: Record<string, string> = {
   transferencia: "Transferencia",
   bizum: "Bizum",
   redsys: "Redsys",
+  multiforma: "Multiforma",
 };
+
+function eurosFormaPago(n: number): string {
+  return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
 
 // Compat: algunos flujos de guardado (anticipo-dialog.tsx,
 // entregar-con-factura-dialog.tsx, ventas/nuevo-pedido) guardan el banco ya
@@ -255,12 +266,21 @@ const FORMA_PAGO_LABEL: Record<string, string> = {
 // tocar los datos ya guardados. Petición del usuario, 2026-09-18.
 const FORMA_PAGO_COMBINADO_RE = /^(.+?)\s*·\s*tarjeta bancaria$/i;
 
-export function formaPagoLabel(f: Pick<FacturaCliente, "formaPago" | "banco">): string {
+export function formaPagoLabel(f: Pick<FacturaCliente, "formaPago" | "banco" | "formaPagoDesglose">): string {
   const rawOriginal = (f.formaPago || "").trim();
   const combinado = FORMA_PAGO_COMBINADO_RE.exec(rawOriginal);
   if (combinado) return `Tarjeta bancaria: ${combinado[1].trim()}`;
 
   const raw = rawOriginal.toLowerCase();
+  // Multiforma: el PDF solo imprime "Multiforma", pero aquí (Facturas de
+  // Clientes) sí interesa ver el desglose completo — de ahí que se guarde
+  // aparte en forma_pago_desglose en vez de solo en el string forma_pago.
+  if (raw === "multiforma" && f.formaPagoDesglose?.length) {
+    return f.formaPagoDesglose
+      .map((d) => `${FORMA_PAGO_LABEL[d.forma] || d.forma}${d.forma === "tarjeta" && d.banco ? ` (${d.banco})` : ""} ${eurosFormaPago(d.monto)}`)
+      .join(" + ");
+  }
+
   const label = FORMA_PAGO_LABEL[raw] || f.formaPago || "—";
   const banco = (f.banco || "").trim();
   return raw === "tarjeta" && banco ? `${label}: ${banco}` : label;
@@ -1146,6 +1166,7 @@ interface FilaFacturaManualSql {
   cliente_telefono: string | null;
   cliente_email: string | null;
   forma_pago: string | null;
+  forma_pago_desglose: { forma: string; monto: string | number; banco: string | null }[] | null;
   banco: string | null;
   total_factura: string | number | null;
   url_factura: string | null;
@@ -1192,6 +1213,9 @@ export function expandirManuales(filas: FilaFacturaManualSql[]): FacturaCliente[
       fecha: row.fecha_factura,
       formaPago: texto(row.forma_pago),
       banco: texto(row.banco),
+      formaPagoDesglose: Array.isArray(row.forma_pago_desglose)
+        ? row.forma_pago_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+        : null,
       estadoFactura: texto(row.estado_factura),
       tipo: "manual",
     });
@@ -1207,6 +1231,9 @@ export function expandirManuales(filas: FilaFacturaManualSql[]): FacturaCliente[
         fecha: row.fecha_factura_rectificativa,
         formaPago: texto(row.forma_pago),
         banco: texto(row.banco),
+        formaPagoDesglose: Array.isArray(row.forma_pago_desglose)
+          ? row.forma_pago_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+          : null,
         estadoFactura: "Devolución",
         tipo: "rectificativa",
       });
@@ -1223,6 +1250,9 @@ export function expandirManuales(filas: FilaFacturaManualSql[]): FacturaCliente[
         fecha: row.fecha_factura,
         formaPago: texto(row.forma_pago),
         banco: texto(row.banco),
+        formaPagoDesglose: Array.isArray(row.forma_pago_desglose)
+          ? row.forma_pago_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+          : null,
         estadoFactura: "Emitida",
         tipo: "manual",
       });
