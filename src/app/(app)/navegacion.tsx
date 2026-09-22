@@ -23,6 +23,7 @@ import {
   Save2,
   Notification,
   MoneySend,
+  ReceiptItem,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -62,6 +63,7 @@ export const GRUPOS: GrupoNavegacion[] = [
     icon: Box1,
     items: [
       { label: "Clientes", href: "/clientes", icon: Profile2User },
+      { label: "Proveedores", href: "/proveedores", icon: Truck },
       { label: "Formulario Web", href: "/formulario-web", icon: ScanBarcode },
       { label: "Equipos y Alquileres", href: "/equipos", icon: Box1 },
       { label: "Ventas", href: "/ventas", icon: ShoppingCart },
@@ -81,6 +83,7 @@ export const GRUPOS: GrupoNavegacion[] = [
     icon: Wallet,
     items: [
       { label: "Facturas de Clientes", href: "/facturas-clientes", icon: Receipt },
+      { label: "Facturas Recibidas", href: "/facturas-recibidas", icon: ReceiptItem },
       { label: "Seguimiento de Facturas", href: "/seguimiento-facturas", icon: Money },
       { label: "Reporte de Facturas", href: "/reporte-facturas", icon: ClipboardText },
       { label: "Efectivo", href: "/efectivo", icon: Coin1, claseColor: "text-green-600 hover:text-green-700 data-active:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:data-active:text-green-300 [&>svg]:text-current" },

@@ -104,6 +104,7 @@ export const Printer = withDefaults(Iconsax.Printer);
 export const Profile = withDefaults(Iconsax.Profile);
 export const Profile2User = withDefaults(Iconsax.Profile2User);
 export const Receipt = withDefaults(Iconsax.Receipt);
+export const ReceiptItem = withDefaults(Iconsax.ReceiptItem);
 export const Refresh2 = withDefaults(Iconsax.Refresh2);
 export const RotateLeft = withDefaults(Iconsax.RotateLeft);
 export const Save2 = withDefaults(Iconsax.Save2);
