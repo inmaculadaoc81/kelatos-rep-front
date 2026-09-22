@@ -17,12 +17,13 @@ import {
   SidebarMenuSubItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Sms, Setting2, Building } from "@/lib/icons";
+import { Sms, Setting2, Building, CloseCircle } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const ITEMS: { label: string; href: string | null; icon: typeof Sms }[] = [
   { label: "Centro de mails", href: "/mails/bandeja", icon: Sms },
   { label: "Leads", href: "/mails/leads", icon: Building },
+  { label: "Direcciones inválidas", href: "/mails/direcciones", icon: CloseCircle },
   { label: "Buzones", href: "/mails/buzones", icon: Setting2 },
 ];
 

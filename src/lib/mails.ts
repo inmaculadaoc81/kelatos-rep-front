@@ -192,6 +192,20 @@ export interface LeadDetalle {
   invalidas: { email: string; motivo: string | null; detectado_en: string }[];
 }
 
+export interface DireccionInvalida {
+  email: string;
+  motivo: string | null;
+  manual: boolean;
+  detectado_en: string;
+  rehabilitada_en: string | null;
+  mensaje_id: number | null;
+  mensaje_asunto: string | null;
+  mensaje_fecha: string | null;
+  buzon_email: string | null;
+  lead_id: number | null;
+  lead_nombre: string | null;
+}
+
 export interface ResultadoImportacion {
   creados: number;
   actualizados: number;
