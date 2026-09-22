@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Refresh2, SearchNormal1, DocumentUpload, Building } from "@/lib/icons";
+import { toast } from "sonner";
+import { Refresh2, SearchNormal1, DocumentUpload, Building, Sms } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +30,7 @@ export default function LeadsPage() {
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importar, setImportar] = useState(false);
+  const [importandoReparaciones, setImportandoReparaciones] = useState(false);
   const consulta = useRef(0);
 
   useEffect(() => {
@@ -85,6 +87,24 @@ export default function LeadsPage() {
     cargarGrupos();
   }, [cargarGrupos]);
 
+  /** Trae como leads (en "No contactar": solo la lista, no dispara ningún
+      envío) a los clientes de Reparaciones que marcaron la casilla de
+      marketing del formulario público. */
+  async function importarDeReparaciones() {
+    setImportandoReparaciones(true);
+    try {
+      const res = await fetch("/api/mails/leads/importar-reparaciones", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actualizar: true }) });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(`${data.creados} nuevos, ${data.actualizados} actualizados (en "No contactar": no se les escribe solo por traerlos aquí)`);
+      cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setImportandoReparaciones(false);
+    }
+  }
+
   async function mostrarMas() {
     const id = consulta.current;
     setCargandoMas(true);
@@ -119,6 +139,18 @@ export default function LeadsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {esSuperadmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              disabled={importandoReparaciones}
+              onClick={importarDeReparaciones}
+              title='Clientes de Reparaciones que marcaron "Deseo recibir promociones..." en el formulario'
+            >
+              <Sms className="size-4" /> {importandoReparaciones ? "Importando…" : "Traer de Reparaciones"}
+            </Button>
+          )}
           {esSuperadmin && (
             <Button size="sm" className="gap-1.5" onClick={() => setImportar(true)}>
               <DocumentUpload className="size-4" /> Importar leads
