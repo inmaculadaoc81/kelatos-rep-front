@@ -62,6 +62,17 @@ export async function POST(req: Request) {
       }, { status: 409 });
     }
 
+    // El PDF se queda EXACTAMENTE como estaba (petición del usuario,
+    // 2026-09-22: "que en el pdf se deje como estaba, que no se modifique
+    // nada"): generarFacturaPdfDesdeSheet() nunca se entera de "multiforma"
+    // ni de su desglose — para Multiforma se le manda solo la PRIMERA de
+    // las 2 formas de pago elegidas (con su banco, si es tarjeta), como si
+    // la factura tuviera esa única forma de pago. El desglose completo real
+    // solo llega más abajo a /confirmar, para guardarse en BD.
+    const primeraFormaMulti = formaPago === "multiforma" ? formaPagoDesglose?.[0] : undefined;
+    const formaPagoPdf = primeraFormaMulti ? primeraFormaMulti.forma : formaPago;
+    const bancoPdf = primeraFormaMulti ? (primeraFormaMulti.forma === "tarjeta" ? primeraFormaMulti.banco || "" : "") : (formaPago === "tarjeta" ? banco : "");
+
     let generado;
     try {
       generado = await kelatosApiPost<{ ok: boolean; url: string; total: number; baseImponible: number }>("/v1/facturas/entidades/generar-pdf", {
@@ -69,8 +80,8 @@ export async function POST(req: Request) {
           numero: preparar.numeroFactura,
           fecha: fechaHoyEs(),
           cliente,
-          formaPago,
-          banco: formaPago === "tarjeta" ? banco : "",
+          formaPago: formaPagoPdf,
+          banco: bancoPdf,
           lineas,
           // Sin esto, generarFacturaPdfDesdeSheet() (server.js) nunca recibe
           // datos.estadoFactura y cae a su propio valor por defecto (serie
