@@ -96,6 +96,7 @@ export const MessageQuestion = withDefaults(Iconsax.MessageQuestion);
 export const Message = withDefaults(Iconsax.Message);
 export const MoreCircle = withDefaults(Iconsax.MoreCircle);
 export const Notification = withDefaults(Iconsax.Notification);
+export const PauseCircle = withDefaults(Iconsax.PauseCircle);
 export const Personalcard = withDefaults(Iconsax.Personalcard);
 export const PenTool = withDefaults(Iconsax.PenTool);
 export const Play = withDefaults(Iconsax.Play);

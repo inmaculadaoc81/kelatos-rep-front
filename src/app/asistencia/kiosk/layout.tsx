@@ -8,13 +8,17 @@ import { signOut } from "next-auth/react";
 import { RgpdModal } from "./rgpd-modal";
 import { GuiaModal } from "./guia-modal";
 import { Button } from "@/components/ui/button";
-import { Clock, Calendar, ClipboardText, Logout, MessageQuestion } from "@/lib/icons";
+import { Clock, Calendar, ClipboardText, Logout, MessageQuestion, Profile2User } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/asistencia/kiosk", label: "Fichar", icon: Clock },
   { href: "/asistencia/kiosk/mes", label: "Mi mes", icon: Calendar },
   { href: "/asistencia/kiosk/solicitudes", label: "Solicitudes", icon: ClipboardText },
+  // Solo tiene sentido para quien tiene un equipo remoto vinculado, pero se
+  // deja siempre visible (igual que las demás pestañas) — la propia página
+  // explica qué hacer si todavía no tienes ninguno vinculado.
+  { href: "/asistencia/kiosk/reunion", label: "Reunión", icon: Profile2User },
 ];
 
 /** Vista de cara al empleado que ficha — deliberadamente SIN el sidebar/
