@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle,
+  ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import { CompraFila, ESTILO_BADGE_ESTADO, KPIS_COMPRAS_VACIOS, KpisCompras, colo
 import type { Proveedor } from "@/app/api/proveedores/route";
 import type { Empleado } from "@/app/api/empleados/route";
 
-const PAGINA = 50;
+const FILAS_POR_PAGINA_OPCIONES = ["15", "20", "30", "40", "50", "100"];
 
 type Vista = "" | "Pendiente" | "Pedido" | "En Tránsito" | "Recibido" | "Cancelado" | "con_problema" | "retrasado";
 
@@ -58,8 +59,9 @@ export default function ComprasPage() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
+  const [pagina, setPagina] = useState(1);
+  const [filasPorPagina, setFilasPorPagina] = useState(50);
   const [cargando, setCargando] = useState(true);
-  const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState<string | null>(null);
   const consulta = useRef(0);
@@ -81,8 +83,8 @@ export default function ComprasPage() {
   }, []);
 
   const parametros = useCallback(
-    (pagina: number) => {
-      const p = new URLSearchParams({ pagina: String(pagina), porPagina: String(PAGINA) });
+    (pag: number, porPagina: number) => {
+      const p = new URLSearchParams({ pagina: String(pag), porPagina: String(porPagina) });
       if (vista === "con_problema") p.set("estado", "Problema,Pieza Rota,Pieza Defectuosa");
       else if (vista === "retrasado") p.set("retrasado", "true");
       else if (vista) p.set("estado", vista);
@@ -97,39 +99,41 @@ export default function ComprasPage() {
     [vista, proveedorId, compradoPor, fechaDesde, fechaHasta, orden, busquedaAplicada]
   );
 
+  // Cualquier filtro (no la página en sí) vuelve a la página 1 — si no, se
+  // podría quedar viendo la página 4 de un filtro que ya no tiene 4 páginas.
+  useEffect(() => {
+    setPagina(1);
+  }, [vista, proveedorId, compradoPor, fechaDesde, fechaHasta, orden, busquedaAplicada, filasPorPagina]);
+
   const cargar = useCallback(
-    async (pagina: number, acumular: boolean) => {
+    async () => {
       const id = ++consulta.current;
-      if (!acumular) {
-        setCargando(true);
-        setError(null);
-      } else {
-        setCargandoMas(true);
-      }
+      setCargando(true);
+      setError(null);
       try {
-        const res = await fetch(`/api/compras?${parametros(pagina).toString()}`);
+        const res = await fetch(`/api/compras?${parametros(pagina, filasPorPagina).toString()}`);
         const data = await res.json();
         if (id !== consulta.current) return;
         if (!data.ok) throw new Error(data.error || "Error desconocido");
-        const filas = data.compras as CompraFila[];
-        setCompras((prev) => (acumular ? [...prev, ...filas.filter((f) => !prev.some((x) => x.pedidoId === f.pedidoId))] : filas));
+        setCompras(data.compras as CompraFila[]);
         setTotal(data.total as number);
         setKpis(data.kpis as KpisCompras);
       } catch (e) {
         if (id === consulta.current) setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
-        if (id === consulta.current) {
-          setCargando(false);
-          setCargandoMas(false);
-        }
+        if (id === consulta.current) setCargando(false);
       }
     },
-    [parametros]
+    [parametros, pagina, filasPorPagina]
   );
 
   useEffect(() => {
-    cargar(1, false);
+    cargar();
   }, [cargar]);
+
+  const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
+  const inicio = total === 0 ? 0 : (pagina - 1) * filasPorPagina;
+  const fin = Math.min(inicio + filasPorPagina, total);
 
   async function cambiarEstado(pedidoId: string, nuevoEstado: string) {
     setEnviando(pedidoId);
@@ -142,7 +146,7 @@ export default function ComprasPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Pedido actualizado a "${nuevoEstado}"`);
-      cargar(1, false);
+      cargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -159,7 +163,7 @@ export default function ComprasPage() {
           <h1 className="text-lg font-semibold">Compras</h1>
           <p className="text-sm text-muted-foreground">Pedidos de piezas registrados desde Reparaciones — proveedor, enlace de compra y estado de cada uno</p>
         </div>
-        <Button variant="outline" size="icon" className="size-8" onClick={() => cargar(1, false)} title="Actualizar">
+        <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
           <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
         </Button>
       </div>
@@ -336,13 +340,46 @@ export default function ComprasPage() {
               })}
           </TableBody>
         </Table>
-        {!cargando && compras.length < total && (
-          <div className="border-t p-3 text-center">
-            <Button variant="outline" size="sm" disabled={cargandoMas} onClick={() => cargar(Math.floor(compras.length / PAGINA) + 1, true)}>
-              {cargandoMas ? "Cargando…" : `Mostrar más (${compras.length.toLocaleString("es-ES")} de ${total.toLocaleString("es-ES")})`}
-            </Button>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/30 px-3 py-2">
+          <span className="text-xs font-semibold text-muted-foreground">
+            {total.toLocaleString("es-ES")} pedido{total !== 1 ? "s" : ""}
+          </span>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Filas por página:</span>
+              <Select value={String(filasPorPagina)} onValueChange={(v) => { if (v) setFilasPorPagina(parseInt(v, 10)); }}>
+                <SelectTrigger className="h-7 w-20 text-xs">
+                  <SelectValue>{(v: string) => v}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {FILAS_POR_PAGINA_OPCIONES.map((v) => (
+                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon-sm" disabled={pagina <= 1} onClick={() => setPagina(1)}>
+                <ArrowLeft3 className="size-3.5" />
+              </Button>
+              <Button variant="outline" size="icon-sm" disabled={pagina <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
+                <ArrowLeft2 className="size-3.5" />
+              </Button>
+              <span className="px-1 text-xs whitespace-nowrap text-muted-foreground">
+                {total === 0 ? "" : `Página ${pagina} de ${totalPaginas} (${inicio + 1}–${fin})`}
+              </span>
+              <Button variant="outline" size="icon-sm" disabled={pagina >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
+                <ArrowRight2 className="size-3.5" />
+              </Button>
+              <Button variant="outline" size="icon-sm" disabled={pagina >= totalPaginas} onClick={() => setPagina(totalPaginas)}>
+                <ArrowRight3 className="size-3.5" />
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
