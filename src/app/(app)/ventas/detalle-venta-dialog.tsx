@@ -1,5 +1,6 @@
 "use client";
 
+import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import { useEffect, useState } from "react";
 import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket, ScanBarcode } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -201,6 +202,7 @@ export function DetalleVentaDialog({
     if (!itemPidiendo) return;
     if (!pedProveedor) return toast.error("Selecciona un proveedor");
     if (!pedNumero.trim()) return toast.error("El Nº de pedido es obligatorio");
+    if (numeroPedidoEsEnlace(pedNumero)) return toast.error(MENSAJE_NUMERO_PEDIDO_ENLACE);
     if (!pedFecha) return toast.error("La fecha estimada es obligatoria");
     if (!pedEnlace.trim()) return toast.error("El enlace es obligatorio");
     setEnviando(true);

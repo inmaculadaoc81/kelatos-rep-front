@@ -1,3 +1,4 @@
+import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -51,6 +52,7 @@ export async function POST(
     if (!p.proveedor?.trim()) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta proveedor` }, { status: 400 });
     if (!p.enlace?.trim()) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta enlace` }, { status: 400 });
     if (!p.numeroPedido?.trim()) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta número de pedido` }, { status: 400 });
+    if (numeroPedidoEsEnlace(p.numeroPedido)) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: ${MENSAJE_NUMERO_PEDIDO_ENLACE}` }, { status: 400 });
     if (!p.fechaEstimada) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta fecha estimada` }, { status: 400 });
     if (!(p.costo > 0)) return NextResponse.json({ ok: false, error: `Pieza ${i + 1}: falta el precio de compra` }, { status: 400 });
   }

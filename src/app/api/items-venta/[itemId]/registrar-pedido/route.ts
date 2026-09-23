@@ -1,3 +1,4 @@
+import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -17,6 +18,7 @@ export async function POST(
   const datos = (await req.json()) as DatosRegistrarPedido;
   if (!datos.proveedorId) return NextResponse.json({ ok: false, error: "Selecciona un proveedor" }, { status: 400 });
   if (!datos.numeroPedido?.trim()) return NextResponse.json({ ok: false, error: "El Nº de pedido es obligatorio" }, { status: 400 });
+  if (numeroPedidoEsEnlace(datos.numeroPedido)) return NextResponse.json({ ok: false, error: MENSAJE_NUMERO_PEDIDO_ENLACE }, { status: 400 });
   if (!datos.fechaEstimada) return NextResponse.json({ ok: false, error: "La fecha estimada es obligatoria" }, { status: 400 });
   if (datos.fechaEstimada < new Date().toISOString().slice(0, 10)) {
     return NextResponse.json({ ok: false, error: "La fecha estimada no puede ser anterior a hoy" }, { status: 400 });

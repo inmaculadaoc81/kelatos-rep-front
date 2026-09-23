@@ -1,5 +1,6 @@
 "use client";
 
+import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import { useEffect, useState } from "react";
 import { Box, Add, Trash, InfoCircle, CloseCircle } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -182,6 +183,7 @@ export function RegistrarPedidoDialog({
       if (esOtro(p.proveedor) && !p.proveedorOtro?.trim()) return `Pieza ${i + 1}: falta el nombre del proveedor`;
       if (!p.enlace.trim()) return `Pieza ${i + 1}: falta enlace`;
       if (!p.numeroPedido.trim()) return `Pieza ${i + 1}: falta número de pedido`;
+      if (numeroPedidoEsEnlace(p.numeroPedido)) return `Pieza ${i + 1}: ${MENSAJE_NUMERO_PEDIDO_ENLACE}`;
       const f = formatoDe(p.proveedor);
       // Se normaliza antes de validar: un número guardado sin guiones (o con
       // espacios) de eBay/Amazon se acepta y se guarda ya bien formateado.
@@ -324,7 +326,8 @@ export function RegistrarPedidoDialog({
                         <Label htmlFor={`pedNum-${i}`}>Número de Pedido *</Label>
                         {(() => {
                           const f = formatoDe(p.proveedor);
-                          const invalido = !!f && !!p.numeroPedido && !f.esValido(f.formatear(p.numeroPedido));
+                          const esLink = numeroPedidoEsEnlace(p.numeroPedido);
+                          const invalido = esLink || (!!f && !!p.numeroPedido && !f.esValido(f.formatear(p.numeroPedido)));
                           return (
                             <>
                               <Input
@@ -335,7 +338,8 @@ export function RegistrarPedidoDialog({
                                 aria-invalid={invalido || undefined}
                                 onChange={(e) => actualizarPieza(i, "numeroPedido", f ? f.formatear(e.target.value) : e.target.value)}
                               />
-                              {f && (
+                              {esLink && <p className="text-xs text-destructive">{MENSAJE_NUMERO_PEDIDO_ENLACE}</p>}
+                              {f && !esLink && (
                                 <p className={`text-xs ${invalido ? "text-destructive" : "text-muted-foreground"}`}>
                                   {invalido ? "Número incompleto o no válido. " : ""}
                                   Formato {f.nombre}: {f.descripcion}. Ej.: <span className="font-medium">{f.ejemplo}</span>
