@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Refresh2, SearchNormal1, Add, Book1, Category, ClipboardTick, Warning2, Wallet, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, DocumentDownload } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Add, Book1, Category, ClipboardTick, Warning2, Wallet, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, DocumentDownload, Link2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +32,8 @@ export default function FacturasRecibidasPage() {
   const [almacen, setAlmacen] = useState<AlmacenFactura | "">("");
   const [estadoPago, setEstadoPago] = useState<EstadoPagoFactura | "">("");
   const [soloDuplicados, setSoloDuplicados] = useState(false);
+  const [soloRevision, setSoloRevision] = useState(false);
+  const [carpetasDrive, setCarpetasDrive] = useState<{ stock: { url: string }; servicio: { url: string } } | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -54,15 +56,20 @@ export default function FacturasRecibidasPage() {
       if (almacen) p.set("almacen", almacen);
       if (estadoPago) p.set("estadoPago", estadoPago);
       if (soloDuplicados) p.set("soloDuplicados", "true");
+      if (soloRevision) p.set("estadoRevision", "pendiente");
       if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
       return p.toString();
     },
-    [almacen, estadoPago, soloDuplicados, busquedaAplicada]
+    [almacen, estadoPago, soloDuplicados, soloRevision, busquedaAplicada]
   );
 
   useEffect(() => {
     setPagina(1);
-  }, [almacen, estadoPago, soloDuplicados, busquedaAplicada, filasPorPagina]);
+  }, [almacen, estadoPago, soloDuplicados, soloRevision, busquedaAplicada, filasPorPagina]);
+
+  useEffect(() => {
+    fetch("/api/facturas-recibidas/carpetas-drive").then((r) => r.json()).then((d) => { if (d.ok) setCarpetasDrive(d.carpetas); }).catch(() => {});
+  }, []);
 
   const cargar = useCallback(async () => {
     const id = ++consulta.current;
@@ -102,6 +109,7 @@ export default function FacturasRecibidasPage() {
         if (almacen) p.set("almacen", almacen);
         if (estadoPago) p.set("estadoPago", estadoPago);
         if (soloDuplicados) p.set("soloDuplicados", "true");
+        if (soloRevision) p.set("estadoRevision", "pendiente");
         if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
         const res = await fetch(`/api/facturas-recibidas?${p.toString()}`);
         const data = await res.json();
@@ -125,7 +133,7 @@ export default function FacturasRecibidasPage() {
     }
   }
 
-  const hayFiltros = !!(almacen || estadoPago || soloDuplicados);
+  const hayFiltros = !!(almacen || estadoPago || soloDuplicados || soloRevision);
   const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
   const inicio = total === 0 ? 0 : (pagina - 1) * filasPorPagina;
   const fin = Math.min(inicio + filasPorPagina, total);
@@ -143,6 +151,16 @@ export default function FacturasRecibidasPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {carpetasDrive && (
+            <>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" nativeButton={false} render={<a href={carpetasDrive.stock.url} target="_blank" rel="noopener noreferrer" />} title="Carpeta de Drive: los PDF que caigan aquí se importan solos como compras de Stock">
+                <Link2 className="size-3.5" /> Drive · Stock
+              </Button>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" nativeButton={false} render={<a href={carpetasDrive.servicio.url} target="_blank" rel="noopener noreferrer" />} title="Carpeta de Drive: los PDF que caigan aquí se importan solos como compras de servicio">
+                <Link2 className="size-3.5" /> Drive · Servicio
+              </Button>
+            </>
+          )}
           <Button size="sm" className="gap-1.5" onClick={() => { setEditando(null); setFormAbierto(true); }}>
             <Add className="size-4" /> Nueva factura
           </Button>
@@ -179,15 +197,21 @@ export default function FacturasRecibidasPage() {
             <span className="block text-lg leading-tight font-semibold tabular-nums">{cargando && !facturas.length ? "…" : posiblesDuplicados.toLocaleString("es-ES")}</span>
           </span>
         </button>
-        <div className="flex items-center gap-2.5 rounded-lg border bg-card p-2.5">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+        <button
+          type="button"
+          className="flex items-center gap-2.5 rounded-lg border bg-card p-2.5 text-left transition-colors hover:bg-muted/40"
+          onClick={() => setSoloRevision((v) => !v)}
+          aria-pressed={soloRevision}
+          title="Filtrar las facturas pendientes de revisión manual"
+        >
+          <span className={`flex size-8 shrink-0 items-center justify-center rounded-md ${soloRevision ? "bg-amber-500/25" : "bg-amber-500/10"} text-amber-600 dark:text-amber-400`}>
             <ClipboardTick className="size-4" />
           </span>
           <span className="min-w-0">
             <span className="block truncate text-xs text-muted-foreground">Pendientes de revisión</span>
             <span className="block text-lg leading-tight font-semibold tabular-nums">{cargando && !facturas.length ? "…" : pendientesRevision.toLocaleString("es-ES")}</span>
           </span>
-        </div>
+        </button>
         <div className="flex items-center gap-2.5 rounded-lg border bg-card p-2.5">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400">
             <Wallet className="size-4" />
@@ -221,8 +245,15 @@ export default function FacturasRecibidasPage() {
             <SelectItem value="pagada">Pagada</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={soloRevision ? "pendiente" : "Todas"} onValueChange={(v) => setSoloRevision(v === "pendiente")}>
+          <SelectTrigger className="h-8 w-44"><SelectValue placeholder="Revisión" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Todas">Cualquier revisión</SelectItem>
+            <SelectItem value="pendiente">Pendiente de revisión</SelectItem>
+          </SelectContent>
+        </Select>
         {hayFiltros && (
-          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setAlmacen(""); setEstadoPago(""); setSoloDuplicados(false); }}>
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setAlmacen(""); setEstadoPago(""); setSoloDuplicados(false); setSoloRevision(false); }}>
             Quitar filtros
           </Button>
         )}
@@ -283,9 +314,28 @@ export default function FacturasRecibidasPage() {
                     <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${COLOR_ESTADO_PAGO[f.estadoPago]}`}>{ETIQUETA_ESTADO_PAGO[f.estadoPago]}</span>
                   </TableCell>
                   <TableCell>
-                    <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${f.estadoRevision === "validada" ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                      {f.estadoRevision === "validada" ? "Validada" : "Pendiente"}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {f.estadoRevision === "validada" ? (
+                        <span className="inline-flex whitespace-nowrap rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">Validada</span>
+                      ) : f.revisionMotivo ? (
+                        <span
+                          className="inline-flex whitespace-nowrap rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+                          title={f.revisionMotivo}
+                        >
+                          Revisión manual
+                        </span>
+                      ) : (
+                        <span className="inline-flex whitespace-nowrap rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Pendiente</span>
+                      )}
+                      {f.origen === "automatico" && (
+                        <span className="inline-flex whitespace-nowrap rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400" title="Importada automáticamente desde Drive">Auto</span>
+                      )}
+                      {f.enlaces.length > 0 && (
+                        <span className="inline-flex whitespace-nowrap rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400" title="Pedidos enlazados">
+                          {f.enlaces.length} pedido{f.enlaces.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

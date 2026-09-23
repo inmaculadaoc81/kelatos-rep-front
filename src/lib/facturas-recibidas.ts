@@ -12,6 +12,15 @@ export type AlmacenFactura = "servicio" | "stock";
 export type EstadoPagoFactura = "pendiente" | "parcial" | "pagada";
 export type EstadoRevisionFactura = "pendiente" | "validada";
 
+/** Enlace factura ↔ pedido (migración 119): una factura puede cubrir varios. */
+export interface EnlaceFactura {
+  id: number;
+  pedidoId: string | null;
+  stockPedidoId: number | null;
+  metodo: "auto" | "manual";
+  puntuacion: number | null;
+}
+
 export interface FacturaRecibida {
   id: number;
   numeroRecepcion: string;
@@ -61,6 +70,10 @@ export interface FacturaRecibida {
   ejercicioFiscal: number;
 
   driveFileId: string | null;
+
+  /** Por qué la importación automática la dejó en revisión manual (null si no aplica). */
+  revisionMotivo: string | null;
+  enlaces: EnlaceFactura[];
 
   origen: "manual" | "automatico";
   usuarioRegistro: string;
@@ -112,6 +125,8 @@ interface FilaFacturaSql {
   observaciones_internas: string | null;
   ejercicio_fiscal: number;
   drive_file_id: string | null;
+  revision_motivo?: string | null;
+  enlaces?: EnlaceFactura[] | null;
   origen: string;
   usuario_registro: string;
   creado_en: string;
@@ -174,6 +189,8 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     observacionesInternas: f.observaciones_internas || "",
     ejercicioFiscal: f.ejercicio_fiscal,
     driveFileId: f.drive_file_id,
+    revisionMotivo: f.revision_motivo || null,
+    enlaces: f.enlaces || [],
     origen: (f.origen as "manual" | "automatico") || "manual",
     usuarioRegistro: f.usuario_registro,
     creadoEn: f.creado_en,

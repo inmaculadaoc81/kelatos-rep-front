@@ -24,7 +24,7 @@ import type { CompraFila } from "@/lib/compras";
 import type { PedidoStockBusqueda } from "@/app/api/stock-piezas/pedidos/buscar/route";
 import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route";
 import {
-  FacturaRecibida, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
+  FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
   ETIQUETA_TIPO_DOCUMENTO, ETIQUETA_CATEGORIA, euros,
 } from "@/lib/facturas-recibidas";
 
@@ -270,6 +270,9 @@ export function FacturaRecibidaFormDialog({
   // entrar, sigue cargando la IA pero mi archivo no está".
   const ocrAbortRef = useRef<AbortController | null>(null);
   const esEdicion = facturaExistente !== null;
+  // Pedidos enlazados (una factura puede cubrir varios — migración 119): copia local para poder quitar enlaces sin cerrar el diálogo.
+  const [enlaces, setEnlaces] = useState<EnlaceFactura[]>([]);
+  const [quitandoEnlace, setQuitandoEnlace] = useState<number | null>(null);
 
   // Vista previa a la derecha: el archivo recién elegido (todavía sin subir,
   // factura nueva) o el ya guardado en Drive (edición) — object URL propio
@@ -307,6 +310,7 @@ export function FacturaRecibidaFormDialog({
       setOrigenAutomatico(false);
       setResumenOcr(null);
       setAdvertenciasVistas(false);
+      setEnlaces(facturaExistente?.enlaces ?? []);
     } else {
       // Cancela cualquier lectura de IA en curso — ver comentario de ocrAbortRef.
       ocrAbortRef.current?.abort();
@@ -513,6 +517,25 @@ export function FacturaRecibidaFormDialog({
     }
   }
 
+  async function quitarEnlace(enlaceId: number) {
+    if (!facturaExistente) return;
+    setQuitandoEnlace(enlaceId);
+    try {
+      const res = await fetch(`/api/facturas-recibidas/${facturaExistente.id}/enlaces/${enlaceId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setEnlaces(data.factura.enlaces);
+      set("pedidoId", data.factura.pedidoId || "");
+      set("stockPedidoId", data.factura.stockPedidoId ? String(data.factura.stockPedidoId) : "");
+      toast.success("Enlace quitado");
+      onGuardado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setQuitandoEnlace(null);
+    }
+  }
+
   async function descartarDuplicado() {
     if (!facturaExistente) return;
     setDescartandoDuplicado(true);
@@ -561,6 +584,13 @@ export function FacturaRecibidaFormDialog({
                 <Button type="button" size="sm" variant="outline" className="shrink-0 border-amber-400 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300" disabled={descartandoDuplicado} onClick={descartarDuplicado}>
                   {descartandoDuplicado ? "Descartando…" : "No es un duplicado — descartar aviso"}
                 </Button>
+              </div>
+            )}
+
+            {esEdicion && facturaExistente!.revisionMotivo && datos.estadoRevision === "pendiente" && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                <Warning2 className="mt-0.5 size-4 shrink-0" />
+                <span><strong>Revisión manual:</strong> {facturaExistente!.revisionMotivo}. Compruébala contra el archivo, corrige lo necesario y márcala como «Validada» en el estado de revisión.</span>
               </div>
             )}
 
@@ -871,6 +901,22 @@ export function FacturaRecibidaFormDialog({
                     onBuscar={() => setBuscarPedidoStockAbierto(true)}
                     onQuitar={() => set("stockPedidoId", "")}
                   />
+                )}
+                {esEdicion && enlaces.length > 0 && (
+                  <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+                    <Label>Pedidos enlazados ({enlaces.length}) — una factura puede cubrir varios</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {enlaces.map((en) => (
+                        <span key={en.id} className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-1 text-xs">
+                          {en.pedidoId ? `Pedido ${en.pedidoId}` : `Pedido de stock #${en.stockPedidoId}`}
+                          {en.metodo === "auto" && <span className="rounded bg-violet-500/10 px-1 text-[10px] text-violet-600 dark:text-violet-400">auto{en.puntuacion ? ` · ${Math.round(en.puntuacion)} pts` : ""}</span>}
+                          <button type="button" className="text-muted-foreground hover:text-destructive disabled:opacity-50" title="Quitar este enlace" disabled={quitandoEnlace === en.id} onClick={() => quitarEnlace(en.id)}>
+                            <CloseCircle className="size-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <div className="space-y-1.5">
                   <Label htmlFor="frCentroCoste">Centro de coste / departamento</Label>

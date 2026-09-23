@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
 import { FacturaRecibidaFormDialog } from "../facturas-recibidas/factura-recibida-form-dialog";
+import { FacturasEnlazadasDialog } from "../facturas-recibidas/facturas-enlazadas-dialog";
 import {
   Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle, Book1,
   ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3,
@@ -49,6 +50,7 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
 export default function ComprasPage() {
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [borradorFactura, setBorradorFactura] = useState<CompraFila | null>(null);
+  const [facturasDePedido, setFacturasDePedido] = useState<CompraFila | null>(null);
   const [compras, setCompras] = useState<CompraFila[]>([]);
   const [total, setTotal] = useState(0);
   const [kpis, setKpis] = useState<KpisCompras>(KPIS_COMPRAS_VACIOS);
@@ -337,12 +339,17 @@ export default function ComprasPage() {
                             <sig.icono className="size-3.5" /> {sig.etiqueta}
                           </Button>
                         )}
-                        {c.estado === "Recibido" && c.proveedorId && (
+                        {c.facturasCount > 0 && (
+                          <Button size="sm" variant="outline" className="h-7 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400" onClick={() => setFacturasDePedido(c)} title="Ver las facturas del Libro de Compras enlazadas a este pedido">
+                            <Book1 className="size-3.5" /> Facturas ({c.facturasCount})
+                          </Button>
+                        )}
+                        {c.estado === "Recibido" && c.proveedorId && c.facturasCount === 0 && (
                           <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setBorradorFactura(c)} title="Registrar la factura de este pedido en el Libro de Compras">
                             <Book1 className="size-3.5" /> Registrar factura
                           </Button>
                         )}
-                        {!sig && !(c.estado === "Recibido" && c.proveedorId) && <span className="text-muted-foreground">—</span>}
+                        {!sig && c.facturasCount === 0 && !(c.estado === "Recibido" && c.proveedorId) && <span className="text-muted-foreground">—</span>}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -396,6 +403,15 @@ export default function ComprasPage() {
         resguardo={resguardoDetalle}
         onOpenChange={(open) => !open && setResguardoDetalle(null)}
         onActualizado={cargar}
+      />
+
+      <FacturasEnlazadasDialog
+        tipo="pedido"
+        id={facturasDePedido?.pedidoId ?? null}
+        titulo={`Facturas del pedido ${facturasDePedido?.pedidoId ?? ""}`}
+        open={!!facturasDePedido}
+        onOpenChange={(o) => !o && setFacturasDePedido(null)}
+        onCambio={cargar}
       />
 
       <FacturaRecibidaFormDialog

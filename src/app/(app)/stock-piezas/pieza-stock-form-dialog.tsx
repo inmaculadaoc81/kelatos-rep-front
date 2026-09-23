@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Clock, Link2, Truck, Trash, AddCircle, TickCircle } from "@/lib/icons";
+import { Box, Clock, Link2, Truck, Trash, AddCircle, TickCircle, Book1 } from "@/lib/icons";
+import { FacturasEnlazadasDialog } from "../facturas-recibidas/facturas-enlazadas-dialog";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +83,8 @@ export function PiezaStockFormDialog({
   const [pedidoCantidad, setPedidoCantidad] = useState("1");
   const [pedidoFecha, setPedidoFecha] = useState("");
   const [registrandoPedido, setRegistrandoPedido] = useState(false);
+  // Pedido de stock cuyas facturas (Libro de Compras) se están consultando.
+  const [facturasDePedido, setFacturasDePedido] = useState<PedidoStock | null>(null);
 
   useEffect(() => {
     if (!open || !esEdicion || !piezaExistente) return;
@@ -230,6 +233,7 @@ export function PiezaStockFormDialog({
   }
 
   const pedidosPendientes = pedidos.filter((p) => p.estado === "pendiente");
+  const pedidosRecibidos = pedidos.filter((p) => p.estado === "recibido").slice(0, 5);
 
   return (
     <Dialog
@@ -372,6 +376,9 @@ export function PiezaStockFormDialog({
                         {p.fechaEstimadaLlegada ? ` · llega aprox. ${fechaCorta(p.fechaEstimadaLlegada)}` : ""}
                       </span>
                       <div className="flex shrink-0 items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-[11px]" onClick={() => setFacturasDePedido(p)} title="Facturas del Libro de Compras enlazadas a este pedido">
+                          <Book1 className="size-3" /> Facturas
+                        </Button>
                         <Button size="sm" variant="outline" className="h-6 gap-1 px-2 text-[11px]" onClick={() => marcarRecibido(p.id)}>
                           <TickCircle className="size-3" /> Recibido
                         </Button>
@@ -383,8 +390,30 @@ export function PiezaStockFormDialog({
                   ))}
                 </div>
               )}
+
+              {pedidosRecibidos.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <Label className="text-[11px] text-muted-foreground">Pedidos recibidos (últimos)</Label>
+                  {pedidosRecibidos.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs">
+                      <span><strong>{p.cantidad}</strong> unidad(es){p.proveedor ? ` — ${p.proveedor}` : ""}</span>
+                      <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-[11px]" onClick={() => setFacturasDePedido(p)} title="Facturas del Libro de Compras enlazadas a este pedido">
+                        <Book1 className="size-3" /> Facturas
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
+          <FacturasEnlazadasDialog
+            tipo="stock"
+            id={facturasDePedido?.id ?? null}
+            titulo={`Facturas del pedido de stock #${facturasDePedido?.id ?? ""}`}
+            open={!!facturasDePedido}
+            onOpenChange={(o) => !o && setFacturasDePedido(null)}
+          />
 
           {esEdicion && (
             <div className="space-y-1.5 border-t pt-3">
