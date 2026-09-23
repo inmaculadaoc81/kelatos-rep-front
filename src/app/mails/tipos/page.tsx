@@ -121,7 +121,7 @@ export default function TiposCorreoPage() {
           </span>
           <div>
             <h1 className="text-lg font-semibold">Tipos de correo</h1>
-            <p className="text-sm text-muted-foreground">Todos los correos que envía el sistema: cuántos se han enviado de cada uno y si están activos</p>
+            <p className="text-sm text-muted-foreground">Correos de marketing y de otros servicios (no los de reparaciones): cuántos se han enviado de cada tipo y si está activo</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -193,7 +193,7 @@ export default function TiposCorreoPage() {
               ))}
             {!cargando && visibles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Ningún tipo de correo coincide con los filtros</TableCell>
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">{tipos.length === 0 ? "Todavía no hay tipos de correo. Crea uno con \"Nuevo tipo\" o aparecerán cuando n8n envíe el primero." : "Ningún tipo de correo coincide con los filtros"}</TableCell>
               </TableRow>
             )}
             {!cargando &&
@@ -234,8 +234,8 @@ export default function TiposCorreoPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Un tipo desactivado no se envía a nadie (las automatizaciones que lo usan lo registran como no enviado). Los correos de marketing enviados desde n8n
-        deben consultar y registrar su tipo en el webhook <span className="font-mono">/webhooks/n8n-mail-tipo</span>.
+        Un tipo desactivado no debe enviarse. n8n consulta y registra cada envío en el webhook <span className="font-mono">/webhooks/n8n-mail-tipo</span>
+        (acción <span className="font-mono">consultar</span> antes de enviar y <span className="font-mono">registrar</span> después); así se cuentan aquí.
       </p>
 
       <Dialog open={!!aDesactivar} onOpenChange={(o) => !o && setADesactivar(null)}>
@@ -243,7 +243,7 @@ export default function TiposCorreoPage() {
           <DialogHeader>
             <DialogTitle>Desactivar &quot;{aDesactivar?.nombre}&quot;</DialogTitle>
             <DialogDescription>
-              Mientras esté desactivado, este correo no se enviará a ningún cliente. Las automatizaciones que dependen de él quedarán sin enviar.
+              Mientras esté desactivado, n8n dejará de enviar este tipo de correo.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -339,7 +339,7 @@ function NuevoTipoDialog({
       <DialogContent className="sm:max-w-md" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Send2 className="size-5" /> Nuevo tipo de correo</DialogTitle>
-          <DialogDescription>Por ejemplo una campaña de marketing. Podrás activarla o desactivarla y ver cuántos se envían.</DialogDescription>
+          <DialogDescription>Por ejemplo una campaña de marketing. Podrás activarla o desactivarla y ver cuántos se envían. Con la clave que se genera, n8n lo consulta y lo registra.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">

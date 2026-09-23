@@ -24,13 +24,6 @@ export interface TiposCorreoRespuesta {
 }
 
 export const ETIQUETA_CATEGORIA: Record<string, string> = {
-  automatizacion: "Automatizaciones",
-  reparaciones: "Reparaciones",
-  presupuestos: "Presupuestos",
-  facturacion: "Facturación",
-  alquiler: "Alquiler",
-  ventas: "Ventas",
   marketing: "Marketing",
-  interno: "Internos",
-  otros: "Otros",
+  otros_servicios: "Otros servicios",
 };
