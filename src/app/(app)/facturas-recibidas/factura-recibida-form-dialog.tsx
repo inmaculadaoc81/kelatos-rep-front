@@ -260,6 +260,15 @@ export function FacturaRecibidaFormDialog({
   // convierte en un registro real sin que nadie la haya comprobado.
   const [advertenciasVistas, setAdvertenciasVistas] = useState(false);
   const inputOcr = useRef<HTMLInputElement>(null);
+  // Controlador de la petición de OCR en curso — sin esto, cerrar el
+  // diálogo mientras "Leyendo con IA" seguía corriendo dejaba el fetch vivo
+  // en segundo plano: al reabrir (misma factura u otra distinta) el estado
+  // leyendoOcr no se reiniciaba (seguía mostrando "Leyendo…" de la lectura
+  // vieja, sin archivo) y, si esa lectura huérfana terminaba de responder,
+  // podía sobrescribir los campos del formulario que estuviera abierto en
+  // ese momento. Bug real reportado, 2026-09-23: "cerré el modal y volví a
+  // entrar, sigue cargando la IA pero mi archivo no está".
+  const ocrAbortRef = useRef<AbortController | null>(null);
   const esEdicion = facturaExistente !== null;
 
   // Vista previa a la derecha: el archivo recién elegido (todavía sin subir,
@@ -298,9 +307,17 @@ export function FacturaRecibidaFormDialog({
       setOrigenAutomatico(false);
       setResumenOcr(null);
       setAdvertenciasVistas(false);
+    } else {
+      // Cancela cualquier lectura de IA en curso — ver comentario de ocrAbortRef.
+      ocrAbortRef.current?.abort();
+      ocrAbortRef.current = null;
+      setLeyendoOcr(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, facturaExistente]);
+
+  // Cancela también si el componente se desmonta de verdad (no solo se cierra el diálogo).
+  useEffect(() => () => { ocrAbortRef.current?.abort(); }, []);
 
   function cargarProveedores() {
     fetch("/api/proveedores")
@@ -440,12 +457,15 @@ export function FacturaRecibidaFormDialog({
     }
 
     setLeyendoOcr(true);
+    const controller = new AbortController();
+    ocrAbortRef.current = controller;
     try {
       const base64 = await leerBase64(archivo);
       const res = await fetch("/api/facturas-recibidas/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ base64, mimeType: archivo.type || "application/octet-stream" }),
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -479,9 +499,16 @@ export function FacturaRecibidaFormDialog({
         toast.success("Datos rellenados con IA — revísalos antes de registrar");
       }
     } catch (e) {
+      // Cancelada a propósito al cerrar el diálogo — nada que avisar, y como
+      // el fetch rechaza antes de llegar a los set(...) de arriba, no llega a
+      // tocar el formulario.
+      if (e instanceof DOMException && e.name === "AbortError") return;
       toast.error(e instanceof Error ? e.message : "No se pudo leer la factura");
     } finally {
-      setLeyendoOcr(false);
+      if (ocrAbortRef.current === controller) {
+        ocrAbortRef.current = null;
+        setLeyendoOcr(false);
+      }
       if (inputOcr.current) inputOcr.current.value = "";
     }
   }
