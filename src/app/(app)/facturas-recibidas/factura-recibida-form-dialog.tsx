@@ -385,6 +385,22 @@ export function FacturaRecibidaFormDialog({
       if (inputOcr.current) inputOcr.current.value = "";
       return;
     }
+
+    // El mismo archivo que se lee queda también adjunto — no tiene sentido
+    // pedirle al usuario que lo seleccione dos veces (una para leer, otra
+    // para adjuntar). En alta se deja "en espera" como con "Adjuntar
+    // archivo"; en edición se sube a Drive ya mismo.
+    if (!esEdicion) {
+      setArchivoPendiente(archivo);
+    } else {
+      try {
+        const nuevoId = await subirArchivoA(facturaExistente!.id, archivo);
+        setDriveFileId(nuevoId);
+      } catch (e) {
+        toast.error(`No se pudo adjuntar el archivo: ${e instanceof Error ? e.message : "error desconocido"}`);
+      }
+    }
+
     setLeyendoOcr(true);
     try {
       const base64 = await leerBase64(archivo);
