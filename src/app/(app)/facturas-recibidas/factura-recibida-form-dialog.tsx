@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar, Refresh2, ExportSquare } from "@/lib/icons";
+import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar, Refresh2, ExportSquare, TickCircle, CloseCircle } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -172,6 +172,26 @@ function CampoBuscable({
   );
 }
 
+/** Fila del resumen de "Leer con IA" — check verde si se encontró el
+    dato, aspa gris si no, para ver de un vistazo qué faltó rellenar a mano. */
+function CampoResumen({ etiqueta, valor, advertencia }: { etiqueta: string; valor: string | null; advertencia?: string }) {
+  const encontrado = !!valor;
+  return (
+    <div className="flex items-start gap-1.5">
+      {encontrado ? (
+        <TickCircle className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+      ) : (
+        <CloseCircle className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/40" />
+      )}
+      <span>
+        <span className="text-muted-foreground">{etiqueta}:</span>{" "}
+        {encontrado ? <span className="font-medium text-foreground">{valor}</span> : <span className="text-muted-foreground/70">no encontrado</span>}
+        {advertencia && <span className="block text-amber-600 dark:text-amber-400">{advertencia}</span>}
+      </span>
+    </div>
+  );
+}
+
 const CLASE_IMPORTE = "text-right tabular-nums";
 
 /**
@@ -226,6 +246,9 @@ export function FacturaRecibidaFormDialog({
   const [leyendoOcr, setLeyendoOcr] = useState(false);
   const [segundosLecturaOcr, setSegundosLecturaOcr] = useState(0);
   const [origenAutomatico, setOrigenAutomatico] = useState(false);
+  // Recap de lo que la IA encontró en la última lectura — para verlo de un
+  // vistazo sin tener que rastrear cada campo del formulario uno a uno.
+  const [resumenOcr, setResumenOcr] = useState<{ extraido: FacturaOcrExtraido; proveedorEncontrado: boolean } | null>(null);
   const inputOcr = useRef<HTMLInputElement>(null);
   const esEdicion = facturaExistente !== null;
 
@@ -263,6 +286,7 @@ export function FacturaRecibidaFormDialog({
       setArchivoPendiente(null);
       setFacturaRectificadaLabel(null);
       setOrigenAutomatico(false);
+      setResumenOcr(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, facturaExistente]);
@@ -414,8 +438,10 @@ export function FacturaRecibidaFormDialog({
       const e = data.extraido as FacturaOcrExtraido | null;
       if (!e) {
         toast.warning("No se pudo leer ningún dato de la factura — rellénala a mano");
+        setResumenOcr(null);
         return;
       }
+      setResumenOcr({ extraido: e, proveedorEncontrado: !!data.proveedorIdSugerido });
       // Solo se pisan campos que la IA de verdad leyó — un valor no
       // encontrado (null) no debe borrar algo que el usuario ya escribió.
       if (data.proveedorIdSugerido) set("proveedorId", data.proveedorIdSugerido);
@@ -469,7 +495,7 @@ export function FacturaRecibidaFormDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-        <DialogContent className="flex max-h-[92vh] w-full flex-col gap-0 p-0 sm:max-w-6xl lg:max-w-350" showCloseButton={!enviando}>
+        <DialogContent className="flex max-h-[92vh] w-full flex-col gap-0 p-0 sm:max-w-6xl lg:max-w-450" showCloseButton={!enviando}>
           <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5 pr-12">
             <DialogTitle className="flex items-center gap-2">
               <Book1 className="size-5" /> {esEdicion ? `Factura ${facturaExistente!.numeroRecepcion}` : "Nueva factura recibida"}
@@ -493,6 +519,64 @@ export function FacturaRecibidaFormDialog({
                 </Button>
               </div>
             )}
+
+            <Seccion titulo="Archivo" icono={DocumentUpload}>
+              <div className="flex flex-wrap items-center gap-2">
+                <input ref={inputArchivo} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => manejarArchivoSeleccionado(e.target.files?.[0])} />
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={subiendoArchivo} onClick={() => inputArchivo.current?.click()}>
+                  <DocumentUpload className="size-4" /> {subiendoArchivo ? "Subiendo…" : esEdicion ? "Subir archivo" : archivoPendiente ? "Cambiar archivo" : "Adjuntar archivo"}
+                </Button>
+
+                <input ref={inputOcr} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => leerConIA(e.target.files?.[0])} />
+                <Button type="button" variant="outline" size="sm" className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40" disabled={leyendoOcr} onClick={() => inputOcr.current?.click()}>
+                  {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
+                  {leyendoOcr ? `Leyendo… (${segundosLecturaOcr}s)` : "Leer con IA (beta)"}
+                </Button>
+                {leyendoOcr && (
+                  <span className="text-xs text-muted-foreground">La IA local puede tardar 20-30s — no cierres el diálogo.</span>
+                )}
+
+                {esEdicion && driveFileId && (
+                  <a href={`/api/formulario-cliente/archivo/${driveFileId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    <Paperclip2 className="size-3.5" /> Ver archivo adjunto
+                  </a>
+                )}
+                {!esEdicion && archivoPendiente && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Paperclip2 className="size-3.5" /> {archivoPendiente.name}
+                    <button type="button" className="text-destructive hover:underline" onClick={() => setArchivoPendiente(null)}>Quitar</button>
+                  </span>
+                )}
+                {!esEdicion && !archivoPendiente && (
+                  <span className="text-xs text-muted-foreground">Se subirá al registrar la factura</span>
+                )}
+              </div>
+
+              {resumenOcr && (
+                <div className="mt-3 rounded-md border border-violet-200 bg-violet-50 p-3 dark:border-violet-900 dark:bg-violet-950/30">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-violet-800 dark:text-violet-300">
+                    <MagicStar className="size-3.5" /> Resumen de lo que leyó la IA
+                  </p>
+                  <div className="grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                    <CampoResumen
+                      etiqueta="Proveedor"
+                      valor={resumenOcr.extraido.proveedorNombre}
+                      advertencia={resumenOcr.extraido.proveedorNombre && !resumenOcr.proveedorEncontrado ? "no coincide con ninguno dado de alta" : undefined}
+                    />
+                    <CampoResumen etiqueta="NIF/CIF proveedor" valor={resumenOcr.extraido.proveedorDniCif} />
+                    <CampoResumen etiqueta="Nº de factura" valor={resumenOcr.extraido.numeroFacturaProveedor} />
+                    <CampoResumen etiqueta="Serie" valor={resumenOcr.extraido.serieProveedor} />
+                    <CampoResumen etiqueta="Fecha de expedición" valor={resumenOcr.extraido.fechaExpedicion} />
+                    <CampoResumen etiqueta="Base imponible" valor={resumenOcr.extraido.baseImponible !== null ? euros(resumenOcr.extraido.baseImponible) : null} />
+                    <CampoResumen etiqueta="% IVA" valor={resumenOcr.extraido.tipoIva !== null ? `${resumenOcr.extraido.tipoIva}%` : null} />
+                    <CampoResumen etiqueta="Cuota de IVA" valor={resumenOcr.extraido.cuotaIvaSoportado !== null ? euros(resumenOcr.extraido.cuotaIvaSoportado) : null} />
+                    <CampoResumen etiqueta="Importe total" valor={resumenOcr.extraido.importeTotal !== null ? euros(resumenOcr.extraido.importeTotal) : null} />
+                    <CampoResumen etiqueta="Descripción" valor={resumenOcr.extraido.descripcion} />
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Revisa y corrige estos datos en el formulario antes de registrar — la lectura automática puede equivocarse.</p>
+                </div>
+              )}
+            </Seccion>
 
             <Seccion titulo="Proveedor y factura" icono={Truck}>
               <div className="space-y-1.5">
@@ -743,43 +827,10 @@ export function FacturaRecibidaFormDialog({
                 </div>
               </div>
             </Seccion>
-
-            <Seccion titulo="Archivo" icono={DocumentUpload}>
-              <div className="flex flex-wrap items-center gap-2">
-                <input ref={inputArchivo} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => manejarArchivoSeleccionado(e.target.files?.[0])} />
-                <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={subiendoArchivo} onClick={() => inputArchivo.current?.click()}>
-                  <DocumentUpload className="size-4" /> {subiendoArchivo ? "Subiendo…" : esEdicion ? "Subir archivo" : archivoPendiente ? "Cambiar archivo" : "Adjuntar archivo"}
-                </Button>
-
-                <input ref={inputOcr} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => leerConIA(e.target.files?.[0])} />
-                <Button type="button" variant="outline" size="sm" className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40" disabled={leyendoOcr} onClick={() => inputOcr.current?.click()}>
-                  {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
-                  {leyendoOcr ? `Leyendo… (${segundosLecturaOcr}s)` : "Leer con IA (beta)"}
-                </Button>
-                {leyendoOcr && (
-                  <span className="text-xs text-muted-foreground">La IA local puede tardar 20-30s — no cierres el diálogo.</span>
-                )}
-
-                {esEdicion && driveFileId && (
-                  <a href={`/api/formulario-cliente/archivo/${driveFileId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                    <Paperclip2 className="size-3.5" /> Ver archivo adjunto
-                  </a>
-                )}
-                {!esEdicion && archivoPendiente && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Paperclip2 className="size-3.5" /> {archivoPendiente.name}
-                    <button type="button" className="text-destructive hover:underline" onClick={() => setArchivoPendiente(null)}>Quitar</button>
-                  </span>
-                )}
-                {!esEdicion && !archivoPendiente && (
-                  <span className="text-xs text-muted-foreground">Se subirá al registrar la factura</span>
-                )}
-              </div>
-            </Seccion>
           </div>
           </ScrollArea>
 
-          <div className="hidden min-h-0 w-95 shrink-0 flex-col border-l bg-muted/10 lg:flex">
+          <div className="hidden min-h-0 w-140 shrink-0 flex-col border-l bg-muted/10 lg:flex">
             <div className="border-b px-3 py-2 text-xs font-semibold text-muted-foreground">Vista previa del archivo</div>
             {previewUrl ? (
               <>
