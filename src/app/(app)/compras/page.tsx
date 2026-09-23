@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle,
   ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3,
@@ -46,6 +47,7 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
 }
 
 export default function ComprasPage() {
+  const router = useRouter();
   const [compras, setCompras] = useState<CompraFila[]>([]);
   const [total, setTotal] = useState(0);
   const [kpis, setKpis] = useState<KpisCompras>(KPIS_COMPRAS_VACIOS);
@@ -274,13 +276,19 @@ export default function ComprasPage() {
               compras.map((c) => {
                 const sig = siguienteEstado(c.estado);
                 return (
-                  <TableRow key={c.pedidoId}>
+                  <TableRow
+                    key={c.pedidoId}
+                    className={c.resguardo ? "cursor-pointer hover:bg-muted/40" : undefined}
+                    onClick={c.resguardo ? () => router.push(`/reparaciones?resguardo=${encodeURIComponent(c.resguardo!)}`) : undefined}
+                    title={c.resguardo ? `Abrir resguardo ${c.resguardo}` : undefined}
+                  >
                     <TableCell className="whitespace-nowrap font-mono text-xs">{c.pedidoId}</TableCell>
                     <TableCell className="max-w-48">
                       {c.resguardo ? (
                         <Link
                           href={`/reparaciones?resguardo=${encodeURIComponent(c.resguardo)}`}
                           className="block hover:underline"
+                          onClick={(e) => e.stopPropagation()}
                           title={`${c.clienteNombre || c.resguardo} — ${c.resguardo}${c.equipoModelo ? ` · ${c.equipoModelo}` : ""}`}
                         >
                           <span className="block truncate text-sm font-medium">{c.clienteNombre || c.resguardo}</span>
@@ -317,7 +325,7 @@ export default function ComprasPage() {
                         {c.estado || "—"}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {c.enlace ? (
                         <Button size="sm" variant="ghost" className="h-7 gap-1" nativeButton={false} render={<a href={c.enlace} target="_blank" rel="noopener noreferrer" />}>
                           <Link2 className="size-3.5" /> Abrir
@@ -326,7 +334,7 @@ export default function ComprasPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       {sig ? (
                         <Button size="sm" variant="outline" className="h-7 gap-1" disabled={enviando === c.pedidoId} onClick={() => cambiarEstado(c.pedidoId, sig.estado)}>
                           <sig.icono className="size-3.5" /> {sig.etiqueta}
