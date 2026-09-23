@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash } from "@/lib/icons";
+import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar } from "@/lib/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import type { CompraFila } from "@/lib/compras";
 import type { PedidoStockBusqueda } from "@/app/api/stock-piezas/pedidos/buscar/route";
+import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route";
 import {
   FacturaRecibida, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
   ETIQUETA_TIPO_DOCUMENTO, ETIQUETA_CATEGORIA, euros,
@@ -219,6 +220,11 @@ export function FacturaRecibidaFormDialog({
   // se sube justo después de que guardar() cree la factura (ver más abajo).
   const [archivoPendiente, setArchivoPendiente] = useState<File | null>(null);
   const inputArchivo = useRef<HTMLInputElement>(null);
+  // Independiente del "Adjuntar archivo" (Drive) — leer con IA es solo una
+  // lectura para precargar el formulario, no implica guardar ni subir nada.
+  const [leyendoOcr, setLeyendoOcr] = useState(false);
+  const [origenAutomatico, setOrigenAutomatico] = useState(false);
+  const inputOcr = useRef<HTMLInputElement>(null);
   const esEdicion = facturaExistente !== null;
 
   useEffect(() => {
@@ -227,6 +233,7 @@ export function FacturaRecibidaFormDialog({
       setDriveFileId(facturaExistente?.driveFileId ?? null);
       setArchivoPendiente(null);
       setFacturaRectificadaLabel(null);
+      setOrigenAutomatico(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, facturaExistente]);
@@ -273,6 +280,7 @@ export function FacturaRecibidaFormDialog({
         // nunca llegaría a desvincular de verdad el pedido.
         pedidoId: datos.pedidoId.trim(), stockPedidoId: datos.stockPedidoId ? Number(datos.stockPedidoId) : null,
         centroCoste: datos.centroCoste.trim(), estadoRevision: datos.estadoRevision, observacionesInternas: datos.observacionesInternas.trim(),
+        origen: !esEdicion && origenAutomatico ? "automatico" : undefined,
       };
       const url = esEdicion ? `/api/facturas-recibidas/${facturaExistente!.id}` : "/api/facturas-recibidas";
       const res = await fetch(url, {
@@ -338,6 +346,55 @@ export function FacturaRecibidaFormDialog({
     } finally {
       setSubiendoArchivo(false);
       if (inputArchivo.current) inputArchivo.current.value = "";
+    }
+  }
+
+  async function leerConIA(archivo: File | undefined) {
+    if (!archivo) return;
+    if (archivo.size > 8 * 1024 * 1024) {
+      toast.error("El archivo no puede superar 8 MB");
+      if (inputOcr.current) inputOcr.current.value = "";
+      return;
+    }
+    setLeyendoOcr(true);
+    try {
+      const base64 = await leerBase64(archivo);
+      const res = await fetch("/api/facturas-recibidas/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: archivo.type || "application/octet-stream" }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      const e = data.extraido as FacturaOcrExtraido | null;
+      if (!e) {
+        toast.warning("No se pudo leer ningún dato de la factura — rellénala a mano");
+        return;
+      }
+      // Solo se pisan campos que la IA de verdad leyó — un valor no
+      // encontrado (null) no debe borrar algo que el usuario ya escribió.
+      if (data.proveedorIdSugerido) set("proveedorId", data.proveedorIdSugerido);
+      if (e.numeroFacturaProveedor) set("numeroFacturaProveedor", e.numeroFacturaProveedor);
+      if (e.fechaExpedicion) set("fechaExpedicion", e.fechaExpedicion);
+      if (e.baseImponible !== null) set("baseImponible", e.baseImponible);
+      if (e.tipoIva !== null) set("tipoIva", e.tipoIva);
+      if (e.cuotaIvaSoportado !== null) set("cuotaIvaSoportado", e.cuotaIvaSoportado);
+      if (e.cuotaIvaSoportado !== null) set("cuotaIvaDeducible", e.cuotaIvaSoportado);
+      if (e.importeTotal !== null) set("importeTotal", e.importeTotal);
+      if (e.moneda) set("moneda", e.moneda);
+      if (e.descripcion) set("descripcion", e.descripcion);
+      setOrigenAutomatico(true);
+
+      if (e.proveedorNombre && !data.proveedorIdSugerido) {
+        toast.warning(`Datos rellenados — el proveedor leído ("${e.proveedorNombre}") no coincide con ninguno dado de alta. Búscalo o créalo.`);
+      } else {
+        toast.success("Datos rellenados con IA — revísalos antes de registrar");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo leer la factura");
+    } finally {
+      setLeyendoOcr(false);
+      if (inputOcr.current) inputOcr.current.value = "";
     }
   }
 
@@ -643,11 +700,17 @@ export function FacturaRecibidaFormDialog({
             </Seccion>
 
             <Seccion titulo="Archivo" icono={DocumentUpload}>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input ref={inputArchivo} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => manejarArchivoSeleccionado(e.target.files?.[0])} />
                 <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={subiendoArchivo} onClick={() => inputArchivo.current?.click()}>
                   <DocumentUpload className="size-4" /> {subiendoArchivo ? "Subiendo…" : esEdicion ? "Subir archivo" : archivoPendiente ? "Cambiar archivo" : "Adjuntar archivo"}
                 </Button>
+
+                <input ref={inputOcr} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => leerConIA(e.target.files?.[0])} />
+                <Button type="button" variant="outline" size="sm" className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40" disabled={leyendoOcr} onClick={() => inputOcr.current?.click()}>
+                  <MagicStar className="size-4" /> {leyendoOcr ? "Leyendo…" : "Leer con IA (beta)"}
+                </Button>
+
                 {esEdicion && driveFileId && (
                   <a href={`/api/formulario-cliente/archivo/${driveFileId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                     <Paperclip2 className="size-3.5" /> Ver archivo adjunto

@@ -87,6 +87,7 @@ export const InfoCircle = withDefaults(Iconsax.InfoCircle);
 export const Location = withDefaults(Iconsax.Location);
 export const Lock = withDefaults(Iconsax.Lock);
 export const Logout = withDefaults(Iconsax.Logout);
+export const MagicStar = withDefaults(Iconsax.MagicStar);
 export const Money = withDefaults(Iconsax.Money);
 export const MoneyRecive = withDefaults(Iconsax.MoneyRecive);
 export const MoneySend = withDefaults(Iconsax.MoneySend);
