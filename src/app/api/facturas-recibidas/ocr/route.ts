@@ -13,6 +13,10 @@ export interface FacturaOcrExtraido {
   importeTotal: number | null;
   moneda: string;
   descripcion: string | null;
+  /** Nombres de los campos de arriba que la IA (o una verificación de
+      cuadre base+IVA=total) marcó como posiblemente mal leídos — el
+      formulario debe mostrarlos con aviso, no como si fueran seguros. */
+  advertencias: string[];
 }
 
 /** Proxy de POST /v1/facturas-recibidas/ocr — lectura automática de una

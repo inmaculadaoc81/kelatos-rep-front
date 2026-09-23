@@ -172,13 +172,18 @@ function CampoBuscable({
   );
 }
 
-/** Fila del resumen de "Leer con IA" — check verde si se encontró el
-    dato, aspa gris si no, para ver de un vistazo qué faltó rellenar a mano. */
-function CampoResumen({ etiqueta, valor, advertencia }: { etiqueta: string; valor: string | null; advertencia?: string }) {
+/** Fila del resumen de "Leer con IA" — check verde si se encontró el dato,
+    aspa gris si no, para ver de un vistazo qué faltó rellenar a mano.
+    `incierto` marca un campo que la propia IA (o la verificación de cuadre
+    base+IVA=total del backend) no da por seguro — se pinta en ámbar con un
+    aviso explícito en vez del check verde, para que no pase desapercibido. */
+function CampoResumen({ etiqueta, valor, advertencia, incierto }: { etiqueta: string; valor: string | null; advertencia?: string; incierto?: boolean }) {
   const encontrado = !!valor;
   return (
     <div className="flex items-start gap-1.5">
-      {encontrado ? (
+      {incierto ? (
+        <Warning2 className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+      ) : encontrado ? (
         <TickCircle className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
       ) : (
         <CloseCircle className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/40" />
@@ -187,6 +192,7 @@ function CampoResumen({ etiqueta, valor, advertencia }: { etiqueta: string; valo
         <span className="text-muted-foreground">{etiqueta}:</span>{" "}
         {encontrado ? <span className="font-medium text-foreground">{valor}</span> : <span className="text-muted-foreground/70">no encontrado</span>}
         {advertencia && <span className="block text-amber-600 dark:text-amber-400">{advertencia}</span>}
+        {incierto && !advertencia && <span className="block text-amber-600 dark:text-amber-400">la IA no está segura — revísalo con el original</span>}
       </span>
     </div>
   );
@@ -249,6 +255,10 @@ export function FacturaRecibidaFormDialog({
   // Recap de lo que la IA encontró en la última lectura — para verlo de un
   // vistazo sin tener que rastrear cada campo del formulario uno a uno.
   const [resumenOcr, setResumenOcr] = useState<{ extraido: FacturaOcrExtraido; proveedorEncontrado: boolean } | null>(null);
+  // Si la IA marcó campos como inciertos, exige un vistazo explícito del
+  // usuario antes de dejar registrar — así una lectura mal hecha no se
+  // convierte en un registro real sin que nadie la haya comprobado.
+  const [advertenciasVistas, setAdvertenciasVistas] = useState(false);
   const inputOcr = useRef<HTMLInputElement>(null);
   const esEdicion = facturaExistente !== null;
 
@@ -287,6 +297,7 @@ export function FacturaRecibidaFormDialog({
       setFacturaRectificadaLabel(null);
       setOrigenAutomatico(false);
       setResumenOcr(null);
+      setAdvertenciasVistas(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, facturaExistente]);
@@ -311,6 +322,9 @@ export function FacturaRecibidaFormDialog({
     if (!datos.fechaExpedicion) return toast.error("La fecha de expedición es obligatoria");
     if (!datos.baseImponible) return toast.error("La base imponible es obligatoria");
     if (!datos.importeTotal) return toast.error("El importe total es obligatorio");
+    if (resumenOcr && resumenOcr.extraido.advertencias.length > 0 && !advertenciasVistas) {
+      return toast.error("La IA marcó datos que no está segura de haber leído bien — revísalos y marca la casilla del aviso antes de registrar");
+    }
 
     setEnviando(true);
     try {
@@ -442,6 +456,7 @@ export function FacturaRecibidaFormDialog({
         return;
       }
       setResumenOcr({ extraido: e, proveedorEncontrado: !!data.proveedorIdSugerido });
+      setAdvertenciasVistas(false);
       // Solo se pisan campos que la IA de verdad leyó — un valor no
       // encontrado (null) no debe borrar algo que el usuario ya escribió.
       if (data.proveedorIdSugerido) set("proveedorId", data.proveedorIdSugerido);
@@ -456,7 +471,9 @@ export function FacturaRecibidaFormDialog({
       if (e.descripcion) set("descripcion", e.descripcion);
       setOrigenAutomatico(true);
 
-      if (e.proveedorNombre && !data.proveedorIdSugerido) {
+      if (e.advertencias.length > 0) {
+        toast.warning(`La IA no está segura de ${e.advertencias.length} dato(s) — revísalos en el resumen antes de registrar`);
+      } else if (e.proveedorNombre && !data.proveedorIdSugerido) {
         toast.warning(`Datos rellenados — el proveedor leído ("${e.proveedorNombre}") no coincide con ninguno dado de alta. Búscalo o créalo.`);
       } else {
         toast.success("Datos rellenados con IA — revísalos antes de registrar");
@@ -553,25 +570,48 @@ export function FacturaRecibidaFormDialog({
               </div>
 
               {resumenOcr && (
-                <div className="mt-3 rounded-md border border-violet-200 bg-violet-50 p-3 dark:border-violet-900 dark:bg-violet-950/30">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-violet-800 dark:text-violet-300">
+                <div className={cn(
+                  "mt-3 rounded-md border p-3",
+                  resumenOcr.extraido.advertencias.length > 0
+                    ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                    : "border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/30"
+                )}>
+                  <p className={cn(
+                    "mb-2 flex items-center gap-1.5 text-xs font-semibold",
+                    resumenOcr.extraido.advertencias.length > 0 ? "text-amber-800 dark:text-amber-300" : "text-violet-800 dark:text-violet-300"
+                  )}>
                     <MagicStar className="size-3.5" /> Resumen de lo que leyó la IA
                   </p>
+
+                  {resumenOcr.extraido.advertencias.length > 0 && (
+                    <div className="mb-2.5 rounded border border-amber-300 bg-amber-100/60 p-2 dark:border-amber-800 dark:bg-amber-900/30">
+                      <p className="flex items-start gap-1.5 text-xs text-amber-900 dark:text-amber-200">
+                        <Warning2 className="mt-0.5 size-3.5 shrink-0" />
+                        La IA no está segura de {resumenOcr.extraido.advertencias.length === 1 ? "1 dato" : `${resumenOcr.extraido.advertencias.length} datos`} (marcados en ámbar abajo) — compáralos con el archivo original antes de registrar la factura.
+                      </p>
+                      <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs font-medium text-amber-900 dark:text-amber-200">
+                        <Checkbox checked={advertenciasVistas} onCheckedChange={(v) => setAdvertenciasVistas(v === true)} />
+                        He revisado esos datos contra el archivo original
+                      </label>
+                    </div>
+                  )}
+
                   <div className="grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
                     <CampoResumen
                       etiqueta="Proveedor"
                       valor={resumenOcr.extraido.proveedorNombre}
                       advertencia={resumenOcr.extraido.proveedorNombre && !resumenOcr.proveedorEncontrado ? "no coincide con ninguno dado de alta" : undefined}
+                      incierto={resumenOcr.extraido.advertencias.includes("proveedorNombre")}
                     />
-                    <CampoResumen etiqueta="NIF/CIF proveedor" valor={resumenOcr.extraido.proveedorDniCif} />
-                    <CampoResumen etiqueta="Nº de factura" valor={resumenOcr.extraido.numeroFacturaProveedor} />
-                    <CampoResumen etiqueta="Serie" valor={resumenOcr.extraido.serieProveedor} />
-                    <CampoResumen etiqueta="Fecha de expedición" valor={resumenOcr.extraido.fechaExpedicion} />
-                    <CampoResumen etiqueta="Base imponible" valor={resumenOcr.extraido.baseImponible !== null ? euros(resumenOcr.extraido.baseImponible) : null} />
-                    <CampoResumen etiqueta="% IVA" valor={resumenOcr.extraido.tipoIva !== null ? `${resumenOcr.extraido.tipoIva}%` : null} />
-                    <CampoResumen etiqueta="Cuota de IVA" valor={resumenOcr.extraido.cuotaIvaSoportado !== null ? euros(resumenOcr.extraido.cuotaIvaSoportado) : null} />
-                    <CampoResumen etiqueta="Importe total" valor={resumenOcr.extraido.importeTotal !== null ? euros(resumenOcr.extraido.importeTotal) : null} />
-                    <CampoResumen etiqueta="Descripción" valor={resumenOcr.extraido.descripcion} />
+                    <CampoResumen etiqueta="NIF/CIF proveedor" valor={resumenOcr.extraido.proveedorDniCif} incierto={resumenOcr.extraido.advertencias.includes("proveedorDniCif")} />
+                    <CampoResumen etiqueta="Nº de factura" valor={resumenOcr.extraido.numeroFacturaProveedor} incierto={resumenOcr.extraido.advertencias.includes("numeroFacturaProveedor")} />
+                    <CampoResumen etiqueta="Serie" valor={resumenOcr.extraido.serieProveedor} incierto={resumenOcr.extraido.advertencias.includes("serieProveedor")} />
+                    <CampoResumen etiqueta="Fecha de expedición" valor={resumenOcr.extraido.fechaExpedicion} incierto={resumenOcr.extraido.advertencias.includes("fechaExpedicion")} />
+                    <CampoResumen etiqueta="Base imponible" valor={resumenOcr.extraido.baseImponible !== null ? euros(resumenOcr.extraido.baseImponible) : null} incierto={resumenOcr.extraido.advertencias.includes("baseImponible")} />
+                    <CampoResumen etiqueta="% IVA" valor={resumenOcr.extraido.tipoIva !== null ? `${resumenOcr.extraido.tipoIva}%` : null} incierto={resumenOcr.extraido.advertencias.includes("tipoIva")} />
+                    <CampoResumen etiqueta="Cuota de IVA" valor={resumenOcr.extraido.cuotaIvaSoportado !== null ? euros(resumenOcr.extraido.cuotaIvaSoportado) : null} incierto={resumenOcr.extraido.advertencias.includes("cuotaIvaSoportado")} />
+                    <CampoResumen etiqueta="Importe total" valor={resumenOcr.extraido.importeTotal !== null ? euros(resumenOcr.extraido.importeTotal) : null} incierto={resumenOcr.extraido.advertencias.includes("importeTotal")} />
+                    <CampoResumen etiqueta="Descripción" valor={resumenOcr.extraido.descripcion} incierto={resumenOcr.extraido.advertencias.includes("descripcion")} />
                   </div>
                   <p className="mt-2 text-[11px] text-muted-foreground">Revisa y corrige estos datos en el formulario antes de registrar — la lectura automática puede equivocarse.</p>
                 </div>
