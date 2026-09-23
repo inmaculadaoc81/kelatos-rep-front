@@ -9,23 +9,36 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase } from "@/components/sidebar-grupo-colapsable";
 import { Sms, Setting2, Building, CloseCircle, Send2 } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
-const ITEMS: { label: string; href: string | null; icon: typeof Sms }[] = [
-  { label: "Centro de mails", href: "/mails/bandeja", icon: Sms },
-  { label: "Leads", href: "/mails/leads", icon: Building },
-  { label: "Direcciones inválidas", href: "/mails/direcciones", icon: CloseCircle },
-  { label: "Tipos de correo", href: "/mails/tipos", icon: Send2 },
-  { label: "Buzones", href: "/mails/buzones", icon: Setting2 },
+const GRUPOS: GrupoNavegacionBase[] = [
+  {
+    titulo: "Correo",
+    icon: Sms,
+    items: [
+      { label: "Centro de mails", href: "/mails/bandeja", icon: Sms },
+      { label: "Buzones", href: "/mails/buzones", icon: Setting2 },
+    ],
+  },
+  {
+    titulo: "Leads",
+    icon: Building,
+    items: [
+      { label: "Leads", href: "/mails/leads", icon: Building },
+      { label: "Direcciones inválidas", href: "/mails/direcciones", icon: CloseCircle },
+    ],
+  },
+  {
+    titulo: "Envíos",
+    icon: Send2,
+    items: [{ label: "Tipos de correo", href: "/mails/tipos", icon: Send2 }],
+  },
 ];
 
 /** Sidebar de Gestión MAILS — mismo esquema que el de Agentes (logo +
@@ -65,36 +78,15 @@ export function MailsSidebar({ session }: { session: Session | null }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center gap-2 text-sidebar-foreground">
-            <Sms className="size-4 text-sidebar-primary" />
-            <span>Gestión MAILS</span>
-          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuSub className="mx-0 gap-1.5 border-none px-0">
-                {ITEMS.map((item) => {
-                  const Icono = item.icon;
-                  if (!item.href) {
-                    return (
-                      <SidebarMenuSubItem key={item.label}>
-                        <SidebarMenuSubButton className="pointer-events-none opacity-60" aria-disabled>
-                          <Icono />
-                          <span className="truncate">{item.label}</span>
-                          <span className="ml-auto text-[10px] text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">pronto</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    );
-                  }
-                  return (
-                    <SidebarMenuSubItem key={item.label}>
-                      <SidebarMenuSubButton isActive={pathname?.startsWith(item.href) ?? false} render={<Link href={item.href} />}>
-                        <Icono />
-                        <span className="truncate">{item.label}</span>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  );
-                })}
-              </SidebarMenuSub>
+            <SidebarMenu className="gap-1.5">
+              {GRUPOS.map((grupo) =>
+                grupo.items.length === 1 ? (
+                  <ItemDirecto key={grupo.titulo} item={grupo.items[0]} pathname={pathname} />
+                ) : (
+                  <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} items={grupo.items} pathname={pathname} />
+                )
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
