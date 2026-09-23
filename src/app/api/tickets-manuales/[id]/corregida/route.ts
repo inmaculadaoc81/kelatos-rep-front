@@ -31,11 +31,13 @@ export async function POST(
   const estado = datos?.estado === "Pendiente" ? "Pendiente" : "Cobrada";
   const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
   const banco = typeof datos?.banco === "string" ? datos.banco : "";
+  const referencia = typeof datos?.referencia === "string" ? datos.referencia : "";
+  const formaPagoDesglose = Array.isArray(datos?.formaPagoDesglose) ? datos.formaPagoDesglose : undefined;
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketCorregida>(
       `/v1/tickets-manuales/${encodeURIComponent(id)}/corregida`,
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, formaPago, banco }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, formaPago, banco, referencia, formaPagoDesglose }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, ticket: resultado.ticket });
   } catch (error) {

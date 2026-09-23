@@ -22,15 +22,17 @@ import type { Cliente } from "@/lib/clientes";
 import { DatosNuevoPedido, ItemPedidoForm, FormaPagoPedido } from "@/lib/ventas";
 import { esEmailValido } from "@/lib/validacion";
 import { guardarSuReferencia } from "@/lib/su-referencia";
+import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, type ValorFormaPago } from "../reparaciones/selector-forma-pago";
 
-const FORMAS_PAGO: { value: FormaPagoPedido; label: string }[] = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "tarjeta", label: "Tarjeta bancaria" },
-  { value: "tarjeta_virtual", label: "Tarjeta virtual" },
-  { value: "transferencia", label: "Transferencia bancaria" },
-  { value: "bizum", label: "Bizum" },
-];
-const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+function valorFormaPagoDeDatos(datos: DatosNuevoPedido): ValorFormaPago {
+  const d = datos.formaPagoDesglose;
+  return {
+    metodo: datos.formaPago,
+    banco: datos.banco,
+    referencia: datos.referencia,
+    desglose: [d?.[0] || { forma: "", monto: 0 }, d?.[1] || { forma: "", monto: 0 }],
+  };
+}
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -47,6 +49,7 @@ function vacio(): DatosNuevoPedido {
     clienteDireccion: "",
     formaPago: "",
     banco: "",
+    referencia: "",
     estadoFactura: "Cobrada",
     descuentoPct: 0,
     observaciones: "",
@@ -162,8 +165,8 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       if (!datos.esGarantia && it.precioUnitario <= 0) return toast.error(`El precio de la pieza ${i + 1} debe ser mayor que 0`);
     }
     if (!datos.esGarantia) {
-      if (!datos.formaPago) return toast.error("Selecciona la forma de pago");
-      if (datos.formaPago === "tarjeta" && !datos.banco) return toast.error("Selecciona el banco");
+      const errorPago = validarFormaPago(valorFormaPagoDeDatos(datos), total);
+      if (errorPago) return toast.error(errorPago);
     }
 
     setEnviando(true);
@@ -245,23 +248,18 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                   <Label htmlFor="npSuReferencia">Su Referencia</Label>
                   <Input id="npSuReferencia" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultadoTicket} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Forma de pago *</Label>
-                  <Select value={datos.formaPago} onValueChange={(v) => { actualizar("formaPago", (v as FormaPagoPedido) || ""); if (v !== "tarjeta") actualizar("banco", ""); }}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                    <SelectContent>
-                      {FORMAS_PAGO.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {datos.formaPago === "tarjeta" && (
-                    <Select value={datos.banco} onValueChange={(v) => actualizar("banco", v || "")}>
-                      <SelectTrigger className="mt-2 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                      <SelectContent>
-                        {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+                <SelectorFormaPago
+                  etiqueta="Forma de pago *"
+                  value={valorFormaPagoDeDatos(datos)}
+                  onChange={(valor) => {
+                    const pago = formaPagoParaPayload(valor);
+                    setDatos((prev) => ({
+                      ...prev, formaPago: pago.formaPago as FormaPagoPedido | "", banco: pago.banco,
+                      referencia: pago.referencia, formaPagoDesglose: pago.formaPagoDesglose,
+                    }));
+                  }}
+                  total={total}
+                />
                 <div className="space-y-1.5">
                   <Label>Estado</Label>
                   <Select value={datos.estadoFactura} onValueChange={(v) => actualizar("estadoFactura", v || "Cobrada")} disabled={!!resultadoTicket}>

@@ -51,12 +51,14 @@ export async function POST(
   const modo = datos?.modo === "revision" ? "revision" : datos?.modo === "anticipo" ? "anticipo" : datos?.modo === "mensajeria" ? "mensajeria" : undefined;
   const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
   const banco = typeof datos?.banco === "string" ? datos.banco : "";
+  const referencia = typeof datos?.referencia === "string" ? datos.referencia : "";
+  const formaPagoDesglose = Array.isArray(datos?.formaPagoDesglose) ? datos.formaPagoDesglose : undefined;
   const emailTicket = typeof datos?.emailTicket === "string" ? datos.emailTicket : "";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketVenta>(
       `/v1/reparaciones/${encodeURIComponent(resguardo)}/ticket-venta`,
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, modo, formaPago, banco, emailTicket }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, modo, formaPago, banco, referencia, formaPagoDesglose, emailTicket }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, reparacion: resultado.reparacion });
   } catch (error) {

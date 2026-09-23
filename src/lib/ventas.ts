@@ -328,7 +328,7 @@ export function numerosPedidoDeVenta(venta: Pick<Venta, "items">): string {
 // se reproduce ese comportamiento real, no el que el código sugiere que
 // "debería" hacer.
 
-export type FormaPagoPedido = "efectivo" | "tarjeta" | "tarjeta_virtual" | "transferencia" | "bizum";
+export type FormaPagoPedido = "efectivo" | "tarjeta" | "tarjeta_virtual" | "transferencia" | "bizum" | "multiforma";
 
 export interface ItemPedidoForm {
   descripcion: string;
@@ -350,6 +350,10 @@ export interface DatosNuevoPedido {
   clienteDireccion: string;
   formaPago: FormaPagoPedido | "";
   banco: string;
+  /** Solo si formaPago === "transferencia". */
+  referencia: string;
+  /** Solo si formaPago === "multiforma" (migración 116). */
+  formaPagoDesglose?: { forma: string; monto: number; banco?: string; referencia?: string }[];
   estadoFactura: string;
   descuentoPct: number;
   observaciones: string;

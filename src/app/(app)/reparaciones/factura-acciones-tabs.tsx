@@ -24,6 +24,7 @@ import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import type { StockPieza } from "@/lib/stock-piezas";
 import { useConfirm } from "@/components/confirm-provider";
 import { guardarSuReferencia } from "@/lib/su-referencia";
+import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, type ValorFormaPago } from "./selector-forma-pago";
 
 export type TipoFacturaBase =
   | "normal" | "revision" | "mensajeria" | "anticipo"
@@ -49,7 +50,7 @@ export const METODOS_PAGO = [
   { value: "transferencia", label: "Transferencia bancaria" },
   { value: "bizum", label: "Bizum" },
 ];
-const METODOS_PAGO_RECT = [...METODOS_PAGO, { value: "redsys", label: "Redsys" }];
+export const METODOS_PAGO_RECT = [...METODOS_PAGO, { value: "redsys", label: "Redsys" }];
 export const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 
 // Mismos colores/etiquetas que tipoBadgeMap en _mfaRenderResumen (Index.html)
@@ -661,13 +662,13 @@ export function TabDevolucionRectificativo({
 }) {
   const [motivo, setMotivo] = useState("");
   const [emailDestino, setEmailDestino] = useState(clienteEmailDefault);
-  const [metodo, setMetodo] = useState(formaPagoOriginal);
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>({ metodo: formaPagoOriginal, banco: "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [mostrarCorregidaEmergencia, setMostrarCorregidaEmergencia] = useState(false);
   const confirmar = useConfirm();
+  const totalOriginal = lineasOriginales.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0) * 1.21;
 
   // ── EMERGENCIA: generar corregida desde el tab Devolución ─────────────
   // Reproduce _mfaEmergenciaCorregida(): tras generar la rectificativa
@@ -731,8 +732,8 @@ export function TabDevolucionRectificativo({
 
   async function generar() {
     if (!motivo.trim()) return toast.error("El motivo es obligatorio");
-    if (!metodo) return toast.error("Selecciona la forma de pago de la devolución");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco");
+    const errorPago = validarFormaPago(pago, totalOriginal);
+    if (errorPago) return toast.error(errorPago);
 
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
@@ -751,8 +752,7 @@ export function TabDevolucionRectificativo({
           tipo: tipoDestino,
           datos: {
             cliente: clienteOriginal,
-            formaPago: metodo,
-            banco: metodo === "tarjeta" ? banco : "",
+            ...formaPagoParaPayload(pago),
             motivo: motivo.trim(),
             numeroOriginal: numeroFacturaOriginal,
             lineas: lineasNegadas,
@@ -809,23 +809,10 @@ export function TabDevolucionRectificativo({
         <Input id="suReferenciaDevol" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional — referencia propia del cliente" />
         <p className="text-xs text-muted-foreground">Opcional. No se incluye en el PDF, solo en el listado de Facturas de Clientes.</p>
       </div>
-      <div className="space-y-1.5">
-        <Label>{modoDevolucion ? "Forma de pago de la devolución *" : "Forma de pago *"}</Label>
-        <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
-          <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-          <SelectContent>
-            {METODOS_PAGO_RECT.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {metodo === "tarjeta" && (
-          <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-            <SelectTrigger className="mt-2 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-            <SelectContent>
-              {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+      <SelectorFormaPago
+        etiqueta={modoDevolucion ? "Forma de pago de la devolución *" : "Forma de pago *"}
+        value={pago} onChange={setPago} total={totalOriginal} metodos={METODOS_PAGO_RECT}
+      />
       <Button className="w-full gap-1.5" variant="destructive" onClick={generar} disabled={enviando}>
         <Refresh2 className="size-4" /> {enviando ? "Generando…" : "Generar Factura Rectificativa (Serie 3)"}
       </Button>
@@ -972,8 +959,7 @@ export function TabDevolucionTicket({
   onGenerada: () => void;
 }) {
   const [motivo, setMotivo] = useState("");
-  const [metodo, setMetodo] = useState(formaPagoOriginal);
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>({ metodo: formaPagoOriginal, banco: "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [abrirCorregida, setAbrirCorregida] = useState(false);
@@ -1018,14 +1004,14 @@ export function TabDevolucionTicket({
 
   async function generar() {
     if (!motivo.trim()) return toast.error("El motivo es obligatorio");
-    if (!metodo) return toast.error("Selecciona la forma de pago de la devolución");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco");
+    const errorPago = validarFormaPago(pago);
+    if (errorPago) return toast.error(errorPago);
     setEnviando(true);
     try {
       const res = await fetch(apiRectificativaUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ motivo: motivo.trim(), formaPago: metodo, banco: metodo === "tarjeta" ? banco : "" }),
+        body: JSON.stringify({ motivo: motivo.trim(), ...formaPagoParaPayload(pago) }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -1055,26 +1041,7 @@ export function TabDevolucionTicket({
         <Label htmlFor="suReferenciaTicket">Su Referencia</Label>
         <Input id="suReferenciaTicket" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional — referencia propia del cliente" />
       </div>
-      <div className="space-y-1.5">
-        <Label>Forma de pago de la devolución *</Label>
-        <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
-          <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-          <SelectContent>
-            {METODOS_PAGO_RECT.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {metodo === "tarjeta" && (
-          <>
-            <Label className="mt-1.5 block">Banco *</Label>
-            <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-              <SelectContent>
-                {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </>
-        )}
-      </div>
+      <SelectorFormaPago etiqueta="Forma de pago de la devolución *" value={pago} onChange={setPago} metodos={METODOS_PAGO_RECT} />
       <Button className="w-full gap-1.5" variant="destructive" onClick={generar} disabled={enviando}>
         <Refresh2 className="size-4" /> {enviando ? "Generando…" : "Generar Rectificativa (Serie 3)"}
       </Button>
@@ -1201,8 +1168,7 @@ function FaseCorregidaTicket({
 }) {
   const [lineas, setLineas] = useState<LineaTicketCorr[]>([lineaVaciaCorr()]);
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
-  const [metodo, setMetodo] = useState(formaPagoOriginal);
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>({ metodo: formaPagoOriginal, banco: "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -1217,8 +1183,7 @@ function FaseCorregidaTicket({
           ? lineasIniciales.map((l) => ({ descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio, descuento: l.descuento || 0 }))
           : [lineaVaciaCorr()]
       );
-      setMetodo(formaPagoOriginal);
-      setBanco("");
+      setPago({ metodo: formaPagoOriginal, banco: "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -1243,14 +1208,14 @@ function FaseCorregidaTicket({
   async function generar() {
     const validas = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0);
     if (validas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
-    if (!metodo) return toast.error("Selecciona la forma de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco");
+    const errorPago = validarFormaPago(pago, total);
+    if (errorPago) return toast.error(errorPago);
     setEnviando(true);
     try {
       const res = await fetch(apiCorregidaUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineas: validas, estado, formaPago: metodo, banco: metodo === "tarjeta" ? banco : "" }),
+        body: JSON.stringify({ lineas: validas, estado, ...formaPagoParaPayload(pago) }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -1293,26 +1258,7 @@ function FaseCorregidaTicket({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Forma de pago *</Label>
-              <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                <SelectContent>
-                  {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {metodo === "tarjeta" && (
-                <>
-                  <Label className="mt-1.5 block text-xs text-muted-foreground">Banco *</Label>
-                  <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                    <SelectContent>
-                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-            </div>
+            <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={total} />
           </div>
 
           <div className="rounded-lg border bg-card shadow-sm">
@@ -1482,8 +1428,7 @@ function FaseCorregida({
   const [clienteBloqueado, setClienteBloqueado] = useState(!!clienteOriginal.nombre);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
   const [buscarStockAbierto, setBuscarStockAbierto] = useState(false);
-  const [metodo, setMetodo] = useState(formaPagoOriginal);
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>({ metodo: formaPagoOriginal, banco: "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
   // _mfaAbrirFacturaCorregidaModal (Index.html) reutiliza el mismo select
   // #vfEstadoFactura del resto de facturas — "Cobrada" viene seleccionado
   // por defecto en el HTML original (option value="Cobrada" selected). El
@@ -1567,8 +1512,8 @@ function FaseCorregida({
     // pago en TODOS los flujos que lo generan (normal/anticipo/manual/
     // corregida) — este faltaba aquí, así que se podía generar la factura
     // corregida sin forma de pago seleccionada (bug real reportado).
-    if (!metodo) return toast.error("Selecciona una forma de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para tarjeta bancaria");
+    const errorPago = validarFormaPago(pago, totalConIva);
+    if (errorPago) return toast.error(errorPago);
 
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
@@ -1587,8 +1532,7 @@ function FaseCorregida({
           datos: {
             numeroFacturaOriginal,
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim() },
-            formaPago: metodo,
-            banco: metodo === "tarjeta" ? banco : "",
+            ...formaPagoParaPayload(pago),
             lineas: lineasConDescuento,
             tipoDocumento: "FACTURA CORREGIDA",
             rectificaDe: `Corrige: ${numeroFacturaOriginal} · Rectificativa: ${numeroFacturaRectificativa}`,
@@ -1630,23 +1574,7 @@ function FaseCorregida({
               <CampoLecturaCorr label="Tipo de factura" valor="Serie 1 — Cobros" />
               <CampoLecturaCorr label="N.º Factura" valor="Se asignará al generar" />
               <CampoLecturaCorr label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Forma de pago *</Label>
-                <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                  <SelectContent>
-                    {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {metodo === "tarjeta" && (
-                  <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-                    <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                    <SelectContent>
-                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+              <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={totalConIva} />
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Estado</Label>
                 <Select value={estado} onValueChange={(v) => setEstado((v || "Cobrada") as "Cobrada" | "Pendiente")}>

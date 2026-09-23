@@ -134,6 +134,8 @@ export async function POST(req: Request) {
             estado: datos.estadoFactura || "Cobrada",
             formaPago: datos.formaPago,
             banco: datos.formaPago === "tarjeta" ? datos.banco : "",
+            referencia: datos.formaPago === "transferencia" ? datos.referencia : "",
+            formaPagoDesglose: datos.formaPago === "multiforma" ? datos.formaPagoDesglose : undefined,
           }
         );
       } catch (errorTicket) {
@@ -242,6 +244,8 @@ export async function POST(req: Request) {
         estado_factura: datos.estadoFactura || "Cobrada",
         forma_pago_factura: datos.formaPago,
         banco_factura: datos.formaPago === "tarjeta" ? datos.banco : "",
+        referencia_factura: datos.formaPago === "transferencia" ? datos.referencia : "",
+        forma_pago_factura_desglose: datos.formaPago === "multiforma" ? datos.formaPagoDesglose : undefined,
         lineas_factura: lineas,
         cliente_factura: clienteFactura,
       });

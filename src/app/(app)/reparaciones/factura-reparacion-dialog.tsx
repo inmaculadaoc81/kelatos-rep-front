@@ -16,15 +16,8 @@ import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import type { StockPieza } from "@/lib/stock-piezas";
 import { guardarSuReferencia } from "@/lib/su-referencia";
-
-const METODOS_PAGO = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "tarjeta", label: "Tarjeta bancaria" },
-  { value: "tarjeta_virtual", label: "Tarjeta virtual" },
-  { value: "transferencia", label: "Transferencia bancaria" },
-  { value: "bizum", label: "Bizum" },
-];
-const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+import { METODOS_PAGO } from "./factura-acciones-tabs";
+import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "./selector-forma-pago";
 
 interface LineaEditable {
   referencia: string;
@@ -559,8 +552,7 @@ function VistaGenerar({
   const [telefono, setTelefono] = useState(detalle.cliente.telefono || "");
   const [email, setEmail] = useState(detalle.cliente.email || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
-  const [metodo, setMetodo] = useState("");
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -645,8 +637,8 @@ function VistaGenerar({
   async function confirmar() {
     const lineasValidas = lineas.filter((l) => l.descripcion.trim() || l.precioUnitario);
     if (lineasValidas.length === 0) return toast.error("Añade al menos un concepto");
-    if (!metodo) return toast.error("Selecciona el método de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    const errorPago = validarFormaPago(pago, total);
+    if (errorPago) return toast.error(errorPago);
     if (!esEmailValido(email)) return toast.error("El email del cliente no tiene un formato válido");
 
     setEnviando(true);
@@ -661,8 +653,7 @@ function VistaGenerar({
           tipo: "normal",
           datos: {
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: email.trim(), codigo: codigo.trim() },
-            formaPago: metodo,
-            banco: metodo === "tarjeta" ? banco : "",
+            ...formaPagoParaPayload(pago),
             // El descuento global solo afectaba a la vista previa en pantalla
             // y nunca llegaba a la factura real (bug detectado: el importe
             // final facturado no coincidía con el mostrado). Se envía ahora
@@ -730,23 +721,7 @@ function VistaGenerar({
                 <Label htmlFor="suReferenciaFactura">Su Referencia</Label>
                 <Input id="suReferenciaFactura" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />
               </div>
-              <div className="space-y-1.5">
-                <Label>Forma de pago *</Label>
-                <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                  <SelectContent>
-                    {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {metodo === "tarjeta" && (
-                  <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-                    <SelectTrigger className="mt-2 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                    <SelectContent>
-                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+              <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={total} />
               <div className="space-y-1.5">
                 <Label>Estado</Label>
                 <Select value={estadoFactura} onValueChange={(v) => setEstadoFactura(v || "Cobrada")}>

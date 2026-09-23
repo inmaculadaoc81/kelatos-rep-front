@@ -13,15 +13,7 @@ import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { FacturaModalShell } from "./factura-modal-shell";
 import { guardarSuReferencia } from "@/lib/su-referencia";
-
-const METODOS_PAGO = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "tarjeta", label: "Tarjeta bancaria" },
-  { value: "tarjeta_virtual", label: "Tarjeta virtual" },
-  { value: "transferencia", label: "Transferencia bancaria" },
-  { value: "bizum", label: "Bizum" },
-];
-const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, type ValorFormaPago } from "./selector-forma-pago";
 
 /**
  * Reproduce abrirModalMarcarRevision()/confirmarMarcarRevision() del
@@ -246,8 +238,7 @@ function VistaGenerarTicket({
   onVolver: () => void;
 }) {
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
-  const [metodo, setMetodo] = useState(metodoPagoInicial || "");
-  const [banco, setBanco] = useState(bancoInicial || "");
+  const [pago, setPago] = useState<ValorFormaPago>({ metodo: metodoPagoInicial || "", banco: bancoInicial || "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
   const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -268,8 +259,8 @@ function VistaGenerarTicket({
   // "Confirmar y generar ticket" genera y, si hay correo, envía en la
   // misma acción — un fallo al enviar no deshace el ticket ya generado.
   async function confirmar() {
-    if (!metodo) return toast.error("Selecciona el método de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    const errorPago = validarFormaPago(pago, 20 * 1.21);
+    if (errorPago) return toast.error(errorPago);
 
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
@@ -281,8 +272,7 @@ function VistaGenerarTicket({
         body: JSON.stringify({
           modo: "revision",
           estado,
-          formaPago: metodo,
-          banco: metodo === "tarjeta" ? banco : "",
+          ...formaPagoParaPayload(pago),
           emailTicket: emailTicket.trim(),
           lineas: [{ descripcion: "Revisión técnica del equipo", cantidad: 1, precio: 20 }],
         }),
@@ -343,26 +333,7 @@ function VistaGenerarTicket({
               </Select>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Método de pago *</Label>
-            <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={enviando}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-              <SelectContent>
-                {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          {metodo === "tarjeta" && (
-            <div className="space-y-1.5">
-              <Label>Banco *</Label>
-              <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={enviando}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                <SelectContent>
-                  {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <SelectorFormaPago etiqueta="Método de pago *" value={pago} onChange={setPago} total={20 * 1.21} disabled={enviando} />
           <div className="space-y-1.5">
             <Label>Correo del cliente</Label>
             <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} placeholder="correo@ejemplo.com" disabled={enviando} />
@@ -408,8 +379,7 @@ function VistaGenerar({
   // El importe de la revisión es fijo (20€ s/IVA) — no editable, coincide
   // con el precio de tienda anunciado al cliente.
   const importe = "20";
-  const [metodo, setMetodo] = useState(metodoPagoInicial || "");
-  const [banco, setBanco] = useState(bancoInicial || "");
+  const [pago, setPago] = useState<ValorFormaPago>({ metodo: metodoPagoInicial || "", banco: bancoInicial || "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   // Se conserva el mismo requestId entre reintentos — un fallo de red no
@@ -434,8 +404,8 @@ function VistaGenerar({
 
   async function confirmar() {
     if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
-    if (!metodo) return toast.error("Selecciona el método de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    const errorPago = validarFormaPago(pago, (parseFloat(importe) || 20) * 1.21);
+    if (errorPago) return toast.error(errorPago);
 
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
@@ -449,8 +419,7 @@ function VistaGenerar({
           tipo: "revision",
           datos: {
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: detalle.cliente.email },
-            formaPago: metodo,
-            banco: metodo === "tarjeta" ? banco : "",
+            ...formaPagoParaPayload(pago),
             lineas: [{ referencia: "REV-01", descripcion: "Revisión técnica del equipo", cantidad: 1, precio: parseFloat(importe) || 20 }],
             clienteOverrideProvisto: true,
             // El cliente ya pagó al confirmar este modal — la factura nace cobrada, nunca pendiente.
@@ -510,28 +479,8 @@ function VistaGenerar({
               <Label htmlFor="frImporte">Importe (€ s/IVA)</Label>
               <Input id="frImporte" value={importe} disabled className="bg-muted" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Método de pago</Label>
-              <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                <SelectContent>
-                  {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectorFormaPago etiqueta="Método de pago *" value={pago} onChange={setPago} total={(parseFloat(importe) || 20) * 1.21} />
           </div>
-
-          {metodo === "tarjeta" && (
-            <div className="space-y-1.5">
-              <Label>Banco</Label>
-              <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                <SelectContent>
-                  {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className="space-y-1.5">
             <Label htmlFor="frSuReferencia">Su Referencia</Label>
             <Input id="frSuReferencia" value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" />

@@ -40,6 +40,10 @@ export interface DatosFactura {
   /** Obligatorio en normal/revision; no aplica a rectificativa/corregida. */
   formaPago?: string;
   banco?: string;
+  /** Solo cuando formaPago === "transferencia". */
+  referencia?: string;
+  /** Solo cuando formaPago === "multiforma" — reparto real entre 2 formas de pago (migración 116). */
+  formaPagoDesglose?: { forma: string; monto: number; banco?: string; referencia?: string }[];
   lineas: LineaFactura[];
   fianza?: number;
   fianzaDescripcion?: string;

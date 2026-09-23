@@ -14,7 +14,8 @@ import type { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import type { LineaFactura } from "@/lib/factura";
 import { ReparacionDetalle } from "@/lib/reparacion-detalle";
-import { METODOS_PAGO, BANCOS, euros } from "./factura-acciones-tabs";
+import { euros } from "./factura-acciones-tabs";
+import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "./selector-forma-pago";
 import { guardarSuReferencia } from "@/lib/su-referencia";
 
 const IVA_PCT = 0.21;
@@ -164,8 +165,7 @@ function VistaGenerarFactura({
   const [dni, setDni] = useState(detalle.dniCif || "");
   const [telefono, setTelefono] = useState(detalle.cliente.telefono || "");
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
-  const [metodo, setMetodo] = useState("");
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
   const [suReferencia, setSuReferencia] = useState("");
   const [lineas, setLineas] = useState<LineaFactura[]>(() => construirLineas(detalle));
@@ -190,7 +190,7 @@ function VistaGenerarFactura({
     setDireccion(detalle.cliente.direccion || "");
     setDni(detalle.dniCif || "");
     setTelefono(detalle.cliente.telefono || "");
-    setMetodo(""); setBanco(""); setEstadoFactura("Cobrada");
+    setPago(valorFormaPagoVacio()); setEstadoFactura("Cobrada");
     setLineas(construirLineas(detalle));
     setRequestId(null); setResultado(null);
   }
@@ -218,8 +218,8 @@ function VistaGenerarFactura({
     const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
     if (validas.length === 0) return toast.error("No hay presupuesto aceptado con importe para calcular el anticipo");
     if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
-    if (!metodo) return toast.error("Selecciona la forma de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    const errorPago = validarFormaPago(pago, totalConIva);
+    if (errorPago) return toast.error(errorPago);
 
     setEnviando(true);
     const rid = requestId || crypto.randomUUID();
@@ -233,7 +233,7 @@ function VistaGenerarFactura({
           tipo: "anticipo",
           datos: {
             cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: detalle.cliente.email },
-            formaPago: metodo === "tarjeta" && banco ? `${banco} · tarjeta bancaria` : metodo,
+            ...formaPagoParaPayload(pago),
             estadoFactura,
             lineas: validas,
           },
@@ -292,23 +292,7 @@ function VistaGenerarFactura({
                 <Label className="text-xs text-muted-foreground">Su Referencia</Label>
                 <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultado} />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Forma de pago</Label>
-                <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={!!resultado}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                  <SelectContent>
-                    {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {metodo === "tarjeta" && (
-                  <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={!!resultado}>
-                    <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                    <SelectContent>
-                      {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+              <SelectorFormaPago value={pago} onChange={setPago} total={totalConIva} disabled={!!resultado} />
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Estado</Label>
                 <Select value={estadoFactura} onValueChange={(v) => setEstadoFactura(v || "Cobrada")} disabled={!!resultado}>
@@ -460,8 +444,7 @@ function VistaGenerarTicket({
 }) {
   const [lineas] = useState<LineaFactura[]>(() => construirLineas(detalle));
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
-  const [metodo, setMetodo] = useState("");
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
   const [emailTicket, setEmailTicket] = useState(detalle.cliente.email || "");
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -482,14 +465,14 @@ function VistaGenerarTicket({
   async function confirmar() {
     const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
     if (validas.length === 0) return toast.error("No hay presupuesto aceptado con importe para calcular el anticipo");
-    if (!metodo) return toast.error("Selecciona la forma de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    const errorPago = validarFormaPago(pago, total);
+    if (errorPago) return toast.error(errorPago);
     setEnviando(true);
     try {
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modo: "anticipo", estado, formaPago: metodo, banco: metodo === "tarjeta" ? banco : "", emailTicket: emailTicket.trim(), lineas: validas }),
+        body: JSON.stringify({ modo: "anticipo", estado, ...formaPagoParaPayload(pago), emailTicket: emailTicket.trim(), lineas: validas }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -595,27 +578,8 @@ function VistaGenerarTicket({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Forma de pago *</Label>
-              <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }} disabled={enviando}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                <SelectContent>
-                  {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={total} disabled={enviando} />
           </div>
-          {metodo === "tarjeta" && (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Banco *</Label>
-              <Select value={banco} onValueChange={(v) => setBanco(v || "")} disabled={enviando}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                <SelectContent>
-                  {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Correo del cliente</Label>
             <Input type="email" value={emailTicket} onChange={(e) => setEmailTicket(e.target.value)} disabled={enviando} placeholder="correo@ejemplo.com" />

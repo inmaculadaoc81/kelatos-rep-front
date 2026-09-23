@@ -45,6 +45,8 @@ export async function POST(
       cliente?: ClienteFactura;
       formaPago?: string;
       banco?: string;
+      referencia?: string;
+      formaPagoDesglose?: { forma: string; monto: number; banco?: string; referencia?: string }[];
       motivo?: string;
       lineas: LineaFactura[];
       tipoDocumento?: string;
@@ -114,6 +116,8 @@ export async function POST(
         lineas: datos.lineas,
         formaPago: datos.formaPago || "",
         banco: datos.banco || "",
+        referencia: datos.referencia || "",
+        formaPagoDesglose: datos.formaPagoDesglose,
         estadoFactura: datos.estadoFactura || "",
       },
     });

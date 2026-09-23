@@ -14,17 +14,10 @@ import { ReparacionDetalle, clienteEligioTicketSinFactura } from "@/lib/reparaci
 import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { guardarSuReferencia } from "@/lib/su-referencia";
+import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "./selector-forma-pago";
 
 export type TipoEntregaModal = "ENTREGADO" | "ENVIO" | "RECICLAJE";
 
-const METODOS_PAGO = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "tarjeta", label: "Tarjeta bancaria" },
-  { value: "tarjeta_virtual", label: "Tarjeta virtual" },
-  { value: "transferencia", label: "Transferencia bancaria" },
-  { value: "bizum", label: "Bizum" },
-];
-const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 const ESTADOS_SIN_FACTURA = ["presupuesto rechazado", "no tiene reparación", "no tiene reparacion", "garantía", "garantia"];
 
 function hoyIso(): string {
@@ -401,8 +394,7 @@ function VistaConFactura({
   const [dni, setDni] = useState(detalle.dniCif || "");
   const [telefono, setTelefono] = useState(detalle.cliente.telefono || "");
   const [gastosEnvio, setGastosEnvio] = useState(String(info.gastosEnvioDefault));
-  const [metodo, setMetodo] = useState("");
-  const [banco, setBanco] = useState("");
+  const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
   const [email, setEmail] = useState(detalle.cliente.email || "");
   // Correo propio del ticket de mensajería — mismo patrón que Ticket
   // Rápido/Revisión/Anticipo: precargado del resguardo, editable hasta
@@ -443,8 +435,8 @@ function VistaConFactura({
   async function confirmar() {
     if (!esTicket && !nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
     if (esTicket && !emailTicket.trim()) return toast.error("El correo del cliente es obligatorio");
-    if (!metodo) return toast.error("Selecciona la forma de pago");
-    if (metodo === "tarjeta" && !banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    const errorPago = validarFormaPago(pago, totalConIva);
+    if (errorPago) return toast.error(errorPago);
 
     const lineas: { descripcion: string; cantidad: number; precio: number }[] = [];
     if (!esEnvio && info.totalBase > 0) {
@@ -479,7 +471,7 @@ function VistaConFactura({
         const resTicket = await fetch(`/api/reparaciones/${detalle.resguardo}/ticket-venta`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lineas, estado: "Cobrada", formaPago: metodo, banco, modo: "mensajeria", emailTicket: emailTicket.trim() }),
+          body: JSON.stringify({ lineas, estado: "Cobrada", ...formaPagoParaPayload(pago), modo: "mensajeria", emailTicket: emailTicket.trim() }),
         });
         data = await resTicket.json();
         if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -511,7 +503,6 @@ function VistaConFactura({
           toast.error(`Ticket generado, pero no se pudo enviar: ${eEnviar instanceof Error ? eEnviar.message : "error desconocido"}`);
         }
       } else {
-        const formaPago = metodo === "tarjeta" && banco ? `${banco} · tarjeta bancaria` : metodo;
         const res = await fetch(`/api/reparaciones/${detalle.resguardo}/facturas`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -520,7 +511,7 @@ function VistaConFactura({
             tipo: "mensajeria",
             datos: {
               cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email },
-              formaPago,
+              ...formaPagoParaPayload(pago),
               lineas,
               // El cliente paga en el momento de confirmar este modal (misma
               // razón que "revision": la forma de pago se elige aquí mismo) —
@@ -614,15 +605,7 @@ function VistaConFactura({
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Forma de pago *</Label>
-                <Select value={metodo} onValueChange={(v) => { setMetodo(v || ""); if (v !== "tarjeta") setBanco(""); }}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Seleccionar —" /></SelectTrigger>
-                  <SelectContent>
-                    {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={totalConIva} />
               {esTicket ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="efEmailTicket">Correo del cliente *</Label>
@@ -635,18 +618,6 @@ function VistaConFactura({
                 </div>
               )}
             </div>
-
-            {metodo === "tarjeta" && (
-              <div className="space-y-1.5">
-                <Label>Banco *</Label>
-                <Select value={banco} onValueChange={(v) => setBanco(v || "")}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                  <SelectContent>
-                    {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="efSuReferencia">Su Referencia</Label>

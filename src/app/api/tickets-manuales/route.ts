@@ -44,11 +44,13 @@ export async function POST(req: Request) {
   const cliente = datos?.cliente && typeof datos.cliente === "object" ? (datos.cliente as ClienteTicket) : undefined;
   const formaPago = typeof datos?.formaPago === "string" ? datos.formaPago : "";
   const banco = typeof datos?.banco === "string" ? datos.banco : "";
+  const referencia = typeof datos?.referencia === "string" ? datos.referencia : "";
+  const formaPagoDesglose = Array.isArray(datos?.formaPagoDesglose) ? datos.formaPagoDesglose : undefined;
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketManual>(
       "/v1/tickets-manuales/crear",
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, notas, cliente, formaPago, banco }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, notas, cliente, formaPago, banco, referencia, formaPagoDesglose }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, ticket: resultado.ticket });
   } catch (error) {
