@@ -56,6 +56,7 @@ export interface FacturaRecibida {
   centroCoste: string;
   estadoRevision: EstadoRevisionFactura;
   posibleDuplicado: boolean;
+  duplicadoConfirmado: boolean;
   observacionesInternas: string;
   ejercicioFiscal: number;
 
@@ -107,6 +108,7 @@ interface FilaFacturaSql {
   centro_coste: string | null;
   estado_revision: string;
   posible_duplicado: boolean;
+  duplicado_confirmado: boolean;
   observaciones_internas: string | null;
   ejercicio_fiscal: number;
   drive_file_id: string | null;
@@ -168,6 +170,7 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     centroCoste: f.centro_coste || "",
     estadoRevision: (f.estado_revision as EstadoRevisionFactura) || "pendiente",
     posibleDuplicado: !!f.posible_duplicado,
+    duplicadoConfirmado: !!f.duplicado_confirmado,
     observacionesInternas: f.observaciones_internas || "",
     ejercicioFiscal: f.ejercicio_fiscal,
     driveFileId: f.drive_file_id,

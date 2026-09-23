@@ -1,16 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Refresh2, SearchNormal1, Add, Book1, Category, ClipboardTick, Warning2, Wallet, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Add, Book1, Category, ClipboardTick, Warning2, Wallet, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, DocumentDownload } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import {
   FacturaRecibida, AlmacenFactura, EstadoPagoFactura, ETIQUETA_ALMACEN, COLOR_ALMACEN,
   ETIQUETA_ESTADO_PAGO, COLOR_ESTADO_PAGO, euros,
 } from "@/lib/facturas-recibidas";
+import { generarCsvLibroCompras, descargarCsv } from "@/lib/libro-compras-csv";
 import { FacturaRecibidaFormDialog } from "./factura-recibida-form-dialog";
 
 const FILAS_POR_PAGINA_OPCIONES = ["15", "20", "30", "40", "50", "100"];
@@ -38,6 +40,7 @@ export default function FacturasRecibidasPage() {
   const [error, setError] = useState<string | null>(null);
   const [formAbierto, setFormAbierto] = useState(false);
   const [editando, setEditando] = useState<FacturaRecibida | null>(null);
+  const [exportando, setExportando] = useState(false);
   const consulta = useRef(0);
 
   useEffect(() => {
@@ -86,6 +89,42 @@ export default function FacturasRecibidasPage() {
     cargar();
   }, [cargar]);
 
+  // Ignora la paginación de la vista — exporta TODAS las filas que coincidan
+  // con los filtros activos, paginando en bloques de 200 (el máximo que
+  // acepta el backend por petición, el mismo límite que protege la lista).
+  async function exportarCsv() {
+    setExportando(true);
+    try {
+      const todas: FacturaRecibida[] = [];
+      let offset = 0;
+      for (;;) {
+        const p = new URLSearchParams({ limit: "200", offset: String(offset) });
+        if (almacen) p.set("almacen", almacen);
+        if (estadoPago) p.set("estadoPago", estadoPago);
+        if (soloDuplicados) p.set("soloDuplicados", "true");
+        if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
+        const res = await fetch(`/api/facturas-recibidas?${p.toString()}`);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error desconocido");
+        const pagina = data.facturas as FacturaRecibida[];
+        todas.push(...pagina);
+        if (pagina.length < 200) break;
+        offset += 200;
+      }
+      if (todas.length === 0) return toast.error("No hay facturas que exportar con los filtros actuales");
+      const csv = generarCsvLibroCompras(todas, {
+        desde: "", hasta: "",
+        usuario: "Kelatos",
+      });
+      descargarCsv(csv, `libro-de-compras-${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success(`${todas.length} factura${todas.length !== 1 ? "s" : ""} exportada${todas.length !== 1 ? "s" : ""}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setExportando(false);
+    }
+  }
+
   const hayFiltros = !!(almacen || estadoPago || soloDuplicados);
   const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
   const inicio = total === 0 ? 0 : (pagina - 1) * filasPorPagina;
@@ -106,6 +145,9 @@ export default function FacturasRecibidasPage() {
         <div className="flex items-center gap-2">
           <Button size="sm" className="gap-1.5" onClick={() => { setEditando(null); setFormAbierto(true); }}>
             <Add className="size-4" /> Nueva factura
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" disabled={exportando} onClick={exportarCsv} title="Exportar el listado filtrado a CSV">
+            <DocumentDownload className="size-4" /> {exportando ? "Exportando…" : "Exportar CSV"}
           </Button>
           <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
@@ -225,7 +267,7 @@ export default function FacturasRecibidasPage() {
                   </TableCell>
                   <TableCell className="text-sm">
                     {f.numeroFacturaProveedor}
-                    {f.posibleDuplicado && <Warning2 className="ml-1 inline size-3.5 text-red-500" />}
+                    {f.posibleDuplicado && !f.duplicadoConfirmado && <Warning2 className="ml-1 inline size-3.5 text-red-500" />}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fechaCorta(f.fechaExpedicion)}</TableCell>
                   <TableCell>

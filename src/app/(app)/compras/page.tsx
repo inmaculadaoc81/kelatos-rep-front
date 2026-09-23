@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
+import { FacturaRecibidaFormDialog } from "../facturas-recibidas/factura-recibida-form-dialog";
 import {
-  Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle,
+  Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle, Book1,
   ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
 
 export default function ComprasPage() {
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
+  const [borradorFactura, setBorradorFactura] = useState<CompraFila | null>(null);
   const [compras, setCompras] = useState<CompraFila[]>([]);
   const [total, setTotal] = useState(0);
   const [kpis, setKpis] = useState<KpisCompras>(KPIS_COMPRAS_VACIOS);
@@ -329,13 +331,19 @@ export default function ComprasPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      {sig ? (
-                        <Button size="sm" variant="outline" className="h-7 gap-1" disabled={enviando === c.pedidoId} onClick={() => cambiarEstado(c.pedidoId, sig.estado)}>
-                          <sig.icono className="size-3.5" /> {sig.etiqueta}
-                        </Button>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      <div className="flex justify-end gap-1.5">
+                        {sig && (
+                          <Button size="sm" variant="outline" className="h-7 gap-1" disabled={enviando === c.pedidoId} onClick={() => cambiarEstado(c.pedidoId, sig.estado)}>
+                            <sig.icono className="size-3.5" /> {sig.etiqueta}
+                          </Button>
+                        )}
+                        {c.estado === "Recibido" && c.proveedorId && (
+                          <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setBorradorFactura(c)} title="Registrar la factura de este pedido en el Libro de Compras">
+                            <Book1 className="size-3.5" /> Registrar factura
+                          </Button>
+                        )}
+                        {!sig && !(c.estado === "Recibido" && c.proveedorId) && <span className="text-muted-foreground">—</span>}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -388,6 +396,17 @@ export default function ComprasPage() {
         resguardo={resguardoDetalle}
         onOpenChange={(open) => !open && setResguardoDetalle(null)}
         onActualizado={cargar}
+      />
+
+      <FacturaRecibidaFormDialog
+        facturaExistente={null}
+        open={!!borradorFactura}
+        onOpenChange={(o) => !o && setBorradorFactura(null)}
+        borrador={borradorFactura ? {
+          proveedorId: borradorFactura.proveedorId, pedidoId: borradorFactura.pedidoId,
+          baseImponible: borradorFactura.costo ?? 0, importeTotal: borradorFactura.costo ?? 0,
+        } : undefined}
+        onGuardado={() => { setBorradorFactura(null); cargar(); }}
       />
     </div>
   );
