@@ -112,34 +112,45 @@ function SubFormaPago({
 }) {
   return (
     <div className="min-w-40 flex-1 space-y-1.5 rounded-md border bg-card p-2">
-      <Label className="text-[11px] text-muted-foreground">{etiqueta}</Label>
+      <Label className="text-[11px] text-muted-foreground">{etiqueta} *</Label>
       <Select value={entrada.forma} onValueChange={(v) => onChange({ forma: v || "", banco: "", referencia: "" })} disabled={disabled}>
-        <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
+        <SelectTrigger className={`w-full ${!entrada.forma ? "border-amber-400" : ""}`}><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
         <SelectContent>
           {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
         </SelectContent>
       </Select>
       {entrada.forma === "tarjeta" && (
-        <Select value={entrada.banco || ""} onValueChange={(v) => onChange({ banco: v || "" })} disabled={disabled}>
-          <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-          <SelectContent>
-            {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Banco *</Label>
+          <Select value={entrada.banco || ""} onValueChange={(v) => onChange({ banco: v || "" })} disabled={disabled}>
+            <SelectTrigger className={`w-full ${!entrada.banco ? "border-amber-400" : ""}`}><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+            <SelectContent>
+              {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       )}
       {entrada.forma === "transferencia" && (
-        <Input
-          placeholder="Referencia / justificante"
-          value={entrada.referencia || ""}
-          onChange={(e) => onChange({ referencia: e.target.value })}
-          disabled={disabled}
-        />
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Referencia / justificante *</Label>
+          <Input
+            placeholder="Referencia / justificante"
+            value={entrada.referencia || ""}
+            onChange={(e) => onChange({ referencia: e.target.value })}
+            disabled={disabled}
+            className={!entrada.referencia?.trim() ? "border-amber-400" : ""}
+          />
+        </div>
       )}
-      <Input
-        type="number" min={0} step="0.01" placeholder="Importe"
-        value={entrada.monto || ""} onChange={(e) => onChange({ monto: parseFloat(e.target.value) || 0 })}
-        disabled={disabled}
-      />
+      <div className="space-y-1">
+        <Label className="text-[11px] text-muted-foreground">Importe *</Label>
+        <Input
+          type="number" min={0} step="0.01" placeholder="Importe"
+          value={entrada.monto || ""} onChange={(e) => onChange({ monto: parseFloat(e.target.value) || 0 })}
+          disabled={disabled}
+          className={!(entrada.monto > 0) ? "border-amber-400" : ""}
+        />
+      </div>
     </div>
   );
 }
@@ -185,21 +196,27 @@ export function SelectorFormaPago({
             </SelectContent>
           </Select>
           {value.metodo === "tarjeta" && (
-            <Select value={value.banco} onValueChange={(v) => onChange({ ...value, banco: v || "" })} disabled={disabled}>
-              <SelectTrigger className="mt-1.5 w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-              <SelectContent>
-                {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="mt-1.5 space-y-1">
+              <Label className="text-xs text-muted-foreground">Banco *</Label>
+              <Select value={value.banco} onValueChange={(v) => onChange({ ...value, banco: v || "" })} disabled={disabled}>
+                <SelectTrigger className={`w-full ${!value.banco ? "border-amber-400" : ""}`}><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
+                <SelectContent>
+                  {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           )}
           {value.metodo === "transferencia" && (
-            <Input
-              className="mt-1.5"
-              placeholder="Referencia / justificante"
-              value={value.referencia}
-              onChange={(e) => onChange({ ...value, referencia: e.target.value })}
-              disabled={disabled}
-            />
+            <div className="mt-1.5 space-y-1">
+              <Label className="text-xs text-muted-foreground">Referencia / justificante *</Label>
+              <Input
+                placeholder="Referencia / justificante"
+                value={value.referencia}
+                onChange={(e) => onChange({ ...value, referencia: e.target.value })}
+                disabled={disabled}
+                className={!value.referencia.trim() ? "border-amber-400" : ""}
+              />
+            </div>
           )}
         </div>
 
