@@ -15,10 +15,11 @@ import { Cliente } from "@/lib/clientes";
 import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { guardarSuReferencia } from "@/lib/su-referencia";
+import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "../reparaciones/selector-forma-pago";
+import { METODOS_PAGO as ETIQUETAS_METODO_PAGO } from "../reparaciones/factura-acciones-tabs";
 
-const METODOS_PAGO = ["Efectivo", "Tarjeta bancaria", "Tarjeta virtual", "Bizum", "Transferencia"];
-const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 const PORTE_MENSAJERIA = 12.4;
+const ETIQUETA_METODO_PAGO: Record<string, string> = Object.fromEntries(ETIQUETAS_METODO_PAGO.map((m) => [m.value, m.label]));
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -52,9 +53,6 @@ interface FacturacionForm {
   clienteEmail: string;
   clienteDireccion: string;
   codigoCliente: string;
-  metodoPago: string;
-  banco: string;
-  numeroOperacion: string;
   estadoFactura: string;
   observaciones: string;
   envioActivado: boolean;
@@ -73,7 +71,7 @@ function facturacionVacia(): FacturacionForm {
     // en el momento de registrarlo (a diferencia de una reparación, donde
     // puede quedar pendiente), así que el estado por defecto es "Cobrada" —
     // se puede cambiar a "Pendiente" a mano si hiciera falta.
-    metodoPago: "", banco: "", numeroOperacion: "", estadoFactura: "Cobrada", observaciones: "",
+    estadoFactura: "Cobrada", observaciones: "",
     envioActivado: false, recogidaActivada: false, suReferencia: "",
   };
 }
@@ -114,6 +112,7 @@ export function NuevoAlquilerDialog({
   const [paso, setPaso] = useState<1 | 2>(1);
   const [duracion, setDuracion] = useState<DuracionForm>(duracionVacia());
   const [factu, setFactu] = useState<FacturacionForm>(facturacionVacia());
+  const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
   const [enviando, setEnviando] = useState(false);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
 
@@ -122,6 +121,7 @@ export function NuevoAlquilerDialog({
       setPaso(1);
       setDuracion(duracionVacia());
       setFactu(facturacionVacia());
+      setPago(valorFormaPagoVacio());
     }
   }, [open]);
 
@@ -189,14 +189,11 @@ export function NuevoAlquilerDialog({
       return toast.error("Nombre, teléfono, DNI y email son obligatorios");
     }
     if (!esEmailValido(factu.clienteEmail)) return toast.error("El email no tiene un formato válido");
-    if (!factu.metodoPago) return toast.error("El método de pago es obligatorio");
-    if (factu.metodoPago === "Tarjeta bancaria" && !factu.banco) return toast.error("Selecciona el banco para el pago con tarjeta");
+    const errorPago = validarFormaPago(pago, totalesPaso2.total);
+    if (errorPago) return toast.error(errorPago);
 
     setEnviando(true);
     try {
-      const numOpFinal = factu.banco && factu.numeroOperacion ? `${factu.banco} · ${factu.numeroOperacion}` : factu.banco || factu.numeroOperacion;
-      const observacionesFinal = numOpFinal ? [factu.observaciones.trim(), `Tarjeta: ${numOpFinal}`].filter(Boolean).join(" — ") : factu.observaciones.trim();
-
       const datos: DatosNuevoAlquiler = {
         clienteNombre: factu.clienteNombre.trim(),
         clienteTelefono: factu.clienteTelefono.trim(),
@@ -208,8 +205,9 @@ export function NuevoAlquilerDialog({
         meses: duracion.meses,
         semanas: duracion.semanas,
         dias: duracion.dias,
-        metodoPago: factu.metodoPago,
-        observaciones: observacionesFinal,
+        metodoPago: ETIQUETA_METODO_PAGO[pago.metodo] || (pago.metodo === "multiforma" ? "Multiforma" : pago.metodo),
+        ...formaPagoParaPayload(pago),
+        observaciones: factu.observaciones.trim(),
         envioActivado: factu.envioActivado,
         recogidaActivada: factu.recogidaActivada,
       };
@@ -231,8 +229,8 @@ export function NuevoAlquilerDialog({
           tipo: "alquiler",
           requestId: crypto.randomUUID(),
           cliente: { nombre: datos.clienteNombre, direccion: datos.clienteDireccion, dni: datos.clienteDNI, telefono: datos.clienteTelefono },
-          formaPago: factu.metodoPago,
-          banco: factu.metodoPago === "Tarjeta bancaria" ? factu.banco : "",
+          formaPago: pago.metodo,
+          banco: pago.metodo === "tarjeta" ? pago.banco : "",
           equipoNombre: `${equipo.marca} ${equipo.modelo}`,
           estadoFactura: factu.estadoFactura,
           ...(factu.envioActivado ? { envioLinea: mensajeriaGratis ? 0 : PORTE_MENSAJERIA } : {}),
@@ -338,32 +336,7 @@ export function NuevoAlquilerDialog({
                   <Label>N.º Factura</Label>
                   <Input disabled placeholder="Se asigna al registrar" className="bg-muted/50" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Forma de pago *</Label>
-                  <Select value={factu.metodoPago} onValueChange={(v) => { actualizarFactu("metodoPago", v || ""); if (v !== "Tarjeta bancaria") { actualizarFactu("banco", ""); actualizarFactu("numeroOperacion", ""); } }}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
-                    <SelectContent>
-                      {METODOS_PAGO.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {factu.metodoPago === "Tarjeta bancaria" && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label>Banco *</Label>
-                      <Select value={factu.banco} onValueChange={(v) => actualizarFactu("banco", v || "")}>
-                        <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona banco —" /></SelectTrigger>
-                        <SelectContent>
-                          {BANCOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="alqNumOp">Nº operación tarjeta</Label>
-                      <Input id="alqNumOp" placeholder="Ej: 123456789012" value={factu.numeroOperacion} onChange={(e) => actualizarFactu("numeroOperacion", e.target.value)} />
-                    </div>
-                  </>
-                )}
+                <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={totalesPaso2.total} />
                 <div className="space-y-1.5">
                   <Label>Estado factura *</Label>
                   <Select value={factu.estadoFactura} onValueChange={(v) => actualizarFactu("estadoFactura", v || "Pendiente")}>

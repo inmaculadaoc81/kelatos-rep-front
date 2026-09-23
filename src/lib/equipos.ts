@@ -98,7 +98,13 @@ export interface DatosNuevoAlquiler {
   meses: number;
   semanas: number;
   dias: number;
+  /** Label libre para mostrar en Facturas de Clientes ("Tarjeta bancaria", "Multiforma"...) — deriva de formaPago. */
   metodoPago: string;
+  /** Valor normalizado en minúsculas ("tarjeta", "transferencia", "multiforma"...), migración 118. */
+  formaPago: string;
+  banco: string;
+  referencia: string;
+  formaPagoDesglose?: { forma: string; monto: number; banco?: string; referencia?: string }[];
   observaciones: string;
   envioActivado: boolean;
   recogidaActivada: boolean;
