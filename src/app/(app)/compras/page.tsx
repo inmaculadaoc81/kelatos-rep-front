@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
 import {
   Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle,
   ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3,
@@ -47,7 +46,7 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
 }
 
 export default function ComprasPage() {
-  const router = useRouter();
+  const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [compras, setCompras] = useState<CompraFila[]>([]);
   const [total, setTotal] = useState(0);
   const [kpis, setKpis] = useState<KpisCompras>(KPIS_COMPRAS_VACIOS);
@@ -279,21 +278,16 @@ export default function ComprasPage() {
                   <TableRow
                     key={c.pedidoId}
                     className={c.resguardo ? "cursor-pointer hover:bg-muted/40" : undefined}
-                    onClick={c.resguardo ? () => router.push(`/reparaciones?resguardo=${encodeURIComponent(c.resguardo!)}`) : undefined}
+                    onClick={c.resguardo ? () => setResguardoDetalle(c.resguardo) : undefined}
                     title={c.resguardo ? `Abrir resguardo ${c.resguardo}` : undefined}
                   >
                     <TableCell className="whitespace-nowrap font-mono text-xs">{c.pedidoId}</TableCell>
                     <TableCell className="max-w-48">
                       {c.resguardo ? (
-                        <Link
-                          href={`/reparaciones?resguardo=${encodeURIComponent(c.resguardo)}`}
-                          className="block hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                          title={`${c.clienteNombre || c.resguardo} — ${c.resguardo}${c.equipoModelo ? ` · ${c.equipoModelo}` : ""}`}
-                        >
+                        <div>
                           <span className="block truncate text-sm font-medium">{c.clienteNombre || c.resguardo}</span>
                           <span className="block truncate text-xs text-muted-foreground">{c.resguardo}{c.equipoModelo ? ` · ${c.equipoModelo}` : ""}</span>
-                        </Link>
+                        </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
@@ -389,6 +383,12 @@ export default function ComprasPage() {
           </div>
         </div>
       </div>
+
+      <DetalleReparacionDialog
+        resguardo={resguardoDetalle}
+        onOpenChange={(open) => !open && setResguardoDetalle(null)}
+        onActualizado={cargar}
+      />
     </div>
   );
 }
