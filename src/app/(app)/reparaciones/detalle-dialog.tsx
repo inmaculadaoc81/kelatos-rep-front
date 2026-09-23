@@ -32,7 +32,7 @@ import { useConfirm } from "@/components/confirm-provider";
 import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { COLOR_ESTADO } from "@/lib/reparaciones";
-import { formatearFecha } from "@/lib/dias-entrega";
+import { formatearFecha, formatearFechaHora } from "@/lib/dias-entrega";
 import { separarSintoma } from "@/lib/progreso-reparacion";
 import { ReparacionDetalle, type Pedido, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
@@ -945,9 +945,9 @@ export function DetalleReparacionDialog({
                             <Icono className="size-4" />
                           </span>
                           <div className={`min-w-0 flex-1 pt-1 ${esUltimo ? "pb-0" : "pb-5"}`}>
-                            <p className="text-sm text-foreground">{ev.descripcion}</p>
+                            <p className="text-sm whitespace-pre-line text-foreground">{ev.descripcion}</p>
                             <div className="mt-0.5 flex items-center gap-2">
-                              <p className="text-xs text-muted-foreground">{formatearFecha(ev.fechaHora)}</p>
+                              <p className="text-xs text-muted-foreground">{formatearFechaHora(ev.fechaHora)}</p>
                               {urlPdf && (
                                 <a href={urlPdf} target="_blank" rel="noreferrer" className="text-xs font-medium text-primary hover:underline">
                                   Ver PDF

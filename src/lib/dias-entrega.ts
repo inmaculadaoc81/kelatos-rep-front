@@ -58,3 +58,11 @@ export function formatearFecha(fecha: string | null): string {
   if (isNaN(d.getTime())) return "-";
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
+
+/** Fecha y hora (Madrid) — para el historial, donde importa el momento exacto de cada cambio. */
+export function formatearFechaHora(fecha: string | null): string {
+  if (!fecha) return "-";
+  const d = new Date(fecha);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
