@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar } from "@/lib/icons";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar, Refresh2, ExportSquare } from "@/lib/icons";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DecimalInput } from "@/components/ui/decimal-input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Proveedor } from "@/lib/proveedores";
@@ -223,9 +224,37 @@ export function FacturaRecibidaFormDialog({
   // Independiente del "Adjuntar archivo" (Drive) — leer con IA es solo una
   // lectura para precargar el formulario, no implica guardar ni subir nada.
   const [leyendoOcr, setLeyendoOcr] = useState(false);
+  const [segundosLecturaOcr, setSegundosLecturaOcr] = useState(0);
   const [origenAutomatico, setOrigenAutomatico] = useState(false);
   const inputOcr = useRef<HTMLInputElement>(null);
   const esEdicion = facturaExistente !== null;
+
+  // Vista previa a la derecha: el archivo recién elegido (todavía sin subir,
+  // factura nueva) o el ya guardado en Drive (edición) — object URL propio
+  // para el primer caso, se revoca al cambiar para no acumular memoria.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (archivoPendiente) {
+      const url = URL.createObjectURL(archivoPendiente);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    if (esEdicion && driveFileId) {
+      setPreviewUrl(`/api/formulario-cliente/archivo/${driveFileId}`);
+      return;
+    }
+    setPreviewUrl(null);
+  }, [archivoPendiente, driveFileId, esEdicion]);
+
+  // Un contador visible durante la lectura (puede tardar ~20-30s con IA
+  // local) — sin esto, el botón deshabilitado varios segundos se ve como
+  // si se hubiera quedado colgado.
+  useEffect(() => {
+    if (!leyendoOcr) { setSegundosLecturaOcr(0); return; }
+    const inicio = Date.now();
+    const id = setInterval(() => setSegundosLecturaOcr(Math.floor((Date.now() - inicio) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [leyendoOcr]);
 
   useEffect(() => {
     if (open) {
@@ -424,19 +453,19 @@ export function FacturaRecibidaFormDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-        <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto lg:max-w-5xl" showCloseButton={!enviando}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between gap-3 pr-6">
-              <span className="flex items-center gap-2">
-                <Book1 className="size-5" /> {esEdicion ? `Factura ${facturaExistente!.numeroRecepcion}` : "Nueva factura recibida"}
-              </span>
-              {datos.importeTotal > 0 && (
-                <span className="text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{euros(datos.importeTotal)}</span>
-              )}
+        <DialogContent className="flex max-h-[92vh] w-full flex-col gap-0 p-0 sm:max-w-6xl lg:max-w-350" showCloseButton={!enviando}>
+          <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5 pr-12">
+            <DialogTitle className="flex items-center gap-2">
+              <Book1 className="size-5" /> {esEdicion ? `Factura ${facturaExistente!.numeroRecepcion}` : "Nueva factura recibida"}
             </DialogTitle>
-          </DialogHeader>
+            {datos.importeTotal > 0 && (
+              <span className="text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">{euros(datos.importeTotal)}</span>
+            )}
+          </div>
 
-          <div className="space-y-4">
+          <div className="flex min-h-0 flex-1">
+          <ScrollArea className="min-h-0 min-w-0 flex-1">
+          <div className="space-y-4 p-4">
             {mostrarAvisoDuplicado && (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
                 <span className="flex items-start gap-2 text-amber-800 dark:text-amber-300">
@@ -708,8 +737,12 @@ export function FacturaRecibidaFormDialog({
 
                 <input ref={inputOcr} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => leerConIA(e.target.files?.[0])} />
                 <Button type="button" variant="outline" size="sm" className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40" disabled={leyendoOcr} onClick={() => inputOcr.current?.click()}>
-                  <MagicStar className="size-4" /> {leyendoOcr ? "Leyendo…" : "Leer con IA (beta)"}
+                  {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
+                  {leyendoOcr ? `Leyendo… (${segundosLecturaOcr}s)` : "Leer con IA (beta)"}
                 </Button>
+                {leyendoOcr && (
+                  <span className="text-xs text-muted-foreground">La IA local puede tardar 20-30s — no cierres el diálogo.</span>
+                )}
 
                 {esEdicion && driveFileId && (
                   <a href={`/api/formulario-cliente/archivo/${driveFileId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
@@ -728,8 +761,29 @@ export function FacturaRecibidaFormDialog({
               </div>
             </Seccion>
           </div>
+          </ScrollArea>
 
-          <DialogFooter className="sm:justify-between">
+          <div className="hidden min-h-0 w-95 shrink-0 flex-col border-l bg-muted/10 lg:flex">
+            <div className="border-b px-3 py-2 text-xs font-semibold text-muted-foreground">Vista previa del archivo</div>
+            {previewUrl ? (
+              <>
+                <iframe src={previewUrl} className="min-h-0 w-full flex-1" title="Vista previa de la factura" />
+                <div className="border-t p-2 text-center">
+                  <a href={previewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    <ExportSquare className="size-3.5" /> Abrir en pestaña nueva
+                  </a>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground">
+                <Paperclip2 className="size-6 opacity-40" />
+                Sin archivo adjunto todavía
+              </div>
+            )}
+          </div>
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 border-t bg-muted/50 px-5 py-3.5 sm:flex-row sm:justify-between">
             {esEdicion && esSuperadmin ? (
               <Button type="button" variant="ghost" className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={enviando} onClick={() => setEliminarAbierto(true)}>
                 <Trash className="size-3.5" /> Eliminar
@@ -739,7 +793,7 @@ export function FacturaRecibidaFormDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>Cancelar</Button>
               <Button onClick={guardar} disabled={enviando}>{enviando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Registrar factura"}</Button>
             </div>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
