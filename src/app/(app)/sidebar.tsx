@@ -73,7 +73,7 @@ export function AppSidebar({ session }: { session: Session | null }) {
                   // llegar al mismo sitio.
                   <ItemDirecto key={grupo.titulo} item={grupo.items[0]} pathname={pathname} />
                 ) : (
-                  <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} items={grupo.items} pathname={pathname} />
+                  <GrupoColapsable key={grupo.titulo} titulo={grupo.titulo} icon={grupo.icon} claseIcono={grupo.claseIcono} items={grupo.items} pathname={pathname} />
                 )
               )}
             </SidebarMenu>

@@ -25,6 +25,8 @@ export interface GrupoNavegacionBase {
   titulo: string;
   /** Icono del encabezado — solo se pinta cuando el grupo tiene más de un item. */
   icon: React.ElementType;
+  /** Clases del icono del encabezado (por defecto, azul de marca). */
+  claseIcono?: string;
   items: ItemNavegacionBase[];
 }
 
@@ -61,12 +63,14 @@ export function ItemDirecto({ item, pathname }: { item: ItemNavegacionBase; path
 export function GrupoColapsable({
   titulo,
   icon: GrupoIcon,
+  claseIcono,
   items,
   pathname,
   defaultOpen = true,
 }: {
   titulo: string;
   icon: React.ElementType;
+  claseIcono?: string;
   items: ItemNavegacionBase[];
   pathname: string;
   defaultOpen?: boolean;
@@ -86,7 +90,7 @@ export function GrupoColapsable({
           className="hover:bg-transparent hover:text-sidebar-foreground"
           render={<CollapsibleTrigger className="group/trigger" />}
         >
-          <GrupoIcon className="text-sidebar-primary" />
+          <GrupoIcon className={claseIcono ?? "text-sidebar-primary"} />
           <span>{titulo}</span>
           <ArrowDown2 className="ml-auto size-3.5 text-sidebar-foreground/50 transition-transform group-data-panel-open/trigger:rotate-180" />
         </SidebarMenuButton>
