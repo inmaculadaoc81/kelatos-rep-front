@@ -37,6 +37,14 @@ const ETIQUETA: Record<string, string> = {
   rectificativa_ticket: "Rectificativas de ticket",
   rectificativa_ticket_venta: "Rectificativas de ticket de venta",
   devolucion_cliente: "Devoluciones al cliente",
+  factura_proveedor: "Facturas de proveedor",
+  factura_acreedor: "Facturas de acreedores (servicios)",
+  factura_proveedor_autorrepercutida: "Facturas de proveedor con IVA autorrepercutido",
+  factura_acreedor_autorrepercutida: "Facturas de acreedor con IVA autorrepercutido",
+  rectificativa_proveedor: "Rectificativas de proveedor",
+  pago_proveedor: "Pagos a proveedores",
+  pago_acreedor: "Pagos a acreedores",
+  dua_importacion: "Importaciones (DUA)",
 };
 const NO_CUBIERTO: Record<string, string> = { alquileres: "Facturas de alquiler", facturas_mensajeria: "Facturas de mensajería" };
 
