@@ -163,9 +163,7 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
     e.preventDefault();
     if (enviando) return;
     setError(null);
-    if (googleClientId) {
-      if (!credencial) return setError("Inicia sesión con tu cuenta de Google para enviar la valoración");
-    } else if (!email.trim()) return setError("Escribe tu correo electrónico");
+    if (googleClientId && !credencial) return setError("Inicia sesión con tu cuenta de Google para enviar la valoración");
     if (!motivos.length && !comentario.trim()) return setError("Marca al menos un motivo o escribe un comentario");
     setEnviando(true);
     try {
@@ -297,9 +295,9 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
                   Usamos el correo de tu cuenta de Google para comprobar que eres tú y evitar envíos repetidos (solo se puede enviar una valoración por cuenta). No compartimos tu correo con nadie ni accedemos a nada más de tu cuenta.
                 </p>
               </div>
-            ) : (
+            ) : anonimo ? (
             <div className="space-y-1.5">
-              <label htmlFor="email" className="text-sm font-medium">Tu correo electrónico</label>
+              <label htmlFor="email" className="text-sm font-medium">Tu correo electrónico <span className="font-normal text-slate-500">(opcional)</span></label>
               <input
                 id="email"
                 type="email"
@@ -312,10 +310,10 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
                 maxLength={254}
               />
               <p className="text-xs text-slate-500">
-                Solo se puede enviar una valoración por correo y por enlace. Lo usamos para evitar envíos repetidos y, si lo pides, para responderte.
+                Es opcional. Solo lo usamos para evitar envíos repetidos.
               </p>
             </div>
-            )}
+            ) : null}
 
             {/* Trampa para bots: una persona nunca ve ni rellena este campo. */}
             <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
