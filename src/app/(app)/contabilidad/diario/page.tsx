@@ -58,7 +58,7 @@ export default function DiarioPage() {
   const totalPaginas = Math.max(1, Math.ceil(totales.asientos / POR_PAGINA));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 p-6">
       <Cabecera
         icono={<Book1 className="size-4.5" />}
         titulo="Libro Diario"

@@ -85,7 +85,7 @@ export default function AsientosPage() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 p-6">
       <Cabecera
         icono={<DocumentText className="size-4.5" />}
         titulo="Asientos contables"

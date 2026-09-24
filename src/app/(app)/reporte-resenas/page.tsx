@@ -266,7 +266,7 @@ export default function ReporteResenasPage() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <Star1 className="size-6 shrink-0 text-amber-500 dark:text-yellow-400" />

@@ -95,7 +95,7 @@ export default function ImportacionesPage() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-green-600 text-white">

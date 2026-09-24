@@ -65,7 +65,7 @@ export default function PeriodosPage() {
   const siguiente = (anios.length ? Math.max(...anios) : new Date().getFullYear()) + 1;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 p-6">
       <Cabecera
         icono={<Clock className="size-4.5" />}
         titulo="Periodos y auditoría"
