@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { kelatosApiPost } from "@/lib/kelatos-api";
+import { ipDe, origenPropio } from "@/lib/publico-seguridad";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Enlace GENÉRICO del formulario de valoración: la página /valoracion llama
@@ -7,12 +10,9 @@ import { kelatosApiPost } from "@/lib/kelatos-api";
  * redirige a /valoracion/<código>. Sin sesión; el backend limita cuántos
  * códigos puede pedir una misma IP.
  */
-function ipDe(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  return (xff ? xff.split(",")[0] : req.headers.get("x-real-ip") || "desconocida").trim().slice(0, 64);
-}
 
 export async function POST(req: Request) {
+  if (!origenPropio(req)) return NextResponse.json({ ok: false, error: "Solicitud no permitida" }, { status: 403 });
   try {
     const data = await kelatosApiPost<{ ok: boolean; token: string }>("/v1/valoracion-nueva", { ip: ipDe(req) });
     return NextResponse.json({ ok: true, token: data.token });

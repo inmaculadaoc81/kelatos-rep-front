@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
+import { esJson, ipDe, origenPropio } from "@/lib/publico-seguridad";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Formulario PÚBLICO de valoración (clientes que puntúan mal la encuesta).
@@ -20,12 +23,9 @@ const MENSAJES_SEGUROS = [
   "Este enlace no es válido",
   "Con este correo ya se ha enviado una valoración",
   "Demasiados intentos. Inténtalo de nuevo más tarde.",
+  "Espera unos segundos antes de enviar el formulario",
 ];
 
-function ipDe(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  return (xff ? xff.split(",")[0] : req.headers.get("x-real-ip") || "desconocida").trim().slice(0, 64);
-}
 
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -45,6 +45,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
 
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+  if (!origenPropio(req)) return NextResponse.json({ ok: false, error: "Solicitud no permitida" }, { status: 403 });
+  if (!esJson(req)) return NextResponse.json({ ok: false, error: "Solicitud no válida" }, { status: 415 });
   if (!TOKEN_VALIDO.test(token)) return NextResponse.json({ ok: false, error: "Este enlace no es válido" }, { status: 404 });
 
   const crudo = await req.text();

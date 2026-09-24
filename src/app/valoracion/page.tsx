@@ -19,7 +19,7 @@ export default function ValoracionEntrada() {
     fetch("/api/valoracion/nuevo", { method: "POST", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
-        if (d.ok && typeof d.token === "string") router.replace(`/valoracion/${d.token}`);
+        if (d.ok && typeof d.token === "string" && /^[A-Za-z0-9_-]{20,64}$/.test(d.token)) router.replace(`/valoracion/${d.token}`);
         else setError(d.error || "No se pudo preparar el formulario");
       })
       .catch(() => setError("No se pudo preparar el formulario. Revisa tu conexión e inténtalo de nuevo."));
