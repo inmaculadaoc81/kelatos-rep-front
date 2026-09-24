@@ -179,8 +179,10 @@ function describir(detalle: ReparacionDetalle): Accion | null {
     // 2026-09-01). Sin pieza, el paso es manual: un humano revisa y pulsa
     // "Iniciar reparación" — el estado NO salta solo (pedido explícito del
     // usuario, ver server.js: la rama webhook nunca salta a "En Reparación").
-    const pptoAceptado = detalle.presupuestos.find((p) => esPptoAceptado(p.estado));
-    const requierePieza = pptoAceptado ? pptoAceptado.tipoPieza === "pedido" || pptoAceptado.tipoPieza === "mixto" : false;
+    // Puede haber varios presupuestos aceptados (p. ej. uno con pieza de
+    // stock y otro por pedido, resguardo 19102, 2026-09-24): basta con que
+    // CUALQUIERA lleve pieza por pedido, no solo el primero.
+    const requierePieza = detalle.presupuestos.some((p) => esPptoAceptado(p.estado) && (p.tipoPieza === "pedido" || p.tipoPieza === "mixto"));
 
     if (!requierePieza) {
       return {
@@ -344,8 +346,7 @@ export function AccionRequerida({
     // ofrecer "Registrar pedido de pieza" — el paso siguiente es que un
     // humano pulse "Iniciar reparación" directamente (bug real, resguardo
     // 18805, 2026-09-01: se ofrecía pedir una pieza que no existía).
-    const pptoAceptadoBtn = detalle.presupuestos.find((p) => esPptoAceptado(p.estado));
-    const requierePiezaBtn = pptoAceptadoBtn ? pptoAceptadoBtn.tipoPieza === "pedido" || pptoAceptadoBtn.tipoPieza === "mixto" : false;
+    const requierePiezaBtn = detalle.presupuestos.some((p) => esPptoAceptado(p.estado) && (p.tipoPieza === "pedido" || p.tipoPieza === "mixto"));
     if (requierePiezaBtn || anticipoRegistrado) {
       botones.push(
         <Button key="pedido-aceptado" size="sm" className="gap-1.5" onClick={callbacks.onRegistrarPedido}>
