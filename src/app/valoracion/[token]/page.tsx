@@ -53,7 +53,6 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
   const [motivos, setMotivos] = useState<string[]>([]);
   const [comentario, setComentario] = useState("");
   const [email, setEmail] = useState("");
-  const [contactar, setContactar] = useState(false);
   const [trampa, setTrampa] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,7 +172,7 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
       const res = await fetch(`/api/valoracion/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), credential: credencial || undefined, motivos, comentario: comentario.trim(), contactar, website: trampa, nombre: nombreEscrito.trim(), telefono: telefono.trim(), resguardo: resguardo.trim() }),
+        body: JSON.stringify({ email: email.trim(), credential: credencial || undefined, motivos, comentario: comentario.trim(), website: trampa, nombre: nombreEscrito.trim(), telefono: telefono.trim(), resguardo: resguardo.trim() }),
       });
       const d = await res.json();
       if (!d.ok) {
@@ -317,11 +316,6 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
               </p>
             </div>
             )}
-
-            <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-              <input type="checkbox" className="mt-0.5 size-4 accent-amber-500" checked={contactar} onChange={(e) => setContactar(e.target.checked)} />
-              Quiero que se pongan en contacto conmigo para solucionarlo
-            </label>
 
             {/* Trampa para bots: una persona nunca ve ni rellena este campo. */}
             <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">

@@ -98,7 +98,6 @@ function TarjetaValoracion({ v, motivos, onCambio }: { v: Valoracion; motivos: R
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {v.contactar && <span className="inline-flex rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">Pide que le contacten</span>}
           <Button size="sm" variant={v.atendido ? "outline" : "default"} className="h-7" disabled={guardando} onClick={alternar}>
             {v.atendido ? "Reabrir" : "Marcar atendida"}
           </Button>
