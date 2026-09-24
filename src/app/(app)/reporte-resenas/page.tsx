@@ -94,7 +94,7 @@ function TarjetaValoracion({ v, motivos, onCambio }: { v: Valoracion; motivos: R
             <span className="ml-2 font-normal text-muted-foreground">{v.telefono || ""}</span>
           </p>
           <p className="text-xs text-muted-foreground">
-            {fechaHora(v.usado_en)} · {v.servicio || "Servicio sin indicar"}{v.id_registro ? ` · resguardo ${v.id_registro}` : ""} · <span className="select-all">{v.email}</span>
+            {fechaHora(v.usado_en)} · {v.servicio || "Servicio sin indicar"}{v.id_registro ? ` · resguardo ${v.id_registro}` : ""} · <span className="select-all">{v.email}</span>{v.email_verificado && <span className="ml-1.5 inline-flex rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">verificado con Google</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">

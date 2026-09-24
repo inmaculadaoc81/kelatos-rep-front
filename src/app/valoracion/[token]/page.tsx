@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 interface Motivo {
@@ -12,6 +12,23 @@ type Estado = "cargando" | "valido" | "usado" | "expirado" | "invalido" | "envia
 
 const MAX_COMENTARIO = 1500;
 
+// Inicio de sesión con Google (Google Identity Services), como Google Forms: el
+// correo sale de la cuenta del cliente y el servidor lo verifica. No crea sesión
+// ni cookie en este sitio.
+type GoogleId = {
+  initialize: (o: Record<string, unknown>) => void;
+  renderButton: (el: HTMLElement, o: Record<string, unknown>) => void;
+  prompt: () => void;
+  disableAutoSelect: () => void;
+};
+const gis = () => (window as unknown as { google?: { accounts?: { id?: GoogleId } } }).google?.accounts?.id;
+
+function leerPayload(jwt: string): { email?: string; name?: string } {
+  const b64 = jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 /**
  * Formulario público de valoración. Sin cabecera, menú ni enlaces al
  * dashboard: una sola tarjeta. El enlace es de un solo uso y el correo
@@ -22,6 +39,13 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
   const [estado, setEstado] = useState<Estado>("cargando");
   const [nombre, setNombre] = useState<string | null>(null);
   const [anonimo, setAnonimo] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+  const [credencial, setCredencial] = useState<string | null>(null);
+  const [googleEmail, setGoogleEmail] = useState("");
+  const [googleNombre, setGoogleNombre] = useState("");
+  const [gisListo, setGisListo] = useState(false);
+  const [gisError, setGisError] = useState<string | null>(null);
+  const botonGoogle = useRef<HTMLDivElement>(null);
   const [nombreEscrito, setNombreEscrito] = useState("");
   const [telefono, setTelefono] = useState("");
   const [resguardo, setResguardo] = useState("");
@@ -47,6 +71,7 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
         }
         setNombre(d.nombre ?? null);
         setAnonimo(d.anonimo === true);
+        setGoogleClientId(typeof d.googleClientId === "string" ? d.googleClientId : null);
         setMotivosDisponibles(d.motivos ?? []);
         setEstado(d.estado as Estado);
       })
@@ -60,6 +85,77 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
     };
   }, [token]);
 
+  function recibirCredencial(jwt: string) {
+    try {
+      const p = leerPayload(jwt);
+      setCredencial(jwt);
+      setGoogleEmail(String(p.email || ""));
+      const n = String(p.name || "");
+      setGoogleNombre(n);
+      if (n) setNombreEscrito((prev) => prev || n);
+      setGisError(null);
+      setError(null);
+    } catch {
+      setGisError("No se pudo leer tu cuenta de Google. Inténtalo de nuevo.");
+    }
+  }
+
+  function otraCuenta() {
+    gis()?.disableAutoSelect();
+    setCredencial(null);
+    setGoogleEmail("");
+    setGoogleNombre("");
+  }
+
+  useEffect(() => {
+    if (!googleClientId || estado !== "valido") return;
+    let cancelado = false;
+    const iniciar = () => {
+      const id = gis();
+      if (!id || cancelado) return;
+      id.initialize({
+        client_id: googleClientId,
+        nonce: token,
+        ux_mode: "popup",
+        auto_select: false,
+        callback: (r: { credential?: string }) => {
+          if (r.credential) recibirCredencial(r.credential);
+        },
+      });
+      setGisListo(true);
+    };
+    if (gis()) {
+      iniciar();
+    } else {
+      let s = document.querySelector<HTMLScriptElement>("script[data-gis]");
+      if (!s) {
+        s = document.createElement("script");
+        s.src = "https://accounts.google.com/gsi/client";
+        s.async = true;
+        s.defer = true;
+        s.dataset.gis = "1";
+        s.onerror = () => setGisError("No se pudo cargar el inicio de sesión de Google. Desactiva el bloqueador de contenido e inténtalo de nuevo.");
+        document.head.appendChild(s);
+      }
+      s.addEventListener("load", iniciar);
+    }
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleClientId, estado, token]);
+
+  useEffect(() => {
+    if (!gisListo || credencial) return;
+    const el = botonGoogle.current;
+    const id = gis();
+    if (el && id) {
+      el.innerHTML = "";
+      id.renderButton(el, { theme: "outline", size: "large", text: "continue_with", shape: "rectangular", logo_alignment: "left", width: 300, locale: "es" });
+      id.prompt();
+    }
+  }, [gisListo, credencial]);
+
   function alternarMotivo(id: string) {
     setMotivos((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
   }
@@ -68,14 +164,16 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
     e.preventDefault();
     if (enviando) return;
     setError(null);
-    if (!email.trim()) return setError("Escribe tu correo electrónico");
+    if (googleClientId) {
+      if (!credencial) return setError("Inicia sesión con tu cuenta de Google para enviar la valoración");
+    } else if (!email.trim()) return setError("Escribe tu correo electrónico");
     if (!motivos.length && !comentario.trim()) return setError("Marca al menos un motivo o escribe un comentario");
     setEnviando(true);
     try {
       const res = await fetch(`/api/valoracion/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), motivos, comentario: comentario.trim(), contactar, website: trampa, nombre: nombreEscrito.trim(), telefono: telefono.trim(), resguardo: resguardo.trim() }),
+        body: JSON.stringify({ email: email.trim(), credential: credencial || undefined, motivos, comentario: comentario.trim(), contactar, website: trampa, nombre: nombreEscrito.trim(), telefono: telefono.trim(), resguardo: resguardo.trim() }),
       });
       const d = await res.json();
       if (!d.ok) {
@@ -83,6 +181,7 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
         if (msg === "Este enlace ya se ha usado") return setEstado("usado");
         if (msg === "Este enlace ha caducado") return setEstado("expirado");
         if (msg === "Este enlace no es válido") return setEstado("invalido");
+        if (msg.startsWith("No se pudo verificar tu cuenta de Google")) setCredencial(null);
         return setError(msg);
       }
       setEstado("enviado");
@@ -178,6 +277,28 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
               </div>
             )}
 
+            {googleClientId ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Tu correo electrónico</p>
+                {credencial ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-green-300 bg-green-50 px-3 py-2 dark:border-green-900 dark:bg-green-950/30">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{googleEmail}</p>
+                      <p className="text-xs text-green-700 dark:text-green-400">Verificado con tu cuenta de Google{googleNombre ? ` · ${googleNombre}` : ""}</p>
+                    </div>
+                    <button type="button" onClick={otraCuenta} className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-800 dark:text-amber-400">Usar otra cuenta</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div ref={botonGoogle} className="min-h-11" />
+                    {gisError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{gisError}</p>}
+                  </div>
+                )}
+                <p className="text-xs text-slate-500">
+                  Usamos el correo de tu cuenta de Google para comprobar que eres tú y evitar envíos repetidos (solo se puede enviar una valoración por cuenta). No compartimos tu correo con nadie ni accedemos a nada más de tu cuenta.
+                </p>
+              </div>
+            ) : (
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium">Tu correo electrónico</label>
               <input
@@ -195,6 +316,7 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
                 Solo se puede enviar una valoración por correo y por enlace. Lo usamos para evitar envíos repetidos y, si lo pides, para responderte.
               </p>
             </div>
+            )}
 
             <label className="flex cursor-pointer items-start gap-2.5 text-sm">
               <input type="checkbox" className="mt-0.5 size-4 accent-amber-500" checked={contactar} onChange={(e) => setContactar(e.target.checked)} />

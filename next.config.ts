@@ -5,11 +5,12 @@ import type { NextConfig } from "next";
 // propio (ni scripts, ni imágenes, ni conexiones de terceros).
 const CSP_VALORACION = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
-  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
   "img-src 'self' data:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://accounts.google.com/gsi/",
+  "frame-src https://accounts.google.com/gsi/",
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'none'",
@@ -24,7 +25,7 @@ const CABECERAS_PUBLICAS = [
   { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
   { key: "Cache-Control", value: "no-store, max-age=0" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
 ];
 
 const nextConfig: NextConfig = {

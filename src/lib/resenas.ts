@@ -52,6 +52,7 @@ export interface Valoracion {
   conversation_id: number;
   usado_en: string;
   email: string;
+  email_verificado?: boolean;
   motivos: string[];
   comentario: string | null;
   contactar: boolean;

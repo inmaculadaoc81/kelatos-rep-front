@@ -24,6 +24,10 @@ const MENSAJES_SEGUROS = [
   "Con este correo ya se ha enviado una valoración",
   "Demasiados intentos. Inténtalo de nuevo más tarde.",
   "Espera unos segundos antes de enviar el formulario",
+  "Inicia sesión con Google para enviar tu valoración",
+  "No se pudo verificar tu cuenta de Google. Inicia sesión de nuevo.",
+  "Tu cuenta de Google no tiene un correo verificado",
+  "Tu cuenta de Google no tiene un correo válido",
 ];
 
 
@@ -31,11 +35,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   const { token } = await params;
   if (!TOKEN_VALIDO.test(token)) return NextResponse.json({ ok: true, estado: "invalido" });
   try {
-    const data = await kelatosApiGet<{ ok: boolean; estado: string; anonimo?: boolean; nombre?: string | null; servicio?: string | null; motivos?: { id: string; etiqueta: string }[] }>(
+    const data = await kelatosApiGet<{ ok: boolean; estado: string; anonimo?: boolean; googleClientId?: string | null; nombre?: string | null; servicio?: string | null; motivos?: { id: string; etiqueta: string }[] }>(
       `/v1/valoracion/${token}`,
       { ip: ipDe(req) }
     );
-    return NextResponse.json({ ok: true, estado: data.estado, anonimo: data.anonimo === true, nombre: data.nombre ?? null, servicio: data.servicio ?? null, motivos: data.motivos ?? [] });
+    return NextResponse.json({ ok: true, estado: data.estado, anonimo: data.anonimo === true, googleClientId: data.googleClientId ?? null, nombre: data.nombre ?? null, servicio: data.servicio ?? null, motivos: data.motivos ?? [] });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";
     if (MENSAJES_SEGUROS.includes(msg)) return NextResponse.json({ ok: false, error: msg }, { status: 429 });
@@ -61,6 +65,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   try {
     await kelatosApiPost(`/v1/valoracion/${token}`, {
       email: typeof b.email === "string" ? b.email.slice(0, 254) : "",
+      credential: typeof b.credential === "string" ? b.credential.slice(0, 4096) : "",
       motivos: Array.isArray(b.motivos) ? b.motivos.filter((m) => typeof m === "string").slice(0, 10) : [],
       comentario: typeof b.comentario === "string" ? b.comentario.slice(0, 1500) : "",
       contactar: b.contactar === true,
