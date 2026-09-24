@@ -11,6 +11,7 @@ import Image from "next/image";
 export default function ValoracionEntrada() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [yaEnviada, setYaEnviada] = useState(false);
   const pedido = useRef(false);
 
   useEffect(() => {
@@ -19,7 +20,8 @@ export default function ValoracionEntrada() {
     fetch("/api/valoracion/nuevo", { method: "POST", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
-        if (d.ok && typeof d.token === "string" && /^[A-Za-z0-9_-]{20,64}$/.test(d.token)) router.replace(`/valoracion/${d.token}`);
+        if (d.yaEnviada) setYaEnviada(true);
+        else if (d.ok && typeof d.token === "string" && /^[A-Za-z0-9_-]{20,64}$/.test(d.token)) router.replace(`/valoracion/${d.token}`);
         else setError(d.error || "No se pudo preparar el formulario");
       })
       .catch(() => setError("No se pudo preparar el formulario. Revisa tu conexión e inténtalo de nuevo."));
@@ -33,7 +35,12 @@ export default function ValoracionEntrada() {
         </div>
       </div>
       <div className="rounded-xl border bg-white p-7 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        {error ? (
+        {yaEnviada ? (
+          <>
+            <p className="text-lg font-semibold">Ya recibimos tu valoración</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">Desde este dispositivo ya se envió el formulario. Gracias por tu tiempo.</p>
+          </>
+        ) : error ? (
           <>
             <p className="text-base font-semibold">No se pudo abrir el formulario</p>
             <p className="mt-1 text-sm text-slate-500">{error}</p>

@@ -32,6 +32,34 @@ export function origenPropio(req: Request): boolean {
   }
 }
 
+export const COOKIE_DISPOSITIVO = "kv_dev";
+export const COOKIE_ENVIADA = "kv_ok";
+const SEIS_MESES = 60 * 60 * 24 * 180;
+
+export function leerCookie(req: Request, nombre: string): string {
+  const crudo = req.headers.get("cookie") || "";
+  for (const parte of crudo.split(";")) {
+    const [k, ...v] = parte.trim().split("=");
+    if (k === nombre) return decodeURIComponent(v.join("="));
+  }
+  return "";
+}
+
+/**
+ * Identificador del navegador/teléfono del visitante (cookie propia, httpOnly,
+ * aleatoria, sin datos personales). Sirve para reconocer que el mismo cliente
+ * ya envió una valoración aunque cambie de correo.
+ */
+export function dispositivoDe(req: Request): { id: string; nuevo: boolean } {
+  const actual = leerCookie(req, COOKIE_DISPOSITIVO);
+  if (/^[A-Za-z0-9-]{16,64}$/.test(actual)) return { id: actual, nuevo: false };
+  return { id: crypto.randomUUID(), nuevo: true };
+}
+
+export function opcionesCookie() {
+  return { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: SEIS_MESES };
+}
+
 export function esJson(req: Request): boolean {
   return (req.headers.get("content-type") || "").toLowerCase().startsWith("application/json");
 }

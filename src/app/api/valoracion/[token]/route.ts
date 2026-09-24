@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
-import { esJson, ipDe, origenPropio } from "@/lib/publico-seguridad";
+import { COOKIE_DISPOSITIVO, COOKIE_ENVIADA, dispositivoDe, esJson, ipDe, leerCookie, opcionesCookie, origenPropio } from "@/lib/publico-seguridad";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +34,19 @@ const MENSAJES_SEGUROS = [
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!TOKEN_VALIDO.test(token)) return NextResponse.json({ ok: true, estado: "invalido" });
+  const dispositivo = dispositivoDe(req);
+  const conCookie = (res: NextResponse) => {
+    if (dispositivo.nuevo) res.cookies.set(COOKIE_DISPOSITIVO, dispositivo.id, opcionesCookie());
+    return res;
+  };
+  // Este navegador ya envió una valoración.
+  if (leerCookie(req, COOKIE_ENVIADA)) return conCookie(NextResponse.json({ ok: true, estado: "usado" }));
   try {
     const data = await kelatosApiGet<{ ok: boolean; estado: string; anonimo?: boolean; googleClientId?: string | null; nombre?: string | null; servicio?: string | null; motivos?: { id: string; etiqueta: string }[] }>(
       `/v1/valoracion/${token}`,
       { ip: ipDe(req) }
     );
-    return NextResponse.json({ ok: true, estado: data.estado, anonimo: data.anonimo === true, googleClientId: data.googleClientId ?? null, nombre: data.nombre ?? null, servicio: data.servicio ?? null, motivos: data.motivos ?? [] });
+    return conCookie(NextResponse.json({ ok: true, estado: data.estado, anonimo: data.anonimo === true, googleClientId: data.googleClientId ?? null, nombre: data.nombre ?? null, servicio: data.servicio ?? null, motivos: data.motivos ?? [] }));
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";
     if (MENSAJES_SEGUROS.includes(msg)) return NextResponse.json({ ok: false, error: msg }, { status: 429 });
@@ -62,8 +69,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     return NextResponse.json({ ok: false, error: "Solicitud no válida" }, { status: 400 });
   }
 
+  const dispositivo = dispositivoDe(req);
   try {
     await kelatosApiPost(`/v1/valoracion/${token}`, {
+      dispositivo: dispositivo.id,
       email: typeof b.email === "string" ? b.email.slice(0, 254) : "",
       credential: typeof b.credential === "string" ? b.credential.slice(0, 4096) : "",
       motivos: Array.isArray(b.motivos) ? b.motivos.filter((m) => typeof m === "string").slice(0, 10) : [],
@@ -75,7 +84,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       website: typeof b.website === "string" ? b.website.slice(0, 100) : "",
       ip: ipDe(req),
     });
-    return NextResponse.json({ ok: true });
+    // Marca este navegador como "ya envió": no podrá abrir otro formulario.
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(COOKIE_ENVIADA, "1", opcionesCookie());
+    res.cookies.set(COOKIE_DISPOSITIVO, dispositivo.id, opcionesCookie());
+    return res;
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";
     if (MENSAJES_SEGUROS.includes(msg)) return NextResponse.json({ ok: false, error: msg }, { status: 409 });
