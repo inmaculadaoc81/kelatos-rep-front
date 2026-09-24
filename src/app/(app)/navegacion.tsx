@@ -118,6 +118,8 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
     { label: "Libro Diario", href: "/contabilidad/diario", icon: Book1 },
     { label: "Libro Mayor", href: "/contabilidad/mayor", icon: ClipboardText },
     { label: "Sumas y Saldos", href: "/contabilidad/sumas-saldos", icon: Chart },
+    { label: "Partidas pendientes", href: "/contabilidad/pendientes", icon: Wallet },
+    { label: "Efectivo y caja", href: "/contabilidad/efectivo", icon: Coin1 },
     { label: "Plan contable", href: "/contabilidad/plan", icon: Hierarchy },
     { label: "Reglas contables", href: "/contabilidad/reglas", icon: Setting2 },
     { label: "Periodos y auditoría", href: "/contabilidad/periodos", icon: Clock },

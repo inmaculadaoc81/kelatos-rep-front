@@ -45,6 +45,9 @@ const ETIQUETA: Record<string, string> = {
   pago_proveedor: "Pagos a proveedores",
   pago_acreedor: "Pagos a acreedores",
   dua_importacion: "Importaciones (DUA)",
+  retirada_caja: "Retiradas de caja",
+  ingreso_caja_en_banco: "Ingresos de efectivo en banco",
+  ingreso_caja_socio: "Aportaciones del socio a la caja",
 };
 const NO_CUBIERTO: Record<string, string> = { alquileres: "Facturas de alquiler", facturas_mensajeria: "Facturas de mensajería" };
 
