@@ -21,6 +21,10 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
   const { token } = use(params);
   const [estado, setEstado] = useState<Estado>("cargando");
   const [nombre, setNombre] = useState<string | null>(null);
+  const [anonimo, setAnonimo] = useState(false);
+  const [nombreEscrito, setNombreEscrito] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [resguardo, setResguardo] = useState("");
   const [motivosDisponibles, setMotivosDisponibles] = useState<Motivo[]>([]);
   const [motivos, setMotivos] = useState<string[]>([]);
   const [comentario, setComentario] = useState("");
@@ -42,6 +46,7 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
           return;
         }
         setNombre(d.nombre ?? null);
+        setAnonimo(d.anonimo === true);
         setMotivosDisponibles(d.motivos ?? []);
         setEstado(d.estado as Estado);
       })
@@ -70,7 +75,7 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
       const res = await fetch(`/api/valoracion/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), motivos, comentario: comentario.trim(), contactar, website: trampa }),
+        body: JSON.stringify({ email: email.trim(), motivos, comentario: comentario.trim(), contactar, website: trampa, nombre: nombreEscrito.trim(), telefono: telefono.trim(), resguardo: resguardo.trim() }),
       });
       const d = await res.json();
       if (!d.ok) {
@@ -152,6 +157,26 @@ export default function ValoracionPage({ params }: { params: Promise<{ token: st
               />
               <p className="text-right text-xs text-slate-400">{comentario.length}/{MAX_COMENTARIO}</p>
             </div>
+
+            {anonimo && (
+              <div className="space-y-3 rounded-lg border border-dashed p-3 dark:border-slate-700">
+                <p className="text-sm font-medium">¿Quién eres? <span className="font-normal text-slate-500">(opcional, nos ayuda a localizar tu caso)</span></p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label htmlFor="nombre" className="text-xs text-slate-500">Nombre</label>
+                    <input id="nombre" value={nombreEscrito} onChange={(e) => setNombreEscrito(e.target.value)} maxLength={120} autoComplete="name" className="w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400 dark:border-slate-700 dark:bg-slate-950" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="telefono" className="text-xs text-slate-500">Teléfono con el que nos escribiste</label>
+                    <input id="telefono" type="tel" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} maxLength={30} autoComplete="tel" className="w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400 dark:border-slate-700 dark:bg-slate-950" />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label htmlFor="resguardo" className="text-xs text-slate-500">Nº de resguardo (si lo tienes)</label>
+                    <input id="resguardo" value={resguardo} onChange={(e) => setResguardo(e.target.value)} maxLength={40} className="w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400 dark:border-slate-700 dark:bg-slate-950" />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium">Tu correo electrónico</label>

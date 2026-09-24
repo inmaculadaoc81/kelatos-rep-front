@@ -31,11 +31,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   const { token } = await params;
   if (!TOKEN_VALIDO.test(token)) return NextResponse.json({ ok: true, estado: "invalido" });
   try {
-    const data = await kelatosApiGet<{ ok: boolean; estado: string; nombre?: string | null; servicio?: string | null; motivos?: { id: string; etiqueta: string }[] }>(
+    const data = await kelatosApiGet<{ ok: boolean; estado: string; anonimo?: boolean; nombre?: string | null; servicio?: string | null; motivos?: { id: string; etiqueta: string }[] }>(
       `/v1/valoracion/${token}`,
       { ip: ipDe(req) }
     );
-    return NextResponse.json({ ok: true, estado: data.estado, nombre: data.nombre ?? null, servicio: data.servicio ?? null, motivos: data.motivos ?? [] });
+    return NextResponse.json({ ok: true, estado: data.estado, anonimo: data.anonimo === true, nombre: data.nombre ?? null, servicio: data.servicio ?? null, motivos: data.motivos ?? [] });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";
     if (MENSAJES_SEGUROS.includes(msg)) return NextResponse.json({ ok: false, error: msg }, { status: 429 });
@@ -62,6 +62,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       motivos: Array.isArray(b.motivos) ? b.motivos.filter((m) => typeof m === "string").slice(0, 10) : [],
       comentario: typeof b.comentario === "string" ? b.comentario.slice(0, 1500) : "",
       contactar: b.contactar === true,
+      nombre: typeof b.nombre === "string" ? b.nombre.slice(0, 120) : "",
+      telefono: typeof b.telefono === "string" ? b.telefono.slice(0, 30) : "",
+      resguardo: typeof b.resguardo === "string" ? b.resguardo.slice(0, 40) : "",
       website: typeof b.website === "string" ? b.website.slice(0, 100) : "",
       ip: ipDe(req),
     });
