@@ -12,6 +12,7 @@ import { CajaError } from "./_ui";
 
 interface Resumen {
   simulacion: boolean;
+  desde?: string;
   documentosLeidos: number;
   eventos: number;
   porTipo: Record<string, number>;
@@ -41,7 +42,7 @@ const NO_CUBIERTO: Record<string, string> = { alquileres: "Facturas de alquiler"
 
 /** Trae las operaciones existentes a la bandeja contable. Siempre simula primero. */
 export function SincronizarDialog({ abierto, onClose, onHecho }: { abierto: boolean; onClose: () => void; onHecho: () => void }) {
-  const [desde, setDesde] = useState("2026-01-01");
+  const [desde, setDesde] = useState("2026-09-01");
   const [hasta, setHasta] = useState(hoyISO());
   const [res, setRes] = useState<Resumen | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -86,7 +87,7 @@ export function SincronizarDialog({ abierto, onClose, onHecho }: { abierto: bool
         <DialogTitle>Sincronizar operaciones</DialogTitle>
         <p className="text-sm text-muted-foreground">
           Lee las facturas, tickets, cobros y rectificativas ya emitidos y prepara sus asientos como <strong>borradores</strong>. No modifica ninguna factura ni ticket.
-          Primero se muestra una simulación; no se guarda nada hasta que confirmes.
+          Primero se muestra una simulación; no se guarda nada hasta que confirmes. La contabilidad arranca el 01/09/2026: nada anterior se carga.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Input type="date" className="w-40" value={desde} onChange={(e) => setDesde(e.target.value)} aria-label="Desde" />
