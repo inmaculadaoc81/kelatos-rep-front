@@ -19,6 +19,15 @@ export default auth((req) => {
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Contabilidad (Importaciones / DUA…) — solo administradores; el menú ya la
+  // oculta al resto (navegacion.tsx) y aquí se cierra también la ruta directa.
+  if (
+    (req.nextUrl.pathname.startsWith("/importaciones") || req.nextUrl.pathname.startsWith("/api/importaciones")) &&
+    req.auth?.user?.role !== "admin" &&
+    !esSuperadmin(req.auth?.user?.email)
+  ) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Dashboard de Transferencias — vista aparte. Superadmins entran por
   // serlo; puedeVerTransferencias además admite cuentas con acceso SOLO a
   // este módulo, sin el resto de poderes de superadmin.

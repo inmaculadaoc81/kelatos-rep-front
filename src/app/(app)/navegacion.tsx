@@ -26,6 +26,7 @@ import {
   Book1,
   Bank,
   ReceiptItem,
+  Airplane,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -113,6 +114,7 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
   claseIcono: "text-green-600 dark:text-green-400",
   items: [
     { label: "Libro de Compras", href: "/facturas-recibidas", icon: Book1 },
+    { label: "Importaciones / DUA", href: "/importaciones", icon: Airplane },
     { label: "Gastos / Compras", href: null, icon: ReceiptItem },
   ],
 };
