@@ -22,7 +22,7 @@ export default auth((req) => {
   // Contabilidad (Importaciones / DUA…) — solo administradores; el menú ya la
   // oculta al resto (navegacion.tsx) y aquí se cierra también la ruta directa.
   if (
-    (req.nextUrl.pathname.startsWith("/importaciones") || req.nextUrl.pathname.startsWith("/api/importaciones")) &&
+    (["/importaciones", "/api/importaciones", "/reporte-resenas", "/api/resenas"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
     req.auth?.user?.role !== "admin" &&
     !esSuperadmin(req.auth?.user?.email)
   ) {

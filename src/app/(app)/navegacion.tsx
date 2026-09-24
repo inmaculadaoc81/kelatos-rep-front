@@ -27,6 +27,7 @@ import {
   Bank,
   ReceiptItem,
   Airplane,
+  Star1,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -131,3 +132,24 @@ export const GRUPO_ADMIN: GrupoNavegacion = {
     { label: "Backups", href: "/admin/backups", icon: Save2 },
   ],
 };
+
+/** Solo administradores: se añade al final de "Informes". Amarillo, como las
+    opciones destacadas (Compras en rojo, Efectivo en verde). */
+export const ITEM_RESENAS: ItemNavegacion = {
+  label: "Reporte de reseñas",
+  href: "/reporte-resenas",
+  icon: Star1,
+  claseColor: "text-amber-500 hover:text-amber-600 data-active:text-amber-600 dark:text-yellow-400 dark:hover:text-yellow-300 dark:data-active:text-yellow-300 [&>svg]:text-current",
+};
+
+/** Menú según el rol: Contabilidad (tras Facturación) y Reporte de reseñas
+    (en Informes) solo para admins; el grupo Admin solo para superadmins. */
+export function gruposVisibles({ esAdmin, superadmin }: { esAdmin: boolean; superadmin: boolean }): GrupoNavegacion[] {
+  const base = GRUPOS.flatMap((g) => {
+    if (esAdmin && g.titulo === "Facturación") return [g, GRUPO_CONTABILIDAD];
+    if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS] }];
+    return [g];
+  });
+  return superadmin ? [...base, GRUPO_ADMIN] : base;
+}
+

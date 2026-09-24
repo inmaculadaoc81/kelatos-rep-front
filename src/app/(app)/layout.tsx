@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <header className="sticky top-0 z-20 flex h-14 items-center gap-4 bg-primary px-4 shadow-sm">
             <Migas />
             <div className="mx-auto hidden w-full max-w-sm sm:block">
-              <BuscadorGlobal incluirContabilidad={session?.user?.role === "admin" || esSuperadmin(session?.user?.email)} />
+              <BuscadorGlobal esAdmin={session?.user?.role === "admin" || esSuperadmin(session?.user?.email)} />
             </div>
             <div className="flex items-center gap-2">
               <NotificacionesBell />

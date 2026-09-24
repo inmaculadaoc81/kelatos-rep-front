@@ -10,7 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { GRUPOS, GRUPO_CONTABILIDAD } from "./navegacion";
+import { gruposVisibles } from "./navegacion";
 
 /**
  * Migas derivadas de la ruta usando el mismo árbol que pinta el menú, para
@@ -18,7 +18,7 @@ import { GRUPOS, GRUPO_CONTABILIDAD } from "./navegacion";
  * en dos sitios y puedan quedar desincronizados.
  */
 function localizar(pathname: string): { grupo: string; label: string } | null {
-  for (const grupo of [...GRUPOS, GRUPO_CONTABILIDAD]) {
+  for (const grupo of gruposVisibles({ esAdmin: true, superadmin: true })) {
     for (const item of grupo.items) {
       if (item.href && item.href === pathname) {
         return { grupo: grupo.titulo, label: item.label };

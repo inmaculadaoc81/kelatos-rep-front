@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { GRUPOS, GRUPO_CONTABILIDAD } from "./navegacion";
+import { gruposVisibles } from "./navegacion";
 
 /**
  * Buscador global (⌘K / Ctrl+K) — reproduce el enlace directo a cualquier
@@ -20,7 +20,7 @@ import { GRUPOS, GRUPO_CONTABILIDAD } from "./navegacion";
  * (href !== null); las que aún viven solo en Apps Script no aparecen,
  * igual que en el propio menú lateral.
  */
-export function BuscadorGlobal({ incluirContabilidad = false }: { incluirContabilidad?: boolean }) {
+export function BuscadorGlobal({ esAdmin = false }: { esAdmin?: boolean }) {
   const [abierto, setAbierto] = useState(false);
   const router = useRouter();
 
@@ -58,7 +58,7 @@ export function BuscadorGlobal({ incluirContabilidad = false }: { incluirContabi
         <CommandInput placeholder="Busca una página..." />
         <CommandList>
           <CommandEmpty>Sin resultados.</CommandEmpty>
-          {(incluirContabilidad ? GRUPOS.flatMap((g) => (g.titulo === "Facturación" ? [g, GRUPO_CONTABILIDAD] : [g])) : GRUPOS).map((grupo) => {
+          {gruposVisibles({ esAdmin, superadmin: false }).map((grupo) => {
             const items = grupo.items.filter((item) => item.href);
             if (items.length === 0) return null;
             return (
