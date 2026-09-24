@@ -30,6 +30,7 @@ export interface FilaResena {
   p1: RespuestaEncuesta | null;
   p2: RespuestaEncuesta | null;
   veredicto: VeredictoEncuesta;
+  formulario: "respondido" | "enlace_enviado" | "caducado" | null;
   respuestas: number;
   primera: string;
   ultima: string;
@@ -44,4 +45,32 @@ export interface ReporteResenas {
   totalLista: number;
   servicios: string[];
   filas: FilaResena[];
+}
+
+export interface Valoracion {
+  id: number;
+  conversation_id: number;
+  usado_en: string;
+  email: string;
+  motivos: string[];
+  comentario: string | null;
+  contactar: boolean;
+  atendido: boolean;
+  atendido_por: string | null;
+  atendido_en: string | null;
+  cliente_nombre: string | null;
+  telefono: string | null;
+  servicio: string | null;
+  id_registro: string | null;
+  p1: RespuestaEncuesta | null;
+  p2: RespuestaEncuesta | null;
+}
+
+export interface ReporteValoraciones {
+  ok: boolean;
+  total: number;
+  pendientes: number;
+  enlacesSinUsar: number;
+  motivos: { id: string; etiqueta: string }[];
+  filas: Valoracion[];
 }

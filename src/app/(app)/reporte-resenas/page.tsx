@@ -8,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ETIQUETA_RESPUESTA, ETIQUETA_VEREDICTO, FilaResena, ReporteResenas, RespuestaEncuesta, VeredictoEncuesta,
+  ETIQUETA_RESPUESTA, ETIQUETA_VEREDICTO, FilaResena, ReporteResenas, ReporteValoraciones, RespuestaEncuesta, Valoracion, VeredictoEncuesta,
 } from "@/lib/resenas";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const POR_PAGINA = 15;
@@ -52,7 +53,142 @@ function Fila({ f }: { f: FilaResena }) {
         <span className={cn("inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium", COLOR_VEREDICTO[f.veredicto])}>{ETIQUETA_VEREDICTO[f.veredicto]}</span>
       </TableCell>
       <TableCell className="whitespace-nowrap text-sm capitalize">{f.destino || "—"}</TableCell>
+      <TableCell>
+        {f.formulario ? (
+          <span className={cn("inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium", f.formulario === "respondido" ? "bg-green-500/10 text-green-700 dark:text-green-400" : f.formulario === "enlace_enviado" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-slate-500/10 text-slate-600 dark:text-slate-300")}>
+            {f.formulario === "respondido" ? "Respondido" : f.formulario === "enlace_enviado" ? "Enlace enviado" : "Caducado"}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
     </TableRow>
+  );
+}
+
+function TarjetaValoracion({ v, motivos, onCambio }: { v: Valoracion; motivos: Record<string, string>; onCambio: () => void }) {
+  const [guardando, setGuardando] = useState(false);
+  async function alternar() {
+    setGuardando(true);
+    try {
+      const res = await fetch(`/api/resenas/formularios/${v.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ atendido: !v.atendido }),
+      });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "Error desconocido");
+      onCambio();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setGuardando(false);
+    }
+  }
+  return (
+    <div className={cn("rounded-lg border bg-card p-3", v.atendido && "opacity-70")}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">
+            {v.cliente_nombre || "Cliente sin nombre"}
+            <span className="ml-2 font-normal text-muted-foreground">{v.telefono || ""}</span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {fechaHora(v.usado_en)} · {v.servicio || "Servicio sin indicar"}{v.id_registro ? ` · resguardo ${v.id_registro}` : ""} · <span className="select-all">{v.email}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {v.contactar && <span className="inline-flex rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">Pide que le contacten</span>}
+          <Button size="sm" variant={v.atendido ? "outline" : "default"} className="h-7" disabled={guardando} onClick={alternar}>
+            {v.atendido ? "Reabrir" : "Marcar atendida"}
+          </Button>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <Respuesta valor={v.p1} />
+        <Respuesta valor={v.p2} />
+        {v.motivos.map((m) => (
+          <span key={m} className="rounded-md bg-muted px-2 py-0.5 text-xs">{motivos[m] || m}</span>
+        ))}
+      </div>
+      {v.comentario && <p className="mt-2 whitespace-pre-wrap rounded-md bg-muted/40 px-3 py-2 text-sm">{v.comentario}</p>}
+      {v.atendido && v.atendido_por && <p className="mt-1.5 text-xs text-muted-foreground">Atendida por {v.atendido_por}{v.atendido_en ? ` · ${fechaHora(v.atendido_en)}` : ""}</p>}
+    </div>
+  );
+}
+
+function PestanaFormulario() {
+  const [datos, setDatos] = useState<ReporteValoraciones | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [soloPendientes, setSoloPendientes] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setBusquedaAplicada(busqueda), 350);
+    return () => clearTimeout(t);
+  }, [busqueda]);
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const p = new URLSearchParams({ limit: "50" });
+      if (soloPendientes) p.set("atendido", "false");
+      if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
+      const res = await fetch(`/api/resenas/formularios?${p.toString()}`, { cache: "no-store" });
+      const d = (await res.json()) as ReporteValoraciones & { error?: string };
+      if (!d.ok) throw new Error(d.error || "Error desconocido");
+      setDatos(d);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setCargando(false);
+    }
+  }, [soloPendientes, busquedaAplicada]);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  const mapaMotivos = Object.fromEntries((datos?.motivos ?? []).map((m) => [m.id, m.etiqueta]));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full max-w-xs">
+          <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar cliente, correo o comentario…" className="h-8 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+        </div>
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+          <input type="checkbox" className="size-4" checked={soloPendientes} onChange={(e) => setSoloPendientes(e.target.checked)} /> Solo pendientes
+        </label>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {datos ? `${datos.total} recibida${datos.total === 1 ? "" : "s"} · ${datos.pendientes} pendiente${datos.pendientes === 1 ? "" : "s"} · ${datos.enlacesSinUsar} enlace${datos.enlacesSinUsar === 1 ? "" : "s"} sin usar` : ""}
+        </span>
+        <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
+          <Refresh2 className={cn("size-4", cargando && "animate-spin")} />
+        </Button>
+      </div>
+
+      {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Error al cargar: {error}</div>}
+      {cargando && !datos && <Skeleton className="h-28 w-full" />}
+
+      {datos && datos.filas.length === 0 && (
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-6 py-12 text-center">
+          <DocumentText className="size-8 text-amber-500 dark:text-yellow-400" />
+          <p className="text-sm font-medium">Todavía no hay valoraciones</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Cuando un cliente puntúe mal y complete el formulario que recibe por WhatsApp, aparecerá aquí con su reseña. Cada enlace es de un solo uso y cada correo solo puede enviar una vez.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {datos?.filas.map((v) => <TarjetaValoracion key={v.id} v={v} motivos={mapaMotivos} onCambio={cargar} />)}
+      </div>
+    </div>
   );
 }
 
@@ -209,16 +345,17 @@ export default function ReporteResenasPage() {
                   <TableHead>Pregunta 2</TableHead>
                   <TableHead>Resultado</TableHead>
                   <TableHead>Destino</TableHead>
+                  <TableHead>Formulario</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {cargando &&
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>{Array.from({ length: 9 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                    <TableRow key={i}>{Array.from({ length: 10 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
                   ))}
                 {!cargando && (datos?.filas.length ?? 0) === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                       {pestana === "malas" && !hayFiltros ? "No hay reseñas malas todavía." : hayFiltros ? "Ninguna encuesta coincide con los filtros" : "Todavía no hay respuestas de la encuesta."}
                     </TableCell>
                   </TableRow>
@@ -241,15 +378,7 @@ export default function ReporteResenasPage() {
         </>
       )}
 
-      {pestana === "formulario" && (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-6 py-14 text-center">
-          <DocumentText className="size-8 text-amber-500 dark:text-yellow-400" />
-          <p className="text-sm font-medium">Formulario de satisfacción</p>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Aquí aparecerán las respuestas del formulario que reciben los clientes que valoran mal la atención, junto a su reseña mala. Todavía no está conectado.
-          </p>
-        </div>
-      )}
+      {pestana === "formulario" && <PestanaFormulario />}
     </div>
   );
 }
