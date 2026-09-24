@@ -14,13 +14,18 @@ import {
 } from "@/components/ui/sidebar";
 import { ItemDirecto, GrupoColapsable } from "@/components/sidebar-grupo-colapsable";
 import type { Session } from "next-auth";
-import { GRUPOS, GRUPO_ADMIN } from "./navegacion";
+import { GRUPOS, GRUPO_ADMIN, GRUPO_CONTABILIDAD } from "./navegacion";
 import { NavUser } from "./nav-user";
 import { esSuperadmin } from "@/lib/superadmin";
 
 export function AppSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
-  const grupos = esSuperadmin(session?.user?.email) ? [...GRUPOS, GRUPO_ADMIN] : GRUPOS;
+  const superadmin = esSuperadmin(session?.user?.email);
+  const esAdmin = session?.user?.role === "admin" || superadmin;
+  const base = esAdmin
+    ? GRUPOS.flatMap((g) => (g.titulo === "Facturación" ? [g, GRUPO_CONTABILIDAD] : [g]))
+    : GRUPOS;
+  const grupos = superadmin ? [...base, GRUPO_ADMIN] : base;
 
   return (
     <Sidebar collapsible="icon">

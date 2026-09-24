@@ -87,19 +87,9 @@ export const GRUPOS: GrupoNavegacion[] = [
     icon: Wallet,
     items: [
       { label: "Facturas de Clientes", href: "/facturas-clientes", icon: Receipt },
-      { label: "Libro de Compras", href: "/facturas-recibidas", icon: Book1 },
       { label: "Seguimiento de Facturas", href: "/seguimiento-facturas", icon: Money },
       { label: "Reporte de Facturas", href: "/reporte-facturas", icon: ClipboardText },
       { label: "Efectivo", href: "/efectivo", icon: Coin1, claseColor: "text-green-600 hover:text-green-700 data-active:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:data-active:text-green-300 [&>svg]:text-current" },
-    ],
-  },
-  {
-    titulo: "Contabilidad",
-    icon: Bank,
-    claseIcono: "text-green-600 dark:text-green-400",
-    items: [
-      { label: "Libro de Compras", href: "/facturas-recibidas", icon: Book1 },
-      { label: "Gastos / Compras", href: null, icon: ReceiptItem },
     ],
   },
   {
@@ -114,6 +104,18 @@ export const GRUPOS: GrupoNavegacion[] = [
     ],
   },
 ];
+
+/** Solo visible para administradores (y superadmins): se inserta tras
+    "Facturación" en sidebar.tsx y se suma al buscador (layout.tsx). */
+export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
+  titulo: "Contabilidad",
+  icon: Bank,
+  claseIcono: "text-green-600 dark:text-green-400",
+  items: [
+    { label: "Libro de Compras", href: "/facturas-recibidas", icon: Book1 },
+    { label: "Gastos / Compras", href: null, icon: ReceiptItem },
+  ],
+};
 
 /** Solo se añade al menú para cuentas superadmin (ver sidebar.tsx) —
     reemplaza el borrado manual que antes se hacía directamente en las
