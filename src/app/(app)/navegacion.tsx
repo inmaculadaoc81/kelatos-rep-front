@@ -114,6 +114,13 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
   icon: Bank,
   claseIcono: "text-green-600 dark:text-green-400",
   items: [
+    { label: "Asientos", href: "/contabilidad/asientos", icon: DocumentText },
+    { label: "Libro Diario", href: "/contabilidad/diario", icon: Book1 },
+    { label: "Libro Mayor", href: "/contabilidad/mayor", icon: ClipboardText },
+    { label: "Sumas y Saldos", href: "/contabilidad/sumas-saldos", icon: Chart },
+    { label: "Plan contable", href: "/contabilidad/plan", icon: Hierarchy },
+    { label: "Reglas contables", href: "/contabilidad/reglas", icon: Setting2 },
+    { label: "Periodos y auditoría", href: "/contabilidad/periodos", icon: Clock },
     { label: "Libro de Compras", href: "/facturas-recibidas", icon: Book1 },
     { label: "Importaciones / DUA", href: "/importaciones", icon: Airplane },
     { label: "Gastos / Compras", href: null, icon: ReceiptItem },
