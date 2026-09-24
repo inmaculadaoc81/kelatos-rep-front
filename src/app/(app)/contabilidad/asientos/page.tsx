@@ -12,6 +12,7 @@ import { apiC, fechaCorta, num, type AsientoResumen, type DetalleAsiento, type E
 import { CajaError, Cabecera, EstadoBadge, FilaVacia, FilasCarga, Kpi, usePlan } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 import { AsientoFormDialog } from "../asiento-form-dialog";
+import { SincronizarDialog } from "../sincronizar-dialog";
 
 const POR_PAGINA = 25;
 
@@ -31,6 +32,7 @@ export default function AsientosPage() {
   const [formAbierto, setFormAbierto] = useState(false);
   const [editar, setEditar] = useState<DetalleAsiento | null>(null);
   const [lote, setLote] = useState(false);
+  const [sincAbierto, setSincAbierto] = useState(false);
   const plan = usePlan();
   const consulta = useRef(0);
 
@@ -92,6 +94,7 @@ export default function AsientosPage() {
         descripcion="Los borradores se generan solos desde las operaciones; aquí se revisan, validan y contabilizan"
         acciones={
           <>
+            <Button size="sm" variant="outline" onClick={() => setSincAbierto(true)}>Sincronizar operaciones</Button>
             <Button size="sm" className="gap-1.5" onClick={() => { setEditar(null); setFormAbierto(true); }}>
               <Add className="size-4" /> Asiento manual
             </Button>
@@ -200,6 +203,7 @@ export default function AsientosPage() {
         onCambio={cargar}
         onEditar={(d) => { setDetalleId(null); setEditar(d); setFormAbierto(true); }}
       />
+      <SincronizarDialog abierto={sincAbierto} onClose={() => setSincAbierto(false)} onHecho={cargar} />
       <AsientoFormDialog
         abierto={formAbierto}
         editar={editar}
