@@ -37,6 +37,11 @@ export interface GrupoNavegacionBase {
  * colapsable con cabecera + chevron. Extraído de src/app/(app)/sidebar.tsx
  * (2026-09-15) para reutilizarlo en Asistencia sin duplicar el patrón.
  */
+/** Activo en la propia página o en una subpágina suya (p. ej. /mails/tipos/x → "Tipos de correo"). */
+function activo(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 export function ItemDirecto({ item, pathname }: { item: ItemNavegacionBase; pathname: string }) {
   const Icon = item.icon;
   if (!item.href) {
@@ -52,7 +57,7 @@ export function ItemDirecto({ item, pathname }: { item: ItemNavegacionBase; path
   }
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton isActive={pathname === item.href} tooltip={item.label} render={<Link href={item.href} />}>
+      <SidebarMenuButton isActive={activo(pathname, item.href)} tooltip={item.label} render={<Link href={item.href} />}>
         <Icon />
         <span>{item.label}</span>
       </SidebarMenuButton>
@@ -115,7 +120,7 @@ export function GrupoColapsable({
               }
               return (
                 <SidebarMenuSubItem key={item.label}>
-                  <SidebarMenuSubButton isActive={pathname === item.href} className={item.claseColor} render={<Link href={item.href} />}>
+                  <SidebarMenuSubButton isActive={activo(pathname, item.href)} className={item.claseColor} render={<Link href={item.href} />}>
                     <Icon />
                     <span>{item.label}</span>
                   </SidebarMenuSubButton>

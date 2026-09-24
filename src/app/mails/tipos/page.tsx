@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Refresh2, SearchNormal1, Send2, Add, Warning2, TickCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ const num = (n: number) => n.toLocaleString("es-ES");
 
 export default function TiposCorreoPage() {
   const esSuperadmin = useEsSuperadmin();
+  const router = useRouter();
   const [tipos, setTipos] = useState<TipoCorreo[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -202,7 +205,12 @@ export default function TiposCorreoPage() {
                   {(t) => (
                     <TableRow key={t.tipo} className={t.activo ? "" : "bg-muted/30"}>
                       <TableCell className="max-w-96">
-                        <span className={`block text-sm font-medium ${t.activo ? "" : "text-muted-foreground line-through"}`}>{t.nombre}</span>
+                        <Link href={`/mails/tipos/${encodeURIComponent(t.tipo)}`} className={`block text-sm font-medium hover:text-primary hover:underline ${t.activo ? "" : "text-muted-foreground line-through"}`}>
+                          {t.nombre}
+                          <span className={`ml-2 inline-flex rounded px-1.5 py-0.5 align-middle text-[10px] font-medium no-underline ${t.tiene_plantilla ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" : "bg-muted text-muted-foreground"}`}>
+                            {t.tiene_plantilla ? "Plantilla JS" : "Sin plantilla"}
+                          </span>
+                        </Link>
                         <span className="block truncate text-xs text-muted-foreground" title={t.descripcion}>{t.descripcion || t.tipo}</span>
                         {t.omitidos > 0 && (
                           <span className="block text-xs text-amber-600 dark:text-amber-400">
@@ -267,9 +275,9 @@ export default function TiposCorreoPage() {
           open={nuevoAbierto}
           onOpenChange={setNuevoAbierto}
           categorias={categorias}
-          onCreado={() => {
+          onCreado={(clave) => {
             setNuevoAbierto(false);
-            cargar();
+            router.push(`/mails/tipos/${encodeURIComponent(clave)}`);
           }}
         />
       )}
@@ -299,7 +307,7 @@ function NuevoTipoDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categorias: string[];
-  onCreado: () => void;
+  onCreado: (clave: string) => void;
 }) {
   const [nombre, setNombre] = useState("");
   const [categoria, setCategoria] = useState("marketing");
@@ -326,7 +334,7 @@ function NuevoTipoDialog({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`Tipo creado. Clave para n8n: ${data.tipo}`);
-      onCreado();
+      onCreado(data.tipo as string);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
