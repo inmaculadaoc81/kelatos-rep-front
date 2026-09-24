@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { resolverDesafio } from "@/lib/pow";
 
 /**
  * Entrada del enlace genérico (el mismo para todos los clientes): al abrirse
@@ -17,14 +18,29 @@ export default function ValoracionEntrada() {
   useEffect(() => {
     if (pedido.current) return;
     pedido.current = true;
-    fetch("/api/valoracion/nuevo", { method: "POST", cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
+    (async () => {
+      try {
+        // 1) el servidor da un desafío; 2) el navegador lo resuelve solo (fracción de
+        // segundo); 3) con la solución se pide el código. Un bot tiene que gastar CPU
+        // en cada petición.
+        const r1 = await fetch("/api/valoracion/desafio", { cache: "no-store" });
+        const d1 = await r1.json();
+        if (!d1.ok) return setError(d1.error || "No se pudo preparar el formulario");
+        const solucion = await resolverDesafio(d1.desafio, d1.bits);
+        const r2 = await fetch("/api/valoracion/nuevo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ desafio: d1.desafio, solucion }),
+        });
+        const d = await r2.json();
         if (d.yaEnviada) setYaEnviada(true);
         else if (d.ok && typeof d.token === "string" && /^[A-Za-z0-9_-]{20,64}$/.test(d.token)) router.replace(`/valoracion/${d.token}`);
         else setError(d.error || "No se pudo preparar el formulario");
-      })
-      .catch(() => setError("No se pudo preparar el formulario. Revisa tu conexión e inténtalo de nuevo."));
+      } catch {
+        setError("No se pudo preparar el formulario. Revisa tu conexión e inténtalo de nuevo.");
+      }
+    })();
   }, [router]);
 
   return (

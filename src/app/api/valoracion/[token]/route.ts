@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
-import { COOKIE_DISPOSITIVO, COOKIE_ENVIADA, dispositivoDe, esJson, ipDe, leerCookie, opcionesCookie, origenPropio } from "@/lib/publico-seguridad";
+import { COOKIE_DISPOSITIVO, COOKIE_ENVIADA, dentroDelLimite, dispositivoDe, esJson, ipDe, leerCookie, opcionesCookie, origenPropio, pareceAutomatizado } from "@/lib/publico-seguridad";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +34,8 @@ const MENSAJES_SEGUROS = [
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!TOKEN_VALIDO.test(token)) return NextResponse.json({ ok: true, estado: "invalido" });
+  if (pareceAutomatizado(req)) return NextResponse.json({ ok: false, error: "Solicitud no permitida" }, { status: 403 });
+  if (!dentroDelLimite(req, "consulta", 60, 10 * 60_000)) return NextResponse.json({ ok: false, error: "Demasiados intentos. Inténtalo de nuevo más tarde." }, { status: 429 });
   const dispositivo = dispositivoDe(req);
   const conCookie = (res: NextResponse) => {
     if (dispositivo.nuevo) res.cookies.set(COOKIE_DISPOSITIVO, dispositivo.id, opcionesCookie());
@@ -56,7 +58,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
 
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  if (!origenPropio(req)) return NextResponse.json({ ok: false, error: "Solicitud no permitida" }, { status: 403 });
+  if (!origenPropio(req) || pareceAutomatizado(req)) return NextResponse.json({ ok: false, error: "Solicitud no permitida" }, { status: 403 });
+  if (!dentroDelLimite(req, "envio", 15, 10 * 60_000)) return NextResponse.json({ ok: false, error: "Demasiados intentos. Inténtalo de nuevo más tarde." }, { status: 429 });
   if (!esJson(req)) return NextResponse.json({ ok: false, error: "Solicitud no válida" }, { status: 415 });
   if (!TOKEN_VALIDO.test(token)) return NextResponse.json({ ok: false, error: "Este enlace no es válido" }, { status: 404 });
 

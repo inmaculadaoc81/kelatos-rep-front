@@ -63,3 +63,30 @@ export function opcionesCookie() {
 export function esJson(req: Request): boolean {
   return (req.headers.get("content-type") || "").toLowerCase().startsWith("application/json");
 }
+
+// ── Límite de peticiones (en memoria) ─────────────────────────────────────
+// Frena las inundaciones ANTES de tocar el backend. Es por proceso: no sustituye
+// a los límites del backend, los complementa.
+const ventanas = new Map<string, number[]>();
+
+/** true si la petición cabe en el límite; false si hay que rechazarla (429). */
+export function dentroDelLimite(req: Request, clave: string, max: number, ventanaMs: number): boolean {
+  const k = `${clave}|${ipDe(req)}`;
+  const ahora = Date.now();
+  const lista = (ventanas.get(k) || []).filter((t) => ahora - t < ventanaMs);
+  if (lista.length >= max) {
+    ventanas.set(k, lista);
+    return false;
+  }
+  lista.push(ahora);
+  ventanas.set(k, lista);
+  if (ventanas.size > 20000) for (const [kk, v] of ventanas) if (!v.some((t) => ahora - t < ventanaMs)) ventanas.delete(kk);
+  return true;
+}
+
+/** Clientes que se identifican como scripts o rastreadores (o no se identifican). */
+export function pareceAutomatizado(req: Request): boolean {
+  const ua = (req.headers.get("user-agent") || "").trim();
+  if (ua.length < 12) return true;
+  return /(curl|wget|python|httpclient|okhttp|axios|node-fetch|go-http|java\/|libwww|scrapy|headless|phantom|bot\b|spider|crawl)/i.test(ua);
+}
