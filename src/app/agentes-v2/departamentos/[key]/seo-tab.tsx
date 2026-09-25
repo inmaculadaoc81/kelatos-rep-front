@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -69,21 +69,29 @@ export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento
     return () => clearInterval(t);
   }, [trabajando, recargarEstado, recargarTemas]);
 
-  // Avisa cuando una tarea en segundo plano termina
-  const [vistas, setVistas] = useState<Record<string, string>>({});
+  // Avisa solo de las tareas que terminan mientras miras el panel. La primera carga solo memoriza las ya terminadas
+  // (el servidor conserva el resultado de la última tarea y, si no, se volvería a anunciar cada vez que se abre la pestaña).
+  const vistas = useRef<Record<string, string> | null>(null);
   useEffect(() => {
     const j = estado.datos?.jobs;
     if (!j) return;
+    const previas = vistas.current;
+    const actuales: Record<string, string> = {};
     for (const clave of ["discover", "write"] as const) {
       const t = j[clave];
-      if (!t || t.state === "running" || !t.finished_at || vistas[clave] === t.finished_at) continue;
-      setVistas((v) => ({ ...v, [clave]: t.finished_at as string }));
+      if (t && t.state !== "running" && t.finished_at) actuales[clave] = t.finished_at;
+    }
+    vistas.current = { ...(previas ?? {}), ...actuales };
+    if (previas === null) return;
+    for (const clave of ["discover", "write"] as const) {
+      const t = j[clave];
+      if (!t || !actuales[clave] || previas[clave] === actuales[clave]) continue;
       if (t.state === "error") toast.error(t.error || "La tarea falló");
       else if (clave === "discover") toast.success(`Búsqueda terminada: ${(t.result as { propuestos?: number })?.propuestos ?? 0} temas nuevos`);
       else toast.success((t.result as { mode?: string })?.mode === "auto" ? "Artículo escrito y publicado en el blog" : "Artículo escrito: espera tu aprobación");
       recargarTemas();
     }
-  }, [estado.datos, vistas, recargarTemas]);
+  }, [estado.datos, recargarTemas]);
 
   const lanzar = async (ruta: "seo/discover" | "seo/write") => {
     try {
