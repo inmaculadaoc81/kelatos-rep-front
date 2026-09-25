@@ -64,9 +64,10 @@ export function NavUser({ session }: { session: Session | null }) {
   const enTransferencias = pathname?.startsWith("/transferencias") ?? false;
   const enAsistencia = pathname?.startsWith("/asistencia") ?? false;
   const enWebsKelatos = pathname?.startsWith("/webs-kelatos") ?? false;
-  const enAgentes = pathname?.startsWith("/agentes") ?? false;
+  const enAgentesV2 = pathname?.startsWith("/agentes-v2") ?? false;
+  const enAgentes = (pathname?.startsWith("/agentes") ?? false) && !enAgentesV2;
   const enMails = pathname?.startsWith("/mails") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enMails;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerMails = esAdmin || esSuperadmin(email);
@@ -165,6 +166,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/agentes" />}>
                   <IconoDashboard icon={Cpu} className="from-cyan-500 to-teal-600" />
                   Agentes
+                </DropdownMenuItem>
+              )}
+              {puedeVerAgentes && !enAgentesV2 && (
+                <DropdownMenuItem render={<Link href="/agentes-v2" />}>
+                  <IconoDashboard icon={Cpu} className="from-indigo-500 to-blue-600" />
+                  Agentes V2
                 </DropdownMenuItem>
               )}
               {puedeVerMails && !enMails && (
