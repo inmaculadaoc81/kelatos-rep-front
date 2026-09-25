@@ -206,6 +206,9 @@ function SeccionEntrega({
             No
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground">
+          {resena === "SI" ? "Se enviará la encuesta de reseña por WhatsApp al cliente dentro de 1 semana (si tiene un teléfono válido)." : "No se enviará ninguna encuesta de reseña."}
+        </p>
       </div>
     </div>
   );

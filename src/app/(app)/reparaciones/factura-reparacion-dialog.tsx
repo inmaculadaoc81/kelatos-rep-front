@@ -271,7 +271,7 @@ export function TarjetaResena({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(
-        accion === "programar" ? "Reseña programada — se enviará por WhatsApp en 1 semana"
+        accion === "programar" ? "Reseña programada: se enviará por WhatsApp dentro de 1 semana"
           : accion === "cancelar" ? "Reseña cancelada"
           : "Reseña marcada como enviada"
       );
@@ -294,9 +294,10 @@ export function TarjetaResena({
           <div className="flex overflow-hidden rounded-md border">
             <button
               type="button"
-              disabled={enviando || resena === "SI"}
-              onClick={() => ejecutar("marcar_si")}
-              className={`px-2.5 py-1 font-medium transition-colors ${resena === "SI" ? "bg-emerald-600 text-white" : "bg-card text-muted-foreground hover:bg-muted"}`}
+              disabled={enviando || resena === "SI" || resena === "PROGRAMADA"}
+              onClick={() => ejecutar("programar")}
+              title="Se enviará la encuesta por WhatsApp dentro de 1 semana"
+              className={`px-2.5 py-1 font-medium transition-colors ${resena === "SI" || resena === "PROGRAMADA" ? "bg-emerald-600 text-white" : "bg-card text-muted-foreground hover:bg-muted"}`}
             >
               Sí
             </button>
@@ -319,11 +320,11 @@ export function TarjetaResena({
               Cancelar
             </button>
           </div>
-        ) : resena !== "SI" ? (
-          <Button size="sm" variant="outline" className="h-7 gap-1.5 border-amber-500 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400" disabled={enviando} onClick={() => ejecutar("programar")}>
-            <Send2 className="size-3.5" /> {enviando ? "Enviando…" : "Enviar reseña (en 1 semana)"}
-          </Button>
-        ) : null}
+        ) : resena === "SI" ? (
+          <p className="text-muted-foreground">La reseña ya se pidió (no queda ningún envío pendiente).</p>
+        ) : (
+          <p className="text-muted-foreground">Pulsa «Sí» para enviar la encuesta por WhatsApp dentro de 1 semana.</p>
+        )}
       </div>
     </div>
   );
