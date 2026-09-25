@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  Add, Edit2, Trash, Box, Category as CategoryIcon, Money, Global, Refresh2, Gallery, SearchNormal1,
+  Add, Edit2, Trash, Box, Category as CategoryIcon, Money, Global, Refresh2, Gallery, SearchNormal1, Link2,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +82,8 @@ export default function SitioWebPage() {
   const [webSlug, setWebSlug] = useState("");
   const [webTipo, setWebTipo] = useState("");
   const [guardandoWeb, setGuardandoWeb] = useState(false);
+  // Al pulsar "Añadir enlace" el diálogo se abre con el foco en la URL.
+  const [enfocarUrl, setEnfocarUrl] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -117,7 +119,8 @@ export default function SitioWebPage() {
     );
   }, [productos, busqueda]);
 
-  function abrirEditarWeb() {
+  function abrirEditarWeb(enfocarLaUrl = false) {
+    setEnfocarUrl(enfocarLaUrl);
     setWebNombre(sitio?.nombre || "");
     setWebUrl(sitio?.url || "");
     setWebSlug(sitio?.slug || "");
@@ -230,12 +233,22 @@ export default function SitioWebPage() {
                 </Badge>
               )}
             </div>
+            {!cargando && (
+              <div className="text-sm">
+                {sitio?.url ? (
+                  <a href={sitio.url} target="_blank" rel="noopener noreferrer" className="inline-flex max-w-full items-center gap-1.5 font-medium text-primary hover:underline" title="Abrir la web en una pestaña nueva">
+                    <Link2 className="size-4 shrink-0" />
+                    <span className="truncate">{sitio.url}</span>
+                  </a>
+                ) : (
+                  <button type="button" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary hover:underline" onClick={() => abrirEditarWeb(true)}>
+                    <Link2 className="size-4 shrink-0" />
+                    Esta web aún no tiene enlace — añadir enlace
+                  </button>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              {sitio?.url && (
-                <a href={sitio.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  {sitio.url}
-                </a>
-              )}
               {!cargando && (
                 <span className="inline-flex items-center gap-1">
                   Endpoint <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{endpointPublico}</code>
@@ -247,7 +260,7 @@ export default function SitioWebPage() {
                 </PillBadge>
               )}
               {!cargando && (
-                <Button variant="link" size="xs" className="gap-1 px-0 text-primary" onClick={abrirEditarWeb}>
+                <Button variant="link" size="xs" className="gap-1 px-0 text-primary" onClick={() => abrirEditarWeb()}>
                   <Edit2 className="size-3" /> Editar web
                 </Button>
               )}
@@ -438,11 +451,11 @@ export default function SitioWebPage() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="webNombre">Nombre *</Label>
-              <Input id="webNombre" value={webNombre} onChange={(e) => setWebNombre(e.target.value)} autoFocus />
+              <Input id="webNombre" value={webNombre} onChange={(e) => setWebNombre(e.target.value)} autoFocus={!enfocarUrl} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="webUrl">URL</Label>
-              <Input id="webUrl" placeholder="https://..." value={webUrl} onChange={(e) => setWebUrl(e.target.value)} />
+              <Input id="webUrl" placeholder="https://..." value={webUrl} onChange={(e) => setWebUrl(e.target.value)} autoFocus={enfocarUrl} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="webTipo">Marca / tipo</Label>
