@@ -85,6 +85,7 @@ export interface EnvioResenaProgramado {
   cliente: string;
   telefono: string;
   detalle: string;
+  estado_reparacion: string;
   estado: EstadoEnvioResena;
   enviar_en: string | null;
   creado_en: string | null;
