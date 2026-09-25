@@ -207,7 +207,7 @@ function SeccionEntrega({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          {resena === "SI" ? "Se enviará la encuesta de reseña por WhatsApp al cliente dentro de 1 semana (si tiene un teléfono válido)." : "No se enviará ninguna encuesta de reseña."}
+          {resena === "SI" ? "Se enviará la encuesta de reseña por WhatsApp al cliente 7 días después de la entrega (si tiene un teléfono válido)." : "No se enviará ninguna encuesta de reseña."}
         </p>
       </div>
     </div>
@@ -228,7 +228,7 @@ function VistaSinFactura({
   onCompletado: () => void;
 }) {
   const [observaciones, setObservaciones] = useState("");
-  const [resena, setResena] = useState<"SI" | "NO">("NO");
+  const [resena, setResena] = useState<"SI" | "NO">("SI");
   const [enviando, setEnviando] = useState(false);
   const [enviandoTicket, setEnviandoTicket] = useState(false);
   const confirmarEnvio = useConfirm();
@@ -298,7 +298,7 @@ function VistaSinFactura({
           fechaRecogida: hoyIso(),
           tipoEntrega,
           numeroFactura: "",
-          resena,
+          resena: resena === "NO" ? "NO_ENVIAR" : "SI",
           observaciones,
         }),
       });
@@ -406,7 +406,7 @@ function VistaConFactura({
   // vistas".
   const [emailTicket, setEmailTicket] = useState(detalle.clienteEmailTicketMensajeria || detalle.cliente.email || "");
   const [observaciones, setObservaciones] = useState("");
-  const [resena, setResena] = useState<"SI" | "NO">("NO");
+  const [resena, setResena] = useState<"SI" | "NO">("SI");
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -481,7 +481,7 @@ function VistaConFactura({
         const resSalida = await fetch(`/api/reparaciones/${detalle.resguardo}/salidas`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fechaRecogida: hoyIso(), tipoEntrega, numeroFactura: "", resena, observaciones }),
+          body: JSON.stringify({ fechaRecogida: hoyIso(), tipoEntrega, numeroFactura: "", resena: resena === "NO" ? "NO_ENVIAR" : "SI", observaciones }),
         });
         const dataSalida = await resSalida.json();
         if (!dataSalida.ok) throw new Error(dataSalida.error || "Error desconocido");
@@ -523,7 +523,7 @@ function VistaConFactura({
               estadoFactura: "Cobrada",
             },
             incluirEntrega: true,
-            entregaDatos: { fecha: hoyIso(), tipoEntrega, resena, observaciones },
+            entregaDatos: { fecha: hoyIso(), tipoEntrega, resena: resena === "NO" ? "NO_ENVIAR" : "SI", observaciones },
           }),
         });
         data = await res.json();

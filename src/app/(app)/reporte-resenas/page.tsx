@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ETIQUETA_RESPUESTA, ETIQUETA_VEREDICTO, FilaResena, ReporteResenas, ReporteValoraciones, RespuestaEncuesta, Valoracion, VeredictoEncuesta,
 } from "@/lib/resenas";
+import { PestanaProximosEnvios } from "./proximos-envios";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const POR_PAGINA = 15;
-type Pestana = "respuestas" | "malas" | "formulario";
+type Pestana = "respuestas" | "malas" | "proximos" | "formulario";
 
 const COLOR_RESPUESTA: Record<RespuestaEncuesta, string> = {
   muy_bueno: "bg-green-500/10 text-green-700 dark:text-green-400",
@@ -196,6 +197,7 @@ export default function ReporteResenasPage() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [pestana, setPestana] = useState<Pestana>("respuestas");
+  const [recargaProximos, setRecargaProximos] = useState(0);
   const [veredicto, setVeredicto] = useState<"" | VeredictoEncuesta>("");
   const [servicio, setServicio] = useState("");
   const [desde, setDesde] = useState("");
@@ -240,7 +242,7 @@ export default function ReporteResenasPage() {
   }, [pagina, veredictoEfectivo, servicio, desde, hasta, busquedaAplicada]);
 
   useEffect(() => {
-    if (pestana !== "formulario") cargar();
+    if (pestana !== "formulario" && pestana !== "proximos") cargar();
   }, [cargar, pestana]);
 
   const total = datos?.totalLista ?? 0;
@@ -275,7 +277,7 @@ export default function ReporteResenasPage() {
             <p className="text-sm text-muted-foreground">Lo que responden los clientes en la encuesta de WhatsApp, las reseñas malas y el formulario de satisfacción</p>
           </div>
         </div>
-        <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar" disabled={pestana === "formulario"}>
+        <Button variant="outline" size="icon" className="size-8" onClick={() => (pestana === "proximos" ? setRecargaProximos((n) => n + 1) : cargar())} title="Actualizar" disabled={pestana === "formulario"}>
           <Refresh2 className={cn("size-4", cargando && "animate-spin")} />
         </Button>
       </div>
@@ -288,7 +290,7 @@ export default function ReporteResenasPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-1 border-b" role="tablist">
-        {([["respuestas", "Respuestas de la encuesta"], ["malas", `Reseñas malas${datos ? ` (${datos.negativas})` : ""}`], ["formulario", "Formulario de satisfacción"]] as const).map(([k, t]) => (
+        {([["respuestas", "Respuestas de la encuesta"], ["malas", `Reseñas malas${datos ? ` (${datos.negativas})` : ""}`], ["proximos", "Próximos envíos"], ["formulario", "Formulario de satisfacción"]] as const).map(([k, t]) => (
           <button
             key={k}
             type="button"
@@ -302,7 +304,7 @@ export default function ReporteResenasPage() {
         ))}
       </div>
 
-      {pestana !== "formulario" && (
+      {pestana !== "formulario" && pestana !== "proximos" && (
         <>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative w-full max-w-xs">
@@ -377,6 +379,7 @@ export default function ReporteResenasPage() {
         </>
       )}
 
+      {pestana === "proximos" && <PestanaProximosEnvios recargar={recargaProximos} />}
       {pestana === "formulario" && <PestanaFormulario />}
     </div>
   );

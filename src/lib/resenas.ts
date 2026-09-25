@@ -75,3 +75,27 @@ export interface ReporteValoraciones {
   motivos: { id: string; etiqueta: string }[];
   filas: Valoracion[];
 }
+
+export type EstadoEnvioResena = "pendiente" | "enviado" | "cancelado" | "fallido";
+
+export interface EnvioResenaProgramado {
+  origen: "reparacion" | "alquiler";
+  id: string;
+  referencia: string;
+  cliente: string;
+  telefono: string;
+  detalle: string;
+  estado: EstadoEnvioResena;
+  enviar_en: string | null;
+  creado_en: string | null;
+  enviado_en: string | null;
+  dias_restantes: number | null;
+  intentos: number;
+  ultimo_error: string;
+}
+
+export interface ProximosEnvios {
+  ok: boolean;
+  filas: EnvioResenaProgramado[];
+  resumen: Record<EstadoEnvioResena, number>;
+}
