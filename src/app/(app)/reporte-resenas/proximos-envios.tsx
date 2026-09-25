@@ -89,13 +89,14 @@ export function PestanaProximosEnvios({ recargar }: { recargar: number }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Estado</TableHead>
+                <TableHead>Resguardo</TableHead>
+                <TableHead>Estado reparación</TableHead>
+                <TableHead>Envío</TableHead>
                 <TableHead>Faltan</TableHead>
                 <TableHead>Se envía</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Servicio</TableHead>
-                <TableHead>Referencia</TableHead>
                 <TableHead>Enviado el</TableHead>
                 <TableHead>Detalle</TableHead>
               </TableRow>
@@ -103,6 +104,8 @@ export function PestanaProximosEnvios({ recargar }: { recargar: number }) {
             <TableBody>
               {filas.map((f) => (
                 <TableRow key={`${f.origen}-${f.id}`}>
+                  <TableCell className="whitespace-nowrap text-sm font-medium">{f.referencia || "—"}</TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">{f.origen === "alquiler" ? "Alquiler" : f.estado_reparacion || "—"}</TableCell>
                   <TableCell>
                     <span className={cn("inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium", COLOR_ESTADO[f.estado])}>{ETIQUETA_ESTADO[f.estado]}</span>
                   </TableCell>
@@ -111,7 +114,6 @@ export function PestanaProximosEnvios({ recargar }: { recargar: number }) {
                   <TableCell className="max-w-48 truncate text-sm font-medium" title={f.cliente || undefined}>{f.cliente || "—"}</TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{f.telefono || "—"}</TableCell>
                   <TableCell className="text-sm">{f.origen === "alquiler" ? "Alquiler" : "Reparación"}</TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">{f.referencia || "—"}</TableCell>
                   <TableCell className="whitespace-nowrap text-sm tabular-nums">{fecha(f.enviado_en)}</TableCell>
                   <TableCell className="max-w-64 truncate text-sm text-muted-foreground" title={f.ultimo_error || f.detalle || undefined}>
                     {f.ultimo_error ? `Error (${f.intentos} intentos): ${f.ultimo_error}` : f.detalle || "—"}
