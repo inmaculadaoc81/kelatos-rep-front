@@ -34,6 +34,19 @@ function PestanaResumen({ d, recargar }: { d: DetalleDepartamento; recargar: () 
       setGuardando(false);
     }
   };
+  const ejecutarAhora = async () => {
+    setGuardando(true);
+    try {
+      const r = await enviarV2<{ ok: boolean; orchestrator_active: boolean }>("POST", `departments/${d.department.key}/run`, {});
+      if (r.orchestrator_active) toast.success("Ejecución lanzada");
+      else toast.info("Ejecución en cola. El orquestador está apagado, así que no se ejecutará hasta activarlo.");
+      recargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo lanzar la ejecución");
+    } finally {
+      setGuardando(false);
+    }
+  };
   const c = d.settings.configuration;
   const estado = d.department.status;
   return (
@@ -48,6 +61,7 @@ function PestanaResumen({ d, recargar }: { d: DetalleDepartamento; recargar: () 
         {estado !== "active" && <Button size="sm" disabled={guardando} onClick={() => cambiarEstado("active")}>Activar</Button>}
         {estado === "active" && <Button size="sm" variant="outline" disabled={guardando} onClick={() => cambiarEstado("paused")}>Pausar</Button>}
         {estado !== "disabled" && <Button size="sm" variant="ghost" disabled={guardando} onClick={() => cambiarEstado("disabled")}>Desactivar</Button>}
+        {estado !== "disabled" && <Button size="sm" variant="outline" className="ml-auto" disabled={guardando} onClick={ejecutarAhora}>Ejecutar ahora</Button>}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
@@ -242,7 +256,7 @@ function PestanaHorario({ d, recargar }: { d: DetalleDepartamento; recargar: () 
         <Button variant="outline" onClick={nuevo}><Add className="size-4" /> Añadir horario</Button>
         <Button onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar horario"}</Button>
       </div>
-      <p className="text-xs text-muted-foreground">Los horarios se guardan ya, pero el scheduler todavía no está activo: no se lanzará ninguna ejecución hasta la fase D.</p>
+      <p className="text-xs text-muted-foreground">Solo se lanzan los horarios de departamentos <strong>activos</strong>, y solo cuando el scheduler está encendido (Ajustes muestra su estado).</p>
     </div>
   );
 }
@@ -331,7 +345,15 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
         <TabsContent value="estrategia"><PestanaEstrategia key={datos.settings.version} d={datos} recargar={recargar} /></TabsContent>
         <TabsContent value="horario"><PestanaHorario d={datos} recargar={recargar} /></TabsContent>
         <TabsContent value="workflows"><PestanaWorkflows d={datos} /></TabsContent>
-        <TabsContent value="ejecuciones"><TablaRuns runs={datos.runs} /></TabsContent>
+        <TabsContent value="ejecuciones"><TablaRuns runs={datos.runs} onAccion={async (id, a) => {
+          try {
+            await enviarV2("POST", `runs/${id}/${a}`, {});
+            toast.success(a === "cancel" ? "Cancelación solicitada" : "Ejecución reencolada");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "No se pudo completar la acción");
+          }
+          recargar();
+        }} /></TabsContent>
         <TabsContent value="analitica"><PestanaAnalitica d={datos} /></TabsContent>
       </Tabs>
     </div>

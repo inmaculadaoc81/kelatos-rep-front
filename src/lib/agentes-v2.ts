@@ -40,6 +40,10 @@ export interface RunFila {
   department_name?: string;
   workflow_name?: string | null;
   agent_runs?: number;
+  attempts?: number;
+  max_attempts?: number;
+  current_stage?: number;
+  cancel_requested?: boolean;
 }
 
 export interface Panel {

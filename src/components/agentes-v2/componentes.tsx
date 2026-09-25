@@ -92,7 +92,10 @@ export function ProximasEjecuciones({ items }: { items: { at: string; department
   );
 }
 
-export function TablaRuns({ runs, conDepartamento }: { runs: RunFila[]; conDepartamento?: boolean }) {
+const CANCELABLES = new Set(["scheduled", "queued", "running", "waiting_approval"]);
+const REINTENTABLES = new Set(["failed", "timed_out", "budget_exceeded", "cancelled"]);
+
+export function TablaRuns({ runs, conDepartamento, onAccion }: { runs: RunFila[]; conDepartamento?: boolean; onAccion?: (id: string, accion: "cancel" | "retry") => void }) {
   if (!runs.length) return <Vacio titulo="Sin ejecuciones todavía" texto="Cada disparo de un horario creará aquí una ejecución con su coste, duración y resultado." />;
   return (
     <div className="overflow-x-auto rounded-lg border">
@@ -105,6 +108,8 @@ export function TablaRuns({ runs, conDepartamento }: { runs: RunFila[]; conDepar
             <TableHead>Duración</TableHead>
             <TableHead>Origen</TableHead>
             <TableHead className="text-right">Coste de IA</TableHead>
+            <TableHead>Detalle</TableHead>
+            {onAccion && <TableHead />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -116,6 +121,15 @@ export function TablaRuns({ runs, conDepartamento }: { runs: RunFila[]; conDepar
               <TableCell className="whitespace-nowrap text-sm tabular-nums">{duracion(r.started_at, r.finished_at)}</TableCell>
               <TableCell className="text-sm capitalize">{r.trigger === "schedule" ? "Horario" : r.trigger === "cmo" ? "AI CMO" : r.trigger === "manual" ? "Manual" : r.trigger}</TableCell>
               <TableCell className="text-right text-sm tabular-nums">{usd(r.agent_cost_usd)}</TableCell>
+              <TableCell className="max-w-64 truncate text-xs text-muted-foreground" title={r.error || undefined}>
+                {r.cancel_requested ? "Cancelando…" : r.error ? r.error : r.attempts ? `Intento ${r.attempts}${r.max_attempts ? ` de ${r.max_attempts}` : ""}` : "—"}
+              </TableCell>
+              {onAccion && (
+                <TableCell className="whitespace-nowrap text-right">
+                  {CANCELABLES.has(r.status) && !r.cancel_requested && <button type="button" className="text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={() => onAccion(r.id, "cancel")}>Cancelar</button>}
+                  {REINTENTABLES.has(r.status) && <button type="button" className="text-xs text-primary underline-offset-2 hover:underline" onClick={() => onAccion(r.id, "retry")}>Reintentar</button>}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
