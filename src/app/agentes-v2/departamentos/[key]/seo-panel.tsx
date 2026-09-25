@@ -230,16 +230,16 @@ function ArticulosPublicados({ temas }: { temas: Tema[] }) {
 }
 
 /** Vista del departamento SEO: arriba el estado y el recorrido de un artículo; debajo, en dos columnas, la lista y ajustes a la izquierda y la actividad y los agentes a la derecha. */
-export function SeoPanel({ d, recargar }: { d: DetalleDepartamento; recargar: () => void }) {
+export function SeoPanel({ d, recargar, cabecera }: { d: DetalleDepartamento; recargar: () => void; cabecera: React.ReactNode }) {
   const [izquierda, setIzquierda] = useState("temas");
   const [derecha, setDerecha] = useState("actividad");
   const seo = useSeo(d, recargar);
 
   return (
-    <div className="grid items-stretch gap-6 lg:grid-cols-2 lg:gap-0">
-      <div className="min-w-0 space-y-5 lg:pr-6">
+    <div className="-m-6 grid items-stretch lg:min-h-[calc(100vh-3.5rem)] lg:grid-cols-2">
+      <div className="min-w-0 space-y-5 p-6">
+        {cabecera}
         <ControlDepartamento d={d} seo={seo} recargar={recargar} />
-        <Recorrido d={d} seo={seo} />
         <Tabs value={izquierda} onValueChange={(v) => setIzquierda(String(v))}>
           <TabsList variant="line" className="mb-3">
             <TabsTrigger value="temas">Temas</TabsTrigger>
@@ -250,10 +250,11 @@ export function SeoPanel({ d, recargar }: { d: DetalleDepartamento; recargar: ()
               <ListaTemas temas={seo.temas} counts={seo.counts} cargando={seo.cargandoTemas} error={seo.errorTemas} onCambiar={seo.cambiarTema} />
             </TabsContent>
             <TabsContent value="horario"><PestanaHorario d={d} recargar={recargar} /></TabsContent>
-            <TabsContent value="estrategia"><PestanaEstrategia key={d.settings.version} d={d} recargar={recargar} /></TabsContent>
+            <TabsContent value="estrategia"><PestanaEstrategia key={d.settings.version} d={d} recargar={recargar} modo="seo" /></TabsContent>
           </Tabs>
         </div>
-        <div className="min-w-0 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+        <div className="min-w-0 space-y-5 border-t p-6 lg:border-t-0 lg:border-l">
+          <Recorrido d={d} seo={seo} />
           <Tabs value={derecha} onValueChange={(v) => setDerecha(String(v))}>
             <TabsList variant="line" className="mb-3">
               <TabsTrigger value="actividad">Actividad</TabsTrigger>

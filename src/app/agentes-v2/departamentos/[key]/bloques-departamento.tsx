@@ -19,8 +19,9 @@ import { cn } from "@/lib/utils";
 const lista = (v: unknown): string => (Array.isArray(v) ? v.join(", ") : "");
 const aLista = (t: string): string[] => t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
 
-export function PestanaEstrategia({ d, recargar }: { d: DetalleDepartamento; recargar: () => void }) {
-  const campos = new Set(d.department.config_schema.fields ?? ["targetAudience", "topics", "goals", "tone", "frequency", "channels"]);
+export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartamento; recargar: () => void; modo?: "seo" }) {
+  const seo = modo === "seo";
+  const campos = new Set(seo ? ["targetAudience", "topics", "tone", "goals"] : d.department.config_schema.fields ?? ["targetAudience", "topics", "goals", "tone", "frequency", "channels"]);
   const c = d.settings.configuration;
   const [audiencia, setAudiencia] = useState(c.targetAudience ?? "");
   const [temas, setTemas] = useState(lista(c.topics));
@@ -55,26 +56,30 @@ export function PestanaEstrategia({ d, recargar }: { d: DetalleDepartamento; rec
     <div className="max-w-2xl space-y-4">
       {campos.has("targetAudience") && (
         <div className="space-y-1.5">
-          <Label htmlFor="aud">Audiencia objetivo</Label>
+          <Label htmlFor="aud">{seo ? "Público al que van dirigidos los artículos" : "Audiencia objetivo"}</Label>
           <Input id="aud" value={audiencia} onChange={(e) => setAudiencia(e.target.value)} placeholder="Por ejemplo: clínicas privadas" />
+          {seo && <p className="text-xs text-muted-foreground">Se usa para elegir temas y para escribir. Ejemplo: «clínicas y negocios de servicios en España».</p>}
         </div>
       )}
       {campos.has("goals") && (
         <div className="space-y-1.5">
-          <Label htmlFor="obj">Objetivos</Label>
+          <Label htmlFor="obj">{seo ? "Objetivos (solo informativos)" : "Objetivos"}</Label>
           <Textarea id="obj" value={objetivos} onChange={(e) => setObjetivos(e.target.value)} rows={2} placeholder="Separados por comas" />
+          {seo && <p className="text-xs text-muted-foreground">No cambian lo que busca ni lo que escribe; solo recuerdan la intención del departamento.</p>}
         </div>
       )}
       {campos.has("topics") && (
         <div className="space-y-1.5">
-          <Label htmlFor="temas">Temas</Label>
+          <Label htmlFor="temas">{seo ? "Temas que buscará el investigador" : "Temas"}</Label>
           <Textarea id="temas" value={temas} onChange={(e) => setTemas(e.target.value)} rows={2} placeholder="Separados por comas: WhatsApp, automatización, reservas" />
+          {seo && <p className="text-xs text-muted-foreground">El investigador parte de estos temas para proponer ideas nuevas y buscar noticias del sector. Se aplica en la próxima búsqueda.</p>}
         </div>
       )}
       {campos.has("tone") && (
         <div className="space-y-1.5">
-          <Label htmlFor="tono">Tono</Label>
+          <Label htmlFor="tono">{seo ? "Tono de redacción" : "Tono"}</Label>
           <Input id="tono" value={tono} onChange={(e) => setTono(e.target.value)} placeholder="Cercano, profesional…" />
+          {seo && <p className="text-xs text-muted-foreground">El redactor lo aplica en todos los artículos nuevos.</p>}
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -97,7 +102,7 @@ export function PestanaEstrategia({ d, recargar }: { d: DetalleDepartamento; rec
           Versión {d.settings.version}{d.settings.updated_at ? ` · ${fechaHoraLarga(d.settings.updated_at)}` : ""}{d.settings.updated_by ? ` · ${d.settings.updated_by}` : ""}
         </span>
       </div>
-      <p className="text-xs text-muted-foreground">Esta configuración es la que leerán los workflows en cada ejecución. El AI CMO también puede proponer cambios aquí, y solo se aplican con tu aprobación.</p>
+      <p className="text-xs text-muted-foreground">{seo ? "Los cambios se aplican en la siguiente búsqueda o artículo. Los días, las horas y los topes por semana se cambian en Horario." : "Esta configuración es la que leerán los workflows en cada ejecución. El AI CMO también puede proponer cambios aquí, y solo se aplican con tu aprobación."}</p>
     </div>
   );
 }

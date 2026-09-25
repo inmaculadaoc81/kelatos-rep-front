@@ -126,23 +126,26 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
   if (error) return <ErrorCaja mensaje={error} />;
   if (!datos) return cargando ? <CargandoFilas /> : null;
 
+  const cabecera = (
+    <Cabecera
+      titulo={datos.department.name}
+      descripcion={datos.department.description}
+      acciones={
+        <div className="flex items-center gap-2">
+          <EstadoDepartamentoBadge estado={datos.department.status} />
+          <Button variant="outline" size="icon" className="size-8" onClick={() => recargar()} title="Actualizar">
+            <Refresh2 className={cargando ? "size-4 animate-spin" : "size-4"} />
+          </Button>
+        </div>
+      }
+    />
+  );
+  // El departamento SEO pinta su propia cabecera dentro de la mitad izquierda, para que la línea central llegue hasta arriba.
+  if (datos.department.key === "local_seo") return <SeoPanel d={datos} recargar={recargar} cabecera={cabecera} />;
+
   return (
     <div>
-      <Cabecera
-        titulo={datos.department.name}
-        descripcion={datos.department.description}
-        acciones={
-          <div className="flex items-center gap-2">
-            <EstadoDepartamentoBadge estado={datos.department.status} />
-            <Button variant="outline" size="icon" className="size-8" onClick={() => recargar()} title="Actualizar">
-              <Refresh2 className={cargando ? "size-4 animate-spin" : "size-4"} />
-            </Button>
-          </div>
-        }
-      />
-      {datos.department.key === "local_seo" ? (
-        <SeoPanel d={datos} recargar={recargar} />
-      ) : (
+      {cabecera}
       <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList variant="line" className="mb-4">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
@@ -167,7 +170,6 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
         }} /></TabsContent>
         <TabsContent value="analitica"><PestanaAnalitica d={datos} /></TabsContent>
       </Tabs>
-      )}
     </div>
   );
 }
