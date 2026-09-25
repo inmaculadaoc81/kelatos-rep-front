@@ -62,12 +62,15 @@ const euros = (n: number) => (n || 0).toLocaleString("es-ES", { minimumFractionD
  */
 export function EquipoDetalleDialog({
   equipo,
+  puedeEditarTarifas,
   open,
   onOpenChange,
   onActualizado,
   onVerAlquiler,
 }: {
   equipo: Equipo | null;
+  /** Solo los administradores cambian tarifas y fianza. */
+  puedeEditarTarifas: boolean;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onActualizado: () => void;
@@ -92,6 +95,7 @@ export function EquipoDetalleDialog({
   if (!equipo || !f || !origen) return null;
 
   const cambios = (Object.keys(f) as (keyof Formulario)[]).filter((k) => f[k] !== origen[k]);
+  const CAMPOS_TARIFA = ["precioDia", "precioSemana", "precioMes", "fianza"];
   const poner = (campo: keyof Formulario, valor: string) => setF((p) => (p ? { ...p, [campo]: valor } : p));
 
   async function guardar() {
@@ -107,7 +111,10 @@ export function EquipoDetalleDialog({
     setGuardando(true);
     try {
       const enviar: Record<string, string | number> = {};
-      for (const k of cambios) enviar[k] = ["precioDia", "precioSemana", "precioMes", "fianza"].includes(k) ? Number(String(f[k]).replace(",", ".")) : f[k];
+      for (const k of cambios) {
+        if (CAMPOS_TARIFA.includes(k) && !puedeEditarTarifas) continue;
+        enviar[k] = CAMPOS_TARIFA.includes(k) ? Number(String(f[k]).replace(",", ".")) : f[k];
+      }
       const res = await fetch(`/api/equipos/${encodeURIComponent(equipo.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -226,11 +233,15 @@ export function EquipoDetalleDialog({
               ).map(([campo, etiqueta]) => (
                 <div key={campo} className="space-y-1">
                   <span className="text-xs text-muted-foreground">{etiqueta}</span>
-                  <Input inputMode="decimal" className="tabular-nums" value={f[campo]} onChange={(e) => poner(campo, e.target.value)} aria-label={etiqueta} />
+                  <Input inputMode="decimal" className="tabular-nums" value={f[campo]} onChange={(e) => poner(campo, e.target.value)} aria-label={etiqueta} disabled={!puedeEditarTarifas} />
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">Los cambios de tarifa solo afectan a los alquileres nuevos; cada alquiler ya creado conserva sus precios.</p>
+            <p className="text-xs text-muted-foreground">
+              {puedeEditarTarifas
+                ? "Los cambios de tarifa solo afectan a los alquileres nuevos; cada alquiler ya creado conserva sus precios."
+                : "Solo un administrador puede cambiar las tarifas y la fianza."}
+            </p>
           </div>
 
           {alquileres.length > 0 && (

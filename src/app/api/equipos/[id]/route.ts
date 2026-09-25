@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
+import { esSuperadmin } from "@/lib/superadmin";
 
 function hashCanonico(payload: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -24,6 +25,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ("marca" in datos && !String(datos.marca).trim()) return NextResponse.json({ ok: false, error: "La marca es obligatoria" }, { status: 400 });
   if ("modelo" in datos && !String(datos.modelo).trim()) return NextResponse.json({ ok: false, error: "El modelo es obligatorio" }, { status: 400 });
   if (!Object.keys(datos).length) return NextResponse.json({ ok: false, error: "No hay nada que guardar" }, { status: 400 });
+  const esAdmin = session?.user?.role === "admin" || esSuperadmin(usuario);
+  if (!esAdmin && CAMPOS_NUMERO.some((c) => c in datos)) {
+    return NextResponse.json({ ok: false, error: "Solo un administrador puede cambiar las tarifas y la fianza" }, { status: 403 });
+  }
 
   const requestId = crypto.randomUUID();
   const payloadHash = hashCanonico({ requestId, id, datos });
