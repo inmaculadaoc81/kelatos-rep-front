@@ -23,7 +23,7 @@ import type { DepartamentoResumen } from "@/lib/agentes-v2";
 import { NavUser } from "../(app)/nav-user";
 import { GRUPOS_ANTES, GRUPOS_DESPUES, ICONO_DEPARTAMENTO, type GrupoNav } from "./navegacion";
 
-function Grupo({ grupo, pathname }: { grupo: GrupoNav; pathname: string }) {
+function Grupo({ grupo, pathname, pendientes = 0 }: { grupo: GrupoNav; pathname: string; pendientes?: number }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="text-sidebar-foreground/60">{grupo.titulo}</SidebarGroupLabel>
@@ -36,6 +36,9 @@ function Grupo({ grupo, pathname }: { grupo: GrupoNav; pathname: string }) {
                 <SidebarMenuButton isActive={activo} tooltip={it.label} render={<Link href={it.href} />}>
                   <it.icon />
                   <span>{it.label}</span>
+                  {it.href === "/agentes-v2/aprobaciones" && pendientes > 0 && (
+                    <span className="ml-auto rounded-full bg-amber-500 px-1.5 text-[10px] leading-4 font-semibold text-white group-data-[collapsible=icon]:hidden">{pendientes}</span>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );
@@ -52,6 +55,17 @@ export function AgentesV2Sidebar({ session }: { session: Session | null }) {
   const pathname = usePathname() || "";
   const [departamentos, setDepartamentos] = useState<DepartamentoResumen[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [pendientes, setPendientes] = useState(0);
+
+  // Número de aprobaciones pendientes: se refresca al cambiar de pantalla (p. ej. tras decidir una).
+  useEffect(() => {
+    fetch("/api/agentes-v2/approvals?status=pending_approval", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) setPendientes(Number(data.counts?.pending_approval) || 0);
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   useEffect(() => {
     fetch("/api/agentes-v2/departments", { cache: "no-store" })
@@ -115,7 +129,7 @@ export function AgentesV2Sidebar({ session }: { session: Session | null }) {
         </SidebarGroup>
 
         {GRUPOS_DESPUES.map((g) => (
-          <Grupo key={g.titulo} grupo={g} pathname={pathname} />
+          <Grupo key={g.titulo} grupo={g} pathname={pathname} pendientes={pendientes} />
         ))}
       </SidebarContent>
       <NavUser session={session} />
