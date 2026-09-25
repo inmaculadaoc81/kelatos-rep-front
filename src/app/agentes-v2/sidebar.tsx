@@ -23,7 +23,7 @@ import type { DepartamentoResumen } from "@/lib/agentes-v2";
 import { NavUser } from "../(app)/nav-user";
 import { GRUPOS_ANTES, GRUPOS_DESPUES, ICONO_DEPARTAMENTO, type GrupoNav } from "./navegacion";
 
-function Grupo({ grupo, pathname, pendientes = 0 }: { grupo: GrupoNav; pathname: string; pendientes?: number }) {
+function Grupo({ grupo, pathname, pendientes = 0, enCurso = 0 }: { grupo: GrupoNav; pathname: string; pendientes?: number; enCurso?: number }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="text-sidebar-foreground/60">{grupo.titulo}</SidebarGroupLabel>
@@ -36,6 +36,9 @@ function Grupo({ grupo, pathname, pendientes = 0 }: { grupo: GrupoNav; pathname:
                 <SidebarMenuButton isActive={activo} tooltip={it.label} render={<Link href={it.href} />}>
                   <it.icon />
                   <span>{it.label}</span>
+                  {it.href === "/agentes-v2/en-vivo" && enCurso > 0 && (
+                    <span className="ml-auto size-2 animate-pulse rounded-full bg-blue-500 group-data-[collapsible=icon]:hidden" title="La IA está trabajando" />
+                  )}
                   {it.href === "/agentes-v2/aprobaciones" && pendientes > 0 && (
                     <span className="ml-auto rounded-full bg-amber-500 px-1.5 text-[10px] leading-4 font-semibold text-white group-data-[collapsible=icon]:hidden">{pendientes}</span>
                   )}
@@ -56,6 +59,20 @@ export function AgentesV2Sidebar({ session }: { session: Session | null }) {
   const [departamentos, setDepartamentos] = useState<DepartamentoResumen[]>([]);
   const [cargando, setCargando] = useState(true);
   const [pendientes, setPendientes] = useState(0);
+  const [enCurso, setEnCurso] = useState(0);
+
+  // Punto azul en «En vivo» mientras la IA trabaja en algo (se consulta cada 6 s)
+  useEffect(() => {
+    let vivo = true;
+    const tick = () =>
+      fetch("/api/agentes-v2/live/tasks", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((data) => { if (vivo && data.ok) setEnCurso((data.tasks as { state: string }[]).filter((t) => t.state === "running").length); })
+        .catch(() => {});
+    tick();
+    const t = setInterval(tick, 6000);
+    return () => { vivo = false; clearInterval(t); };
+  }, []);
 
   // Número de aprobaciones pendientes: se refresca al cambiar de pantalla (p. ej. tras decidir una).
   useEffect(() => {
@@ -129,7 +146,7 @@ export function AgentesV2Sidebar({ session }: { session: Session | null }) {
         </SidebarGroup>
 
         {GRUPOS_DESPUES.map((g) => (
-          <Grupo key={g.titulo} grupo={g} pathname={pathname} pendientes={pendientes} />
+          <Grupo key={g.titulo} grupo={g} pathname={pathname} pendientes={pendientes} enCurso={enCurso} />
         ))}
       </SidebarContent>
       <NavUser session={session} />

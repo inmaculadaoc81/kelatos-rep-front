@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -170,7 +171,11 @@ export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento
               {estado.datos?.jobs.write?.state === "running" ? "Escribiendo…" : "Escribir un artículo ahora"}
             </Button>
           </div>
-          {trabajando && <p className="text-xs text-muted-foreground">Trabajando en segundo plano: puedes seguir usando el panel.</p>}
+          {trabajando && (
+            <p className="text-xs text-muted-foreground">
+              Trabajando en segundo plano: puedes seguir usando el panel. <Link href="/agentes-v2/en-vivo" className="text-primary underline underline-offset-2">Ver cómo trabaja la IA en vivo</Link>
+            </p>
+          )}
         </div>
       </section>
 
