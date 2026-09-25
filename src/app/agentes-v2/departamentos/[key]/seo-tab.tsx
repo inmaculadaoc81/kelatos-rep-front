@@ -127,29 +127,54 @@ export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi titulo="Temas propuestos" valor={String(counts.propuesto ?? 0)} sub="esperan turno" cargando={temas.cargando && !temas.datos} />
-        <Kpi titulo="Priorizados" valor={String(counts.aprobado ?? 0)} sub="se escriben primero" cargando={temas.cargando && !temas.datos} />
-        <Kpi titulo="En curso" valor={String(counts.en_curso ?? 0)} sub="redactándose ahora" cargando={temas.cargando && !temas.datos} />
+        <Kpi titulo="Temas propuestos" valor={String(counts.propuesto ?? 0)} sub="en cola para escribirse" cargando={temas.cargando && !temas.datos} />
+        <Kpi titulo="Priorizados" valor={String(counts.aprobado ?? 0)} sub="se escribirán antes" cargando={temas.cargando && !temas.datos} />
+        <Kpi titulo="En curso" valor={String(counts.en_curso ?? 0)} sub="escribiéndose o por aprobar" cargando={temas.cargando && !temas.datos} />
         <Kpi titulo="Publicados" valor={String(counts.escrito ?? 0)} sub="artículos en el blog" cargando={temas.cargando && !temas.datos} />
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium">Publicar automáticamente</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {auto
-                  ? "Cada artículo que supere el validador se guarda directamente en el blog, sin pasar por Aprobaciones."
-                  : "Cada artículo espera tu decisión en Aprobaciones antes de publicarse."}
+                  ? "Activado: cada artículo que supere el validador se guarda directamente en el blog, sin pasar por Aprobaciones."
+                  : "Desactivado: cada artículo espera tu decisión en Aprobaciones antes de publicarse."}
               </p>
             </div>
-            <Switch checked={!!auto} disabled={cambiandoModo || !estado.datos} onCheckedChange={cambiarModo} />
+            <Switch checked={!!auto} disabled={cambiandoModo || !estado.datos} onCheckedChange={cambiarModo} aria-label="Publicar automáticamente" />
           </div>
           <p className="text-xs text-muted-foreground">
-            Antes de publicar, el validador comprueba título, descripción, estructura, palabra clave, enlaces, que esté en español y que no repita ningún artículo existente.
+            Antes de publicar, el validador comprueba título, descripción, estructura, palabra clave, enlaces, idioma y que no repita ningún artículo existente.
           </p>
         </div>
+
+        <div className="space-y-3 rounded-lg border p-4">
+          <p className="text-sm font-medium">Lanzar a mano</p>
+          <p className="text-xs text-muted-foreground">Sirve para no esperar al horario. Se ejecuta en segundo plano y puedes seguir usando el panel.</p>
+          <div className="space-y-2">
+            <div>
+              <Button size="sm" variant="outline" disabled={trabajando} onClick={() => lanzar("seo/discover")}>
+                {estado.datos?.jobs.discover?.state === "running" ? "Buscando temas…" : "Buscar temas ahora"}
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">Lee las fuentes y añade temas nuevos (unos 3 min).</p>
+            </div>
+            <div>
+              <Button size="sm" disabled={trabajando || (counts.propuesto ?? 0) + (counts.aprobado ?? 0) === 0} onClick={() => lanzar("seo/write")}>
+                {estado.datos?.jobs.write?.state === "running" ? "Escribiendo…" : "Escribir un artículo ahora"}
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">Toma el mejor tema, lo escribe y lo publica o lo deja para aprobar (unos 5 min).</p>
+            </div>
+          </div>
+          {trabajando && (
+            <p className="text-xs text-muted-foreground">
+              Trabajando… <Link href="/agentes-v2/en-vivo" className="text-primary underline underline-offset-2">Ver cómo trabaja la IA en vivo</Link>
+            </p>
+          )}
+        </div>
+
         <div className="space-y-2 rounded-lg border p-4 text-sm">
           <p className="font-medium">Conexión con el blog</p>
           {estado.error && <ErrorCaja mensaje={estado.error} />}
@@ -164,25 +189,13 @@ export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento
           ) : (
             <p className="text-muted-foreground">Comprobando…</p>
           )}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" variant="outline" disabled={trabajando} onClick={() => lanzar("seo/discover")}>
-              {estado.datos?.jobs.discover?.state === "running" ? "Buscando temas…" : "Buscar temas ahora"}
-            </Button>
-            <Button size="sm" disabled={trabajando || (counts.propuesto ?? 0) + (counts.aprobado ?? 0) === 0} onClick={() => lanzar("seo/write")}>
-              {estado.datos?.jobs.write?.state === "running" ? "Escribiendo…" : "Escribir un artículo ahora"}
-            </Button>
-          </div>
-          {trabajando && (
-            <p className="text-xs text-muted-foreground">
-              Trabajando en segundo plano: puedes seguir usando el panel. <Link href="/agentes-v2/en-vivo" className="text-primary underline underline-offset-2">Ver cómo trabaja la IA en vivo</Link>
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">Al publicar, se guarda el archivo en el repositorio y Hostinger despliega la web. Suele tardar unos minutos en verse.</p>
         </div>
       </section>
 
       <section>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">Temas</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">Lista de temas</h2>
           <div className="flex flex-wrap gap-1.5">
             {FILTROS.map((f) => (
               <button key={f || "todos"} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", filtro === f ? "border-primary bg-primary/10 font-medium" : "text-muted-foreground hover:text-foreground")}>
@@ -191,6 +204,9 @@ export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento
             ))}
           </div>
         </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Cada tema pasa por: <strong>Propuesto</strong> (lo encontró el investigador) → <strong>En curso</strong> (el redactor lo está escribiendo o espera tu aprobación) → <strong>Publicado</strong>. <strong>Priorizar</strong> hace que se escriba antes; <strong>Descartar</strong> lo saca de la cola.
+        </p>
         {temas.error && <ErrorCaja mensaje={temas.error} />}
         {temas.cargando && !temas.datos ? (
           <CargandoFilas />

@@ -17,11 +17,12 @@ import {
 } from "@/lib/agentes-v2";
 import { cn } from "@/lib/utils";
 import { PestanaSeo } from "./seo-tab";
+import { SeoAgentes, SeoComoFunciona, describirHorario } from "./seo-vision";
 
 const lista = (v: unknown): string => (Array.isArray(v) ? v.join(", ") : "");
 const aLista = (t: string): string[] => t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
 
-function PestanaResumen({ d, recargar }: { d: DetalleDepartamento; recargar: () => void }) {
+function PestanaResumen({ d, recargar, irA }: { d: DetalleDepartamento; recargar: () => void; irA: (pestana: string) => void }) {
   const [guardando, setGuardando] = useState(false);
   const cambiarEstado = async (status: EstadoDepartamento) => {
     setGuardando(true);
@@ -50,13 +51,14 @@ function PestanaResumen({ d, recargar }: { d: DetalleDepartamento; recargar: () 
   };
   const c = d.settings.configuration;
   const estado = d.department.status;
+  const esSeo = d.department.key === "local_seo";
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi titulo="Estado" valor={estado === "active" ? "Activo" : estado === "paused" ? "En pausa" : estado === "disabled" ? "Desactivado" : "En preparación"} sub={d.department.description} />
-        <Kpi titulo="Horarios" valor={String(d.schedules.filter((s) => s.enabled).length)} sub="activos" />
-        <Kpi titulo="Workflows" valor={String(d.workflows.length)} sub="definidos" />
-        <Kpi titulo="Agentes" valor={String(d.agents.length)} sub="asignados" />
+        <Kpi titulo="Horarios" valor={String(d.schedules.filter((s) => s.enabled).length)} sub={esSeo ? d.schedules.filter((s) => s.enabled).map(describirHorario).join(" · ") : "activos"} />
+        <Kpi titulo="Workflows" valor={String(d.workflows.length)} sub={esSeo ? "descubrir temas y escribir/publicar" : "definidos"} />
+        <Kpi titulo="Agentes" valor={String(d.agents.length)} sub={esSeo ? "investigador, redactor y publicador" : "asignados"} />
       </div>
       <div className="flex flex-wrap gap-2">
         {estado !== "active" && <Button size="sm" disabled={guardando} onClick={() => cambiarEstado("active")}>Activar</Button>}
@@ -64,7 +66,8 @@ function PestanaResumen({ d, recargar }: { d: DetalleDepartamento; recargar: () 
         {estado !== "disabled" && <Button size="sm" variant="ghost" disabled={guardando} onClick={() => cambiarEstado("disabled")}>Desactivar</Button>}
         {estado !== "disabled" && <Button size="sm" variant="outline" className="ml-auto" disabled={guardando} onClick={ejecutarAhora}>Ejecutar ahora</Button>}
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      {esSeo && <SeoComoFunciona d={d} irA={irA} />}
+      {!esSeo && <div className="grid gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">Objetivo actual</h2>
           {c.goals && c.goals.length ? (
@@ -77,10 +80,10 @@ function PestanaResumen({ d, recargar }: { d: DetalleDepartamento; recargar: () 
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">Próximas ejecuciones</h2>
           <ProximasEjecuciones items={d.upcoming} />
         </section>
-      </div>
-      <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+      </div>}
+      {!esSeo && <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
         La lógica específica de este departamento todavía no está implementada: se conectará a este marco en una fase posterior sin cambiar el núcleo.
-      </p>
+      </p>}
     </div>
   );
 }
@@ -250,7 +253,7 @@ function PestanaHorario({ d, recargar }: { d: DetalleDepartamento; recargar: () 
               minutos
             </label>
           )}
-          <p className="text-xs text-muted-foreground">Zona horaria: {h.timezone}</p>
+          <p className="text-xs text-muted-foreground">Lanza: {d.workflows.find((w) => String(w.id) === String(h.workflow_id))?.name ?? "—"} · Zona horaria: {h.timezone}</p>
         </div>
       ))}
       <div className="flex flex-wrap items-center gap-2">
@@ -315,9 +318,11 @@ function PestanaAnalitica({ d }: { d: DetalleDepartamento }) {
 export default function DepartamentoPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = use(params);
   const { datos, error, cargando, recargar } = useV2<DetalleDepartamento>(`departments/${key}`);
+  const [pestana, setPestana] = useState("resumen");
 
   if (error) return <ErrorCaja mensaje={error} />;
   if (!datos) return cargando ? <CargandoFilas /> : null;
+  const esSeo = datos.department.key === "local_seo";
 
   return (
     <div>
@@ -333,21 +338,23 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
           </div>
         }
       />
-      <Tabs defaultValue="resumen">
+      <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList variant="line" className="mb-4">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
-          <TabsTrigger value="estrategia">Estrategia</TabsTrigger>
+          {esSeo && <TabsTrigger value="agentes">Agentes</TabsTrigger>}
+          {esSeo && <TabsTrigger value="temas">Temas y artículos</TabsTrigger>}
           <TabsTrigger value="horario">Horario</TabsTrigger>
-          {datos.department.key === "local_seo" && <TabsTrigger value="temas">Temas y artículos</TabsTrigger>}
-          <TabsTrigger value="workflows">Workflows</TabsTrigger>
+          <TabsTrigger value="estrategia">Estrategia</TabsTrigger>
+          {!esSeo && <TabsTrigger value="workflows">Workflows</TabsTrigger>}
           <TabsTrigger value="ejecuciones">Ejecuciones</TabsTrigger>
           <TabsTrigger value="analitica">Analítica</TabsTrigger>
         </TabsList>
-        <TabsContent value="resumen"><PestanaResumen d={datos} recargar={recargar} /></TabsContent>
+        <TabsContent value="resumen"><PestanaResumen d={datos} recargar={recargar} irA={setPestana} /></TabsContent>
         <TabsContent value="estrategia"><PestanaEstrategia key={datos.settings.version} d={datos} recargar={recargar} /></TabsContent>
         <TabsContent value="horario"><PestanaHorario d={datos} recargar={recargar} /></TabsContent>
-        {datos.department.key === "local_seo" && <TabsContent value="temas"><PestanaSeo d={datos} recargarDepartamento={recargar} /></TabsContent>}
-        <TabsContent value="workflows"><PestanaWorkflows d={datos} /></TabsContent>
+        {esSeo && <TabsContent value="agentes"><SeoAgentes d={datos} irA={setPestana} /></TabsContent>}
+        {esSeo && <TabsContent value="temas"><PestanaSeo d={datos} recargarDepartamento={recargar} /></TabsContent>}
+        {!esSeo && <TabsContent value="workflows"><PestanaWorkflows d={datos} /></TabsContent>}
         <TabsContent value="ejecuciones"><TablaRuns runs={datos.runs} onAccion={async (id, a) => {
           try {
             await enviarV2("POST", `runs/${id}/${a}`, {});
