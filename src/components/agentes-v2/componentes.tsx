@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ICONO_DEPARTAMENTO } from "@/app/agentes-v2/navegacion";
 import {
-  COLOR_ESTADO_DEPARTAMENTO, COLOR_ESTADO_RUN, ETIQUETA_ESTADO_DEPARTAMENTO, ETIQUETA_ESTADO_RUN, cuando, duracion, fechaHora, usd,
+  COLOR_ESTADO_DEPARTAMENTO, COLOR_ESTADO_RUN, ETIQUETA_ESTADO_DEPARTAMENTO, ETIQUETA_ESTADO_RUN, cuando, duracion, fechaHoraLarga, usd,
   type DepartamentoPanel, type EstadoDepartamento, type EstadoRun, type RunFila,
 } from "@/lib/agentes-v2";
 import { cn } from "@/lib/utils";
@@ -104,7 +104,7 @@ export function TablaRuns({ runs, conDepartamento, onAccion }: { runs: RunFila[]
           <TableRow>
             <TableHead>Estado</TableHead>
             {conDepartamento && <TableHead>Departamento</TableHead>}
-            <TableHead>Programada</TableHead>
+            <TableHead>Fecha y hora</TableHead>
             <TableHead>Duración</TableHead>
             <TableHead>Origen</TableHead>
             <TableHead className="text-right">Coste de IA</TableHead>
@@ -117,7 +117,7 @@ export function TablaRuns({ runs, conDepartamento, onAccion }: { runs: RunFila[]
             <TableRow key={r.id}>
               <TableCell><EstadoRunBadge estado={r.status} /></TableCell>
               {conDepartamento && <TableCell className="text-sm">{r.department_name || "—"}{r.workflow_name ? ` · ${r.workflow_name}` : ""}</TableCell>}
-              <TableCell className="whitespace-nowrap text-sm tabular-nums">{fechaHora(r.scheduled_for || r.started_at)}</TableCell>
+              <TableCell className="whitespace-nowrap text-sm tabular-nums">{fechaHoraLarga(r.scheduled_for || r.started_at)}</TableCell>
               <TableCell className="whitespace-nowrap text-sm tabular-nums">{duracion(r.started_at, r.finished_at)}</TableCell>
               <TableCell className="text-sm capitalize">{r.trigger === "schedule" ? "Horario" : r.trigger === "cmo" ? "AI CMO" : r.trigger === "manual" ? "Manual" : r.trigger}</TableCell>
               <TableCell className="text-right text-sm tabular-nums">{usd(r.agent_cost_usd)}</TableCell>

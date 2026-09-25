@@ -1,10 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { useV2 } from "@/components/agentes-v2/use-v2";
-import { EstadoRunBadge } from "@/components/agentes-v2/componentes";
-import { fechaHora, type DetalleDepartamento, type Horario } from "@/lib/agentes-v2";
+import { fechaHoraLarga, type DetalleDepartamento, type Horario } from "@/lib/agentes-v2";
 import { cn } from "@/lib/utils";
 
 const DIAS_LARGOS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
@@ -35,15 +32,15 @@ export function proximaOcurrencia(h: Horario, ahora = new Date()): string | null
     for (const t of [...h.times].sort()) {
       const [hh, mm] = t.split(":").map(Number);
       if (i === 0 && hh * 60 + mm <= minutosAhora) continue;
-      const fecha = `${String(dia.getUTCDate()).padStart(2, "0")}/${String(dia.getUTCMonth() + 1).padStart(2, "0")}`;
-      return `${i === 0 ? "hoy" : i === 1 ? "mañana" : DIAS_CORTOS[n - 1]} ${fecha} a las ${t}`;
+      const fecha = `${String(dia.getUTCDate()).padStart(2, "0")}/${String(dia.getUTCMonth() + 1).padStart(2, "0")}/${dia.getUTCFullYear()}`;
+      return `${DIAS_CORTOS[n - 1]} ${fecha} ${t}`;
     }
   }
   return null;
 }
 
-interface Sistema { ok: boolean; scheduler: { active: boolean } }
-interface EstadoSeo {
+export interface Sistema { ok: boolean; scheduler: { active: boolean } }
+export interface EstadoSeo {
   ok: boolean;
   github: { configured: boolean; ok?: boolean; repository?: string; can_push?: boolean };
   publish_mode: "auto" | "approval";
@@ -59,13 +56,13 @@ const AGENTES: Record<string, { nombre: string; tipo: "ia" | "codigo"; paso: str
   investigador_temas: {
     nombre: "Investigador de temas",
     tipo: "ia",
-    paso: "Descubrimiento de temas",
+    paso: "Busca temas nuevos en fuentes del sector",
     hace: [
       "Lee fuentes reales del sector: blogs RSS/Atom y Google News sobre n8n, automatización, WhatsApp, reservas y clínicas.",
       "La IA se queda con lo relevante para tu nicho y propone ideas nuevas de guías, además de noticias.",
       "Descarta lo que ya está publicado en el blog o ya está en la lista, y puntúa cada tema.",
     ],
-    entra: "Fuentes externas + temas y artículos ya existentes",
+    entra: "Fuentes externas y los temas y artículos ya existentes",
     sale: "Temas nuevos en estado «Propuesto» (la lista crece sola)",
     duracion: "unos 3 minutos",
     tareasIa: (p) => PROPOSITOS_INVESTIGADOR.includes(p),
@@ -73,13 +70,13 @@ const AGENTES: Record<string, { nombre: string; tipo: "ia" | "codigo"; paso: str
   redactor_seo: {
     nombre: "Redactor SEO",
     tipo: "ia",
-    paso: "Contenido SEO · pasos 1 y 2",
+    paso: "Elige un tema, escribe el artículo y lo valida",
     hace: [
-      "Elige el tema con más puntuación (los que tú priorices van primero), respetando los topes de 2 al día y 5 por semana.",
+      "Elige el tema con más puntuación (los que priorices van primero), respetando los topes de 2 al día y 5 por semana.",
       "Escribe el artículo por partes: plan con título y descripción, introducción, cada sección y cierre.",
-      "Pasa el validador (longitud, estructura, español, sin cifras ni precios sin fuente, sin repetir artículos) y corrige lo que le rechace. Si no lo consigue, descarta el tema.",
+      "Pasa el validador (longitud, estructura, español, sin cifras ni precios sin fuente, sin repetir artículos) y corrige lo que rechace. Si no lo consigue, descarta el tema.",
     ],
-    entra: "Un tema de la lista + su fuente, el tono y los artículos ya publicados",
+    entra: "Un tema de la lista con su fuente, el tono y los artículos ya publicados",
     sale: "Un artículo en Markdown validado",
     duracion: "unos 5 minutos",
     tareasIa: (p) => p.startsWith("seo.") && !PROPOSITOS_INVESTIGADOR.includes(p),
@@ -87,7 +84,7 @@ const AGENTES: Record<string, { nombre: string; tipo: "ia" | "codigo"; paso: str
   publicador_blog: {
     nombre: "Publicador del blog",
     tipo: "codigo",
-    paso: "Contenido SEO · pasos 3 y 4",
+    paso: "Sube el artículo validado a la web",
     hace: [
       "Vuelve a validar el artículo justo antes de publicar.",
       "Con «publicar automáticamente» apagado, lo deja en Aprobaciones y espera tu decisión; encendido, sigue solo.",
@@ -95,270 +92,154 @@ const AGENTES: Record<string, { nombre: string; tipo: "ia" | "codigo"; paso: str
     ],
     entra: "El artículo validado",
     sale: "Un archivo nuevo en GitHub y la URL pública del artículo",
-    duracion: "unos segundos (más lo que tarde Hostinger en desplegar)",
+    duracion: "unos segundos, más lo que tarde Hostinger en desplegar",
     tareasIa: () => false,
   },
 };
 
-function Requisito({ ok, titulo, detalle, accion }: { ok: boolean | null; titulo: string; detalle: string; accion?: React.ReactNode }) {
+function Requisito({ ok, titulo, detalle }: { ok: boolean | null; titulo: string; detalle: string }) {
   return (
-    <li className="flex items-start gap-3 px-3 py-2.5 text-sm">
+    <li className="flex items-center gap-2.5 px-3 py-2 text-sm">
       <span
         aria-hidden
-        className={cn("mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold", ok === null ? "bg-slate-500/10 text-slate-500" : ok ? "bg-green-500/15 text-green-700" : "bg-amber-500/15 text-amber-700")}
+        className={cn("flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold", ok === null ? "bg-slate-500/10 text-slate-500" : ok ? "bg-green-500/15 text-green-700" : "bg-amber-500/15 text-amber-700")}
       >
         {ok === null ? "…" : ok ? "✓" : "!"}
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-medium">{titulo}</p>
-        <p className="text-xs text-muted-foreground">{detalle}</p>
-      </div>
-      {accion}
+      <span className="font-medium">{titulo}</span>
+      <span className="ml-auto truncate text-xs text-muted-foreground" title={detalle}>{detalle}</span>
     </li>
   );
 }
 
-function Paso({ n, titulo, quien, tipo, cuando, texto }: { n: number; titulo: string; quien: string; tipo: "IA" | "Código"; cuando: string; texto: string }) {
-  return (
-  <div className="flex-1 rounded-lg border bg-card p-4">
-    <div className="flex items-center gap-2">
-      <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{n}</span>
-      <p className="text-sm font-semibold">{titulo}</p>
-      <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[11px] font-medium", tipo === "IA" ? "bg-violet-500/10 text-violet-700" : "bg-slate-500/10 text-slate-600")}>{tipo}</span>
-    </div>
-    <p className="mt-2 text-sm text-muted-foreground">{texto}</p>
-    <p className="mt-3 text-xs"><span className="text-muted-foreground">Agente:</span> <span className="font-medium">{quien}</span></p>
-    <p className="mt-0.5 text-xs"><span className="text-muted-foreground">Cuándo:</span> <span className="font-medium">{cuando}</span></p>
-  </div>
-  );
-}
-
-function Flecha() {
-  return <div aria-hidden className="flex items-center justify-center text-lg text-muted-foreground max-lg:rotate-90">→</div>;
-}
-
-/** Resumen del departamento SEO: qué hace, cómo se encadena y qué falta para que funcione solo. */
-export function SeoComoFunciona({ d, irA }: { d: DetalleDepartamento; irA: (pestana: string) => void }) {
-  const sistema = useV2<Sistema>("system");
-  const estado = useV2<EstadoSeo>("seo/status");
-  const site = ((d.settings.configuration as Record<string, unknown>).site as Record<string, unknown> | undefined) ?? {};
-  const maxDia = Number(site.maxPerDay) || 2;
-  const maxSemana = Number(site.maxPerWeek) || 5;
+/** Estado del departamento SEO en pocas líneas: qué falta para que trabaje solo y en qué orden trabaja. */
+export function SeoEstado({ d, sistema, estado }: { d: DetalleDepartamento; sistema: Sistema | null; estado: EstadoSeo | null }) {
   const activo = d.department.status === "active";
-  const scheduler = sistema.datos ? sistema.datos.scheduler.active : null;
-  const gh = estado.datos?.github;
-  const ghOk = estado.datos ? !!gh?.ok && !!gh.can_push : null;
-  const auto = estado.datos ? estado.datos.publish_mode === "auto" : null;
+  const scheduler = sistema ? sistema.scheduler.active : null;
+  const gh = estado?.github;
+  const ghOk = estado ? !!gh?.ok && !!gh.can_push : null;
+  const auto = estado ? estado.publish_mode === "auto" : null;
   const solo = activo && scheduler === true && ghOk === true;
-
   const horarioDe = (clave: string) => {
     const wf = d.workflows.find((w) => w.key === clave);
-    return d.schedules.filter((s) => s.enabled && wf && String(s.workflow_id) === String(wf.id));
+    return d.schedules.filter((s) => s.enabled && wf && String(s.workflow_id) === String(wf.id)).map(describirHorario).join(" · ") || "Sin horario";
   };
-  const horDesc = horarioDe("descubrimiento_temas");
-  const horCont = horarioDe("contenido_seo");
-
+  const pasos = [
+    { n: 1, t: "Buscar temas", q: "Investigador (IA)", c: horarioDe("descubrimiento_temas") },
+    { n: 2, t: "Escribir el artículo", q: "Redactor (IA)", c: horarioDe("contenido_seo") },
+    { n: 3, t: "Publicar en la web", q: "Publicador (código)", c: "Justo después de escribir" },
+  ];
   return (
-    <div className="space-y-6">
-      <section className={cn("rounded-lg border p-4", solo ? "border-green-500/30 bg-green-500/5" : "border-amber-500/30 bg-amber-500/5")}>
-        <p className="text-sm font-semibold">{solo ? "El departamento trabaja solo." : "Ahora mismo no se ejecuta solo."}</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {solo
-            ? `Sigue sus horarios sin que hagas nada. Máximo ${maxDia} artículos al día y ${maxSemana} por semana.`
-            : "Los horarios están guardados pero no lanzan nada hasta que se cumplan estas condiciones. Mientras tanto puedes usar los botones manuales de «Temas y artículos»."}
-        </p>
-        <ul className="mt-3 divide-y rounded-lg border bg-background">
-          <Requisito ok={activo} titulo="Departamento activo" detalle={activo ? "Los horarios de este departamento se tienen en cuenta." : "Está en pausa: sus horarios no se lanzan."} />
-          <Requisito
-            ok={scheduler}
-            titulo="Programador (scheduler) encendido"
-            detalle={scheduler === null ? "Comprobando…" : scheduler ? "Crea las ejecuciones cuando llega la hora de cada horario." : "Apagado en el servidor (MARKETING_ORQUESTADOR_ACTIVO). Se enciende con una variable del servidor, no desde este panel."}
-          />
-          <Requisito
-            ok={ghOk}
-            titulo="Conexión con el blog (GitHub)"
-            detalle={ghOk === null ? "Comprobando…" : ghOk ? `Conectado a ${gh?.repository} con permiso de escritura.` : "Sin acceso de escritura al repositorio: no se podría publicar."}
-          />
-          <Requisito
-            ok={auto}
-            titulo="Publicar sin pedirte aprobación"
-            detalle={auto === null ? "Comprobando…" : auto ? "Cada artículo que pase el validador se publica directamente." : "Apagado: cada artículo espera tu decisión en Aprobaciones antes de publicarse."}
-            accion={<Button size="sm" variant="outline" onClick={() => irA("temas")}>Cambiar</Button>}
-          />
+    <div className="space-y-4">
+      <div>
+        <p className="mb-1.5 text-sm font-medium">{solo ? "Trabaja solo" : "Ahora no se ejecuta solo"}</p>
+        <ul className={cn("divide-y rounded-lg border", solo ? "border-green-500/30" : "border-amber-500/30")}>
+          <Requisito ok={activo} titulo="Departamento activo" detalle={activo ? "Sí" : "Falta activarlo (botón de arriba)"} />
+          <Requisito ok={scheduler} titulo="Programador del servidor" detalle={scheduler === null ? "Comprobando…" : scheduler ? "Encendido" : "Apagado en el servidor"} />
+          <Requisito ok={ghOk} titulo="Conexión con el blog" detalle={ghOk === null ? "Comprobando…" : ghOk ? gh?.repository ?? "Conectado" : "Sin permiso de escritura"} />
+          <Requisito ok={auto} titulo="Publicar sin aprobación" detalle={auto === null ? "Comprobando…" : auto ? "Sí, directo al blog" : "No: pasa por Aprobaciones"} />
         </ul>
-      </section>
-
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Cómo funciona, de principio a fin</h2>
-        <div className="flex flex-col gap-3 lg:flex-row lg:gap-2">
-          <Paso n={1} titulo="Buscar temas" quien="Investigador de temas" tipo="IA" cuando={horDesc.length ? horDesc.map(describirHorario).join(" · ") : "Sin horario"} texto="Lee fuentes del sector y añade temas nuevos, incluidas noticias, a la lista de temas." />
-          <Flecha />
-          <Paso n={2} titulo="Escribir el artículo" quien="Redactor SEO" tipo="IA" cuando={horCont.length ? horCont.map(describirHorario).join(" · ") : "Sin horario"} texto="Elige un tema de la lista, lo redacta por partes y lo pasa por el validador." />
-          <Flecha />
-          <Paso n={3} titulo="Publicar en la web" quien="Publicador del blog" tipo="Código" cuando="Justo después de escribir" texto="Sube el artículo al repositorio; Hostinger despliega y aparece en automatizacionesn8n.com/blog." />
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Los pasos 2 y 3 forman una sola ejecución («Contenido SEO»). Ejecuciones y tiempos de cada una, en la pestaña <button type="button" className="text-primary underline underline-offset-2" onClick={() => irA("ejecuciones")}>Ejecuciones</button>; cada llamada a la IA, en <Link href="/agentes-v2/en-vivo" className="text-primary underline underline-offset-2">En vivo</Link>.
-        </p>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border p-4">
-          <h3 className="text-sm font-semibold">Reglas que se cumplen siempre</h3>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            <li>Máximo {maxDia} artículos al día y {maxSemana} por semana, aunque se lance a mano.</li>
-            <li>Tono: {String(d.settings.configuration.tone || "sin definir")}.</li>
-            <li>Nunca sobrescribe un artículo existente ni toca otros archivos de la web.</li>
-            <li>Sin cifras, precios, tarifas ni normativa que no venga de una fuente.</li>
-            <li>Si el validador rechaza el artículo y no se puede corregir, se descarta y no se publica nada.</li>
-          </ul>
-        </div>
-        <div className="rounded-lg border p-4">
-          <h3 className="text-sm font-semibold">Dónde se ve cada cosa</h3>
-          <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
-            <li><button type="button" className="font-medium text-foreground hover:underline" onClick={() => irA("temas")}>Temas y artículos</button>: la lista de temas, los botones manuales y el modo de publicación.</li>
-            <li><button type="button" className="font-medium text-foreground hover:underline" onClick={() => irA("agentes")}>Agentes</button>: qué hace cada agente y cómo está programado.</li>
-            <li><button type="button" className="font-medium text-foreground hover:underline" onClick={() => irA("horario")}>Horario</button>: cambiar días y horas.</li>
-            <li><Link href="/agentes-v2/aprobaciones" className="font-medium text-foreground hover:underline">Aprobaciones</Link>: los artículos que esperan tu decisión (solo si no publicas automáticamente).</li>
-          </ul>
-        </div>
-      </section>
+      </div>
+      <div>
+        <p className="mb-1.5 text-sm font-medium">Orden de trabajo</p>
+        <ol className="divide-y rounded-lg border">
+          {pasos.map((p) => (
+            <li key={p.n} className="flex items-center gap-2.5 px-3 py-2 text-sm">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{p.n}</span>
+              <span className="font-medium">{p.t}</span>
+              <span className="text-xs text-muted-foreground">{p.q}</span>
+              <span className="ml-auto text-right text-xs text-muted-foreground">{p.c}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   );
 }
 
 /** Los agentes del departamento SEO: qué hace cada uno, cuándo se lanza y cómo le está yendo. */
-export function SeoAgentes({ d, irA }: { d: DetalleDepartamento; irA: (pestana: string) => void }) {
+export function SeoAgentes({ d, irA }: { d: DetalleDepartamento; irA?: (pestana: string) => void }) {
   const stats = useV2<StatsLlm>("llm-stats?days=7");
   const activo = d.department.status === "active";
   const agentes = [...d.agents].sort((a, b) => Number(a.id) - Number(b.id));
   const workflowDe = (id: string | null) => d.workflows.find((w) => String(w.id) === String(id));
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h2 className="mb-1 text-sm font-medium text-muted-foreground">Agentes de este departamento</h2>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Son tres, y se ejecutan en cadena. Dos usan IA y el último es código normal, sin IA, para que publicar sea predecible.
-        </p>
-        <div className="space-y-3">
-          {agentes.map((a, i) => {
-            const info = AGENTES[a.agent_key];
-            const wf = workflowDe(a.workflow_id);
-            const horarios = (d.schedules as HorarioConFechas[]).filter((s) => wf && String(s.workflow_id) === String(wf.id));
-            const mias = (stats.datos?.by_purpose ?? []).filter((p) => info?.tareasIa(p.purpose));
-            const llamadas = mias.reduce((s, p) => s + p.calls, 0);
-            const fallos = mias.reduce((s, p) => s + p.failed, 0);
-            const media = llamadas ? Math.round(mias.reduce((s, p) => s + p.avg_ms * p.calls, 0) / llamadas / 100) / 10 : 0;
-            return (
-              <article key={a.id} className="rounded-lg border p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{i + 1}</span>
-                  <h3 className="text-base font-semibold">{info?.nombre ?? a.agent_key}</h3>
-                  <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", info?.tipo === "codigo" ? "bg-slate-500/10 text-slate-600" : "bg-violet-500/10 text-violet-700")}>{info?.tipo === "codigo" ? "Código, sin IA" : "Usa IA"}</span>
-                  <span className={cn("ml-auto text-xs", a.enabled ? "text-green-700" : "text-muted-foreground")}>{a.enabled ? "Habilitado" : "Deshabilitado"}</span>
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">{a.role}</p>
-
-                <div className="mt-3 grid gap-4 lg:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Qué hace</p>
-                    <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-                      {(info?.hace ?? [a.role]).map((t) => <li key={t}>{t}</li>)}
-                    </ul>
-                  </div>
-                  <dl className="grid content-start gap-2 text-sm">
-                    {info && (
-                      <>
-                        <div><dt className="text-xs text-muted-foreground">Recibe</dt><dd>{info.entra}</dd></div>
-                        <div><dt className="text-xs text-muted-foreground">Entrega</dt><dd>{info.sale}</dd></div>
-                        <div><dt className="text-xs text-muted-foreground">Cuánto tarda</dt><dd>{info.duracion}</dd></div>
-                      </>
-                    )}
-                    <div><dt className="text-xs text-muted-foreground">Forma parte de</dt><dd>{info?.paso ?? wf?.name ?? "—"}</dd></div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Programación</dt>
-                      <dd>
-                        {horarios.length === 0 ? "Sin horario" : horarios.map((h) => (
-                          <span key={h.id ?? h.name} className={cn("block", !h.enabled && "text-muted-foreground line-through")}>{h.name ? `${h.name}: ` : ""}{describirHorario(h)}</span>
-                        ))}
-                      </dd>
-                    </div>
-                    {info?.tipo === "ia" && (
-                      <div>
-                        <dt className="text-xs text-muted-foreground">Últimos 7 días</dt>
-                        <dd>{stats.cargando && !stats.datos ? "…" : llamadas ? `${llamadas} llamadas a la IA · media ${media.toLocaleString("es-ES")} s${fallos ? ` · ${fallos} con error` : ""}` : "Sin llamadas a la IA"}</dd>
-                      </div>
-                    )}
-                  </dl>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
+    <div className="space-y-5">
+      <div className="space-y-2.5">
+        {agentes.map((a, i) => {
+          const info = AGENTES[a.agent_key];
+          const wf = workflowDe(a.workflow_id);
+          const horarios = (d.schedules as HorarioConFechas[]).filter((s) => wf && String(s.workflow_id) === String(wf.id));
+          const mias = (stats.datos?.by_purpose ?? []).filter((p) => info?.tareasIa(p.purpose));
+          const llamadas = mias.reduce((s, p) => s + p.calls, 0);
+          const fallos = mias.reduce((s, p) => s + p.failed, 0);
+          const media = llamadas ? Math.round(mias.reduce((s, p) => s + p.avg_ms * p.calls, 0) / llamadas / 100) / 10 : 0;
+          return (
+            <article key={a.id} className="rounded-lg border p-3.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex size-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{i + 1}</span>
+                <h3 className="text-sm font-semibold">{info?.nombre ?? a.agent_key}</h3>
+                <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", info?.tipo === "codigo" ? "bg-slate-500/10 text-slate-600" : "bg-violet-500/10 text-violet-700")}>{info?.tipo === "codigo" ? "Código, sin IA" : "Usa IA"}</span>
+                <span className={cn("ml-auto text-xs", a.enabled ? "text-green-700" : "text-muted-foreground")}>{a.enabled ? "Habilitado" : "Deshabilitado"}</span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{info?.paso ?? wf?.name}</p>
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                <dt className="text-muted-foreground">Cuándo</dt>
+                <dd>
+                  {horarios.length === 0 ? "Sin horario" : horarios.map((h) => (
+                    <span key={h.id ?? h.name} className={cn("block", !h.enabled && "text-muted-foreground line-through")}>{describirHorario(h)}</span>
+                  ))}
+                </dd>
+                {info && (<><dt className="text-muted-foreground">Tarda</dt><dd>{info.duracion}</dd></>)}
+                {info?.tipo === "ia" && (
+                  <>
+                    <dt className="text-muted-foreground">7 días</dt>
+                    <dd>{stats.cargando && !stats.datos ? "…" : llamadas ? `${llamadas} llamadas a la IA · media ${media.toLocaleString("es-ES")} s${fallos ? ` · ${fallos} con error` : ""}` : "Sin llamadas a la IA"}</dd>
+                  </>
+                )}
+              </dl>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-primary select-none">Qué hace y qué entrega</summary>
+                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                  {(info?.hace ?? [a.role]).map((t) => <li key={t}>{t}</li>)}
+                </ul>
+                {info && <p className="mt-1.5 text-xs text-muted-foreground"><span className="font-medium text-foreground">Recibe:</span> {info.entra}. <span className="font-medium text-foreground">Entrega:</span> {info.sale}.</p>}
+              </details>
+            </article>
+          );
+        })}
+      </div>
 
       <section>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">Programación actual</h2>
-          <Button size="sm" variant="outline" onClick={() => irA("horario")}>Cambiar horario</Button>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-medium">Programación</h3>
+          {irA && <button type="button" className="text-xs text-primary hover:underline" onClick={() => irA("horario")}>Cambiar horario</button>}
         </div>
-        {!activo && (
-          <p className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-            El departamento está <strong>{d.department.status === "paused" ? "en pausa" : "sin activar"}</strong>: la tabla muestra cuándo se lanzaría cada horario, pero por ahora no se lanza nada.
-          </p>
-        )}
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/40 text-left text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 font-medium">Horario</th>
-                <th className="px-3 py-2 font-medium">Cuándo</th>
-                <th className="px-3 py-2 font-medium">Qué lanza</th>
-                <th className="px-3 py-2 font-medium">Próxima vez</th>
-                <th className="px-3 py-2 font-medium">Última vez</th>
-                <th className="px-3 py-2 font-medium">Estado</th>
+                <th className="px-2.5 py-1.5 font-medium">Horario</th>
+                <th className="px-2.5 py-1.5 font-medium">Próxima vez</th>
+                <th className="px-2.5 py-1.5 font-medium">Última vez</th>
+                <th className="px-2.5 py-1.5 font-medium">Estado</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {(d.schedules as HorarioConFechas[]).map((h) => {
-                const wf = workflowDe(h.workflow_id);
-                const prox = proximaOcurrencia(h);
-                return (
-                  <tr key={h.id ?? h.name}>
-                    <td className="px-3 py-2 font-medium">{h.name || "Sin nombre"}</td>
-                    <td className="px-3 py-2">{describirHorario(h)} <span className="text-xs text-muted-foreground">({h.timezone})</span></td>
-                    <td className="px-3 py-2">{wf?.name ?? "—"}</td>
-                    <td className="px-3 py-2 tabular-nums">{prox ?? "—"}</td>
-                    <td className="px-3 py-2 tabular-nums">{h.last_run_at ? fechaHora(h.last_run_at) : "Aún no se ha lanzado"}</td>
-                    <td className="px-3 py-2">{!h.enabled ? "Desactivado" : activo ? "Activo" : "Guardado, sin lanzar"}</td>
-                  </tr>
-                );
-              })}
-              {d.schedules.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Sin horarios definidos.</td></tr>}
+              {(d.schedules as HorarioConFechas[]).map((h) => (
+                <tr key={h.id ?? h.name}>
+                  <td className="px-2.5 py-1.5"><span className="font-medium">{h.name || "Sin nombre"}</span><span className="block text-muted-foreground">{describirHorario(h)} ({h.timezone})</span></td>
+                  <td className="px-2.5 py-1.5 tabular-nums">{proximaOcurrencia(h) ?? "—"}</td>
+                  <td className="px-2.5 py-1.5 tabular-nums">{h.last_run_at ? fechaHoraLarga(h.last_run_at) : "Aún no"}</td>
+                  <td className="px-2.5 py-1.5">{!h.enabled ? "Desactivado" : activo ? "Activo" : "Sin lanzar"}</td>
+                </tr>
+              ))}
+              {d.schedules.length === 0 && <tr><td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">Sin horarios definidos.</td></tr>}
             </tbody>
           </table>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Límites de seguridad: cada ejecución tiene un tiempo máximo (descubrir temas 10 min, escribir y publicar 15 min) y se reintenta una vez si falla. Los horarios usan la hora de Madrid.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Últimas ejecuciones</h2>
-        {d.runs.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Todavía no se ha ejecutado ninguna a través del programador. Las que lances a mano con los botones de «Temas y artículos» se ven en En vivo.</p>
-        ) : (
-          <ul className="divide-y rounded-lg border">
-            {d.runs.slice(0, 6).map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
-                <EstadoRunBadge estado={r.status} />
-                <span className="font-medium">{r.workflow_name ?? "Ejecución"}</span>
-                <span className="ml-auto tabular-nums text-muted-foreground">{fechaHora(r.started_at ?? r.scheduled_for)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="mt-1.5 text-xs text-muted-foreground">Tiempo máximo por ejecución: 10 min al buscar temas y 15 al escribir; se reintenta una vez si falla. Hora de Madrid.</p>
       </section>
     </div>
   );

@@ -5,15 +5,14 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { enviarV2, useV2 } from "@/components/agentes-v2/use-v2";
-import { CargandoFilas, ErrorCaja, Kpi, Vacio } from "@/components/agentes-v2/componentes";
-import type { DetalleDepartamento } from "@/lib/agentes-v2";
+import { CargandoFilas, ErrorCaja, Vacio } from "@/components/agentes-v2/componentes";
+import { fechaHoraLarga, type DetalleDepartamento } from "@/lib/agentes-v2";
 import { cn } from "@/lib/utils";
 
 type EstadoTema = "propuesto" | "aprobado" | "en_curso" | "escrito" | "descartado";
 
-interface Tema {
+export interface Tema {
   id: string;
   title: string;
   keyword: string;
@@ -25,6 +24,8 @@ interface Tema {
   score: number;
   article_slug: string | null;
   approval_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Tarea {
@@ -53,7 +54,16 @@ const COLOR: Record<EstadoTema, string> = {
 };
 const FILTROS: ("" | EstadoTema)[] = ["", "propuesto", "aprobado", "en_curso", "escrito", "descartado"];
 
-/** Temas y artículos del departamento SEO: backlog de temas, búsqueda y redacción bajo demanda y modo de publicación. */
+/** Fecha que acompaña al estado del tema: cuándo se publicó, se descartó o se movió por última vez. */
+function fechaEstado(t: Tema): string | null {
+  if (t.status === "escrito") return `Publicado ${fechaHoraLarga(t.updated_at)}`;
+  if (t.status === "descartado") return `Descartado ${fechaHoraLarga(t.updated_at)}`;
+  if (t.status === "en_curso") return `En curso desde ${fechaHoraLarga(t.updated_at)}`;
+  if (t.status === "aprobado") return `Priorizado ${fechaHoraLarga(t.updated_at)}`;
+  return null;
+}
+
+/** Temas del departamento SEO: lista de temas, lanzamiento manual y modo de publicación. */
 export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento; recargarDepartamento: () => void }) {
   const [filtro, setFiltro] = useState<"" | EstadoTema>("");
   const temas = useV2<{ ok: boolean; topics: Tema[]; counts: Record<string, number> }>(`seo/topics${filtro ? `?status=${filtro}` : ""}`);
@@ -131,132 +141,76 @@ export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento
 
   const counts = temas.datos?.counts ?? estado.datos?.counts ?? {};
   const gh = estado.datos?.github;
+  const sinTemas = (counts.propuesto ?? 0) + (counts.aprobado ?? 0) === 0;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi titulo="Temas propuestos" valor={String(counts.propuesto ?? 0)} sub="en cola para escribirse" cargando={temas.cargando && !temas.datos} />
-        <Kpi titulo="Priorizados" valor={String(counts.aprobado ?? 0)} sub="se escribirán antes" cargando={temas.cargando && !temas.datos} />
-        <Kpi titulo="En curso" valor={String(counts.en_curso ?? 0)} sub="escribiéndose o por aprobar" cargando={temas.cargando && !temas.datos} />
-        <Kpi titulo="Publicados" valor={String(counts.escrito ?? 0)} sub="artículos en el blog" cargando={temas.cargando && !temas.datos} />
-      </div>
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-3 rounded-lg border p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium">Publicar automáticamente</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {auto
-                  ? "Activado: cada artículo que supere el validador se guarda directamente en el blog, sin pasar por Aprobaciones."
-                  : "Desactivado: cada artículo espera tu decisión en Aprobaciones antes de publicarse."}
-              </p>
-            </div>
-            <Switch checked={!!auto} disabled={cambiandoModo || !estado.datos} onCheckedChange={cambiarModo} aria-label="Publicar automáticamente" />
+    <div className="space-y-4">
+      <section className="space-y-3 rounded-lg border p-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Publicar sin pedir aprobación</p>
+            <p className="text-xs text-muted-foreground">{auto ? "Sí: los artículos validados van directos al blog." : "No: cada artículo espera tu decisión en Aprobaciones."}</p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Antes de publicar, el validador comprueba título, descripción, estructura, palabra clave, enlaces, idioma y que no repita ningún artículo existente.
-          </p>
+          <Switch checked={!!auto} disabled={cambiandoModo || !estado.datos} onCheckedChange={cambiarModo} aria-label="Publicar sin pedir aprobación" />
         </div>
-
-        <div className="space-y-3 rounded-lg border p-4">
-          <p className="text-sm font-medium">Lanzar a mano</p>
-          <p className="text-xs text-muted-foreground">Sirve para no esperar al horario. Se ejecuta en segundo plano y puedes seguir usando el panel.</p>
-          <div className="space-y-2">
-            <div>
-              <Button size="sm" variant="outline" disabled={trabajando} onClick={() => lanzar("seo/discover")}>
-                {estado.datos?.jobs.discover?.state === "running" ? "Buscando temas…" : "Buscar temas ahora"}
-              </Button>
-              <p className="mt-1 text-xs text-muted-foreground">Lee las fuentes y añade temas nuevos (unos 3 min).</p>
-            </div>
-            <div>
-              <Button size="sm" disabled={trabajando || (counts.propuesto ?? 0) + (counts.aprobado ?? 0) === 0} onClick={() => lanzar("seo/write")}>
-                {estado.datos?.jobs.write?.state === "running" ? "Escribiendo…" : "Escribir un artículo ahora"}
-              </Button>
-              <p className="mt-1 text-xs text-muted-foreground">Toma el mejor tema, lo escribe y lo publica o lo deja para aprobar (unos 5 min).</p>
-            </div>
-          </div>
-          {trabajando && (
-            <p className="text-xs text-muted-foreground">
-              Trabajando… <Link href="/agentes-v2/en-vivo" className="text-primary underline underline-offset-2">Ver cómo trabaja la IA en vivo</Link>
-            </p>
-          )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" disabled={trabajando} onClick={() => lanzar("seo/discover")} title="Lee las fuentes y añade temas nuevos (unos 3 min)">
+            {estado.datos?.jobs.discover?.state === "running" ? "Buscando temas…" : "Buscar temas ahora"}
+          </Button>
+          <Button size="sm" disabled={trabajando || sinTemas} onClick={() => lanzar("seo/write")} title="Toma el mejor tema y lo escribe (unos 5 min)">
+            {estado.datos?.jobs.write?.state === "running" ? "Escribiendo…" : "Escribir un artículo ahora"}
+          </Button>
+          {trabajando && <Link href="/agentes-v2/en-vivo" className="text-xs text-primary underline underline-offset-2">Ver en vivo</Link>}
         </div>
-
-        <div className="space-y-2 rounded-lg border p-4 text-sm">
-          <p className="font-medium">Conexión con el blog</p>
-          {estado.error && <ErrorCaja mensaje={estado.error} />}
-          {gh ? (
-            gh.ok ? (
-              <p className="text-muted-foreground">
-                Conectado a <span className="font-medium text-foreground">{gh.repository}</span> (rama {gh.branch}){gh.can_push ? ", con permiso de escritura." : ", pero SIN permiso de escritura."}
-              </p>
-            ) : (
-              <p className="text-red-700">{gh.configured ? `GitHub no responde bien: ${gh.error ?? "error"}` : "Falta el token de GitHub en el servidor."}</p>
-            )
-          ) : (
-            <p className="text-muted-foreground">Comprobando…</p>
-          )}
-          <p className="text-xs text-muted-foreground">Al publicar, se guarda el archivo en el repositorio y Hostinger despliega la web. Suele tardar unos minutos en verse.</p>
-        </div>
+        {estado.error && <ErrorCaja mensaje={estado.error} />}
+        <p className={cn("text-xs", gh && !gh.ok ? "text-red-700" : "text-muted-foreground")}>
+          {gh ? (gh.ok ? `Blog: ${gh.repository} (${gh.branch})${gh.can_push ? "" : " · SIN permiso de escritura"}` : gh.configured ? `GitHub no responde bien: ${gh.error ?? "error"}` : "Falta el token de GitHub en el servidor.") : "Comprobando la conexión con el blog…"}
+        </p>
       </section>
 
       <section>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">Lista de temas</h2>
-          <div className="flex flex-wrap gap-1.5">
-            {FILTROS.map((f) => (
-              <button key={f || "todos"} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", filtro === f ? "border-primary bg-primary/10 font-medium" : "text-muted-foreground hover:text-foreground")}>
-                {f ? `${ETIQUETA[f]} (${counts[f] ?? 0})` : "Todos"}
-              </button>
-            ))}
-          </div>
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {FILTROS.map((f) => (
+            <button key={f || "todos"} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)} className={cn("rounded-full border px-2.5 py-0.5 text-xs transition-colors", filtro === f ? "border-primary bg-primary/10 font-medium" : "text-muted-foreground hover:text-foreground")}>
+              {f ? `${ETIQUETA[f]} (${counts[f] ?? 0})` : "Todos"}
+            </button>
+          ))}
         </div>
-        <p className="mb-2 text-xs text-muted-foreground">
-          Cada tema pasa por: <strong>Propuesto</strong> (lo encontró el investigador) → <strong>En curso</strong> (el redactor lo está escribiendo o espera tu aprobación) → <strong>Publicado</strong>. <strong>Priorizar</strong> hace que se escriba antes; <strong>Descartar</strong> lo saca de la cola.
-        </p>
         {temas.error && <ErrorCaja mensaje={temas.error} />}
         {temas.cargando && !temas.datos ? (
           <CargandoFilas />
         ) : !temas.datos || temas.datos.topics.length === 0 ? (
           <Vacio titulo="Todavía no hay temas" texto="Pulsa «Buscar temas ahora»: el departamento lee sus fuentes y propone temas nuevos del nicho, sin repetir lo ya publicado." />
         ) : (
-          <div className="overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tema</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Puntos</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {temas.datos.topics.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="max-w-[28rem]">
-                      <p className="truncate text-sm font-medium" title={t.title}>{t.title}</p>
-                      <p className="truncate text-xs text-muted-foreground" title={t.angle ?? undefined}>{t.keyword}{t.source_url ? <> · <a href={t.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{t.source_name || "fuente"}</a></> : null}</p>
-                    </TableCell>
-                    <TableCell className="text-sm">{t.kind === "noticia" ? "Noticia" : "Guía"}</TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">{t.score}</TableCell>
-                    <TableCell>
-                      <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", COLOR[t.status])}>{ETIQUETA[t.status]}</span>
-                      {t.article_slug ? <a href={`https://automatizacionesn8n.com/blog/${t.article_slug}`} target="_blank" rel="noopener noreferrer" className="ml-2 text-xs text-primary underline underline-offset-2">ver</a> : null}
-                      {t.status === "en_curso" && t.approval_id ? <Link href="/agentes-v2/aprobaciones" className="ml-2 text-xs text-primary underline underline-offset-2">Ver el artículo pendiente</Link> : null}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right">
-                      {t.status === "propuesto" && <button type="button" className="mr-3 text-xs text-primary hover:underline" onClick={() => cambiarTema(t.id, "aprobado")}>Priorizar</button>}
-                      {(t.status === "propuesto" || t.status === "aprobado") && <button type="button" className="text-xs text-muted-foreground hover:underline" onClick={() => cambiarTema(t.id, "descartado")}>Descartar</button>}
-                      {t.status === "aprobado" && <button type="button" className="ml-3 text-xs text-muted-foreground hover:underline" onClick={() => cambiarTema(t.id, "propuesto")}>Quitar prioridad</button>}
-                      {t.status === "descartado" && <button type="button" className="text-xs text-primary hover:underline" onClick={() => cambiarTema(t.id, "propuesto")}>Recuperar</button>}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <ul className="divide-y rounded-lg border">
+            {temas.datos.topics.map((t) => {
+              const f = fechaEstado(t);
+              return (
+                <li key={t.id} className="px-3 py-2.5">
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 flex-1 text-sm font-medium" title={t.angle ?? undefined}>{t.title}</p>
+                    <span className={cn("shrink-0 rounded-md px-2 py-0.5 text-xs font-medium", COLOR[t.status])}>{ETIQUETA[t.status]}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t.kind === "noticia" ? "Noticia" : "Guía"} · {t.score} pts · {t.keyword}
+                    {t.source_url ? <> · <a href={t.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{t.source_name || "fuente"}</a></> : null}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                    <span className="tabular-nums text-muted-foreground">Creado {fechaHoraLarga(t.created_at)}</span>
+                    {f && <span className="tabular-nums text-muted-foreground">{f}</span>}
+                    <span className="ml-auto flex items-center gap-3">
+                      {t.article_slug && <a href={`https://automatizacionesn8n.com/blog/${t.article_slug}`} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">Ver artículo</a>}
+                      {t.status === "en_curso" && t.approval_id && <Link href="/agentes-v2/aprobaciones" className="text-primary underline underline-offset-2">Ver el artículo pendiente</Link>}
+                      {t.status === "propuesto" && <button type="button" className="text-primary hover:underline" onClick={() => cambiarTema(t.id, "aprobado")} title="Se escribirá antes que el resto">Priorizar</button>}
+                      {(t.status === "propuesto" || t.status === "aprobado") && <button type="button" className="text-muted-foreground hover:underline" onClick={() => cambiarTema(t.id, "descartado")} title="Lo saca de la cola">Descartar</button>}
+                      {t.status === "aprobado" && <button type="button" className="text-muted-foreground hover:underline" onClick={() => cambiarTema(t.id, "propuesto")}>Quitar prioridad</button>}
+                      {t.status === "descartado" && <button type="button" className="text-primary hover:underline" onClick={() => cambiarTema(t.id, "propuesto")}>Recuperar</button>}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
     </div>
