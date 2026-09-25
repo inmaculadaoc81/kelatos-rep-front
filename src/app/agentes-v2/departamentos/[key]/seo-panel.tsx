@@ -120,27 +120,31 @@ function Etapa({ n, titulo, agente, tipo, numero, unidad, lineas, ocupada, child
   n: number; titulo: string; agente: string; tipo: "IA" | "Código"; numero: number; unidad: string; lineas: string[]; ocupada?: boolean; children: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-1 flex-col rounded-lg border bg-card p-3.5", ocupada && "border-primary/40")}>
-      <div className="flex items-center gap-2">
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{n}</span>
-        <p className="text-sm font-semibold">{titulo}</p>
-        <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[11px] font-medium", tipo === "IA" ? "bg-violet-500/10 text-violet-700" : "bg-slate-500/10 text-slate-600")}>{tipo}</span>
+    <div className={cn("rounded-lg border bg-card p-3", ocupada && "border-primary/40")}>
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{n}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold">{titulo}</p>
+            <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", tipo === "IA" ? "bg-violet-500/10 text-violet-700" : "bg-slate-500/10 text-slate-600")}>{tipo}</span>
+            <span className="ml-auto text-xs text-muted-foreground">{agente}</span>
+          </div>
+          <p className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="text-2xl leading-none font-semibold tabular-nums">{numero}</span>
+            <span className="text-sm text-muted-foreground">{unidad}</span>
+          </p>
+          <ul className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+            {lineas.map((l) => <li key={l}>{l}</li>)}
+          </ul>
+          <div className="mt-2.5">{children}</div>
+        </div>
       </div>
-      <p className="mt-0.5 text-xs text-muted-foreground">{agente}</p>
-      <p className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-3xl leading-none font-semibold tabular-nums">{numero}</span>
-        <span className="text-sm text-muted-foreground">{unidad}</span>
-      </p>
-      <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-        {lineas.map((l) => <li key={l}>{l}</li>)}
-      </ul>
-      <div className="mt-3 pt-1">{children}</div>
     </div>
   );
 }
 
 function Flecha() {
-  return <span aria-hidden className="flex items-center justify-center text-lg text-muted-foreground max-lg:rotate-90">→</span>;
+  return <span aria-hidden className="flex items-center justify-center text-base leading-none text-muted-foreground">↓</span>;
 }
 
 /** El recorrido de un artículo en tres etapas, con el número de elementos de cada una, su próxima ejecución y su botón. */
@@ -159,7 +163,7 @@ function Recorrido({ d, seo }: { d: DetalleDepartamento; seo: Seo }) {
   return (
     <section>
       <h2 className="mb-2 text-sm font-medium text-muted-foreground">Así trabaja: de la idea al artículo publicado</h2>
-      <div className="flex flex-col gap-2 lg:flex-row">
+      <div className="flex flex-col gap-1">
         <Etapa n={1} titulo="Buscar temas" agente="Investigador de temas" tipo="IA" numero={enCola} unidad="ideas en cola" ocupada={seo.buscando}
           lineas={[`Última búsqueda: ${fechaHoraLarga(ultimaBusqueda)}`, prox("descubrimiento_temas")]}>
           <Button size="sm" variant="outline" disabled={seo.trabajando} onClick={() => seo.lanzar("seo/discover")} title="Lee las fuentes y añade temas nuevos (unos 3 min)">
@@ -232,17 +236,16 @@ export function SeoPanel({ d, recargar }: { d: DetalleDepartamento; recargar: ()
   const seo = useSeo(d, recargar);
 
   return (
-    <div className="space-y-5">
-      <ControlDepartamento d={d} seo={seo} recargar={recargar} />
-      <Recorrido d={d} seo={seo} />
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <div className="min-w-0">
-          <Tabs value={izquierda} onValueChange={(v) => setIzquierda(String(v))}>
-            <TabsList variant="line" className="mb-3">
-              <TabsTrigger value="temas">Temas</TabsTrigger>
-              <TabsTrigger value="horario">Horario</TabsTrigger>
-              <TabsTrigger value="estrategia">Estrategia</TabsTrigger>
-            </TabsList>
+    <div className="grid items-stretch gap-6 lg:grid-cols-2 lg:gap-0">
+      <div className="min-w-0 space-y-5 lg:pr-6">
+        <ControlDepartamento d={d} seo={seo} recargar={recargar} />
+        <Recorrido d={d} seo={seo} />
+        <Tabs value={izquierda} onValueChange={(v) => setIzquierda(String(v))}>
+          <TabsList variant="line" className="mb-3">
+            <TabsTrigger value="temas">Temas</TabsTrigger>
+            <TabsTrigger value="horario">Horario</TabsTrigger>
+            <TabsTrigger value="estrategia">Estrategia</TabsTrigger>
+          </TabsList>
             <TabsContent value="temas">
               <ListaTemas temas={seo.temas} counts={seo.counts} cargando={seo.cargandoTemas} error={seo.errorTemas} onCambiar={seo.cambiarTema} />
             </TabsContent>
@@ -250,7 +253,7 @@ export function SeoPanel({ d, recargar }: { d: DetalleDepartamento; recargar: ()
             <TabsContent value="estrategia"><PestanaEstrategia key={d.settings.version} d={d} recargar={recargar} /></TabsContent>
           </Tabs>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
           <Tabs value={derecha} onValueChange={(v) => setDerecha(String(v))}>
             <TabsList variant="line" className="mb-3">
               <TabsTrigger value="actividad">Actividad</TabsTrigger>
@@ -283,7 +286,6 @@ export function SeoPanel({ d, recargar }: { d: DetalleDepartamento; recargar: ()
             </TabsContent>
           </Tabs>
         </div>
-      </div>
     </div>
   );
 }
