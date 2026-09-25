@@ -16,6 +16,7 @@ import {
   type ConfiguracionDepartamento, type DetalleDepartamento, type EstadoDepartamento, type Horario,
 } from "@/lib/agentes-v2";
 import { cn } from "@/lib/utils";
+import { PestanaSeo } from "./seo-tab";
 
 const lista = (v: unknown): string => (Array.isArray(v) ? v.join(", ") : "");
 const aLista = (t: string): string[] => t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
@@ -337,6 +338,7 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="estrategia">Estrategia</TabsTrigger>
           <TabsTrigger value="horario">Horario</TabsTrigger>
+          {datos.department.key === "local_seo" && <TabsTrigger value="temas">Temas y artículos</TabsTrigger>}
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="ejecuciones">Ejecuciones</TabsTrigger>
           <TabsTrigger value="analitica">Analítica</TabsTrigger>
@@ -344,6 +346,7 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
         <TabsContent value="resumen"><PestanaResumen d={datos} recargar={recargar} /></TabsContent>
         <TabsContent value="estrategia"><PestanaEstrategia key={datos.settings.version} d={datos} recargar={recargar} /></TabsContent>
         <TabsContent value="horario"><PestanaHorario d={datos} recargar={recargar} /></TabsContent>
+        {datos.department.key === "local_seo" && <TabsContent value="temas"><PestanaSeo d={datos} recargarDepartamento={recargar} /></TabsContent>}
         <TabsContent value="workflows"><PestanaWorkflows d={datos} /></TabsContent>
         <TabsContent value="ejecuciones"><TablaRuns runs={datos.runs} onAccion={async (id, a) => {
           try {
