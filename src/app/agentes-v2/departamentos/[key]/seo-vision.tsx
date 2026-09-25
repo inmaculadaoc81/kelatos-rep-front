@@ -39,12 +39,6 @@ export function proximaOcurrencia(h: Horario, ahora = new Date()): string | null
   return null;
 }
 
-export interface Sistema { ok: boolean; scheduler: { active: boolean } }
-export interface EstadoSeo {
-  ok: boolean;
-  github: { configured: boolean; ok?: boolean; repository?: string; can_push?: boolean };
-  publish_mode: "auto" | "approval";
-}
 interface StatsLlm {
   ok: boolean;
   by_purpose: { purpose: string; calls: number; failed: number; avg_ms: number }[];
@@ -96,66 +90,6 @@ const AGENTES: Record<string, { nombre: string; tipo: "ia" | "codigo"; paso: str
     tareasIa: () => false,
   },
 };
-
-function Requisito({ ok, titulo, detalle }: { ok: boolean | null; titulo: string; detalle: string }) {
-  return (
-    <li className="flex items-center gap-2.5 px-3 py-2 text-sm">
-      <span
-        aria-hidden
-        className={cn("flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold", ok === null ? "bg-slate-500/10 text-slate-500" : ok ? "bg-green-500/15 text-green-700" : "bg-amber-500/15 text-amber-700")}
-      >
-        {ok === null ? "…" : ok ? "✓" : "!"}
-      </span>
-      <span className="font-medium">{titulo}</span>
-      <span className="ml-auto truncate text-xs text-muted-foreground" title={detalle}>{detalle}</span>
-    </li>
-  );
-}
-
-/** Estado del departamento SEO en pocas líneas: qué falta para que trabaje solo y en qué orden trabaja. */
-export function SeoEstado({ d, sistema, estado }: { d: DetalleDepartamento; sistema: Sistema | null; estado: EstadoSeo | null }) {
-  const activo = d.department.status === "active";
-  const scheduler = sistema ? sistema.scheduler.active : null;
-  const gh = estado?.github;
-  const ghOk = estado ? !!gh?.ok && !!gh.can_push : null;
-  const auto = estado ? estado.publish_mode === "auto" : null;
-  const solo = activo && scheduler === true && ghOk === true;
-  const horarioDe = (clave: string) => {
-    const wf = d.workflows.find((w) => w.key === clave);
-    return d.schedules.filter((s) => s.enabled && wf && String(s.workflow_id) === String(wf.id)).map(describirHorario).join(" · ") || "Sin horario";
-  };
-  const pasos = [
-    { n: 1, t: "Buscar temas", q: "Investigador (IA)", c: horarioDe("descubrimiento_temas") },
-    { n: 2, t: "Escribir el artículo", q: "Redactor (IA)", c: horarioDe("contenido_seo") },
-    { n: 3, t: "Publicar en la web", q: "Publicador (código)", c: "Justo después de escribir" },
-  ];
-  return (
-    <div className="space-y-4">
-      <div>
-        <p className="mb-1.5 text-sm font-medium">{solo ? "Trabaja solo" : "Ahora no se ejecuta solo"}</p>
-        <ul className={cn("divide-y rounded-lg border", solo ? "border-green-500/30" : "border-amber-500/30")}>
-          <Requisito ok={activo} titulo="Departamento activo" detalle={activo ? "Sí" : "Falta activarlo (botón de arriba)"} />
-          <Requisito ok={scheduler} titulo="Programador del servidor" detalle={scheduler === null ? "Comprobando…" : scheduler ? "Encendido" : "Apagado en el servidor"} />
-          <Requisito ok={ghOk} titulo="Conexión con el blog" detalle={ghOk === null ? "Comprobando…" : ghOk ? gh?.repository ?? "Conectado" : "Sin permiso de escritura"} />
-          <Requisito ok={auto} titulo="Publicar sin aprobación" detalle={auto === null ? "Comprobando…" : auto ? "Sí, directo al blog" : "No: pasa por Aprobaciones"} />
-        </ul>
-      </div>
-      <div>
-        <p className="mb-1.5 text-sm font-medium">Orden de trabajo</p>
-        <ol className="divide-y rounded-lg border">
-          {pasos.map((p) => (
-            <li key={p.n} className="flex items-center gap-2.5 px-3 py-2 text-sm">
-              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{p.n}</span>
-              <span className="font-medium">{p.t}</span>
-              <span className="text-xs text-muted-foreground">{p.q}</span>
-              <span className="ml-auto text-right text-xs text-muted-foreground">{p.c}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </div>
-  );
-}
 
 /** Los agentes del departamento SEO: qué hace cada uno, cuándo se lanza y cómo le está yendo. */
 export function SeoAgentes({ d, irA }: { d: DetalleDepartamento; irA?: (pestana: string) => void }) {
