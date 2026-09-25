@@ -24,6 +24,7 @@ interface Tema {
   status: EstadoTema;
   score: number;
   article_slug: string | null;
+  approval_id: string | null;
 }
 
 interface Tarea {
@@ -219,6 +220,7 @@ export function PestanaSeo({ d, recargarDepartamento }: { d: DetalleDepartamento
                     <TableCell>
                       <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", COLOR[t.status])}>{ETIQUETA[t.status]}</span>
                       {t.article_slug ? <a href={`https://automatizacionesn8n.com/blog/${t.article_slug}`} target="_blank" rel="noopener noreferrer" className="ml-2 text-xs text-primary underline underline-offset-2">ver</a> : null}
+                      {t.status === "en_curso" && t.approval_id ? <Link href="/agentes-v2/aprobaciones" className="ml-2 text-xs text-primary underline underline-offset-2">Ver el artículo pendiente</Link> : null}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right">
                       {t.status === "propuesto" && <button type="button" className="mr-3 text-xs text-primary hover:underline" onClick={() => cambiarTema(t.id, "aprobado")}>Priorizar</button>}
