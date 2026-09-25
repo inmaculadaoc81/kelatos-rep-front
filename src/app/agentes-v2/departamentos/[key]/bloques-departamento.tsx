@@ -17,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const lista = (v: unknown): string => (Array.isArray(v) ? v.join(", ") : "");
+const listaLineas = (v: unknown): string => (Array.isArray(v) ? v.join("\n") : "");
+const aLineas = (t: string): string[] => t.split(/\n/).map((x) => x.trim()).filter(Boolean);
 const aLista = (t: string): string[] => t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
 
 export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartamento; recargar: () => void; modo?: "seo" }) {
@@ -24,8 +26,9 @@ export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartament
   const campos = new Set(seo ? ["targetAudience", "topics", "tone", "goals"] : d.department.config_schema.fields ?? ["targetAudience", "topics", "goals", "tone", "frequency", "channels"]);
   const c = d.settings.configuration;
   const [audiencia, setAudiencia] = useState(c.targetAudience ?? "");
-  const [temas, setTemas] = useState(lista(c.topics));
-  const [objetivos, setObjetivos] = useState(lista(c.goals));
+  // En el SEO cada tema y cada objetivo va en su propia línea (pueden llevar comas dentro); en el resto, separados por comas
+  const [temas, setTemas] = useState((seo ? listaLineas : lista)(c.topics));
+  const [objetivos, setObjetivos] = useState((seo ? listaLineas : lista)(c.goals));
   const [tono, setTono] = useState(c.tone ?? "");
   const [frecuencia, setFrecuencia] = useState(c.frequency != null ? String(c.frequency) : "");
   const [canales, setCanales] = useState(lista(c.channels));
@@ -36,8 +39,8 @@ export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartament
     try {
       const conf: ConfiguracionDepartamento = { ...c };
       if (campos.has("targetAudience")) conf.targetAudience = audiencia.trim();
-      if (campos.has("topics")) conf.topics = aLista(temas);
-      if (campos.has("goals")) conf.goals = aLista(objetivos);
+      if (campos.has("topics")) conf.topics = (seo ? aLineas : aLista)(temas);
+      if (campos.has("goals")) conf.goals = (seo ? aLineas : aLista)(objetivos);
       if (campos.has("tone")) conf.tone = tono.trim();
       if (campos.has("frequency")) conf.frequency = frecuencia.trim() === "" ? null : Number(frecuencia);
       if (campos.has("channels")) conf.channels = aLista(canales);
@@ -64,15 +67,15 @@ export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartament
       {campos.has("goals") && (
         <div className="space-y-1.5">
           <Label htmlFor="obj">{seo ? "Objetivos (solo informativos)" : "Objetivos"}</Label>
-          <Textarea id="obj" value={objetivos} onChange={(e) => setObjetivos(e.target.value)} rows={2} placeholder="Separados por comas" />
+          <Textarea id="obj" value={objetivos} onChange={(e) => setObjetivos(e.target.value)} rows={seo ? 4 : 2} placeholder={seo ? "Uno por línea" : "Separados por comas"} />
           {seo && <p className="text-xs text-muted-foreground">No cambian lo que busca ni lo que escribe; solo recuerdan la intención del departamento.</p>}
         </div>
       )}
       {campos.has("topics") && (
         <div className="space-y-1.5">
           <Label htmlFor="temas">{seo ? "Temas que buscará el investigador" : "Temas"}</Label>
-          <Textarea id="temas" value={temas} onChange={(e) => setTemas(e.target.value)} rows={2} placeholder="Separados por comas: WhatsApp, automatización, reservas" />
-          {seo && <p className="text-xs text-muted-foreground">El investigador parte de estos temas para proponer ideas nuevas y buscar noticias del sector. Se aplica en la próxima búsqueda.</p>}
+          <Textarea id="temas" value={temas} onChange={(e) => setTemas(e.target.value)} rows={seo ? 16 : 2} placeholder={seo ? "Uno por línea. Por ejemplo:\nAutomatizar hojas de Excel\nAutomatización para clínicas" : "Separados por comas: WhatsApp, automatización, reservas"} />
+          {seo && <p className="text-xs text-muted-foreground">Un tema por línea. Son una lista de inspiración, no un límite: en cada búsqueda el investigador mira una muestra distinta y también propone automatizaciones y sectores que no estén aquí. Se aplica en la próxima búsqueda.</p>}
         </div>
       )}
       {campos.has("tone") && (
