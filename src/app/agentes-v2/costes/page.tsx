@@ -8,14 +8,14 @@ import { usd } from "@/lib/agentes-v2";
 interface Costes {
   ok: boolean;
   days: number;
-  agent_operating: { by_type: { agent_type: string; runs: number; cost_usd: number; tokens_in: number; tokens_out: number }[] };
+  agent_operating: { cmo?: { calls: number; cost_usd: number; tokens_in: number; tokens_out: number }; by_type: { agent_type: string; runs: number; cost_usd: number; tokens_in: number; tokens_out: number }[] };
   advertising_spend: { totals: { currency: string; total: number }[]; by_channel: { channel: string; currency: string; total: number }[] };
 }
 
 /** Costes en dos bloques que nunca se mezclan: lo que cuesta operar los agentes de IA y lo que se paga en anuncios. */
 export default function CostesPage() {
   const { datos, error, cargando } = useV2<Costes>("costs?days=30");
-  const totalIa = datos?.agent_operating.by_type.reduce((s, x) => s + x.cost_usd, 0) ?? 0;
+  const totalIa = (datos?.agent_operating.by_type.reduce((s, x) => s + x.cost_usd, 0) ?? 0) + (datos?.agent_operating.cmo?.cost_usd ?? 0);
   return (
     <div>
       <Cabecera titulo="Costes" descripcion="Últimos 30 días. El coste de operar la IA y la inversión en publicidad son cosas distintas y se muestran por separado." />
@@ -27,6 +27,11 @@ export default function CostesPage() {
           <section>
             <h2 className="mb-2 text-sm font-medium text-muted-foreground">Coste operativo de los agentes</h2>
             <div className="mb-3 max-w-xs"><Kpi titulo="Total 30 días" valor={usd(totalIa)} sub="modelos, herramientas y APIs" /></div>
+            {datos.agent_operating.cmo && datos.agent_operating.cmo.calls > 0 && (
+              <p className="mb-3 text-sm text-muted-foreground">
+                Incluye el AI CMO: {datos.agent_operating.cmo.calls} consultas, {usd(datos.agent_operating.cmo.cost_usd)}.
+              </p>
+            )}
             {datos.agent_operating.by_type.length === 0 ? (
               <Vacio titulo="Sin actividad de agentes en este periodo" />
             ) : (

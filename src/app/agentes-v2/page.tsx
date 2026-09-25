@@ -44,7 +44,7 @@ export default function PanelMarketingPage() {
             <span className="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary"><Cpu className="size-5" /></span>
             <div>
               <p className="text-sm font-medium">AI CMO</p>
-              <p className="text-sm text-muted-foreground">Podrás pedirle cambios de estrategia y aprobarlos aquí. Todavía no está disponible en esta fase.</p>
+              <p className="text-sm text-muted-foreground">Pídele cambios de estrategia con tus palabras: prepara una propuesta y no se aplica nada hasta que la apruebes.</p>
             </div>
           </div>
           <Button variant="outline" size="sm" render={<Link href="/agentes-v2/cmo" />}>Abrir AI CMO</Button>

@@ -32,7 +32,7 @@ export default function AjustesPage() {
           </div>
           <ul className="divide-y rounded-lg border text-sm">
             <li className="flex justify-between gap-3 px-4 py-3"><span>Scheduler</span><span className="text-muted-foreground">{datos.scheduler.active ? "Activo" : "Apagado"} — {datos.scheduler.note}</span></li>
-            <li className="flex justify-between gap-3 px-4 py-3"><span>AI CMO</span><span className="text-muted-foreground">{datos.cmo.active ? "Activo" : "Aún no disponible (fase C)"}</span></li>
+            <li className="flex justify-between gap-3 px-4 py-3"><span>AI CMO</span><span className="text-muted-foreground">{datos.cmo.active ? "Activo" : "Aún no disponible"}</span></li>
             <li className="flex justify-between gap-3 px-4 py-3"><span>Acceso</span><span className="text-muted-foreground">Solo administradores</span></li>
             <li className="flex justify-between gap-3 px-4 py-3"><span>Cambios de estrategia</span><span className="text-muted-foreground">Los propone el AI CMO y los aprueba una persona</span></li>
           </ul>

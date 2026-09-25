@@ -34,7 +34,7 @@ export function useV2<T extends { ok: boolean }>(ruta: string | null) {
   return { datos, error, cargando, recargar: cargar };
 }
 
-export async function enviarV2<T>(metodo: "PUT" | "PATCH", ruta: string, cuerpo: unknown): Promise<T> {
+export async function enviarV2<T>(metodo: "PUT" | "PATCH" | "POST", ruta: string, cuerpo: unknown): Promise<T> {
   const res = await fetch(`/api/agentes-v2/${ruta}`, { method: metodo, headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
   const data = (await res.json()) as T & { ok: boolean; error?: string };
   if (!data.ok) throw new Error(data.error || "Error desconocido");

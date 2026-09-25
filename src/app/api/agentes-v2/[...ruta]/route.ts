@@ -9,7 +9,7 @@ const BASE_URL = process.env.KELATOS_API_BASE_URL;
 const TOKEN = process.env.KELATOS_API_TOKEN;
 
 /** Solo estos recursos de /v1/marketing se exponen al navegador. */
-const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system"]);
+const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system", "cmo"]);
 
 /**
  * Proxy hacia /v1/marketing/* (AI Marketing System). Solo administradores. La identidad se toma de
@@ -24,7 +24,7 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
   if (!BASE_URL || !TOKEN) return NextResponse.json({ ok: false, error: "API no configurada" }, { status: 500 });
 
   const { ruta } = await ctx.params;
-  if (!ruta.length || ruta.length > 3 || !ruta.every((s) => /^[A-Za-z0-9_-]{1,60}$/.test(s)) || !RECURSOS.has(ruta[0])) {
+  if (!ruta.length || ruta.length > 4 || !ruta.every((s) => /^[A-Za-z0-9_-]{1,60}$/.test(s)) || !RECURSOS.has(ruta[0])) {
     return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });
   }
   const metodo = req.method.toUpperCase();
@@ -68,3 +68,4 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
 export const GET = manejar;
 export const PUT = manejar;
 export const PATCH = manejar;
+export const POST = manejar;

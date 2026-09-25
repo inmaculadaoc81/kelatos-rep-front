@@ -148,7 +148,7 @@ function PestanaEstrategia({ d, recargar }: { d: DetalleDepartamento; recargar: 
           Versión {d.settings.version}{d.settings.updated_at ? ` · ${fechaHora(d.settings.updated_at)}` : ""}{d.settings.updated_by ? ` · ${d.settings.updated_by}` : ""}
         </span>
       </div>
-      <p className="text-xs text-muted-foreground">Esta configuración es la que leerán los workflows en cada ejecución. En la fase del AI CMO, los cambios se propondrán y se aplicarán con tu aprobación.</p>
+      <p className="text-xs text-muted-foreground">Esta configuración es la que leerán los workflows en cada ejecución. El AI CMO también puede proponer cambios aquí, y solo se aplican con tu aprobación.</p>
     </div>
   );
 }
