@@ -9,7 +9,7 @@ const BASE_URL = process.env.KELATOS_API_BASE_URL;
 const TOKEN = process.env.KELATOS_API_TOKEN;
 
 /** Solo estos recursos de /v1/marketing se exponen al navegador. */
-const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system", "cmo"]);
+const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system", "cmo", "analytics"]);
 
 /**
  * Proxy hacia /v1/marketing/* (AI Marketing System). Solo administradores. La identidad se toma de
