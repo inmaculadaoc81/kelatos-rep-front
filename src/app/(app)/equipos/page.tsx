@@ -41,6 +41,7 @@ import { NuevoEquipoDialog } from "./nuevo-equipo-dialog";
 import { NuevoAlquilerDialog } from "./alquiler-dialogs";
 import { DevolverAlquilerDialog } from "./devolver-alquiler-dialog";
 import { AlquilerDetalleDialog } from "./alquiler-detalle-dialog";
+import { EquipoDetalleDialog } from "./equipo-detalle-dialog";
 
 const ETIQUETAS_ESTADO: Record<string, string> = {
   DISPONIBLE: "Disponible",
@@ -91,6 +92,8 @@ export default function EquiposPage() {
   const [alquilerAbierto, setAlquilerAbierto] = useState<Equipo | null>(null);
   const [devolverAbierto, setDevolverAbierto] = useState<Equipo | null>(null);
   const [detalleAbierto, setDetalleAbierto] = useState<Equipo | null>(null);
+  // Ficha del equipo (se abre al pulsar la fila); se guarda el id para que se refresque con la lista.
+  const [fichaId, setFichaId] = useState<string | null>(null);
   const [confirmarAccion, setConfirmarAccion] = useState<{ equipo: Equipo; estado: EstadoEquipo } | null>(null);
   const [confirmado, setConfirmado] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -113,6 +116,8 @@ export default function EquiposPage() {
   useEffect(() => {
     cargar();
   }, []);
+
+  const fichaEquipo = fichaId ? equipos.find((x) => x.id === fichaId) ?? null : null;
 
   const metricas = useMemo(
     () => ({
@@ -297,7 +302,7 @@ export default function EquiposPage() {
 
             {!cargando &&
               filtrados.map((e) => (
-                <TableRow key={e.id}>
+                <TableRow key={e.id} className="cursor-pointer" onClick={() => setFichaId(e.id)} title="Ver y editar la ficha del equipo">
                   <TableCell>
                     <div className="font-medium">{e.marca} {e.modelo}</div>
                     <div className="text-xs text-muted-foreground">{e.id}</div>
@@ -313,7 +318,10 @@ export default function EquiposPage() {
                       <button
                         type="button"
                         className="text-left hover:underline"
-                        onClick={() => setDetalleAbierto(e)}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setDetalleAbierto(e);
+                        }}
                         title="Ver detalle del alquiler"
                       >
                         <div className="font-medium text-primary">{e.clienteActual.nombre}</div>
@@ -346,7 +354,7 @@ export default function EquiposPage() {
                   <TableCell className="text-xs text-muted-foreground tabular-nums">
                     {e.precioDia}€/d · {e.precioSemana}€/s · {e.precioMes}€/m
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(ev) => ev.stopPropagation()}>
                     <div className="flex flex-wrap items-center gap-1">
                       {e.estado === "DISPONIBLE" && (
                         <>
@@ -422,6 +430,16 @@ export default function EquiposPage() {
         open={devolverAbierto !== null}
         onOpenChange={(o) => !o && setDevolverAbierto(null)}
         onDevuelto={cargar}
+      />
+      <EquipoDetalleDialog
+        equipo={fichaEquipo}
+        open={fichaEquipo !== null}
+        onOpenChange={(o) => !o && setFichaId(null)}
+        onActualizado={cargar}
+        onVerAlquiler={(x) => {
+          setFichaId(null);
+          setDetalleAbierto(x);
+        }}
       />
       <AlquilerDetalleDialog
         equipo={detalleAbierto}

@@ -45,6 +45,9 @@ export interface AlquilerResumen {
 
 export interface Equipo {
   id: string;
+  /** "Portatil" (equipos heredados), "Normal" o "Gamer". */
+  tipo?: string;
+  enlaceRepuesto?: string;
   marca: string;
   modelo: string;
   serie: string;
