@@ -4,14 +4,15 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Copy, Maximize2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { urlImagen, type Slide } from "./use-social";
+import { urlImagen, usePrevia, type Slide } from "./use-social";
 
 /** Slide grande con flechas, y pantalla completa para revisarla como se verá en el móvil. */
-export function VistaPrevia({ slides, activa, carruselId, ratio, onElegir, onDuplicar, onEliminar, bloqueado }: {
+export function VistaPrevia({ slides, activa, carruselId, ratio, cambios, onElegir, onDuplicar, onEliminar, bloqueado }: {
   slides: Slide[];
   activa: Slide;
   carruselId: number;
   ratio: number;
+  cambios: object | null;
   onElegir: (id: number) => void;
   onDuplicar: () => void;
   onEliminar: () => void;
@@ -35,9 +36,16 @@ export function VistaPrevia({ slides, activa, carruselId, ratio, onElegir, onDup
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completa, i, slides]);
 
-  const imagen = activa.rendered ? urlImagen(carruselId, activa.id, activa.version, activa.updated_at) : null;
+  const guardada = activa.rendered ? urlImagen(carruselId, activa.id, activa.version, activa.updated_at) : null;
+  const previa = usePrevia(carruselId, activa.id, cambios);
+  const imagen = cambios && previa.url ? previa.url : guardada;
   const marco = (
-    <div className="w-full overflow-hidden rounded-lg border bg-muted shadow-sm" style={{ aspectRatio: String(ratio) }}>
+    <div className="relative w-full overflow-hidden rounded-lg border bg-muted shadow-sm" style={{ aspectRatio: String(ratio) }}>
+      {cambios && (
+        <span className="absolute top-2 left-2 z-10 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-medium text-white shadow">
+          {previa.cargando ? "Actualizando vista previa…" : "Vista previa · sin guardar"}
+        </span>
+      )}
       {imagen ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imagen} alt={`Slide ${activa.position}: ${activa.headline}`} className="size-full object-contain" />
@@ -50,6 +58,8 @@ export function VistaPrevia({ slides, activa, carruselId, ratio, onElegir, onDup
   return (
     <div className="space-y-2">
       {marco}
+      {cambios && previa.desborda && <p className="text-[11px] text-amber-700 dark:text-amber-300">Este texto no cabe entero: al guardar se reducirá el tamaño de letra para que entre.</p>}
+      {cambios && previa.error && <p className="text-[11px] text-red-600">{previa.error}</p>}
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" className="size-8" disabled={i <= 0} onClick={() => ir(-1)} title="Slide anterior"><ChevronLeft className="size-4" /></Button>

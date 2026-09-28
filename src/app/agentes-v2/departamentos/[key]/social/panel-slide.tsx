@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ function ListaEditable({ etiqueta, valores, onChange, min, max, maxLen }: { etiq
 
 const limpiarLista = (l: string[] | null | undefined) => (l ?? []).map((x) => x.trim()).filter(Boolean);
 
-function EditorTexto({ slide, carruselId, bloqueado, alGuardar }: { slide: Slide; carruselId: number; bloqueado: boolean; alGuardar: () => void }) {
+function EditorTexto({ slide, carruselId, bloqueado, alGuardar, onCambio }: { slide: Slide; carruselId: number; bloqueado: boolean; alGuardar: () => void; onCambio: (c: object | null) => void }) {
   const [headline, setHeadline] = useState(slide.headline ?? "");
   const [body, setBody] = useState(slide.body ?? "");
   const [cta, setCta] = useState(slide.cta ?? "");
@@ -60,7 +60,7 @@ function EditorTexto({ slide, carruselId, bloqueado, alGuardar }: { slide: Slide
     [izq, der].some((k) => k.title.length > LIMITES.compTitulo || k.points.some((p) => p.length > LIMITES.compPunto)) ||
     celdas.some((x) => x.title.length > LIMITES.celdaTitulo || (x.text ?? "").length > LIMITES.celdaTexto);
 
-  const guardar = async () => {
+  const armar = (): ContenidoSlide => {
     const content: ContenidoSlide = { ...c };
     if (t === "body_list") content.items = limpiarLista(items);
     if (t === "body_comparison") {
@@ -70,9 +70,22 @@ function EditorTexto({ slide, carruselId, bloqueado, alGuardar }: { slide: Slide
     if (t === "grid") content.cells = celdas.filter((x) => x.title.trim()).map((x) => ({ title: x.title.trim(), text: (x.text ?? "").trim() || null }));
     if (t === "body_stat") content.stat = { value: stat.value.trim(), label: stat.label.trim() };
     if (t === "body_quote") content.quote = { text: cita.text.trim(), author: (cita.author ?? "").trim() || null };
+    return content;
+  };
+  const cambios = { headline: headline.trim(), body: body.trim(), cta: cta.trim() || null, content: armar() };
+  const claveCambios = JSON.stringify(cambios);
+  const [inicial] = useState(claveCambios);
+  const sinGuardar = claveCambios !== inicial;
+  useEffect(() => {
+    onCambio(sinGuardar && !excede ? JSON.parse(claveCambios) : null);
+    return () => onCambio(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveCambios, sinGuardar, excede]);
+
+  const guardar = async () => {
     setGuardando(true);
     try {
-      const r = await enviarV2<{ aviso?: string | null }>("PATCH", base(carruselId, slide.id), { headline: headline.trim(), body: body.trim(), cta: cta.trim() || null, content });
+      const r = await enviarV2<{ aviso?: string | null }>("PATCH", base(carruselId, slide.id), cambios);
       if (r.aviso) toast.warning(r.aviso);
       else toast.success("Slide guardada y dibujada de nuevo");
       alGuardar();
@@ -158,8 +171,15 @@ const FORMAS = [["circle", "Círculo"], ["ring", "Anillo"], ["blob", "Mancha"], 
 const POSICIONES = [["tl", "Arriba izq."], ["tr", "Arriba der."], ["bl", "Abajo izq."], ["br", "Abajo der."], ["c", "Centro"], ["l", "Izquierda"], ["r", "Derecha"]] as const;
 const ICONOS = ["check", "x", "arrow", "star", "bolt", "target", "chart", "users", "clock", "mail", "chat", "heart", "bulb", "shield", "rocket", "money"];
 
-function EditorDiseno({ slide, carruselId, bloqueado, alGuardar }: { slide: Slide; carruselId: number; bloqueado: boolean; alGuardar: () => void }) {
+function EditorDiseno({ slide, carruselId, bloqueado, alGuardar, onCambio }: { slide: Slide; carruselId: number; bloqueado: boolean; alGuardar: () => void; onCambio: (c: object | null) => void }) {
   const [d, setD] = useState<Diseno>(() => structuredClone(slide.design_spec));
+  const claveDiseno = JSON.stringify(d);
+  const [inicialDiseno] = useState(claveDiseno);
+  useEffect(() => {
+    onCambio(claveDiseno !== inicialDiseno ? { design: JSON.parse(claveDiseno) } : null);
+    return () => onCambio(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveDiseno, inicialDiseno]);
   const [guardando, setGuardando] = useState(false);
   const cambia = (p: Partial<Diseno>) => setD({ ...d, ...p });
   const forma = (i: number, p: Partial<Forma>) => cambia({ shapes: d.shapes.map((f, j) => (j === i ? { ...f, ...p } : f)) });
@@ -257,7 +277,7 @@ function Versiones({ slide, carruselId, bloqueado, alCambiar }: { slide: Slide; 
 
 // ───────────── panel ─────────────
 
-export function PanelSlide({ slide, carruselId, bloqueado, recargar }: { slide: Slide; carruselId: number; bloqueado: boolean; recargar: () => void }) {
+export function PanelSlide({ slide, carruselId, bloqueado, recargar, onTexto, onDiseno }: { slide: Slide; carruselId: number; bloqueado: boolean; recargar: () => void; onTexto: (c: object | null) => void; onDiseno: (c: object | null) => void }) {
   const [instruccion, setInstruccion] = useState("");
   const [lanzando, setLanzando] = useState(false);
   const [pestana, setPestana] = useState("texto");
@@ -286,8 +306,8 @@ export function PanelSlide({ slide, carruselId, bloqueado, recargar }: { slide: 
           <TabsTrigger value="ia">Rehacer</TabsTrigger>
           <TabsTrigger value="versiones">Versiones{slide.versions.length ? ` (${slide.versions.length})` : ""}</TabsTrigger>
         </TabsList>
-        <TabsContent value="texto"><EditorTexto key={clave} slide={slide} carruselId={carruselId} bloqueado={bloqueado} alGuardar={recargar} /></TabsContent>
-        <TabsContent value="diseno"><EditorDiseno key={clave} slide={slide} carruselId={carruselId} bloqueado={bloqueado} alGuardar={recargar} /></TabsContent>
+        <TabsContent value="texto"><EditorTexto key={clave} slide={slide} carruselId={carruselId} bloqueado={bloqueado} alGuardar={recargar} onCambio={onTexto} /></TabsContent>
+        <TabsContent value="diseno"><EditorDiseno key={clave} slide={slide} carruselId={carruselId} bloqueado={bloqueado} alGuardar={recargar} onCambio={onDiseno} /></TabsContent>
         <TabsContent value="ia">
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">Solo se rehace esta slide; el resto del carrusel no cambia y la versión actual queda guardada. Tarda entre 1 y 2 minutos.</p>

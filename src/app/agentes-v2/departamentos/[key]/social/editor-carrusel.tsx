@@ -82,6 +82,8 @@ export function EditorCarrusel({ id, onVolver }: { id: number; onVolver: () => v
   const [orden, setOrden] = useState<number[] | null>(null);
   const [conf, setConf] = useState<Confirmacion | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [bTexto, setBTexto] = useState<object | null>(null);
+  const [bDiseno, setBDiseno] = useState<object | null>(null);
 
   const trabajando = datos?.job?.state === "running";
   const bloqueado = trabajando || ocupado;
@@ -106,6 +108,7 @@ export function EditorCarrusel({ id, onVolver }: { id: number; onVolver: () => v
   const porOrden = orden ? orden.map((i) => datos.slides.find((s) => s.id === i)).filter((s): s is NonNullable<typeof s> => !!s) : datos.slides;
   const slides = porOrden.length === datos.slides.length ? porOrden : datos.slides;
   const activa = slides.find((s) => s.id === activaId) ?? slides[0] ?? null;
+  const cambiosSinGuardar = bTexto || bDiseno ? { ...(bTexto ?? {}), ...(bDiseno ?? {}) } : null;
   const ratio = c.format_info ? c.format_info.width / c.format_info.height : 4 / 5;
   const sinDibujar = datos.slides.filter((s) => !s.rendered).length;
   const editable = !["published", "scheduled"].includes(c.status);
@@ -197,6 +200,7 @@ export function EditorCarrusel({ id, onVolver }: { id: number; onVolver: () => v
               activa={activa}
               carruselId={id}
               ratio={ratio}
+              cambios={cambiosSinGuardar}
               onElegir={setActivaId}
               bloqueado={bloqueado || !editable}
               onDuplicar={async () => {
@@ -206,7 +210,7 @@ export function EditorCarrusel({ id, onVolver }: { id: number; onVolver: () => v
               onEliminar={() => setConf({ titulo: `Eliminar la slide ${activa.position}`, texto: "Se borra esta slide y se vuelven a numerar las demás (se dibujan de nuevo).", boton: "Eliminar slide", peligro: true, accion: async () => { const r = await accion("DELETE", `${base}/slides/${activa.id}`, undefined, "Slide eliminada"); if (r) { setActivaId(null); await dibujar(); } } })}
             />
             <div className="min-w-0">
-              <PanelSlide slide={activa} carruselId={id} bloqueado={bloqueado || !editable} recargar={() => void recargar()} />
+              <PanelSlide slide={activa} carruselId={id} bloqueado={bloqueado || !editable} recargar={() => void recargar()} onTexto={setBTexto} onDiseno={setBDiseno} />
             </div>
           </div>
         </div>

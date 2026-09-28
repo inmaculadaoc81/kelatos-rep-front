@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useV2 } from "@/components/agentes-v2/use-v2";
 
 export type EstadoCarrusel = "draft" | "generated" | "review" | "approved" | "scheduled" | "published" | "rejected";
@@ -180,4 +180,55 @@ export function useCarrusel(id: number) {
   const r = useV2<DetalleCarrusel>(`social/carousels/${id}`);
   useSondeo(r.datos?.job?.state === "running", r.recargar);
   return r;
+}
+
+export interface Previa { url: string | null; cargando: boolean; desborda: boolean; error: string | null }
+const SIN_PREVIA: Previa = { url: null, cargando: false, desborda: false, error: null };
+
+/**
+ * Vista previa en vivo: con cambios sin guardar pide al servidor que dibuje la slide (sin crear versión).
+ * Espera a que se deje de escribir y descarta respuestas antiguas.
+ */
+export function usePrevia(carruselId: number, slideId: number, cambios: object | null): Previa {
+  const [previa, setPrevia] = useState<{ clave: string; datos: Previa } | null>(null);
+  const urlActual = useRef<string | null>(null);
+  const clave = cambios ? `${slideId}:${JSON.stringify(cambios)}` : null;
+
+  useEffect(() => {
+    if (!clave || !cambios) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      setPrevia((p) => ({ clave, datos: { ...(p?.datos ?? SIN_PREVIA), cargando: true, error: null } }));
+      try {
+        const res = await fetch(`/api/agentes-v2/social/carousels/${carruselId}/slides/${slideId}/preview`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cambios),
+          signal: ctrl.signal,
+        });
+        if (!res.ok) {
+          const j = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(j?.error || `Error ${res.status}`);
+        }
+        const url = URL.createObjectURL(await res.blob());
+        if (urlActual.current) URL.revokeObjectURL(urlActual.current);
+        urlActual.current = url;
+        setPrevia({ clave, datos: { url, cargando: false, desborda: res.headers.get("x-overflow") === "1", error: null } });
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        setPrevia((p) => ({ clave, datos: { ...(p?.datos ?? SIN_PREVIA), cargando: false, error: e instanceof Error ? e.message : "No se pudo dibujar la vista previa" } }));
+      }
+    }, 800);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave, carruselId, slideId]);
+
+  useEffect(() => () => { if (urlActual.current) URL.revokeObjectURL(urlActual.current); }, []);
+
+  if (!clave || !previa) return SIN_PREVIA;
+  // Mientras llega la primera imagen de estos cambios se sigue mostrando la anterior de esta misma slide.
+  return previa.clave.split(":")[0] === clave.split(":")[0] ? previa.datos : SIN_PREVIA;
 }

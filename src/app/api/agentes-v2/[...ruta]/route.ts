@@ -55,9 +55,11 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
     const tipo = res.headers.get("content-type") || "";
     // Imágenes (slides en PNG, logos y fotos subidas) y exportaciones (ZIP) del departamento Redes sociales: se devuelven tal cual.
     if (res.ok && (/^image\/(png|jpeg|webp)/.test(tipo) || tipo.startsWith("application/zip"))) {
-      const cabeceras: Record<string, string> = { "Content-Type": tipo, "Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff" };
+      const cabeceras: Record<string, string> = { "Content-Type": tipo, "Cache-Control": res.headers.get("cache-control") || "private, max-age=300", "X-Content-Type-Options": "nosniff" };
       const disp = res.headers.get("content-disposition");
       if (disp) cabeceras["Content-Disposition"] = disp;
+      const desborda = res.headers.get("x-overflow");
+      if (desborda) cabeceras["X-Overflow"] = desborda;
       return new Response(await res.arrayBuffer(), { status: 200, headers: cabeceras });
     }
     const texto = await res.text();
