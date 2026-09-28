@@ -82,11 +82,11 @@ const AGENTES: Record<string, { nombre: string; tipo: "ia" | "codigo"; paso: str
     hace: [
       "Vuelve a validar el artículo justo antes de publicar.",
       "Con «publicar automáticamente» apagado, lo deja en Aprobaciones y espera tu decisión; encendido, sigue solo.",
-      "Guarda el artículo como un archivo .md nuevo en content/blog del repositorio de la web (nunca sobrescribe uno existente). Hostinger recompila y el artículo aparece en el blog.",
+      "Guarda el artículo y sus fotos en la base de datos del blog (nunca sobrescribe uno existente). La web lo lee en vivo: aparece en menos de un minuto, sin commits ni recompilar.",
     ],
     entra: "El artículo validado",
-    sale: "Un archivo nuevo en GitHub y la URL pública del artículo",
-    duracion: "unos segundos, más lo que tarde Hostinger en desplegar",
+    sale: "El artículo publicado en el blog y su dirección pública",
+    duracion: "unos segundos; se ve en la web en menos de un minuto",
     tareasIa: () => false,
   },
 };
