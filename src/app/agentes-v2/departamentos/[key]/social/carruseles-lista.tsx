@@ -5,7 +5,7 @@ import { Add } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { CargandoFilas, ErrorCaja, Vacio } from "@/components/agentes-v2/componentes";
 import { cn } from "@/lib/utils";
-import { EstadoBadge, Progreso, fechaCorta } from "./campos";
+import { EstadoBadge, Progreso, TipoBadge, fechaCorta } from "./campos";
 import { NuevoCarrusel } from "./nuevo-carrusel";
 import { ESTADO_TEXTO, urlImagen, useCarruseles, type EstadoCarrusel } from "./use-social";
 
@@ -76,6 +76,8 @@ export function CarruselesLista({ onAbrir }: { onAbrir: (id: number) => void }) 
                 <p className="line-clamp-2 text-sm leading-snug font-medium">{c.title}</p>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <EstadoBadge estado={c.status} />
+                  <TipoBadge id={c.tipo} />
+                  {c.origen === "auto" && <span className="inline-flex h-5 items-center rounded-full border px-2 text-[11px] text-muted-foreground" title="Lo generó el sistema automático">Auto</span>}
                   <span className="text-[11px] text-muted-foreground">{c.slides} slides · {fechaCorta(c.updated_at)}</span>
                 </div>
               </div>

@@ -167,7 +167,7 @@ const PALETAS: { valor: Diseno["palette"]; texto: string; muestra: string }[] = 
   { valor: "accent", texto: "Acento", muestra: "#f59e0b" },
   { valor: "soft", texto: "Suave", muestra: "#e0e7ff" },
 ];
-const FORMAS = [["circle", "Círculo"], ["ring", "Anillo"], ["blob", "Mancha"], ["bar", "Barra"], ["dots", "Puntos"], ["grid", "Cuadrícula"], ["diagonal", "Diagonal"]] as const;
+const FORMAS = [["circle", "Círculo"], ["ring", "Anillo"], ["blob", "Mancha"], ["bar", "Barra"], ["dots", "Puntos"], ["grid", "Cuadrícula"], ["diagonal", "Diagonal"], ["nodes", "Flujo de nodos"]] as const;
 const POSICIONES = [["tl", "Arriba izq."], ["tr", "Arriba der."], ["bl", "Abajo izq."], ["br", "Abajo der."], ["c", "Centro"], ["l", "Izquierda"], ["r", "Derecha"]] as const;
 const ICONOS = ["check", "x", "arrow", "star", "bolt", "target", "chart", "users", "clock", "mail", "chat", "heart", "bulb", "shield", "rocket", "money"];
 

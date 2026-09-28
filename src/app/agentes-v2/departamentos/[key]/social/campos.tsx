@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ESTADO_TEXTO, type EstadoCarrusel } from "./use-social";
+import { COLOR_TIPO, ESTADO_TEXTO, NOMBRE_TIPO, type EstadoCarrusel } from "./use-social";
 
 export function Campo({ etiqueta, ayuda, children, className }: { etiqueta: string; ayuda?: string; children: ReactNode; className?: string }) {
   return (
@@ -63,3 +63,8 @@ export function Progreso({ valor }: { valor: number }) {
 }
 
 export const fechaCorta = (iso: string | null) => (iso ? new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+
+export function TipoBadge({ id }: { id: string | null }) {
+  if (!id) return null;
+  return <span className={cn("inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium", COLOR_TIPO[id] ?? "bg-muted text-muted-foreground")}>{NOMBRE_TIPO[id] ?? id}</span>;
+}

@@ -144,7 +144,7 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
   // El departamento SEO pinta su propia cabecera dentro de la mitad izquierda, para que la línea central llegue hasta arriba.
   if (datos.department.key === "local_seo") return <SeoPanel d={datos} recargar={recargar} cabecera={cabecera} />;
 
-  if (datos.department.key === "social_media") return <SocialPanel cabecera={cabecera} />;
+  if (datos.department.key === "social_media") return <SocialPanel d={datos} recargar={recargar} cabecera={cabecera} />;
 
   return (
     <div>

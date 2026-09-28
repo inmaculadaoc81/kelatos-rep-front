@@ -59,6 +59,8 @@ export interface CarruselResumen {
   format: string;
   slide_count: number;
   status: EstadoCarrusel;
+  tipo: string | null;
+  origen: "manual" | "auto";
   approval_id: number | null;
   caption: string | null;
   hashtags: string[] | null;
@@ -84,7 +86,7 @@ export interface ContenidoSlide {
 }
 
 export interface Forma {
-  kind: "circle" | "ring" | "blob" | "bar" | "dots" | "grid" | "diagonal";
+  kind: "circle" | "ring" | "blob" | "bar" | "dots" | "grid" | "diagonal" | "nodes";
   at: "tl" | "tr" | "bl" | "br" | "c" | "l" | "r";
   size: "s" | "m" | "l";
   tone: "accent" | "soft" | "contrast";
@@ -231,4 +233,84 @@ export function usePrevia(carruselId: number, slideId: number, cambios: object |
   if (!clave || !previa) return SIN_PREVIA;
   // Mientras llega la primera imagen de estos cambios se sigue mostrando la anterior de esta misma slide.
   return previa.clave.split(":")[0] === clave.split(":")[0] ? previa.datos : SIN_PREVIA;
+}
+
+// ───────────── automatización (estrategia, cola de temas, tipos de carrusel) ─────────────
+export const NOMBRE_TIPO: Record<string, string> = {
+  errores: "Errores", paso_a_paso: "Paso a paso", antes_despues: "Antes y después", mitos: "Mitos y realidad",
+  checklist: "Señales y checklist", caso_negocio: "Negocio automatizado", ideas: "Ideas rápidas", preguntas: "Preguntas frecuentes",
+};
+export const COLOR_TIPO: Record<string, string> = {
+  errores: "bg-red-500/10 text-red-700 dark:text-red-300",
+  paso_a_paso: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  antes_despues: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  mitos: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  checklist: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  caso_negocio: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+  ideas: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+  preguntas: "bg-pink-500/10 text-pink-700 dark:text-pink-300",
+};
+
+export interface TipoCarrusel { id: string; nombre: string; ejemplo: string; objetivo: string; slides: number[]; guia: string }
+
+export interface ConfigAuto {
+  prompt: string;
+  temas: string[];
+  tipos: string[];
+  audiencia: string;
+  tono: string;
+  cta: string;
+  slidesMin: number;
+  slidesMax: number;
+  aprobacion: "manual" | "auto";
+  maxPorDia: number;
+  maxPorSemana: number;
+  estilo: "marca" | "rotar";
+  descubrir: boolean;
+}
+
+export interface JobAuto { state: "running" | "done" | "error"; titulo: string; started_at: string; finished_at: string | null; resultado: unknown; error: string | null }
+
+export interface EstadoAuto {
+  ok: boolean;
+  config: ConfigAuto;
+  estado_departamento: string;
+  tipos: TipoCarrusel[];
+  hoy: number;
+  semana: number;
+  limites: { dia: number; semana: number };
+  topics: Record<string, number>;
+  por_tipo: Record<string, number>;
+  proximos: { id: number; title: string; tipo: string; status: string; sector: string | null; fecha: string | null }[];
+  jobs: { descubrir: JobAuto | null; producir: JobAuto | null };
+}
+
+export type EstadoTema = "propuesto" | "aprobado" | "en_curso" | "hecho" | "descartado";
+export interface Tema {
+  id: string;
+  title: string;
+  tipo: string;
+  sector: string | null;
+  angle: string | null;
+  reason: string | null;
+  score: number;
+  status: EstadoTema;
+  origen: "ia" | "manual";
+  intentos: number;
+  carousel_id: string | null;
+  carousel_title?: string | null;
+  carousel_status?: string | null;
+  created_at: string;
+}
+
+export function useAuto() {
+  const r = useV2<EstadoAuto>("social/automation");
+  useSondeo(!!(r.datos && (r.datos.jobs.descubrir?.state === "running" || r.datos.jobs.producir?.state === "running")), r.recargar);
+  return r;
+}
+
+export function useTemas(refrescar: boolean) {
+  const r = useV2<{ ok: boolean; topics: Tema[]; counts: Record<string, number> }>("social/topics");
+  useSondeo(refrescar, r.recargar);
+  return r;
 }
