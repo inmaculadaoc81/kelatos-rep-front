@@ -8,9 +8,11 @@ import { PestanaHorario } from "../bloques-departamento";
 import { CarruselesLista } from "./carruseles-lista";
 import { EditorCarrusel } from "./editor-carrusel";
 import { EditorPost } from "./editor-post";
+import { EditorReel } from "./editor-reel";
 import { Estrategia } from "./estrategia";
 import { MarcaDialog } from "./marca-dialog";
 import { PostsLista } from "./posts-lista";
+import { ReelsLista } from "./reels-lista";
 import { Resumen } from "./resumen";
 import { Temas } from "./temas";
 
@@ -20,10 +22,10 @@ const NAV: { valor: Vista; texto: string; activo: boolean; ayuda?: string }[] = 
   { valor: "overview", texto: "Resumen", activo: true },
   { valor: "carruseles", texto: "Carruseles", activo: true },
   { valor: "posts", texto: "Posts", activo: true },
+  { valor: "reels", texto: "Reels / Shorts", activo: true, ayuda: "Vídeo vertical corto — todavía sin render de vídeo real" },
   { valor: "temas", texto: "Temas y cola", activo: true },
   { valor: "estrategia", texto: "Estrategia", activo: true },
   { valor: "horario", texto: "Horario", activo: true },
-  { valor: "reels", texto: "Reels / Shorts", activo: false, ayuda: "Vídeo vertical corto" },
   { valor: "calendario", texto: "Calendario", activo: false, ayuda: "Calendario de publicación (lo hará tu workflow de n8n)" },
   { valor: "borradores", texto: "Borradores", activo: false, ayuda: "Todo lo pendiente de revisar" },
 ];
@@ -33,11 +35,13 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
   const [vista, setVista] = useState<Vista>("overview");
   const [abierto, setAbierto] = useState<number | null>(null);
   const [abiertoPost, setAbiertoPost] = useState<number | null>(null);
+  const [abiertoReel, setAbiertoReel] = useState<number | null>(null);
   const [marca, setMarca] = useState(false);
   const cambiar = (v: Vista) => {
     setVista(v);
     setAbierto(null);
     setAbiertoPost(null);
+    setAbiertoReel(null);
   };
   const abrirCarrusel = (id: number) => {
     setVista("carruseles");
@@ -73,6 +77,7 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
           {vista === "overview" && <Resumen d={d} recargar={recargar} ir={cambiar} />}
           {vista === "carruseles" && (abierto === null ? <CarruselesLista onAbrir={setAbierto} /> : <EditorCarrusel key={abierto} id={abierto} onVolver={() => setAbierto(null)} />)}
           {vista === "posts" && (abiertoPost === null ? <PostsLista onAbrir={setAbiertoPost} /> : <EditorPost key={abiertoPost} id={abiertoPost} onVolver={() => setAbiertoPost(null)} />)}
+          {vista === "reels" && (abiertoReel === null ? <ReelsLista onAbrir={setAbiertoReel} /> : <EditorReel key={abiertoReel} id={abiertoReel} onVolver={() => setAbiertoReel(null)} />)}
           {vista === "temas" && <Temas onAbrirCarrusel={abrirCarrusel} />}
           {vista === "estrategia" && <Estrategia />}
           {vista === "horario" && <PestanaHorario d={d} recargar={recargar} />}
