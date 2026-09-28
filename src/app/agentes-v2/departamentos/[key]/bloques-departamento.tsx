@@ -32,6 +32,7 @@ export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartament
   const [tono, setTono] = useState(c.tone ?? "");
   const [frecuencia, setFrecuencia] = useState(c.frequency != null ? String(c.frequency) : "");
   const [canales, setCanales] = useState(lista(c.channels));
+  const [pctNegocio, setPctNegocio] = useState(c.fullBusinessPercent != null ? String(c.fullBusinessPercent) : "25");
   const [guardando, setGuardando] = useState(false);
 
   const guardar = async () => {
@@ -44,6 +45,11 @@ export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartament
       if (campos.has("tone")) conf.tone = tono.trim();
       if (campos.has("frequency")) conf.frequency = frecuencia.trim() === "" ? null : Number(frecuencia);
       if (campos.has("channels")) conf.channels = aLista(canales);
+      if (seo) {
+        const n = Number(pctNegocio);
+        if (pctNegocio.trim() === "" || !Number.isFinite(n) || n < 0 || n > 100) throw new Error("El porcentaje de artículos de negocio completo debe estar entre 0 y 100");
+        conf.fullBusinessPercent = Math.round(n);
+      }
       if (conf.frequency != null && (!Number.isFinite(conf.frequency) || conf.frequency < 0)) throw new Error("La frecuencia debe ser un número positivo");
       await enviarV2("PUT", `departments/${d.department.key}/settings`, { configuration: conf });
       toast.success("Estrategia guardada");
@@ -83,6 +89,15 @@ export function PestanaEstrategia({ d, recargar, modo }: { d: DetalleDepartament
           <Label htmlFor="tono">{seo ? "Tono de redacción" : "Tono"}</Label>
           <Input id="tono" value={tono} onChange={(e) => setTono(e.target.value)} placeholder="Cercano, profesional…" />
           {seo && <p className="text-xs text-muted-foreground">El redactor lo aplica en todos los artículos nuevos.</p>}
+        </div>
+      )}
+      {seo && (
+        <div className="space-y-1.5">
+          <Label htmlFor="pctneg">Artículos de negocio completo (%)</Label>
+          <Input id="pctneg" type="number" min={0} max={100} className="max-w-32" value={pctNegocio} onChange={(e) => setPctNegocio(e.target.value)} />
+          <p className="text-xs text-muted-foreground">
+            Parte de los artículos no trata una sola automatización, sino un negocio de un sector automatizado en muchas áreas de trabajo (por ejemplo «una clínica dental automatizada de punta a punta»). Con 25 %, más o menos 1 de cada 4. Con 0 no se escribe ninguno.
+          </p>
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">

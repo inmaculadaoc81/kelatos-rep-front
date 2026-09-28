@@ -12,6 +12,8 @@ export interface Tema {
   title: string;
   keyword: string;
   kind: "guia" | "noticia";
+  /** «caso» = una automatización para un negocio; «negocio» = un negocio automatizado en muchas áreas de trabajo. */
+  formato: "caso" | "negocio";
   angle: string | null;
   source_name: string | null;
   source_url: string | null;

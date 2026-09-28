@@ -62,7 +62,7 @@ export function ListaTemas({ temas, counts, cargando, error, onCambiar }: {
                   <span className={cn("shrink-0 rounded-md px-2 py-0.5 text-xs font-medium", COLOR[t.status])}>{ETIQUETA_TEMA[t.status]}</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {t.kind === "noticia" ? "Noticia" : "Guía"} · {t.score} pts
+                  {t.kind === "noticia" ? "Noticia" : t.formato === "negocio" ? "Negocio completo" : "Caso"} · {t.score} pts
                   {t.source_url ? <> · <a href={t.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{t.source_name || "fuente"}</a></> : null}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
