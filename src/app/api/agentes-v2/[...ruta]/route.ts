@@ -9,7 +9,7 @@ const BASE_URL = process.env.KELATOS_API_BASE_URL;
 const TOKEN = process.env.KELATOS_API_TOKEN;
 
 /** Solo estos recursos de /v1/marketing se exponen al navegador. */
-const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system", "cmo", "analytics", "seo", "live", "llm-stats"]);
+const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system", "cmo", "analytics", "seo", "live", "llm-stats", "social"]);
 
 /**
  * Proxy hacia /v1/marketing/* (AI Marketing System). Solo administradores. La identidad se toma de
@@ -24,7 +24,7 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
   if (!BASE_URL || !TOKEN) return NextResponse.json({ ok: false, error: "API no configurada" }, { status: 500 });
 
   const { ruta } = await ctx.params;
-  if (!ruta.length || ruta.length > 4 || !ruta.every((s) => /^[A-Za-z0-9_-]{1,60}$/.test(s)) || !RECURSOS.has(ruta[0])) {
+  if (!ruta.length || ruta.length > (ruta[0] === "social" ? 6 : 4) || !ruta.every((s) => /^[A-Za-z0-9_-]{1,60}$/.test(s)) || !RECURSOS.has(ruta[0])) {
     return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });
   }
   const metodo = req.method.toUpperCase();
@@ -36,7 +36,7 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
   qs.delete("usuario");
   const headers: Record<string, string> = { Authorization: `Bearer ${TOKEN}` };
   let cuerpo: string | undefined;
-  if (metodo === "GET") {
+  if (metodo === "GET" || metodo === "DELETE") {
     qs.set("usuario", email);
   } else {
     let entrada: Record<string, unknown> = {};
@@ -52,6 +52,14 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
 
   try {
     const res = await fetch(`${BASE_URL}/v1/marketing/${ruta.join("/")}?${qs.toString()}`, { method: metodo, headers, body: cuerpo, cache: "no-store" });
+    const tipo = res.headers.get("content-type") || "";
+    // Imágenes (slides en PNG, logos y fotos subidas) y exportaciones (ZIP) del departamento Redes sociales: se devuelven tal cual.
+    if (res.ok && (/^image\/(png|jpeg|webp)/.test(tipo) || tipo.startsWith("application/zip"))) {
+      const cabeceras: Record<string, string> = { "Content-Type": tipo, "Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff" };
+      const disp = res.headers.get("content-disposition");
+      if (disp) cabeceras["Content-Disposition"] = disp;
+      return new Response(await res.arrayBuffer(), { status: 200, headers: cabeceras });
+    }
     const texto = await res.text();
     let data: unknown;
     try {
@@ -69,3 +77,4 @@ export const GET = manejar;
 export const PUT = manejar;
 export const PATCH = manejar;
 export const POST = manejar;
+export const DELETE = manejar;

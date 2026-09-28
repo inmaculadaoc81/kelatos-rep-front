@@ -11,6 +11,7 @@ import { type DetalleDepartamento, type EstadoDepartamento } from "@/lib/agentes
 import { cn } from "@/lib/utils";
 import { PestanaAnalitica, PestanaEstrategia, PestanaHorario } from "./bloques-departamento";
 import { SeoPanel } from "./seo-panel";
+import { SocialPanel } from "./social/social-panel";
 
 
 function PestanaResumen({ d, recargar}: { d: DetalleDepartamento; recargar: () => void }) {
@@ -142,6 +143,8 @@ export default function DepartamentoPage({ params }: { params: Promise<{ key: st
   );
   // El departamento SEO pinta su propia cabecera dentro de la mitad izquierda, para que la línea central llegue hasta arriba.
   if (datos.department.key === "local_seo") return <SeoPanel d={datos} recargar={recargar} cabecera={cabecera} />;
+
+  if (datos.department.key === "social_media") return <SocialPanel cabecera={cabecera} />;
 
   return (
     <div>
