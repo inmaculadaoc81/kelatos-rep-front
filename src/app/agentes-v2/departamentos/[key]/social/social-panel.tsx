@@ -7,20 +7,23 @@ import { cn } from "@/lib/utils";
 import { PestanaHorario } from "../bloques-departamento";
 import { CarruselesLista } from "./carruseles-lista";
 import { EditorCarrusel } from "./editor-carrusel";
+import { EditorPost } from "./editor-post";
 import { Estrategia } from "./estrategia";
 import { MarcaDialog } from "./marca-dialog";
+import { PostsLista } from "./posts-lista";
 import { Resumen } from "./resumen";
 import { Temas } from "./temas";
 
-type Vista = "overview" | "carruseles" | "temas" | "estrategia" | "horario" | "contenido" | "calendario" | "borradores";
+type Vista = "overview" | "carruseles" | "posts" | "temas" | "estrategia" | "horario" | "reels" | "calendario" | "borradores";
 
 const NAV: { valor: Vista; texto: string; activo: boolean; ayuda?: string }[] = [
   { valor: "overview", texto: "Resumen", activo: true },
   { valor: "carruseles", texto: "Carruseles", activo: true },
+  { valor: "posts", texto: "Posts", activo: true },
   { valor: "temas", texto: "Temas y cola", activo: true },
   { valor: "estrategia", texto: "Estrategia", activo: true },
   { valor: "horario", texto: "Horario", activo: true },
-  { valor: "contenido", texto: "Contenido", activo: false, ayuda: "Publicaciones sueltas, reels y stories" },
+  { valor: "reels", texto: "Reels / Shorts", activo: false, ayuda: "Vídeo vertical corto" },
   { valor: "calendario", texto: "Calendario", activo: false, ayuda: "Calendario de publicación (lo hará tu workflow de n8n)" },
   { valor: "borradores", texto: "Borradores", activo: false, ayuda: "Todo lo pendiente de revisar" },
 ];
@@ -29,10 +32,12 @@ const NAV: { valor: Vista; texto: string; activo: boolean; ayuda?: string }[] = 
 export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento; recargar: () => void; cabecera: ReactNode }) {
   const [vista, setVista] = useState<Vista>("overview");
   const [abierto, setAbierto] = useState<number | null>(null);
+  const [abiertoPost, setAbiertoPost] = useState<number | null>(null);
   const [marca, setMarca] = useState(false);
   const cambiar = (v: Vista) => {
     setVista(v);
     setAbierto(null);
+    setAbiertoPost(null);
   };
   const abrirCarrusel = (id: number) => {
     setVista("carruseles");
@@ -67,6 +72,7 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
         <main className="min-w-0">
           {vista === "overview" && <Resumen d={d} recargar={recargar} ir={cambiar} />}
           {vista === "carruseles" && (abierto === null ? <CarruselesLista onAbrir={setAbierto} /> : <EditorCarrusel key={abierto} id={abierto} onVolver={() => setAbierto(null)} />)}
+          {vista === "posts" && (abiertoPost === null ? <PostsLista onAbrir={setAbiertoPost} /> : <EditorPost key={abiertoPost} id={abiertoPost} onVolver={() => setAbiertoPost(null)} />)}
           {vista === "temas" && <Temas onAbrirCarrusel={abrirCarrusel} />}
           {vista === "estrategia" && <Estrategia />}
           {vista === "horario" && <PestanaHorario d={d} recargar={recargar} />}

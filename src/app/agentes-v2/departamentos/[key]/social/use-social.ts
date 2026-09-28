@@ -86,7 +86,7 @@ export interface ContenidoSlide {
 }
 
 export interface Forma {
-  kind: "circle" | "ring" | "blob" | "bar" | "dots" | "grid" | "diagonal" | "nodes";
+  kind: "circle" | "ring" | "blob" | "bar" | "dots" | "grid" | "diagonal" | "nodes" | "chip";
   at: "tl" | "tr" | "bl" | "br" | "c" | "l" | "r";
   size: "s" | "m" | "l";
   tone: "accent" | "soft" | "contrast";
