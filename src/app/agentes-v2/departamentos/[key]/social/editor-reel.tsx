@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, X, Download } from "lucide-react";
+import { ArrowLeft, Plus, X, Download, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { CargandoFilas, ErrorCaja } from "@/components/agentes-v2/componentes";
 import { cn } from "@/lib/utils";
 import { Campo, Progreso, Selector } from "./campos";
 import { type Diseno, type Forma } from "./use-social";
-import { NOMBRE_TIPO_VISUAL, NOMBRE_TRANSICION, TIPOS_VISUAL_ESCENA, TRANSICIONES_REEL, urlEscenaImagen, useReel, type EscenaReel } from "./use-reels";
+import { ESTADO_REEL_TEXTO, NOMBRE_TIPO_VISUAL, NOMBRE_TRANSICION, TIPOS_VISUAL_ESCENA, TRANSICIONES_REEL, urlEscenaImagen, urlVideoReel, useReel, type EscenaReel } from "./use-reels";
 import { TiraEscenas } from "./tira-escenas";
 
 const base = (id: number) => `social/reels/${id}`;
@@ -211,6 +212,32 @@ function PrevisualizacionEscena({ reelId, escena }: { reelId: number; escena: Es
   );
 }
 
+// ───────────── vídeo montado (Fase 5) ─────────────
+
+function VideoMontado({ reelId, updatedAt, qa }: { reelId: number; updatedAt: string; qa: { passed: boolean; issues: string[] } | null }) {
+  return (
+    <section className="space-y-2 rounded-lg border p-3.5">
+      <div className="flex items-center gap-2">
+        <Film className="size-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold">Vídeo montado</h3>
+        {qa && (
+          <span className={cn("inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium", qa.passed ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-red-500/10 text-red-700 dark:text-red-300")}>
+            {qa.passed ? "Control de calidad: OK" : `Control de calidad: ${qa.issues.length} problema${qa.issues.length === 1 ? "" : "s"}`}
+          </span>
+        )}
+      </div>
+      <video key={`${reelId}:${updatedAt}`} controls playsInline className="mx-auto block max-h-[70vh] w-auto rounded-lg border bg-black" style={{ aspectRatio: "9/16" }}>
+        <source src={urlVideoReel(reelId, updatedAt)} type="video/mp4" />
+      </video>
+      {qa && !qa.passed && qa.issues.length > 0 && (
+        <ul className="list-disc space-y-0.5 pl-5 text-xs text-red-700 dark:text-red-300">
+          {qa.issues.map((i, idx) => <li key={idx}>{i}</li>)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 // ───────────── editor principal ─────────────
 
 export function EditorReel({ id, onVolver }: { id: number; onVolver: () => void }) {
@@ -283,13 +310,27 @@ export function EditorReel({ id, onVolver }: { id: number; onVolver: () => void 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onVolver}><ArrowLeft className="size-4" />Reels</Button>
         <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{r.title}</h2>
+        <span className={cn("inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium", ESTADO_REEL_TEXTO[r.status].clase)}>{ESTADO_REEL_TEXTO[r.status].texto}</span>
       </div>
 
       {cabeceraJob}
       {datos.job?.state === "error" && !trabajando && <ErrorCaja mensaje={`La última generación falló: ${datos.job.error ?? "error desconocido"}. Puedes volver a intentarlo.`} />}
+      {r.status === "review" && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+          Enviado a revisión. Apruébalo o recházalo en <Link href="/agentes-v2/aprobaciones" className="font-medium underline underline-offset-2">Aprobaciones</Link>. Si lo editas, vuelve a «Escenas listas».
+        </div>
+      )}
+      {r.status === "approved" && <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-3 text-sm">Aprobado. Todavía no se ha publicado nada: la publicación de Reels aún no está conectada.</div>}
+      {r.status === "failed" && <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm">El control de calidad encontró problemas (los tienes debajo, junto al vídeo). Corrígelos y vuelve a renderizar.</div>}
 
       <div className="flex flex-wrap items-center gap-2">
         {!escenas.length && !trabajando && <Button size="sm" disabled={bloqueado} onClick={() => accion("POST", `${base(id)}/generate`, {}, "La IA está escribiendo el guion")}>Generar ahora</Button>}
+        {escenas.length > 0 && ["generating", "qa", "failed"].includes(r.status) && (
+          <Button size="sm" disabled={bloqueado || !editable} onClick={() => accion("POST", `${base(id)}/render`, {}, "Dibujando las escenas y montando el vídeo…")}>{r.rendered_at ? "Volver a renderizar" : "Renderizar vídeo"}</Button>
+        )}
+        {r.status === "qa" && r.qa_result?.passed && (
+          <Button size="sm" variant="outline" disabled={bloqueado} onClick={() => setConf({ titulo: "Enviar a revisión", texto: "Se crea una aprobación en «Aprobaciones». Aprobarlo no publica nada.", boton: "Enviar a revisión", accion: async () => void (await accion("POST", `${base(id)}/review`, {}, "Enviado a revisión")) })}>Enviar a revisión</Button>
+        )}
         {r.hook && (
           <>
             <Button size="sm" variant="outline" disabled={!r.subtitles_srt} onClick={() => r.subtitles_srt && descargarTexto(`${r.id}.srt`, r.subtitles_srt)}><Download className="size-3.5" />SRT</Button>
@@ -306,6 +347,8 @@ export function EditorReel({ id, onVolver }: { id: number; onVolver: () => void 
           {r.script && <p className="text-sm text-muted-foreground">{r.script}</p>}
         </section>
       )}
+
+      {r.rendered_at && !trabajando && <VideoMontado reelId={id} updatedAt={r.updated_at} qa={r.qa_result} />}
 
       {escenas.length === 0 || !activa ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

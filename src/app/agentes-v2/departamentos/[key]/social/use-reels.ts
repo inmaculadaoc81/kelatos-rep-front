@@ -104,6 +104,8 @@ export interface DetalleReel {
 export interface PanelReels { ok: boolean; reels: { total: number; draft: number; planning: number; generating: number } }
 
 export const urlEscenaImagen = (reelId: number, sceneId: number) => `/api/agentes-v2/social/reels/${reelId}/scenes/${sceneId}/image`;
+/** `sello` (updated_at) evita ver un vídeo antiguo en caché tras volver a renderizar. */
+export const urlVideoReel = (reelId: number, sello?: string) => `/api/agentes-v2/social/reels/${reelId}/video${sello ? `?t=${new Date(sello).getTime()}` : ""}`;
 
 function useSondeo(hayTrabajo: boolean, recargar: () => void) {
   useEffect(() => {

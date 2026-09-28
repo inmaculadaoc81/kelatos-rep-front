@@ -53,8 +53,8 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
   try {
     const res = await fetch(`${BASE_URL}/v1/marketing/${ruta.join("/")}?${qs.toString()}`, { method: metodo, headers, body: cuerpo, cache: "no-store" });
     const tipo = res.headers.get("content-type") || "";
-    // Imágenes (slides en PNG, logos y fotos subidas) y exportaciones (ZIP) del departamento Redes sociales: se devuelven tal cual.
-    if (res.ok && (/^image\/(png|jpeg|webp)/.test(tipo) || tipo.startsWith("application/zip"))) {
+    // Imágenes (slides en PNG, logos y fotos subidas), vídeos de Reels (MP4) y exportaciones (ZIP): se devuelven tal cual.
+    if (res.ok && (/^image\/(png|jpeg|webp)/.test(tipo) || tipo === "video/mp4" || tipo.startsWith("application/zip"))) {
       const cabeceras: Record<string, string> = { "Content-Type": tipo, "Cache-Control": res.headers.get("cache-control") || "private, max-age=300", "X-Content-Type-Options": "nosniff" };
       const disp = res.headers.get("content-disposition");
       if (disp) cabeceras["Content-Disposition"] = disp;
