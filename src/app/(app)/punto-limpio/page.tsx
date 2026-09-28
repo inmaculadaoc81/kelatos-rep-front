@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatearFecha } from "@/lib/dias-entrega";
-import { PuntoLimpioItem, labelMotivo, labelDestino } from "@/lib/punto-limpio";
+import { PuntoLimpioItem, ESTILO_ESTADO_PRESUPUESTO, labelDestino, labelEstadoPresupuesto, labelMotivo } from "@/lib/punto-limpio";
 import { PuntoLimpioMotivoDialog } from "./punto-limpio-motivo-dialog";
 
 const ESTILO_MOTIVO: Record<string, string> = {
@@ -52,9 +52,10 @@ export default function PuntoLimpioPage() {
     cargar();
   }, []);
 
+  const euros = (n: number | null) => (n === null ? "—" : n.toLocaleString("es-ES", { style: "currency", currency: "EUR" }));
   const texto = busqueda.trim().toLowerCase();
   const filtrados = texto
-    ? items.filter((i) => [i.resguardo, i.clienteNombre, i.equipoModelo].join(" ").toLowerCase().includes(texto))
+    ? items.filter((i) => [i.resguardo, i.clienteNombre, i.equipoModelo, i.presupuesto?.concepto ?? ""].join(" ").toLowerCase().includes(texto))
     : items;
 
   return (
@@ -80,12 +81,12 @@ export default function PuntoLimpioPage() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="relative">
           <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Resguardo, cliente, equipo..." className="w-64 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <Input placeholder="Resguardo, cliente, equipo, concepto..." className="w-64 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
         {!cargando && <span className="ml-auto text-sm text-muted-foreground">{filtrados.length} casos</span>}
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader className="[&_tr]:border-b-0">
             <TableRow className="bg-primary hover:bg-primary [&_th]:text-primary-foreground">
@@ -93,6 +94,8 @@ export default function PuntoLimpioPage() {
               <TableHead>Fecha</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Equipo</TableHead>
+              <TableHead>Presupuesto enviado</TableHead>
+              <TableHead>Concepto</TableHead>
               <TableHead>Motivo</TableHead>
               <TableHead>Destino</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -102,7 +105,7 @@ export default function PuntoLimpioPage() {
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 7 }).map((__, j) => (
+                  {Array.from({ length: 9 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -112,7 +115,7 @@ export default function PuntoLimpioPage() {
 
             {!cargando && filtrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   Sin equipos en punto limpio
                 </TableCell>
               </TableRow>
@@ -123,8 +126,37 @@ export default function PuntoLimpioPage() {
                 <TableRow key={i.resguardo}>
                   <TableCell className="font-semibold text-primary">{i.resguardo}</TableCell>
                   <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{formatearFecha(i.fechaEntrega)}</TableCell>
-                  <TableCell className="text-sm">{i.clienteNombre || "-"}</TableCell>
-                  <TableCell className="text-sm" title={i.equipoModelo}>{i.equipoModelo || "-"}</TableCell>
+                  <TableCell className="max-w-40 text-sm whitespace-normal">{i.clienteNombre || "-"}</TableCell>
+                  <TableCell className="max-w-44 text-sm whitespace-normal" title={i.equipoModelo}>{i.equipoModelo || "-"}</TableCell>
+                  <TableCell className="align-top">
+                    {i.presupuesto ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold tabular-nums">{euros(i.presupuesto.total)}</p>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge variant="outline" className={ESTILO_ESTADO_PRESUPUESTO[i.presupuesto.estado] || "text-muted-foreground"}>
+                            {labelEstadoPresupuesto(i.presupuesto.estado)}
+                          </Badge>
+                          {i.presupuesto.totalVersiones > 1 && (
+                            <span className="text-[11px] text-muted-foreground" title="Hay más de un presupuesto en esta reparación; se muestra el aceptado o, si no lo hay, el último enviado">
+                              v{i.presupuesto.version ?? "?"} de {i.presupuesto.totalVersiones}
+                            </span>
+                          )}
+                        </div>
+                        {i.presupuesto.estado === "rechazado" && i.presupuesto.motivoRechazo && (
+                          <p className="max-w-48 text-xs text-muted-foreground" title={i.presupuesto.motivoRechazo}>«{i.presupuesto.motivoRechazo}»</p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin presupuesto</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-48 min-w-36 align-top text-sm whitespace-normal">
+                    {i.presupuesto?.concepto ? (
+                      <p className="line-clamp-3" title={i.presupuesto.concepto}>{i.presupuesto.concepto}</p>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={ESTILO_MOTIVO[i.motivo || ""] || "text-muted-foreground"}>
                       {labelMotivo(i.motivo)}

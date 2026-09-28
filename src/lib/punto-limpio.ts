@@ -37,6 +37,41 @@ interface FilaPuntoLimpioSql {
   punto_limpio_destino: string | null;
   punto_limpio_registrado_en: string | null;
   punto_limpio_registrado_por: string | null;
+  ppto_id: string | null;
+  ppto_numero: string | null;
+  ppto_version: number | null;
+  ppto_estado: string | null;
+  ppto_total: string | number | null;
+  ppto_fecha_envio: string | null;
+  ppto_motivo_rechazo: string | null;
+  ppto_concepto: string | null;
+  ppto_total_versiones: number | null;
+}
+
+/** El presupuesto más relevante de la reparación: el aceptado; si no lo hay, el último que se envió al cliente. */
+export interface PresupuestoPuntoLimpio {
+  id: string;
+  numero: string;
+  version: number | null;
+  totalVersiones: number;
+  estado: string;
+  total: number | null;
+  fechaEnvio: string | null;
+  concepto: string;
+  motivoRechazo: string;
+}
+
+export const ESTILO_ESTADO_PRESUPUESTO: Record<string, string> = {
+  aceptado: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+  rechazado: "border-red-500/40 text-red-700 dark:text-red-400",
+  enviado: "border-sky-500/40 text-sky-700 dark:text-sky-400",
+  sin_respuesta: "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  anulado: "text-muted-foreground",
+};
+
+export function labelEstadoPresupuesto(estado: string): string {
+  const e = estado.toLowerCase();
+  return e === "sin_respuesta" ? "Sin respuesta" : e ? e.charAt(0).toUpperCase() + e.slice(1) : "—";
 }
 
 export interface PuntoLimpioItem {
@@ -51,6 +86,7 @@ export interface PuntoLimpioItem {
   destino: DestinoPuntoLimpio | null;
   registradoEn: string | null;
   registradoPor: string;
+  presupuesto: PresupuestoPuntoLimpio | null;
 }
 
 export function mapearPuntoLimpio(row: FilaPuntoLimpioSql): PuntoLimpioItem {
@@ -66,5 +102,18 @@ export function mapearPuntoLimpio(row: FilaPuntoLimpioSql): PuntoLimpioItem {
     destino: (row.punto_limpio_destino as DestinoPuntoLimpio | null) || null,
     registradoEn: row.punto_limpio_registrado_en,
     registradoPor: row.punto_limpio_registrado_por || "",
+    presupuesto: row.ppto_id
+      ? {
+          id: row.ppto_id,
+          numero: row.ppto_numero || "",
+          version: row.ppto_version,
+          totalVersiones: row.ppto_total_versiones ?? 1,
+          estado: (row.ppto_estado || "").toLowerCase(),
+          total: row.ppto_total === null || row.ppto_total === undefined ? null : Number(row.ppto_total),
+          fechaEnvio: row.ppto_fecha_envio,
+          concepto: (row.ppto_concepto || "").replace(/\s+/g, " ").trim(),
+          motivoRechazo: row.ppto_motivo_rechazo || "",
+        }
+      : null,
   };
 }
