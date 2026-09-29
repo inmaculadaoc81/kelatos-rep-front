@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, fechaCorta, hoyISO, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, Kpi } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi } from "../_ui";
 
 interface Partida {
   linea_id: number;
@@ -93,6 +93,7 @@ export default function PendientesPage() {
           </Button>
         }
       />
+      <InfoVista>Cobros o pagos que llegaron sin saber a qué banco pertenecen (van a la cuenta puente 555) hasta que se asignan a uno real. Ejemplo: un cobro de 80€ por tarjeta se asigna al BBVA en cuanto se confirma en el extracto, y aquí desaparece de pendiente.</InfoVista>
       <CajaError mensaje={error} />
       <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList>

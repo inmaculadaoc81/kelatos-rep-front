@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, type Banco, type Categoria } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, usePlan } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, usePlan } from "../_ui";
 
 const TIPOS_CATEGORIA = [
   ["gasto", "Gasto"],
@@ -53,6 +53,7 @@ export default function PlanPage() {
           </Button>
         }
       />
+      <InfoVista>El listado de todas las cuentas contables que usa la empresa (el Plan General Contable), más los bancos y categorías de gasto. Ejemplo: la cuenta 700 es «Venta de mercaderías»; la 572, «Bancos».</InfoVista>
       <CajaError mensaje={error || plan.error} />
       <Tabs defaultValue="cuentas">
         <TabsList>

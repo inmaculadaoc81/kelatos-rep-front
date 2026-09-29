@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, fechaCorta, num, type EstadoAsiento } from "@/lib/contabilidad";
-import { Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, Kpi, rangoAnioActual, usePlan } from "../_ui";
+import { Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, InfoVista, Kpi, rangoAnioActual, usePlan } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
 interface Movimiento {
@@ -85,6 +85,7 @@ export default function MayorPage() {
           </Button>
         }
       />
+      <InfoVista>Muestra el movimiento de UNA cuenta a lo largo del tiempo, con el saldo tras cada apunte. Ejemplo: elige la cuenta 572 (Bancos) para ver cada cobro y pago de esa cuenta y cuánto queda en cada momento.</InfoVista>
       <datalist id="cuentas-mayor">
         {plan.cuentas.map((c) => (
           <option key={c.codigo} value={c.codigo}>{c.nombre}</option>

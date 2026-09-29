@@ -13,6 +13,7 @@ import {
   ETIQUETA_ESTADO_PAGO, COLOR_ESTADO_PAGO, euros,
 } from "@/lib/facturas-recibidas";
 import { generarCsvLibroCompras, descargarCsv } from "@/lib/libro-compras-csv";
+import { InfoVista } from "../contabilidad/_ui";
 import { FacturaRecibidaFormDialog } from "./factura-recibida-form-dialog";
 
 const FILAS_POR_PAGINA_OPCIONES = ["15", "20", "30", "40", "50", "100"];
@@ -172,6 +173,7 @@ export default function FacturasRecibidasPage() {
           </Button>
         </div>
       </div>
+      <InfoVista>Las facturas que la empresa recibe de sus proveedores (gastos, compras), antes de que entren en contabilidad. Ejemplo: la factura de electricidad del mes se sube aquí y, al validarla, alimenta el asiento contable correspondiente.</InfoVista>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="flex items-center gap-2.5 rounded-lg border bg-card p-2.5">

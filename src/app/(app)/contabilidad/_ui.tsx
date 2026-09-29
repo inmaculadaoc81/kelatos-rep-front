@@ -5,7 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { InfoCircle } from "@/lib/icons";
 import { apiC, CLASE_ESTADO, ETIQUETA_ESTADO, hoyISO, type Banco, type Categoria, type Cuenta, type EstadoAsiento } from "@/lib/contabilidad";
+
+/** Explicación corta de qué es esta vista, con un ejemplo — para quien no es contable. */
+export function InfoVista({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-sky-500/30 bg-sky-500/5 px-3 py-2 text-xs text-sky-900 dark:text-sky-200">
+      <InfoCircle className="mt-0.5 size-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
+      <p className="leading-relaxed">{children}</p>
+    </div>
+  );
+}
 
 export function Cabecera({ icono, titulo, descripcion, acciones }: { icono: React.ReactNode; titulo: string; descripcion: string; acciones?: React.ReactNode }) {
   return (

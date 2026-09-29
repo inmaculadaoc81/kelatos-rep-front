@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, FiltroFechas, rangoAnioActual } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, FiltroFechas, InfoVista, rangoAnioActual } from "../_ui";
 
 interface FilaSS {
   codigo: string;
@@ -84,6 +84,7 @@ export default function SumasSaldosPage() {
           </>
         }
       />
+      <InfoVista>Resume, a una fecha, cuánto ha sumado cada cuenta en el Debe y en el Haber y su saldo — sirve para comprobar que todo cuadra antes de cerrar el periodo. Ejemplo: si el total del Debe no coincide con el del Haber, hay un asiento descuadrado que revisar.</InfoVista>
       <div className="flex flex-wrap items-center gap-3">
         <FiltroFechas desde={desde} hasta={hasta} onChange={(d, h) => setRango({ desde: d, hasta: h })} />
         <label className="flex cursor-pointer items-center gap-2 text-sm">

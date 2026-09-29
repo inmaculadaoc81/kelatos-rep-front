@@ -6,7 +6,7 @@ import { Coin1, Refresh2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, Kpi } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi } from "../_ui";
 
 interface Movimiento {
   id: number;
@@ -90,6 +90,7 @@ export default function EfectivoPage() {
           </Button>
         }
       />
+      <InfoVista>Cada retirada o ingreso de dinero en metálico, clasificado por su motivo, para que se contabilice en la cuenta correcta. Ejemplo: una retirada de 200€ para comprar material se marca como «gasto» en vez de como reparto a un socio.</InfoVista>
       <CajaError mensaje={error} />
       {datos && (
         <div className="grid grid-cols-2 gap-2 sm:max-w-xl">

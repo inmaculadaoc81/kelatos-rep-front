@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiC, hoyISO, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FiltroFechas, rangoAnioActual } from "../_ui";
+import { Cabecera, CajaError, FiltroFechas, InfoVista, rangoAnioActual } from "../_ui";
 
 interface CuentaBal {
   codigo: string;
@@ -92,6 +92,7 @@ export default function BalancePage() {
           </>
         }
       />
+      <InfoVista>El Balance (qué tiene y qué debe la empresa) y la cuenta de Pérdidas y Ganancias (si gana o pierde dinero), calculados a partir de los asientos contabilizados. Ejemplo: si Activo no coincide con Pasivo + Patrimonio, el balance está descuadrado y hay que revisar algún asiento.</InfoVista>
       <CajaError mensaje={error} />
       <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList>

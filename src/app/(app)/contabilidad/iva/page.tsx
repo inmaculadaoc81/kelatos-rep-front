@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, fechaCorta, num, type EstadoAsiento } from "@/lib/contabilidad";
-import { Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, Kpi, rangoAnioActual } from "../_ui";
+import { Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, InfoVista, Kpi, rangoAnioActual } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
 interface Doc {
@@ -104,6 +104,7 @@ export default function IvaPage() {
           </Button>
         }
       />
+      <InfoVista>El IVA repercutido (el que se cobra en las ventas) y el soportado (el que se paga en compras) de cada trimestre, para la declaración a Hacienda. Ejemplo: 1.000€ repercutidos y 300€ soportados dejan 700€ a ingresar ese trimestre.</InfoVista>
       <div className="flex flex-wrap items-center gap-3">
         <FiltroFechas desde={desde} hasta={hasta} onChange={(d, h) => setRango({ desde: d, hasta: h })} />
         <label className="flex cursor-pointer items-center gap-2 text-sm">

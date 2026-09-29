@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { apiC, hoyISO, num, type Regla, type ReglaLinea } from "@/lib/contabilidad";
-import { Cabecera, CajaError, usePlan } from "../_ui";
+import { Cabecera, CajaError, InfoVista, usePlan } from "../_ui";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DERIVADAS: [string, string][] = [
@@ -89,6 +89,7 @@ export default function ReglasPage() {
           </>
         }
       />
+      <InfoVista>Qué cuentas usar automáticamente para cada tipo de operación, para que los asientos se generen solos sin teclearlos a mano. Ejemplo: la regla de un ticket de venta dice «carga Caja (570), abona Ventas (700) e IVA repercutido (477)».</InfoVista>
       <CajaError mensaje={error} />
       {cargando && <Skeleton className="h-48 w-full" />}
       <div className="grid gap-3 xl:grid-cols-2">

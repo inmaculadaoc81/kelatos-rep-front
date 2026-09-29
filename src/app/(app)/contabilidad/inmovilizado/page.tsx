@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, fechaCorta, hoyISO, MESES, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, Kpi, usePlan } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi, usePlan } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
 interface Activo {
@@ -98,6 +98,7 @@ export default function InmovilizadoPage() {
           </>
         }
       />
+      <InfoVista>Los bienes que la empresa usa durante años (equipos, mobiliario…) y su amortización: cuánto valor contable pierden cada mes. Ejemplo: un ordenador de 1.200€ amortizado en 4 años genera un gasto de 25€/mes de forma automática.</InfoVista>
       <CajaError mensaje={error || plan.error} />
       <div className="grid grid-cols-3 gap-2 sm:max-w-2xl">
         <Kpi titulo="Coste de los activos" valor={eur(totales.coste)} color="" />

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, MESES, type Periodo } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista } from "../_ui";
 
 interface Auditoria {
   id: number;
@@ -79,6 +79,7 @@ export default function PeriodosPage() {
           </>
         }
       />
+      <InfoVista>Los meses y ejercicios abiertos o cerrados — un periodo cerrado no admite más apuntes — y quién hizo cada cambio. Ejemplo: si septiembre está cerrado, ya no se puede crear ni editar ningún asiento de esa fecha; hay que reabrirlo primero, con motivo.</InfoVista>
       <CajaError mensaje={error} />
       <Tabs defaultValue="periodos">
         <TabsList>

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, fechaCorta, num, type AsientoResumen, type DetalleAsiento, type EstadoAsiento, type EventoContable } from "@/lib/contabilidad";
-import { CajaError, Cabecera, EstadoBadge, FilaVacia, FilasCarga, Kpi, usePlan } from "../_ui";
+import { CajaError, Cabecera, EstadoBadge, FilaVacia, FilasCarga, InfoVista, Kpi, usePlan } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 import { AsientoFormDialog } from "../asiento-form-dialog";
 import { SincronizarDialog } from "../sincronizar-dialog";
@@ -104,6 +104,7 @@ export default function AsientosPage() {
           </>
         }
       />
+      <InfoVista>Todos los apuntes contables (los movimientos de debe/haber), en sus tres estados: borrador, validado y contabilizado. Ejemplo: la venta de un ticket de reparación genera un borrador que carga Caja (570) y abona Ventas (700) e IVA repercutido (477); al contabilizarlo, ya cuenta en el resto de informes.</InfoVista>
 
       <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList>

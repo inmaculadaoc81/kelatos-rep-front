@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { euros } from "@/lib/facturas-recibidas";
 import { Importacion } from "@/lib/importaciones";
+import { InfoVista } from "../contabilidad/_ui";
 import { ImportacionFormDialog } from "./importacion-form-dialog";
 
 const POR_PAGINA = 15;
@@ -115,6 +116,7 @@ export default function ImportacionesPage() {
           </Button>
         </div>
       </div>
+      <InfoVista>Los documentos de aduana (DUA) de mercancía importada, con el IVA y los aranceles pagados en la aduana. Ejemplo: una importación con 150€ de IVA en el DUA genera, en cuanto consta como pagada, un asiento que lo lleva a IVA soportado.</InfoVista>
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {kpi("IVA a la importación", euros(sumaIva), <MoneyRecive className="size-4" />, "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400")}

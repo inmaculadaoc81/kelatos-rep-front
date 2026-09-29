@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, hoyISO, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, Kpi } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi } from "../_ui";
 
 interface Fila {
   codigo: string;
@@ -66,6 +66,7 @@ export default function TercerosPage() {
           </Button>
         }
       />
+      <InfoVista>Cuánto debe cada cliente o se debe a cada proveedor, con la antigüedad de esa deuda. Ejemplo: una factura sin cobrar de hace 45 días aparece en el tramo «31-60 días»; el próximo cobro de ese cliente cierra primero esa factura.</InfoVista>
       <Tabs value={tipo} onValueChange={(v) => setTipo(v === "proveedores" ? "proveedores" : "clientes")}>
         <TabsList>
           <TabsTrigger value="clientes">Clientes (nos deben)</TabsTrigger>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiC, eur } from "@/lib/contabilidad";
-import { Cabecera, CajaError, Kpi } from "../_ui";
+import { Cabecera, CajaError, InfoVista, Kpi } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
 interface Paso {
@@ -111,6 +111,7 @@ export default function CierrePage() {
           </>
         }
       />
+      <InfoVista>El proceso de fin de ejercicio: calcular el resultado del año, cerrar todas las cuentas y abrir el siguiente con los saldos que quedan. Ejemplo: al cerrar 2026, el beneficio pasa a la cuenta 129 y 2027 arranca con el saldo de bancos del 31 de diciembre.</InfoVista>
       <CajaError mensaje={error} />
       {cargando && !estado && <Skeleton className="h-64 w-full" />}
       {estado && (

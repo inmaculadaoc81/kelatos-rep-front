@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, fechaCorta, hoyISO, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, Kpi } from "../_ui";
+import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi } from "../_ui";
 
 interface PagoRegistrado {
   id: number;
@@ -96,6 +96,7 @@ export default function ComprasPagosPage() {
           </Button>
         }
       />
+      <InfoVista>Registra el pago de cada factura de proveedor: cuánto, cuándo y desde qué banco. Ejemplo: una factura de 200€ de un proveedor de piezas queda en la cuenta 400 hasta que aquí se anota que se pagó por banco, lo que genera el asiento del pago.</InfoVista>
       <CajaError mensaje={error} />
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <Kpi titulo="Pendientes de pago" valor={String(pendientes.length)} color="text-amber-600 dark:text-amber-400" activo={filtro === "pendientes"} onClick={() => setFiltro(filtro === "pendientes" ? "" : "pendientes")} />

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiC, fechaCorta, num, type AsientoResumen, type EstadoAsiento } from "@/lib/contabilidad";
-import { Cabecera, CajaError, EstadoBadge, FiltroFechas, Kpi, rangoAnioActual } from "../_ui";
+import { Cabecera, CajaError, EstadoBadge, FiltroFechas, InfoVista, Kpi, rangoAnioActual } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
 interface LineaDiario {
@@ -69,6 +69,7 @@ export default function DiarioPage() {
           </Button>
         }
       />
+      <InfoVista>Lista los asientos ya contabilizados por orden cronológico, exactamente como se registraron. Ejemplo: en la fecha de una venta aparece el asiento con su cargo a Caja y su abono a Ventas e IVA, uno detrás de otro con el resto del día.</InfoVista>
       <div className="flex flex-wrap items-center gap-3">
         <FiltroFechas desde={desde} hasta={hasta} onChange={(d, h) => setRango({ desde: d, hasta: h })} />
         <label className="flex cursor-pointer items-center gap-2 text-sm">
