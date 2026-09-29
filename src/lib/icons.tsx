@@ -86,6 +86,7 @@ export const Gallery = withDefaults(Iconsax.Gallery);
 export const Gameboy = withDefaults(Iconsax.Gameboy);
 export const Hashtag = withDefaults(Iconsax.Hashtag);
 export const Hierarchy = withDefaults(Iconsax.Hierarchy);
+export const Diagram = withDefaults(Iconsax.Diagram);
 export const Home = withDefaults(Iconsax.Home);
 export const InfoCircle = withDefaults(Iconsax.InfoCircle);
 export const Location = withDefaults(Iconsax.Location);
