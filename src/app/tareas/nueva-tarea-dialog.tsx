@@ -9,25 +9,28 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Empleado } from "@/app/api/empleados/route";
-import type { Tarea } from "@/lib/tareas";
+import type { EmpleadoTareas } from "@/app/api/tareas/empleados/route";
+import { ETIQUETA_PRIORIDAD, type PrioridadTarea, type Tarea } from "@/lib/tareas";
+import { EtiquetasInput } from "./etiquetas-input";
 
 export function NuevaTareaDialog({
   open, onOpenChange, empleados, onCreada,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  empleados: Empleado[];
+  empleados: EmpleadoTareas[];
   onCreada: (tarea: Tarea) => void;
 }) {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [asignadoA, setAsignadoA] = useState("");
+  const [prioridad, setPrioridad] = useState<PrioridadTarea>("media");
+  const [etiquetas, setEtiquetas] = useState<string[]>([]);
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().slice(0, 10));
   const [enviando, setEnviando] = useState(false);
 
   function limpiar() {
-    setTitulo(""); setDescripcion(""); setAsignadoA(""); setFechaInicio(new Date().toISOString().slice(0, 10));
+    setTitulo(""); setDescripcion(""); setAsignadoA(""); setPrioridad("media"); setEtiquetas([]); setFechaInicio(new Date().toISOString().slice(0, 10));
   }
 
   async function crear() {
@@ -37,7 +40,7 @@ export function NuevaTareaDialog({
       const res = await fetch("/api/tareas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo: titulo.trim(), descripcion: descripcion.trim() || undefined, asignadoA: asignadoA || undefined, fechaInicio }),
+        body: JSON.stringify({ titulo: titulo.trim(), descripcion: descripcion.trim() || undefined, asignadoA: asignadoA || undefined, prioridad, etiquetas, fechaInicio }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -77,15 +80,30 @@ export function NuevaTareaDialog({
                 <SelectContent>
                   <SelectItem value="nadie">Sin asignar</SelectItem>
                   {empleados.map((e) => (
-                    <SelectItem key={e.empleadoId} value={e.email || e.nombre}>{e.nombre}</SelectItem>
+                    <SelectItem key={e.id} value={e.email || e.nombre}>{e.nombre}{e.trabajaRemoto ? " · Remoto" : ""}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="tFechaInicio">Fecha de inicio</Label>
-              <Input id="tFechaInicio" type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+              <Label>Prioridad</Label>
+              <Select value={prioridad} onValueChange={(v) => v && setPrioridad(v as PrioridadTarea)}>
+                <SelectTrigger className="w-full"><SelectValue>{(v: string) => ETIQUETA_PRIORIDAD[v as PrioridadTarea] || v}</SelectValue></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="baja">Baja</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tFechaInicio">Fecha de inicio</Label>
+            <Input id="tFechaInicio" type="date" className="w-full sm:w-auto" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Etiquetas</Label>
+            <EtiquetasInput valor={etiquetas} onChange={setEtiquetas} />
           </div>
         </div>
         <DialogFooter>

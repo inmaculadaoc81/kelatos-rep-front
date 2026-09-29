@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Empleado } from "@/app/api/empleados/route";
-import { ETIQUETA_ESTADO, type EstadoTarea, type Tarea } from "@/lib/tareas";
+import type { EmpleadoTareas } from "@/app/api/tareas/empleados/route";
+import { ETIQUETA_ESTADO, ETIQUETA_PRIORIDAD, type EstadoTarea, type PrioridadTarea, type Tarea } from "@/lib/tareas";
+import { EtiquetasInput } from "./etiquetas-input";
 
 function fmt(f: string | null) {
   if (!f) return "-";
@@ -30,7 +31,7 @@ export function TareaDetalleDialog({
   tareaId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  empleados: Empleado[];
+  empleados: EmpleadoTareas[];
   onCambiada: (tarea: Tarea) => void;
   onEliminada: (id: number) => void;
 }) {
@@ -40,19 +41,15 @@ export function TareaDetalleDialog({
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [eliminando, setEliminando] = useState(false);
 
-  // Copia editable de título/descripción/asignado — se guarda al perder el foco,
-  // no en cada tecla, para no machacar al backend con un PATCH por letra.
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [asignadoA, setAsignadoA] = useState("");
+  const [etiquetas, setEtiquetas] = useState<string[]>([]);
 
   const [nuevaNota, setNuevaNota] = useState("");
   const [fechaNota, setFechaNota] = useState(new Date().toISOString().slice(0, 10));
   const [enviandoNota, setEnviandoNota] = useState(false);
 
-  // Al marcar "Finalizada" se pide fecha de fin (por defecto hoy) + una nota de
-  // cierre opcional en el mismo paso — "cuando se termina también que se pueda
-  // ingresar [algo]" (petición del usuario).
   const [finalizarAbierto, setFinalizarAbierto] = useState(false);
   const [fechaFin, setFechaFin] = useState(new Date().toISOString().slice(0, 10));
   const [notaCierre, setNotaCierre] = useState("");
@@ -69,6 +66,7 @@ export function TareaDetalleDialog({
       setTitulo(t.titulo);
       setDescripcion(t.descripcion || "");
       setAsignadoA(t.asignadoA || "");
+      setEtiquetas(t.etiquetas);
       setFechaFin(t.fechaFin || new Date().toISOString().slice(0, 10));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
@@ -184,6 +182,14 @@ export function TareaDetalleDialog({
                       <SelectItem value="finalizada">Finalizada</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={tarea.prioridad} onValueChange={(v) => v && guardarCampos({ prioridad: v })}>
+                    <SelectTrigger className="h-8 w-auto min-w-28"><SelectValue>{(v: string) => `Prioridad: ${ETIQUETA_PRIORIDAD[v as PrioridadTarea] || v}`}</SelectValue></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="alta">Alta</SelectItem>
+                      <SelectItem value="media">Media</SelectItem>
+                      <SelectItem value="baja">Baja</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="size-3.5" /> Inicio {fmt(tarea.fechaInicio)}
                     {tarea.fechaFin && <> · Fin {fmt(tarea.fechaFin)}</>}
@@ -217,7 +223,7 @@ export function TareaDetalleDialog({
                       <SelectTrigger className="h-9 w-full"><SelectValue>{(v: string) => (v && v !== "nadie" ? empleados.find((e) => e.email === v)?.nombre || v : "Sin asignar")}</SelectValue></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="nadie">Sin asignar</SelectItem>
-                        {empleados.map((e) => (<SelectItem key={e.empleadoId} value={e.email || e.nombre}>{e.nombre}</SelectItem>))}
+                        {empleados.map((e) => (<SelectItem key={e.id} value={e.email || e.nombre}>{e.nombre}{e.trabajaRemoto ? " · Remoto" : ""}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -227,13 +233,18 @@ export function TareaDetalleDialog({
                   </div>
                 </div>
 
-                <div className="mb-5 space-y-1.5">
+                <div className="mb-4 space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Descripción</Label>
                   <Textarea
                     rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)}
                     onBlur={() => descripcion !== (tarea.descripcion || "") && guardarCampos({ descripcion: descripcion.trim() })}
                     placeholder="Sin descripción"
                   />
+                </div>
+
+                <div className="mb-5 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Etiquetas</Label>
+                  <EtiquetasInput valor={etiquetas} onChange={(v) => { setEtiquetas(v); guardarCampos({ etiquetas: v }); }} />
                 </div>
 
                 <div className="space-y-2.5">

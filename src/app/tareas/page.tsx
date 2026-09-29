@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ETIQUETA_ESTADO, type EstadoTarea, type Tarea } from "@/lib/tareas";
+import { ETIQUETA_ESTADO, ETIQUETA_PRIORIDAD, type EstadoTarea, type PrioridadTarea, type Tarea } from "@/lib/tareas";
 import { useTareas } from "./use-tareas";
 import { TarjetaTarea } from "./tarjeta-tarea";
 import { NuevaTareaDialog } from "./nueva-tarea-dialog";
@@ -20,26 +20,30 @@ const COLUMNAS: { estado: EstadoTarea; icono: typeof Clock; clase: string }[] = 
 ];
 
 export default function TareasPage() {
-  const { tareas, empleados, cargando, error, cargar, actualizarEnLista, quitarDeLista } = useTareas();
+  const { tareas, empleados, empleadoPorEmail, cargando, error, cargar, actualizarEnLista, quitarDeLista } = useTareas();
   const [busqueda, setBusqueda] = useState("");
   const [filtroAsignado, setFiltroAsignado] = useState("");
+  const [filtroPrioridad, setFiltroPrioridad] = useState("");
+  const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [tareaAbiertaId, setTareaAbiertaId] = useState<number | null>(null);
 
-  const nombrePorEmail = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of empleados) if (e.email) m.set(e.email, e.nombre);
-    return m;
-  }, [empleados]);
+  const etiquetasDisponibles = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of tareas) for (const et of t.etiquetas) s.add(et);
+    return [...s].sort();
+  }, [tareas]);
 
   const filtradas = useMemo(() => {
     const t = busqueda.trim().toLowerCase();
     return tareas.filter((tarea) => {
       const textoOk = !t || tarea.titulo.toLowerCase().includes(t) || (tarea.descripcion || "").toLowerCase().includes(t);
       const asignadoOk = !filtroAsignado || tarea.asignadoA === filtroAsignado;
-      return textoOk && asignadoOk;
+      const prioridadOk = !filtroPrioridad || tarea.prioridad === filtroPrioridad;
+      const etiquetaOk = !filtroEtiqueta || tarea.etiquetas.includes(filtroEtiqueta);
+      return textoOk && asignadoOk && prioridadOk && etiquetaOk;
     });
-  }, [tareas, busqueda, filtroAsignado]);
+  }, [tareas, busqueda, filtroAsignado, filtroPrioridad, filtroEtiqueta]);
 
   const porEstado = useMemo(() => {
     const m: Record<EstadoTarea, Tarea[]> = { pendiente: [], en_progreso: [], finalizada: [] };
@@ -47,7 +51,10 @@ export default function TareasPage() {
     return m;
   }, [filtradas]);
 
-  const hayFiltros = !!(busqueda || filtroAsignado);
+  const hayFiltros = !!(busqueda || filtroAsignado || filtroPrioridad || filtroEtiqueta);
+  function limpiarFiltros() {
+    setBusqueda(""); setFiltroAsignado(""); setFiltroPrioridad(""); setFiltroEtiqueta("");
+  }
 
   return (
     <div className="space-y-4">
@@ -72,14 +79,32 @@ export default function TareasPage() {
           <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por título o descripción..." className="pl-8" />
         </div>
         <Select value={filtroAsignado || "todos"} onValueChange={(v) => setFiltroAsignado(!v || v === "todos" ? "" : v)}>
-          <SelectTrigger className="w-auto min-w-40"><SelectValue>{(v: string) => (v && v !== "todos" ? nombrePorEmail.get(v) || v : "Asignado: Todos")}</SelectValue></SelectTrigger>
+          <SelectTrigger className="w-auto min-w-40"><SelectValue>{(v: string) => (v && v !== "todos" ? empleadoPorEmail.get(v)?.nombre || v : "Asignado: Todos")}</SelectValue></SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Asignado: Todos</SelectItem>
-            {empleados.map((e) => (<SelectItem key={e.empleadoId} value={e.email || e.nombre}>{e.nombre}</SelectItem>))}
+            {empleados.map((e) => (<SelectItem key={e.id} value={e.email || e.nombre}>{e.nombre}{e.trabajaRemoto ? " · Remoto" : ""}</SelectItem>))}
           </SelectContent>
         </Select>
+        <Select value={filtroPrioridad || "todas"} onValueChange={(v) => setFiltroPrioridad(!v || v === "todas" ? "" : v)}>
+          <SelectTrigger className="w-auto min-w-36"><SelectValue>{(v: string) => (v && v !== "todas" ? `Prioridad: ${ETIQUETA_PRIORIDAD[v as PrioridadTarea] || v}` : "Prioridad: Todas")}</SelectValue></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Prioridad: Todas</SelectItem>
+            <SelectItem value="alta">Alta</SelectItem>
+            <SelectItem value="media">Media</SelectItem>
+            <SelectItem value="baja">Baja</SelectItem>
+          </SelectContent>
+        </Select>
+        {etiquetasDisponibles.length > 0 && (
+          <Select value={filtroEtiqueta || "todas"} onValueChange={(v) => setFiltroEtiqueta(!v || v === "todas" ? "" : v)}>
+            <SelectTrigger className="w-auto min-w-36"><SelectValue>{(v: string) => (v && v !== "todas" ? v : "Etiqueta: Todas")}</SelectValue></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Etiqueta: Todas</SelectItem>
+              {etiquetasDisponibles.map((et) => (<SelectItem key={et} value={et}>{et}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        )}
         {hayFiltros && (
-          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setBusqueda(""); setFiltroAsignado(""); }}>
+          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltros}>
             <CloseCircle className="size-3.5" /> Limpiar
           </Button>
         )}
@@ -104,7 +129,7 @@ export default function TareasPage() {
                   <TarjetaTarea
                     key={tarea.id}
                     tarea={tarea}
-                    nombreAsignado={tarea.asignadoA ? (nombrePorEmail.get(tarea.asignadoA) || tarea.asignadoA) : null}
+                    asignado={tarea.asignadoA ? (empleadoPorEmail.get(tarea.asignadoA) || null) : null}
                     onClick={() => setTareaAbiertaId(tarea.id)}
                   />
                 ))

@@ -21,13 +21,14 @@ function iniciales(nombre: string) {
 /** Cuántas tareas tiene cada persona, por estado — petición del usuario,
     2026-09-29. Se calcula aquí mismo con la lista ya cargada (sin endpoint
     propio: son los mismos datos que ya usa el Tablero, solo agrupados distinto). */
-function TarjetaPersona({ nombre, pendientes, enProgreso, finalizadas }: { nombre: string; pendientes: number; enProgreso: number; finalizadas: number }) {
+function TarjetaPersona({ nombre, remoto, pendientes, enProgreso, finalizadas }: { nombre: string; remoto: boolean; pendientes: number; enProgreso: number; finalizadas: number }) {
   const total = pendientes + enProgreso + finalizadas;
   return (
     <div className="rounded-lg border bg-card p-3">
       <div className="mb-2 flex items-center gap-2">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">{iniciales(nombre)}</span>
         <span className="truncate text-sm font-medium">{nombre}</span>
+        {remoto && <span className="rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-medium text-violet-700 dark:text-violet-400">Remoto</span>}
         <span className="ml-auto text-xs text-muted-foreground">{total} en total</span>
       </div>
       <div className="flex gap-1.5">
@@ -54,9 +55,9 @@ export default function ResumenTareasPage() {
       .finally(() => setCargandoActividad(false));
   }, []);
 
-  const nombrePorEmail = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of empleados) if (e.email) m.set(e.email, e.nombre);
+  const empleadoPorEmail = useMemo(() => {
+    const m = new Map<string, (typeof empleados)[number]>();
+    for (const e of empleados) if (e.email) m.set(e.email, e);
     return m;
   }, [empleados]);
 
@@ -64,18 +65,19 @@ export default function ResumenTareasPage() {
   // no se listan empleados sin ninguna tarea todavía, para no llenar la vista
   // de tarjetas vacías.
   const porPersona = useMemo(() => {
-    const grupos = new Map<string, { nombre: string; pendientes: number; enProgreso: number; finalizadas: number }>();
+    const grupos = new Map<string, { nombre: string; remoto: boolean; pendientes: number; enProgreso: number; finalizadas: number }>();
     for (const t of tareas) {
       const clave = t.asignadoA || "__sin_asignar__";
-      const nombre = t.asignadoA ? (nombrePorEmail.get(t.asignadoA) || t.asignadoA) : "Sin asignar";
-      if (!grupos.has(clave)) grupos.set(clave, { nombre, pendientes: 0, enProgreso: 0, finalizadas: 0 });
+      const emp = t.asignadoA ? empleadoPorEmail.get(t.asignadoA) : undefined;
+      const nombre = emp?.nombre || t.asignadoA || "Sin asignar";
+      if (!grupos.has(clave)) grupos.set(clave, { nombre, remoto: emp?.trabajaRemoto === true, pendientes: 0, enProgreso: 0, finalizadas: 0 });
       const g = grupos.get(clave)!;
       if (t.estado === "pendiente") g.pendientes++;
       else if (t.estado === "en_progreso") g.enProgreso++;
       else g.finalizadas++;
     }
     return [...grupos.values()].sort((a, b) => (b.pendientes + b.enProgreso + b.finalizadas) - (a.pendientes + a.enProgreso + a.finalizadas));
-  }, [tareas, nombrePorEmail]);
+  }, [tareas, empleadoPorEmail]);
 
   const totales = useMemo(() => ({
     pendiente: tareas.filter((t) => t.estado === "pendiente").length,

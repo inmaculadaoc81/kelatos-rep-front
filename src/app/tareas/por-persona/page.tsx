@@ -8,31 +8,26 @@ import { TarjetaTarea, iniciales } from "../tarjeta-tarea";
 import { TareaDetalleDialog } from "../tarea-detalle-dialog";
 
 export default function PorPersonaTareasPage() {
-  const { tareas, empleados, cargando, actualizarEnLista, quitarDeLista } = useTareas();
+  const { tareas, empleados, empleadoPorEmail, cargando, actualizarEnLista, quitarDeLista } = useTareas();
   const [tareaAbiertaId, setTareaAbiertaId] = useState<number | null>(null);
-
-  const nombrePorEmail = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of empleados) if (e.email) m.set(e.email, e.nombre);
-    return m;
-  }, [empleados]);
 
   // Grupo por persona, cada uno con sus tareas activas primero (pendiente/en
   // progreso) y las finalizadas al final — más útil de un vistazo que el
   // orden de creación.
   const grupos = useMemo(() => {
-    const m = new Map<string, { nombre: string; tareas: typeof tareas }>();
+    const m = new Map<string, { nombre: string; remoto: boolean; tareas: typeof tareas }>();
     for (const t of tareas) {
       const clave = t.asignadoA || "__sin_asignar__";
-      const nombre = t.asignadoA ? (nombrePorEmail.get(t.asignadoA) || t.asignadoA) : "Sin asignar";
-      if (!m.has(clave)) m.set(clave, { nombre, tareas: [] });
+      const emp = t.asignadoA ? empleadoPorEmail.get(t.asignadoA) : undefined;
+      const nombre = emp?.nombre || t.asignadoA || "Sin asignar";
+      if (!m.has(clave)) m.set(clave, { nombre, remoto: emp?.trabajaRemoto === true, tareas: [] });
       m.get(clave)!.tareas.push(t);
     }
     for (const g of m.values()) {
       g.tareas.sort((a, b) => (a.estado === "finalizada" ? 1 : 0) - (b.estado === "finalizada" ? 1 : 0));
     }
     return [...m.values()].sort((a, b) => b.tareas.length - a.tareas.length);
-  }, [tareas, nombrePorEmail]);
+  }, [tareas, empleadoPorEmail]);
 
   return (
     <div className="space-y-4">
@@ -56,11 +51,12 @@ export default function PorPersonaTareasPage() {
                   {g.nombre === "Sin asignar" ? <Profile2User className="size-3.5" /> : iniciales(g.nombre)}
                 </span>
                 <span className="text-sm font-semibold">{g.nombre}</span>
+                {g.remoto && <span className="rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-medium text-violet-700 dark:text-violet-400">Remoto</span>}
                 <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{g.tareas.length}</span>
               </div>
               <div className="space-y-2">
                 {g.tareas.map((t) => (
-                  <TarjetaTarea key={t.id} tarea={t} nombreAsignado={null} onClick={() => setTareaAbiertaId(t.id)} />
+                  <TarjetaTarea key={t.id} tarea={t} asignado={null} onClick={() => setTareaAbiertaId(t.id)} />
                 ))}
               </div>
             </div>
