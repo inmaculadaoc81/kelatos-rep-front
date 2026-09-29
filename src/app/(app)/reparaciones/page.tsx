@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash, Ticket, Copy } from "@/lib/icons";
+import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash, Ticket, Copy, Wallet } from "@/lib/icons";
 import { toast } from "sonner";
 import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
@@ -430,6 +431,9 @@ export default function ReparacionesPage() {
             title="Ticket Manual"
           >
             <Ticket className="size-4" /> Ticket Manual
+          </Button>
+          <Button variant="outline" className="h-8 gap-1.5" title="Cobros" render={<Link href="/reparaciones/cobros" />}>
+            <Wallet className="size-4" /> Cobros
           </Button>
         </div>
       </div>
