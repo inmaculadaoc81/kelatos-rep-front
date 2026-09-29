@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import {
   Sidebar,
@@ -14,13 +15,21 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ClipboardTick } from "@/lib/icons";
+import { ClipboardTick, Chart, Profile2User, Calendar } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
-/** Una sola vista (el tablero de tareas), así que el sidebar es mínimo — mismo
-    esqueleto (logo + NavUser) que Webs Kelatos/Asistencia, sin navegación dinámica
-    porque no hace falta: todo el filtrado vive en la propia página. */
+const VISTAS = [
+  { href: "/tareas", etiqueta: "Tablero", icono: ClipboardTick },
+  { href: "/tareas/resumen", etiqueta: "Resumen", icono: Chart },
+  { href: "/tareas/por-persona", etiqueta: "Por persona", icono: Profile2User },
+  { href: "/tareas/calendario", etiqueta: "Calendario", icono: Calendar },
+];
+
+/** 4 vistas de las mismas tareas (tipo Notion: mismos datos, distintas formas de
+    mirarlos) — petición del usuario, 2026-09-29. Mismo esqueleto (logo + NavUser)
+    que Webs Kelatos/Asistencia. */
 export function TareasSidebar({ session }: { session: Session | null }) {
+  const pathname = usePathname();
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -40,12 +49,14 @@ export function TareasSidebar({ session }: { session: Session | null }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton isActive tooltip="Tareas" render={<Link href="/tareas" />}>
-                  <ClipboardTick className="text-sidebar-primary" />
-                  <span>Todas las tareas</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {VISTAS.map((v) => (
+                <SidebarMenuItem key={v.href}>
+                  <SidebarMenuButton isActive={pathname === v.href} tooltip={v.etiqueta} render={<Link href={v.href} />}>
+                    <v.icono className="text-sidebar-primary" />
+                    <span>{v.etiqueta}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

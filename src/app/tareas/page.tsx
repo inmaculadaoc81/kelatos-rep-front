@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { AddCircle, SearchNormal1, Clock, TickCircle, Calendar, Refresh2, CloseCircle } from "@/lib/icons";
+import { AddCircle, SearchNormal1, Clock, TickCircle, Refresh2, CloseCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ETIQUETA_ESTADO, type EstadoTarea, type Tarea } from "@/lib/tareas";
-import type { Empleado } from "@/app/api/empleados/route";
+import { useTareas } from "./use-tareas";
+import { TarjetaTarea } from "./tarjeta-tarea";
 import { NuevaTareaDialog } from "./nueva-tarea-dialog";
 import { TareaDetalleDialog } from "./tarea-detalle-dialog";
 
@@ -18,75 +19,12 @@ const COLUMNAS: { estado: EstadoTarea; icono: typeof Clock; clase: string }[] = 
   { estado: "finalizada", icono: TickCircle, clase: "border-t-emerald-400" },
 ];
 
-function fmt(f: string | null) {
-  if (!f) return "";
-  return new Date(f + "T00:00:00").toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
-}
-
-function iniciales(nombre: string) {
-  const p = nombre.trim().split(/\s+/).filter(Boolean);
-  if (!p.length) return "?";
-  return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
-}
-
-function TarjetaTarea({ tarea, nombreAsignado, onClick }: { tarea: Tarea; nombreAsignado: string | null; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full space-y-2 rounded-lg border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40"
-    >
-      <p className="text-sm font-medium leading-snug">{tarea.titulo}</p>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Calendar className="size-3" />
-          {fmt(tarea.fechaInicio)}{tarea.fechaFin ? ` → ${fmt(tarea.fechaFin)}` : ""}
-        </div>
-        {tarea.numNotas > 0 && (
-          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{tarea.numNotas} nota{tarea.numNotas !== 1 ? "s" : ""}</span>
-        )}
-      </div>
-      {nombreAsignado && (
-        <div className="flex items-center gap-1.5">
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-semibold text-primary">
-            {iniciales(nombreAsignado)}
-          </span>
-          <span className="truncate text-xs text-muted-foreground">{nombreAsignado}</span>
-        </div>
-      )}
-    </button>
-  );
-}
-
 export default function TareasPage() {
-  const [tareas, setTareas] = useState<Tarea[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { tareas, empleados, cargando, error, cargar, actualizarEnLista, quitarDeLista } = useTareas();
   const [busqueda, setBusqueda] = useState("");
   const [filtroAsignado, setFiltroAsignado] = useState("");
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [tareaAbiertaId, setTareaAbiertaId] = useState<number | null>(null);
-
-  async function cargar() {
-    setCargando(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/tareas");
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setTareas(data.tareas as Tarea[]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => {
-    cargar();
-    fetch("/api/empleados").then((r) => r.json()).then((d) => { if (d.ok) setEmpleados(d.empleados as Empleado[]); }).catch(() => {});
-  }, []);
 
   const nombrePorEmail = useMemo(() => {
     const m = new Map<string, string>();
@@ -109,23 +47,13 @@ export default function TareasPage() {
     return m;
   }, [filtradas]);
 
-  function actualizarEnLista(tarea: Tarea) {
-    setTareas((prev) => {
-      const existe = prev.some((t) => t.id === tarea.id);
-      return existe ? prev.map((t) => (t.id === tarea.id ? tarea : t)) : [tarea, ...prev];
-    });
-  }
-  function quitarDeLista(id: number) {
-    setTareas((prev) => prev.filter((t) => t.id !== id));
-  }
-
   const hayFiltros = !!(busqueda || filtroAsignado);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Tareas</h1>
+          <h1 className="text-lg font-semibold">Tablero</h1>
           <p className="text-sm text-muted-foreground">Qué se ha asignado, a quién, y en qué va.</p>
         </div>
         <div className="flex items-center gap-2">
