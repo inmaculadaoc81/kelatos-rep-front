@@ -39,28 +39,28 @@ interface FlechaDef {
 const CAJAS: CajaDef[] = [
   // fuentes
   { id: "f1", x: 16, y: 16, w: 196, h: 56, titulo: "Reparaciones / Ventas", sub: "facturas, tickets, rectificativas", tono: "fuente" },
-  { id: "f2", x: 228, y: 16, w: 196, h: 56, titulo: "Libro de Compras", sub: "facturas_recibidas, validada", tono: "fuente" },
-  { id: "f3", x: 440, y: 16, w: 196, h: 56, titulo: "Importaciones / DUA", sub: "validada + pagada", tono: "fuente" },
-  { id: "f4", x: 652, y: 16, w: 196, h: 56, titulo: "Efectivo y caja", sub: "ya clasificado", tono: "fuente" },
-  { id: "f5", x: 864, y: 16, w: 196, h: 56, titulo: "Compras y pagos", sub: "pagos_compras", tono: "fuente" },
+  { id: "f2", x: 228, y: 16, w: 196, h: 56, titulo: "Libro de Compras", sub: "facturas de proveedor ya validadas", tono: "fuente" },
+  { id: "f3", x: 440, y: 16, w: 196, h: 56, titulo: "Importaciones / DUA", sub: "ya validada y pagada", tono: "fuente" },
+  { id: "f4", x: 652, y: 16, w: 196, h: 56, titulo: "Efectivo y caja", sub: "movimientos ya clasificados", tono: "fuente" },
+  { id: "f5", x: 864, y: 16, w: 196, h: 56, titulo: "Compras y pagos", sub: "pagos ya registrados", tono: "fuente" },
   // adaptadores
-  { id: "adapt", x: 16, y: 104, w: 1044, h: 52, titulo: "Adaptadores — arman el documento canónico de cada hecho", sub: "eventosDeFila · eventosDeCompra · eventosDeImportacion · eventosDeEfectivo", tono: "proceso" },
+  { id: "adapt", x: 16, y: 104, w: 1044, h: 52, titulo: "Lectura automática de lo ya emitido", sub: "convierte cada documento a un formato común (fecha + importes)", tono: "proceso" },
   // bandeja de eventos
-  { id: "eventos", x: 300, y: 190, w: 480, h: 52, titulo: "Bandeja de eventos", sub: "contabilidad.eventos — una fila por documento, nunca duplica", tono: "proceso" },
+  { id: "eventos", x: 300, y: 190, w: 480, h: 52, titulo: "Bandeja de eventos", sub: "pestaña dentro de Asientos — una fila por documento, nunca se duplica", tono: "proceso" },
   // reglas + plan de apoyo
-  { id: "reglas", x: 300, y: 292, w: 480, h: 52, titulo: "Reglas contables", sub: "versionadas — construyen las líneas Debe / Haber", tono: "proceso" },
+  { id: "reglas", x: 300, y: 292, w: 480, h: 52, titulo: "Reglas contables", sub: "con versiones — deciden a qué cuentas va cada tipo de hecho", tono: "proceso" },
   { id: "plan", x: 828, y: 292, w: 236, h: 52, titulo: "Plan contable", sub: "cuentas · bancos · categorías", tono: "apoyo" },
   // estados del asiento
   { id: "inmov", x: 16, y: 382, w: 260, h: 52, titulo: "Inmovilizado", sub: "amortización mensual: genera el asiento directo", tono: "apoyo" },
-  { id: "borrador", x: 290, y: 382, w: 140, h: 52, titulo: "BORRADOR", tono: "borrador" },
-  { id: "validado", x: 478, y: 382, w: 140, h: 52, titulo: "VALIDADO", tono: "validado" },
-  { id: "contabilizado", x: 666, y: 382, w: 190, h: 52, titulo: "CONTABILIZADO", tono: "contabilizado" },
+  { id: "borrador", x: 290, y: 382, w: 140, h: 52, titulo: "Borrador", tono: "borrador" },
+  { id: "validado", x: 478, y: 382, w: 140, h: 52, titulo: "Validado", tono: "validado" },
+  { id: "contabilizado", x: 666, y: 382, w: 190, h: 52, titulo: "Contabilizado", tono: "contabilizado" },
   // correcciones/reclasificación
-  { id: "revertir", x: 478, y: 472, w: 190, h: 48, titulo: "Revertir", sub: "motivo + fecha → contra-asiento", tono: "apoyo" },
-  { id: "pendientes", x: 700, y: 472, w: 190, h: 48, titulo: "Partidas pendientes", sub: "cta. 555 → Aplicar al banco", tono: "apoyo" },
+  { id: "revertir", x: 478, y: 472, w: 190, h: 48, titulo: "Revertir", sub: "motivo + fecha → contra-asiento nuevo", tono: "apoyo" },
+  { id: "pendientes", x: 700, y: 472, w: 190, h: 48, titulo: "Partidas pendientes", sub: "asignar el banco cuando no se conocía", tono: "apoyo" },
   // salida
-  { id: "informes", x: 300, y: 550, w: 480, h: 56, titulo: "Informes de lectura", sub: "Diario · Mayor · Sumas y Saldos · Balance/PyG · IVA · Terceros", tono: "proceso" },
-  { id: "cierre", x: 300, y: 624, w: 480, h: 40, titulo: "Cierre de ejercicio", sub: "regulariza y cierra con los asientos contabilizados del año", tono: "apoyo" },
+  { id: "informes", x: 300, y: 550, w: 480, h: 56, titulo: "Informes de lectura", sub: "Libro Diario · Libro Mayor · Sumas y Saldos · Balance y resultados · Libro de IVA · Clientes y proveedores", tono: "proceso" },
+  { id: "cierre", x: 300, y: 624, w: 480, h: 40, titulo: "Cierre de ejercicio", sub: "regulariza y cierra con lo contabilizado en el año", tono: "apoyo" },
 ];
 
 const FLECHAS: FlechaDef[] = [
@@ -69,16 +69,16 @@ const FLECHAS: FlechaDef[] = [
   { x1: 538, y1: 72, x2: 545, y2: 104 },
   { x1: 750, y1: 72, x2: 745, y2: 104 },
   { x1: 962, y1: 72, x2: 950, y2: 104 },
-  { x1: 540, y1: 156, x2: 540, y2: 190, label: "1 evento por documento" },
-  { x1: 540, y1: 242, x2: 540, y2: 292, label: "según tipo_evento", sub: "la regla activa" },
+  { x1: 540, y1: 156, x2: 540, y2: 190, label: "un evento por documento" },
+  { x1: 540, y1: 242, x2: 540, y2: 292, label: "según el tipo de hecho", sub: "la regla activa" },
   { x1: 540, y1: 344, x2: 540, y2: 382, label: "genera" },
   { x1: 828, y1: 318, x2: 780, y2: 318, label: "resuelve cuentas", labelX: 804, labelY: 306, discontinua: true },
-  { x1: 276, y1: 408, x2: 290, y2: 408, label: "directo, sin evento", labelX: 283, labelY: 372, discontinua: true },
+  { x1: 276, y1: 408, x2: 290, y2: 408, label: "directo, sin pasar por eventos", labelX: 283, labelY: 372, discontinua: true },
   { x1: 430, y1: 408, x2: 478, y2: 408, label: "Validar", labelX: 454, labelY: 400 },
   { x1: 618, y1: 408, x2: 666, y2: 408, label: "Contabilizar", labelX: 642, labelY: 400 },
   { x1: 610, y1: 434, x2: 570, y2: 472, label: "revertir", labelX: 605, labelY: 458 },
   { x1: 668, y1: 472, x2: 710, y2: 434, discontinua: true },
-  { x1: 790, y1: 434, x2: 795, y2: 472, label: "cae en 555", labelX: 825, labelY: 458 },
+  { x1: 790, y1: 434, x2: 795, y2: 472, label: "si no hay banco", labelX: 825, labelY: 458 },
   { x1: 840, y1: 472, x2: 830, y2: 434, discontinua: true },
   { x1: 745, y1: 434, x2: 610, y2: 550, label: "alimenta" },
   { x1: 540, y1: 606, x2: 540, y2: 624 },
