@@ -56,13 +56,9 @@ interface Formulario {
   ivaNoDeducible: number;
   importeTotal: number;
   moneda: string;
-  tipoCambio: number;
-  importeConvertidoEur: number;
-  retencionIrpf: number;
   operacionExenta: boolean;
   inversionSujetoPasivo: boolean;
   adquisicionIntracomunitaria: boolean;
-  regimenCriterioCaja: boolean;
   formaPago: string;
   fechaVencimiento: string;
   estadoPago: EstadoPagoFactura;
@@ -71,7 +67,6 @@ interface Formulario {
   almacen: AlmacenFactura | "";
   pedidoId: string;
   stockPedidoId: string;
-  centroCoste: string;
   estadoRevision: EstadoRevisionFactura;
   duplicadoConfirmado: boolean;
   observacionesInternas: string;
@@ -83,11 +78,11 @@ function vacio(borrador?: BorradorFactura): Formulario {
     fechaExpedicion: new Date().toISOString().slice(0, 10), fechaOperacion: "",
     fechaRecepcion: new Date().toISOString().slice(0, 10), tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
     baseImponible: borrador?.baseImponible || 0, tipoIva: 21, cuotaIvaSoportado: 0,
-    cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR", tipoCambio: 0, importeConvertidoEur: 0, retencionIrpf: 0,
-    operacionExenta: false, inversionSujetoPasivo: false, adquisicionIntracomunitaria: false, regimenCriterioCaja: false,
+    cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR",
+    operacionExenta: false, inversionSujetoPasivo: false, adquisicionIntracomunitaria: false,
     formaPago: "", fechaVencimiento: "", estadoPago: "pendiente", referenciaBancaria: "",
     categoria: "", almacen: borrador ? "servicio" : "", pedidoId: borrador?.pedidoId || "", stockPedidoId: "",
-    centroCoste: "", estadoRevision: "pendiente", duplicadoConfirmado: false, observacionesInternas: "",
+    estadoRevision: "pendiente", duplicadoConfirmado: false, observacionesInternas: "",
   };
 }
 
@@ -98,12 +93,12 @@ function desdeExistente(f: FacturaRecibida): Formulario {
     tipoDocumento: f.tipoDocumento || "", facturaRectificadaId: f.facturaRectificadaId, descripcion: f.descripcion,
     baseImponible: f.baseImponible, tipoIva: f.tipoIva ?? 21,
     cuotaIvaSoportado: f.cuotaIvaSoportado ?? 0, cuotaIvaDeducible: f.cuotaIvaDeducible, ivaNoDeducible: f.ivaNoDeducible ?? 0,
-    importeTotal: f.importeTotal, moneda: f.moneda, tipoCambio: f.tipoCambio ?? 0, importeConvertidoEur: f.importeConvertidoEur ?? 0,
-    retencionIrpf: f.retencionIrpf ?? 0, operacionExenta: f.operacionExenta, inversionSujetoPasivo: f.inversionSujetoPasivo,
-    adquisicionIntracomunitaria: f.adquisicionIntracomunitaria, regimenCriterioCaja: f.regimenCriterioCaja, formaPago: f.formaPago,
+    importeTotal: f.importeTotal, moneda: f.moneda,
+    operacionExenta: f.operacionExenta, inversionSujetoPasivo: f.inversionSujetoPasivo,
+    adquisicionIntracomunitaria: f.adquisicionIntracomunitaria, formaPago: f.formaPago,
     fechaVencimiento: f.fechaVencimiento || "", estadoPago: f.estadoPago, referenciaBancaria: f.referenciaBancaria,
     categoria: f.categoria || "", almacen: f.almacen || "", pedidoId: f.pedidoId || "",
-    stockPedidoId: f.stockPedidoId ? String(f.stockPedidoId) : "", centroCoste: f.centroCoste,
+    stockPedidoId: f.stockPedidoId ? String(f.stockPedidoId) : "",
     estadoRevision: f.estadoRevision, duplicadoConfirmado: f.duplicadoConfirmado, observacionesInternas: f.observacionesInternas,
   };
 }
@@ -382,10 +377,8 @@ export function FacturaRecibidaFormDialog({
         descripcion: datos.descripcion.trim(), baseImponible: datos.baseImponible,
         tipoIva: datos.tipoIva || undefined, cuotaIvaSoportado: datos.cuotaIvaSoportado || undefined, cuotaIvaDeducible: datos.cuotaIvaDeducible,
         ivaNoDeducible: datos.ivaNoDeducible || undefined, importeTotal: datos.importeTotal, moneda: datos.moneda.trim() || "EUR",
-        tipoCambio: datos.tipoCambio || undefined, importeConvertidoEur: datos.importeConvertidoEur || undefined,
-        retencionIrpf: datos.retencionIrpf || undefined,
         operacionExenta: datos.operacionExenta, inversionSujetoPasivo: datos.inversionSujetoPasivo,
-        adquisicionIntracomunitaria: datos.adquisicionIntracomunitaria, regimenCriterioCaja: datos.regimenCriterioCaja,
+        adquisicionIntracomunitaria: datos.adquisicionIntracomunitaria,
         formaPago: datos.formaPago.trim(), fechaVencimiento: datos.fechaVencimiento || undefined, estadoPago: datos.estadoPago,
         referenciaBancaria: datos.referenciaBancaria.trim(), categoria: datos.categoria || undefined, almacen: datos.almacen || undefined,
         // Se envían siempre (incluso vacíos) en vez de "|| undefined": un
@@ -393,7 +386,7 @@ export function FacturaRecibidaFormDialog({
         // actual, conservaría el valor viejo — así "Quitar" en el picker
         // nunca llegaría a desvincular de verdad el pedido.
         pedidoId: datos.pedidoId.trim(), stockPedidoId: datos.stockPedidoId ? Number(datos.stockPedidoId) : null,
-        centroCoste: datos.centroCoste.trim(), estadoRevision: datos.estadoRevision, observacionesInternas: datos.observacionesInternas.trim(),
+        estadoRevision: datos.estadoRevision, observacionesInternas: datos.observacionesInternas.trim(),
         origen: !esEdicion && origenAutomatico ? "automatico" : undefined,
       };
       const url = esEdicion ? `/api/facturas-recibidas/${facturaExistente!.id}` : "/api/facturas-recibidas";
@@ -810,20 +803,8 @@ export function FacturaRecibidaFormDialog({
                   <DecimalInput id="frTotal" className={cn(CLASE_IMPORTE, "font-semibold")} value={datos.importeTotal} onChange={(n) => set("importeTotal", n)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="frIrpf">Retención de IRPF (€)</Label>
-                  <DecimalInput id="frIrpf" className={CLASE_IMPORTE} value={datos.retencionIrpf} onChange={(n) => set("retencionIrpf", n)} />
-                </div>
-                <div className="space-y-1.5">
                   <Label htmlFor="frMoneda">Moneda</Label>
                   <Input id="frMoneda" value={datos.moneda} onChange={(e) => set("moneda", e.target.value.toUpperCase())} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="frTipoCambio">Tipo de cambio</Label>
-                  <DecimalInput id="frTipoCambio" className={CLASE_IMPORTE} value={datos.tipoCambio} onChange={(n) => set("tipoCambio", n)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="frConvertidoEur">Importe convertido a EUR (€)</Label>
-                  <DecimalInput id="frConvertidoEur" className={CLASE_IMPORTE} value={datos.importeConvertidoEur} onChange={(n) => set("importeConvertidoEur", n)} />
                 </div>
               </div>
 
@@ -845,9 +826,6 @@ export function FacturaRecibidaFormDialog({
                   </label>
                   <label className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Checkbox checked={datos.adquisicionIntracomunitaria} onCheckedChange={(v) => set("adquisicionIntracomunitaria", v === true)} /> Adquisición intracomunitaria / importación
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Checkbox checked={datos.regimenCriterioCaja} onCheckedChange={(v) => set("regimenCriterioCaja", v === true)} /> Régimen especial del criterio de caja
                   </label>
                 </div>
               </div>
@@ -946,10 +924,6 @@ export function FacturaRecibidaFormDialog({
                     </div>
                   </div>
                 )}
-                <div className="space-y-1.5">
-                  <Label htmlFor="frCentroCoste">Centro de coste / departamento</Label>
-                  <Input id="frCentroCoste" value={datos.centroCoste} onChange={(e) => set("centroCoste", e.target.value)} />
-                </div>
                 <div className="space-y-1.5">
                   <Label>Estado de revisión</Label>
                   <Select value={datos.estadoRevision} onValueChange={(v) => set("estadoRevision", (v === "validada" ? "validada" : "pendiente") as EstadoRevisionFactura)}>
