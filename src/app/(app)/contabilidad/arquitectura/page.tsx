@@ -1,6 +1,141 @@
 import { Diagram } from "@/lib/icons";
 import { Cabecera, InfoVista } from "../_ui";
 
+// ───────────── diagrama de conexiones ─────────────
+type TonoCaja = "fuente" | "proceso" | "borrador" | "validado" | "contabilizado" | "apoyo";
+
+const TONOS: Record<TonoCaja, string> = {
+  fuente: "text-muted-foreground",
+  proceso: "text-sky-600 dark:text-sky-400",
+  borrador: "text-amber-600 dark:text-amber-400",
+  validado: "text-sky-600 dark:text-sky-400",
+  contabilizado: "text-emerald-600 dark:text-emerald-400",
+  apoyo: "text-muted-foreground",
+};
+
+interface CajaDef {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  titulo: string;
+  sub?: string;
+  tono: TonoCaja;
+}
+
+interface FlechaDef {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  label?: string;
+  sub?: string;
+  labelX?: number;
+  labelY?: number;
+  discontinua?: boolean;
+}
+
+const CAJAS: CajaDef[] = [
+  // fuentes
+  { id: "f1", x: 16, y: 16, w: 196, h: 56, titulo: "Reparaciones / Ventas", sub: "facturas, tickets, rectificativas", tono: "fuente" },
+  { id: "f2", x: 228, y: 16, w: 196, h: 56, titulo: "Libro de Compras", sub: "facturas_recibidas, validada", tono: "fuente" },
+  { id: "f3", x: 440, y: 16, w: 196, h: 56, titulo: "Importaciones / DUA", sub: "validada + pagada", tono: "fuente" },
+  { id: "f4", x: 652, y: 16, w: 196, h: 56, titulo: "Efectivo y caja", sub: "ya clasificado", tono: "fuente" },
+  { id: "f5", x: 864, y: 16, w: 196, h: 56, titulo: "Compras y pagos", sub: "pagos_compras", tono: "fuente" },
+  // adaptadores
+  { id: "adapt", x: 16, y: 104, w: 1044, h: 52, titulo: "Adaptadores — arman el documento canónico de cada hecho", sub: "eventosDeFila · eventosDeCompra · eventosDeImportacion · eventosDeEfectivo", tono: "proceso" },
+  // bandeja de eventos
+  { id: "eventos", x: 300, y: 190, w: 480, h: 52, titulo: "Bandeja de eventos", sub: "contabilidad.eventos — una fila por documento, nunca duplica", tono: "proceso" },
+  // reglas + plan de apoyo
+  { id: "reglas", x: 300, y: 292, w: 480, h: 52, titulo: "Reglas contables", sub: "versionadas — construyen las líneas Debe / Haber", tono: "proceso" },
+  { id: "plan", x: 828, y: 292, w: 236, h: 52, titulo: "Plan contable", sub: "cuentas · bancos · categorías", tono: "apoyo" },
+  // estados del asiento
+  { id: "inmov", x: 16, y: 382, w: 260, h: 52, titulo: "Inmovilizado", sub: "amortización mensual: genera el asiento directo", tono: "apoyo" },
+  { id: "borrador", x: 290, y: 382, w: 140, h: 52, titulo: "BORRADOR", tono: "borrador" },
+  { id: "validado", x: 478, y: 382, w: 140, h: 52, titulo: "VALIDADO", tono: "validado" },
+  { id: "contabilizado", x: 666, y: 382, w: 190, h: 52, titulo: "CONTABILIZADO", tono: "contabilizado" },
+  // correcciones/reclasificación
+  { id: "revertir", x: 478, y: 472, w: 190, h: 48, titulo: "Revertir", sub: "motivo + fecha → contra-asiento", tono: "apoyo" },
+  { id: "pendientes", x: 700, y: 472, w: 190, h: 48, titulo: "Partidas pendientes", sub: "cta. 555 → Aplicar al banco", tono: "apoyo" },
+  // salida
+  { id: "informes", x: 300, y: 550, w: 480, h: 56, titulo: "Informes de lectura", sub: "Diario · Mayor · Sumas y Saldos · Balance/PyG · IVA · Terceros", tono: "proceso" },
+  { id: "cierre", x: 300, y: 624, w: 480, h: 40, titulo: "Cierre de ejercicio", sub: "regulariza y cierra con los asientos contabilizados del año", tono: "apoyo" },
+];
+
+const FLECHAS: FlechaDef[] = [
+  { x1: 114, y1: 72, x2: 130, y2: 104 },
+  { x1: 326, y1: 72, x2: 340, y2: 104 },
+  { x1: 538, y1: 72, x2: 545, y2: 104 },
+  { x1: 750, y1: 72, x2: 745, y2: 104 },
+  { x1: 962, y1: 72, x2: 950, y2: 104 },
+  { x1: 540, y1: 156, x2: 540, y2: 190, label: "1 evento por documento" },
+  { x1: 540, y1: 242, x2: 540, y2: 292, label: "según tipo_evento", sub: "la regla activa" },
+  { x1: 540, y1: 344, x2: 540, y2: 382, label: "genera" },
+  { x1: 828, y1: 318, x2: 780, y2: 318, label: "resuelve cuentas", labelX: 804, labelY: 306, discontinua: true },
+  { x1: 276, y1: 408, x2: 290, y2: 408, label: "directo, sin evento", labelX: 283, labelY: 372, discontinua: true },
+  { x1: 430, y1: 408, x2: 478, y2: 408, label: "Validar", labelX: 454, labelY: 400 },
+  { x1: 618, y1: 408, x2: 666, y2: 408, label: "Contabilizar", labelX: 642, labelY: 400 },
+  { x1: 610, y1: 434, x2: 570, y2: 472, label: "revertir", labelX: 605, labelY: 458 },
+  { x1: 668, y1: 472, x2: 710, y2: 434, discontinua: true },
+  { x1: 790, y1: 434, x2: 795, y2: 472, label: "cae en 555", labelX: 825, labelY: 458 },
+  { x1: 840, y1: 472, x2: 830, y2: 434, discontinua: true },
+  { x1: 745, y1: 434, x2: 610, y2: 550, label: "alimenta" },
+  { x1: 540, y1: 606, x2: 540, y2: 624 },
+];
+
+function DiagramaFlujo() {
+  return (
+    <figure className="rounded-lg border bg-card p-3">
+      <svg viewBox="0 0 1080 680" role="img" aria-label="Diagrama de conexiones del módulo de Contabilidad: los documentos de origen pasan por adaptadores, se registran como eventos, el motor de reglas los convierte en asientos que recorren Borrador, Validado y Contabilizado, y desde ahí alimentan los informes de lectura y el cierre de ejercicio.">
+        <defs>
+          <marker id="arq-flecha" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="currentColor" />
+          </marker>
+        </defs>
+        <g className="text-border" opacity="0.9">
+          {FLECHAS.map((f, i) => (
+            <g key={i} className={f.discontinua ? "text-muted-foreground/70" : "text-foreground/60"}>
+              <line x1={f.x1} y1={f.y1} x2={f.x2} y2={f.y2} stroke="currentColor" strokeWidth={1.5} strokeDasharray={f.discontinua ? "4 3" : undefined} markerEnd="url(#arq-flecha)" />
+            </g>
+          ))}
+        </g>
+        {FLECHAS.filter((f) => f.label).map((f, i) => (
+          <g key={i} className="fill-muted-foreground">
+            <text x={f.labelX ?? (f.x1 + f.x2) / 2} y={(f.labelY ?? (f.y1 + f.y2) / 2) - (f.sub ? 8 : 3)} textAnchor="middle" fontSize="11" className="fill-foreground">
+              {f.label}
+            </text>
+            {f.sub && (
+              <text x={f.labelX ?? (f.x1 + f.x2) / 2} y={(f.labelY ?? (f.y1 + f.y2) / 2) + 8} textAnchor="middle" fontSize="9.5">
+                {f.sub}
+              </text>
+            )}
+          </g>
+        ))}
+        {CAJAS.map((c) => (
+          <g key={c.id} className={TONOS[c.tono]}>
+            <rect x={c.x} y={c.y} width={c.w} height={c.h} rx={8} fill="currentColor" fillOpacity={0.06} stroke="currentColor" strokeOpacity={0.55} strokeWidth={1.3} strokeDasharray={c.tono === "apoyo" ? "4 3" : undefined} />
+            <text x={c.x + c.w / 2} y={c.y + (c.sub ? c.h / 2 - 4 : c.h / 2 + 4)} textAnchor="middle" fontSize="12" fontWeight={600} className="fill-foreground">
+              {c.titulo}
+            </text>
+            {c.sub && (
+              <text x={c.x + c.w / 2} y={c.y + c.h / 2 + 13} textAnchor="middle" fontSize="9.5" className="fill-muted-foreground">
+                {c.sub}
+              </text>
+            )}
+          </g>
+        ))}
+      </svg>
+      <figcaption className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>Los documentos de origen se convierten en eventos, las reglas los convierten en asientos, y solo lo Contabilizado alimenta el resto.</span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-px w-4 border-t border-dashed border-current" /> conexión de apoyo (no es el flujo principal)
+        </span>
+      </figcaption>
+    </figure>
+  );
+}
+
 interface Vista {
   ruta: string | null;
   titulo: string;
@@ -288,7 +423,7 @@ function Bloque({ v }: { v: Vista }) {
 
 export default function ArquitecturaPage() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 p-6">
       <Cabecera icono={<Diagram className="size-4.5" />} titulo="Arquitectura del módulo" descripcion="Cada vista de Contabilidad: qué es, qué lee y qué efectos colaterales tiene tocarla — para decidir qué mantener." />
       <InfoVista>
         Esto es un mapa de referencia, no una pantalla operativa: cada bloque explica qué pasa de verdad al usarla (verificado contra el código real del servidor, no solo contra lo que se ve en pantalla), para poder decidir con criterio qué vistas conservar, simplificar o descartar.
@@ -307,6 +442,8 @@ export default function ArquitecturaPage() {
           ))}
         </div>
       </details>
+
+      <DiagramaFlujo />
 
       <div className="space-y-2">
         {VISTAS.map((v) => (
