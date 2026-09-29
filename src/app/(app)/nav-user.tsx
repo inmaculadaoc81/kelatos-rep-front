@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, Global, Cpu, Sms } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -67,7 +67,8 @@ export function NavUser({ session }: { session: Session | null }) {
   const enAgentesV2 = pathname?.startsWith("/agentes-v2") ?? false;
   const enAgentes = (pathname?.startsWith("/agentes") ?? false) && !enAgentesV2;
   const enMails = pathname?.startsWith("/mails") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails;
+  const enTareas = pathname?.startsWith("/tareas") ?? false;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerMails = esAdmin || esSuperadmin(email);
@@ -142,6 +143,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/" />}>
                   <IconoDashboard icon={ClipboardTick} className="from-amber-500 to-orange-600" />
                   Reparaciones
+                </DropdownMenuItem>
+              )}
+              {!enTareas && (
+                <DropdownMenuItem render={<Link href="/tareas" />}>
+                  <IconoDashboard icon={ClipboardText} className="from-fuchsia-500 to-purple-600" />
+                  Tareas
                 </DropdownMenuItem>
               )}
               {muestraTransferencias && !enTransferencias && (
