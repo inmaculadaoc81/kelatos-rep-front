@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar, Refresh2, ExportSquare, TickCircle, CloseCircle } from "@/lib/icons";
+import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar, Refresh2, ExportSquare, TickCircle, CloseCircle, Building } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,6 +199,32 @@ function CampoResumen({ etiqueta, valor, advertencia, incierto }: { etiqueta: st
 }
 
 const CLASE_IMPORTE = "text-right tabular-nums";
+
+/** Datos fiscales de la propia empresa (el receptor de TODA factura recibida —
+    nunca cambia entre facturas, así que no tiene sentido que la IA los busque
+    ni que se guarden por factura). Mismos datos ya usados en las plantillas de
+    factura/presupuesto que se emiten a clientes (server.js) — si cambian ahí,
+    cambiar también aquí. Petición del usuario, 2026-09-29: "todas las facturas
+    pues va a tener que tener este ahí cargado en gris en el modal". */
+const DATOS_EMPRESA = {
+  razonSocial: "Affirma Technology Group S.L.",
+  nombreComercial: "Kelatos Informática",
+  cif: "B72990443",
+  direccion: "Blasco de Garay 63 BJ 2, 28015 Madrid",
+};
+
+function DatosEmpresaReceptora() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-dashed bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
+      <span className="flex items-center gap-1.5 font-medium text-foreground">
+        <Building className="size-3.5" /> Receptor (siempre el mismo)
+      </span>
+      <span>{DATOS_EMPRESA.razonSocial} <span className="text-muted-foreground/70">({DATOS_EMPRESA.nombreComercial})</span></span>
+      <span>CIF: {DATOS_EMPRESA.cif}</span>
+      <span>{DATOS_EMPRESA.direccion}</span>
+    </div>
+  );
+}
 
 /**
  * Formulario de Facturas Recibidas — todas las secciones de la hoja de
@@ -575,6 +601,8 @@ export function FacturaRecibidaFormDialog({
           <div className="flex min-h-0 flex-1">
           <ScrollArea className="min-h-0 min-w-0 flex-1">
           <div className="space-y-4 p-4">
+            <DatosEmpresaReceptora />
+
             {mostrarAvisoDuplicado && (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
                 <span className="flex items-start gap-2 text-amber-800 dark:text-amber-300">
