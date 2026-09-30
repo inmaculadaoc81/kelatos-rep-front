@@ -22,6 +22,7 @@ import { Category } from "@/lib/icons";
 import type { DepartamentoResumen } from "@/lib/agentes-v2";
 import { NavUser } from "../(app)/nav-user";
 import { GRUPOS_ANTES, GRUPOS_DESPUES, ICONO_DEPARTAMENTO, type GrupoNav } from "./navegacion";
+import { OrganizacionSwitcher } from "./organizacion-switcher";
 
 function Grupo({ grupo, pathname, pendientes = 0, enCurso = 0 }: { grupo: GrupoNav; pathname: string; pendientes?: number; enCurso?: number }) {
   return (
@@ -108,6 +109,7 @@ export function AgentesV2Sidebar({ session }: { session: Session | null }) {
           </Link>
           <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
         </div>
+        <OrganizacionSwitcher />
       </SidebarHeader>
       <SidebarContent>
         {GRUPOS_ANTES.map((g) => (
