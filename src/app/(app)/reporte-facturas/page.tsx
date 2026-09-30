@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Refresh2, SearchNormal1, CloseCircle, ExportSquare, DocumentDownload, ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, Clock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { TipoFactura } from "@/lib/facturas-cliente";
-import { FacturaConDesglose, RF_TIPOS_FILTRABLES, RF_TIPO_ESTILO, generarCsvReporte, descargarCsv, numeroDocumento } from "@/lib/reporte-facturas";
+import { FacturaConDesglose, RF_TIPOS_FILTRABLES, RF_TIPO_ESTILO, generarCsvReporte, descargarCsv, descargarXlsxReporte, numeroDocumento } from "@/lib/reporte-facturas";
 import { ColumnaFiltro } from "../facturas-clientes/columna-filtro";
 import { ColumnaFiltroRango, RangoFiltro } from "./columna-filtro-rango";
 import { HistorialExportacionesDialog } from "./historial-exportaciones-dialog";
@@ -86,6 +87,7 @@ export default function ReporteFacturasPage() {
   const [pagina, setPagina] = useState(1);
   const [filasPorPagina, setFilasPorPagina] = useState(20);
   const [historialAbierto, setHistorialAbierto] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
 
   async function cargar(desde: string, hasta: string) {
     setCargando(true);
@@ -244,38 +246,49 @@ export default function ReporteFacturasPage() {
     setPagina(1);
   }
 
-  function exportarCsv() {
-    if (!datos || !visibles.length) return;
+  function opcionesExportacion() {
     const series: string[] = [];
     if (serie1) series.push("1");
     if (serie3) series.push("3");
     if (serie4) series.push("4");
     const seriesFinal = series.length ? series : ["1", "3", "4"];
-    const csv = generarCsvReporte(visibles, {
-      fechaDesde: datos.fechaDesde,
-      fechaHasta: datos.fechaHasta,
-      series: seriesFinal,
-      docDesde,
-      docHasta,
-      usuario: "",
-    });
-    descargarCsv(csv, `ReporteFacturas_${datos.fechaDesde.replace(/-/g, "")}_${datos.fechaHasta.replace(/-/g, "")}.csv`);
+    return { fechaDesde: datos!.fechaDesde, fechaHasta: datos!.fechaHasta, series: seriesFinal, docDesde, docHasta, usuario: "" };
+  }
 
+  function registrarExportacion(opciones: ReturnType<typeof opcionesExportacion>) {
     // Constancia del historial de exportaciones — best-effort, nunca bloquea la descarga.
     fetch("/api/reporte-facturas/exportaciones", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        fechaDesde: datos.fechaDesde,
-        fechaHasta: datos.fechaHasta,
-        series: seriesFinal,
-        docDesde,
-        docHasta,
+        ...opciones,
         filtroTexto: clienteFiltro.trim(),
         numFacturas: visibles.length,
         totalExportado: visibles.reduce((s, f) => s + f.totalConIva, 0),
       }),
     }).catch(() => {});
+  }
+
+  function exportarCsv() {
+    if (!datos || !visibles.length) return;
+    const opciones = opcionesExportacion();
+    const csv = generarCsvReporte(visibles, opciones);
+    descargarCsv(csv, `ReporteFacturas_${datos.fechaDesde.replace(/-/g, "")}_${datos.fechaHasta.replace(/-/g, "")}.csv`);
+    registrarExportacion(opciones);
+  }
+
+  async function exportarXlsx() {
+    if (!datos || !visibles.length || exportandoXlsx) return;
+    setExportandoXlsx(true);
+    try {
+      const opciones = opcionesExportacion();
+      await descargarXlsxReporte(visibles, opciones, `ReporteFacturas_${datos.fechaDesde.replace(/-/g, "")}_${datos.fechaHasta.replace(/-/g, "")}.xlsx`);
+      registrarExportacion(opciones);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el XLSX");
+    } finally {
+      setExportandoXlsx(false);
+    }
   }
 
   return (
@@ -295,6 +308,11 @@ export default function ReporteFacturasPage() {
           {visibles.length > 0 && (
             <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={exportarCsv}>
               <DocumentDownload className="size-3.5" /> CSV
+            </Button>
+          )}
+          {visibles.length > 0 && (
+            <Button size="sm" className="gap-1.5 bg-teal-600 text-white hover:bg-teal-700" onClick={exportarXlsx} disabled={exportandoXlsx}>
+              <DocumentDownload className={cn("size-3.5", exportandoXlsx && "animate-pulse")} /> {exportandoXlsx ? "Generando…" : "XLSX"}
             </Button>
           )}
           <Button size="sm" variant="secondary" disabled title="PDF no disponible" className="cursor-not-allowed opacity-50">

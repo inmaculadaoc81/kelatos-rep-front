@@ -1,4 +1,5 @@
 import { FacturaCliente, TipoFactura } from "@/lib/facturas-cliente";
+import type { SheetData } from "write-excel-file/browser";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -151,4 +152,86 @@ export function descargarCsv(contenido: string, nombre: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+const FORMATO_EURO = "#,##0.00 €";
+const NEGRITA = { fontWeight: "bold" as const };
+
+/**
+ * Mismo contenido que generarCsvReporte() (cabecera con período/series/fecha
+ * de generación, tabla y fila de totales) pero como hoja de cálculo real:
+ * los importes son celdas numéricas de verdad (con formato de moneda), no el
+ * truco de coma-como-texto que necesita el CSV — se abre en Excel/Sheets sin
+ * que haya que "convertir a número" cada columna a mano.
+ */
+function filasXlsxReporte(
+  facturas: FacturaConDesglose[],
+  opciones: { fechaDesde: string; fechaHasta: string; series: string[]; docDesde: number; docHasta: number; usuario: string }
+) {
+  const seriesLabel = opciones.series.map((s) => `Serie ${s}`).join(", ");
+  const docsLabel = opciones.docDesde > 0 || opciones.docHasta < 999999 ? `N.º ${opciones.docDesde} — ${opciones.docHasta}` : "Todos";
+
+  const filas: SheetData = [
+    ["REPORTE DE FACTURAS", "Kelatos"],
+    ["Período", `${fechaCsv(opciones.fechaDesde)} — ${fechaCsv(opciones.fechaHasta)}`],
+    ["Series", seriesLabel, "Documentos", docsLabel],
+    ["Generado", new Date().toLocaleString("es-ES"), "Usuario", opciones.usuario],
+    [],
+    ["S.", "N.º Factura", "Fecha", "Cód. Cliente", "Cliente", "N.I.F./C.I.F.", "Base Imp.", "% IVA", "Cuota IVA", "Rec. Eq.", "Total"].map((v) => ({ value: v, ...NEGRITA })),
+  ];
+
+  let totBase = 0;
+  let totIva = 0;
+  let totTotal = 0;
+  for (const f of facturas) {
+    const numPart = f.numero.includes("-") ? f.numero.split("-")[1] : f.numero;
+    filas.push([
+      f.serie,
+      { value: numPart, type: String }, // texto: conserva los ceros a la izquierda ("000001")
+      fechaCsv(f.fecha),
+      f.codigoCliente,
+      f.cliente,
+      f.dniCif,
+      { value: f.baseImponible, type: Number, format: FORMATO_EURO },
+      21,
+      { value: f.iva, type: Number, format: FORMATO_EURO },
+      { value: 0, type: Number, format: FORMATO_EURO },
+      { value: f.totalConIva, type: Number, format: FORMATO_EURO },
+    ]);
+    totBase += f.baseImponible;
+    totIva += f.iva;
+    totTotal += f.totalConIva;
+  }
+
+  filas.push([]);
+  filas.push([
+    "", "", "", "",
+    { value: "TOTALES", ...NEGRITA },
+    "",
+    { value: totBase, type: Number, format: FORMATO_EURO, ...NEGRITA },
+    "",
+    { value: totIva, type: Number, format: FORMATO_EURO, ...NEGRITA },
+    { value: 0, type: Number, format: FORMATO_EURO, ...NEGRITA },
+    { value: totTotal, type: Number, format: FORMATO_EURO, ...NEGRITA },
+  ]);
+  filas.push(["", "", "", "", "", "", "", "", "", "", `${facturas.length} facturas`]);
+
+  return filas;
+}
+
+/**
+ * Genera el .xlsx y dispara la descarga en el navegador — import dinámico
+ * porque write-excel-file/browser usa un Web Worker: no debe entrar en el
+ * bundle del servidor (este archivo también lo importa la ruta /api, que
+ * solo necesita calcularDesglose).
+ */
+export async function descargarXlsxReporte(
+  facturas: FacturaConDesglose[],
+  opciones: { fechaDesde: string; fechaHasta: string; series: string[]; docDesde: number; docHasta: number; usuario: string },
+  nombre: string
+) {
+  const { default: writeExcelFile } = await import("write-excel-file/browser");
+  await writeExcelFile(filasXlsxReporte(facturas, opciones), {
+    columns: Array.from({ length: 11 }, () => ({ width: 14 })),
+  }).toFile(nombre);
 }
