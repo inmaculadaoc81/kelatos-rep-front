@@ -203,29 +203,65 @@ export default function CobrosReparacionesPage() {
               </Button>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={filtroForma || "todas"} onValueChange={(v) => v && setFiltroForma(v === "todas" ? "" : v)}>
-              <SelectTrigger className="w-auto min-w-40"><SelectValue placeholder="Forma de pago" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Forma de pago: Todas</SelectItem>
-                {formasDisponibles.map((f) => <SelectItem key={f} value={f}>{ETIQUETA_FORMA_PAGO[f] || f}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filtroEstado || "todos"} onValueChange={(v) => v && setFiltroEstado(v === "todos" ? "" : v)}>
-              <SelectTrigger className="w-auto min-w-32"><SelectValue placeholder="Estado" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Estado: Todos</SelectItem>
-                <SelectItem value="Cobrado">Cobrado</SelectItem>
-                <SelectItem value="Pendiente">Pendiente</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filtroBanco || "todos"} onValueChange={(v) => v && setFiltroBanco(v === "todos" ? "" : v)}>
-              <SelectTrigger className="w-auto min-w-36"><SelectValue placeholder="Banco" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Banco: Todos</SelectItem>
-                {bancosDisponibles.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs whitespace-nowrap text-muted-foreground">Forma de pago</span>
+              <Select value={filtroForma || "todas"} onValueChange={(v) => v && setFiltroForma(v === "todas" ? "" : v)}>
+                <SelectTrigger className="w-auto min-w-32">
+                  <SelectValue placeholder="Forma de pago">
+                    {(v: unknown) => (v === "todas" ? "Todas" : ETIQUETA_FORMA_PAGO[v as string] || (v as string))}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  {formasDisponibles.map((f) => <SelectItem key={f} value={f}>{ETIQUETA_FORMA_PAGO[f] || f}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs whitespace-nowrap text-muted-foreground">Estado</span>
+              <div className="flex items-center gap-1">
+                <Button type="button" size="sm" variant={filtroEstado === "" ? "secondary" : "outline"} onClick={() => setFiltroEstado("")}>
+                  Todos
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className={filtroEstado === "Pendiente" ? "border-amber-500/50 bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400" : ""}
+                  onClick={() => setFiltroEstado(filtroEstado === "Pendiente" ? "" : "Pendiente")}
+                >
+                  <Clock className="size-3.5" /> Pendiente
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className={filtroEstado === "Cobrado" ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400" : ""}
+                  onClick={() => setFiltroEstado(filtroEstado === "Cobrado" ? "" : "Cobrado")}
+                >
+                  <TickCircle className="size-3.5" /> Cobrado
+                </Button>
+              </div>
+            </div>
+
+            {bancosDisponibles.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs whitespace-nowrap text-muted-foreground">Banco</span>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button type="button" size="sm" variant={filtroBanco === "" ? "secondary" : "outline"} onClick={() => setFiltroBanco("")}>
+                    Todos
+                  </Button>
+                  {bancosDisponibles.map((b) => (
+                    <Button key={b} type="button" size="sm" variant={filtroBanco === b ? "secondary" : "outline"} onClick={() => setFiltroBanco(filtroBanco === b ? "" : b)}>
+                      {b}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <span className="ml-auto text-xs text-muted-foreground">{itemsFiltrados.length} de {items.length}</span>
           </div>
         </div>
