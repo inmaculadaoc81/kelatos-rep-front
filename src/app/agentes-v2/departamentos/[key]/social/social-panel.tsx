@@ -50,10 +50,10 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
   const pendiente = NAV.find((n) => n.valor === vista && !n.activo);
 
   return (
-    <div>
-      {cabecera}
-      <div className="grid gap-5 md:grid-cols-[190px_minmax(0,1fr)]">
-        <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible md:border-r md:border-border md:pr-4" aria-label="Redes sociales">
+    <div className="-m-6 grid items-stretch md:min-h-[calc(100vh-3.5rem)] md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-5 p-6">
+        {cabecera}
+        <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible" aria-label="Redes sociales">
           {NAV.map((n, i) => (
             <button
               key={n.valor}
@@ -73,17 +73,17 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
           ))}
           <button type="button" onClick={() => setMarca(true)} className="mt-2 hidden rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/60 md:block">Marca…</button>
         </nav>
-        <main className="min-w-0">
-          {vista === "overview" && <Resumen d={d} recargar={recargar} ir={cambiar} />}
-          {vista === "carruseles" && (abierto === null ? <CarruselesLista onAbrir={setAbierto} /> : <EditorCarrusel key={abierto} id={abierto} onVolver={() => setAbierto(null)} />)}
-          {vista === "posts" && (abiertoPost === null ? <PostsLista onAbrir={setAbiertoPost} /> : <EditorPost key={abiertoPost} id={abiertoPost} onVolver={() => setAbiertoPost(null)} />)}
-          {vista === "reels" && (abiertoReel === null ? <ReelsLista onAbrir={setAbiertoReel} /> : <EditorReel key={abiertoReel} id={abiertoReel} onVolver={() => setAbiertoReel(null)} />)}
-          {vista === "temas" && <Temas onAbrirCarrusel={abrirCarrusel} />}
-          {vista === "estrategia" && <Estrategia />}
-          {vista === "horario" && <PestanaHorario d={d} recargar={recargar} />}
-          {pendiente && <Vacio titulo={`${pendiente.texto}: próximamente`} texto={`${pendiente.ayuda}. Todavía no está disponible.`} />}
-        </main>
       </div>
+      <main className="min-w-0 border-t bg-muted p-6 md:border-t-0 md:border-l">
+        {vista === "overview" && <Resumen d={d} recargar={recargar} ir={cambiar} />}
+        {vista === "carruseles" && (abierto === null ? <CarruselesLista onAbrir={setAbierto} /> : <EditorCarrusel key={abierto} id={abierto} onVolver={() => setAbierto(null)} />)}
+        {vista === "posts" && (abiertoPost === null ? <PostsLista onAbrir={setAbiertoPost} /> : <EditorPost key={abiertoPost} id={abiertoPost} onVolver={() => setAbiertoPost(null)} />)}
+        {vista === "reels" && (abiertoReel === null ? <ReelsLista onAbrir={setAbiertoReel} /> : <EditorReel key={abiertoReel} id={abiertoReel} onVolver={() => setAbiertoReel(null)} />)}
+        {vista === "temas" && <Temas onAbrirCarrusel={abrirCarrusel} />}
+        {vista === "estrategia" && <Estrategia />}
+        {vista === "horario" && <PestanaHorario d={d} recargar={recargar} />}
+        {pendiente && <Vacio titulo={`${pendiente.texto}: próximamente`} texto={`${pendiente.ayuda}. Todavía no está disponible.`} />}
+      </main>
       <MarcaDialog abierto={marca} onCerrar={() => setMarca(false)} />
     </div>
   );
