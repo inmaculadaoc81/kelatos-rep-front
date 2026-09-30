@@ -4,6 +4,7 @@ import { esSuperadmin } from "@/lib/superadmin";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AgentesV2Sidebar } from "./sidebar";
 import { AgentesV2Header } from "./header";
+import { OrganizacionProvider } from "./organizacion-context";
 
 // AI Marketing System: vista aparte, fuera de (app)/ (mismo patrón que Agentes, Mails y Asistencia).
 // Acceso: administradores y superadmins. Se repite en src/proxy.ts (el prefijo /agentes ya lo cubre) y en
@@ -14,12 +15,14 @@ export default async function AgentesV2Layout({ children }: { children: React.Re
   if (!esAdmin && !esSuperadmin(session?.user?.email)) redirect("/");
 
   return (
-    <SidebarProvider>
-      <AgentesV2Sidebar session={session} />
-      <SidebarInset>
-        <AgentesV2Header />
-        <main className="flex-1 bg-white p-6">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+    <OrganizacionProvider>
+      <SidebarProvider>
+        <AgentesV2Sidebar session={session} />
+        <SidebarInset>
+          <AgentesV2Header />
+          <main className="flex-1 bg-white p-6">{children}</main>
+        </SidebarInset>
+      </SidebarProvider>
+    </OrganizacionProvider>
   );
 }

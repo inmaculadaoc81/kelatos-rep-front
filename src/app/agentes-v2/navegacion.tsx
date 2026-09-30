@@ -1,4 +1,4 @@
-import { Element3, Cpu, Message, Calendar, Chart, Notification, Setting2, Hierarchy, Global, Wallet, Clock, DocumentText, UserSearch, SearchNormal1, Flash, Category, Star1, Link2, TickCircle, Sms } from "@/lib/icons";
+import { Element3, Cpu, Message, Calendar, Chart, Notification, Setting2, Hierarchy, Global, Wallet, Clock, DocumentText, UserSearch, SearchNormal1, Flash, Category, Star1, Link2, TickCircle, Sms, Building } from "@/lib/icons";
 
 export interface ItemNav {
   label: string;
@@ -43,6 +43,7 @@ export const GRUPOS_DESPUES: GrupoNav[] = [
   {
     titulo: "Sistema",
     items: [
+      { label: "Organizaciones", href: "/agentes-v2/organizaciones", icon: Building },
       { label: "Integraciones", href: "/agentes-v2/integraciones", icon: Link2 },
       { label: "Modelos IA", href: "/agentes-v2/modelos-ia", icon: Hierarchy },
       { label: "Costes", href: "/agentes-v2/costes", icon: Wallet },
@@ -68,6 +69,7 @@ export const ICONO_DEPARTAMENTO: Record<string, React.ElementType> = {
 
 export const TITULO_SECCION: Record<string, string> = {
   cmo: "AI CMO",
+  organizaciones: "Organizaciones",
   departamentos: "Departamentos",
   campanas: "Campañas",
   aprobaciones: "Aprobaciones",

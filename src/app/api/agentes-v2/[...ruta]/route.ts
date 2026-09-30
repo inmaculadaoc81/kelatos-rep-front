@@ -9,7 +9,7 @@ const BASE_URL = process.env.KELATOS_API_BASE_URL;
 const TOKEN = process.env.KELATOS_API_TOKEN;
 
 /** Solo estos recursos de /v1/marketing se exponen al navegador. */
-const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system", "cmo", "analytics", "seo", "live", "llm-stats", "social"]);
+const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calendar", "campaigns", "metrics", "reports", "integrations", "llm-config", "costs", "system", "cmo", "analytics", "seo", "live", "llm-stats", "social", "organizations"]);
 
 /**
  * Proxy hacia /v1/marketing/* (AI Marketing System). Solo administradores. La identidad se toma de
@@ -34,6 +34,11 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
 
   const qs = new URL(req.url).searchParams;
   qs.delete("usuario");
+  // organization_id SÍ viene del navegador (qué organización está eligiendo ver, no quién es) — a diferencia de
+  // `usuario`, aquí no hay nada que suplantar: un administrador puede ver cualquier organización. Solo se valida
+  // la forma; si no es un id numérico razonable, se descarta y el backend cae a la organización por defecto.
+  const orgId = qs.get("organization_id");
+  if (orgId && !/^\d{1,15}$/.test(orgId)) qs.delete("organization_id");
   const headers: Record<string, string> = { Authorization: `Bearer ${TOKEN}` };
   let cuerpo: string | undefined;
   if (metodo === "GET" || metodo === "DELETE") {

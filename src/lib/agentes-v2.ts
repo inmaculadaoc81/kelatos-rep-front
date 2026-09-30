@@ -141,6 +141,63 @@ export const ETIQUETA_ESTADO_APROBACION: Record<EstadoAprobacion, string> = {
 
 export const DIAS_SEMANA = ["L", "M", "X", "J", "V", "S", "D"] as const;
 
+// ───────────── Organizaciones ("workspaces") ─────────────
+// Cada organización es una mini-empresa/marca independiente (p. ej. "Automatizaciones n8n", una marca de
+// reparaciones) con su propia web, su propia cuenta de Instagram y, si aplica, su propio repositorio del blog.
+export type EstadoOrganizacion = "active" | "paused" | "disabled";
+
+export interface Organizacion {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  status: EstadoOrganizacion;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CredencialesInstagram {
+  configurado: boolean;
+  graph_api_url: string | null;
+  instagram_business_account_id: string | null;
+  public_base_url: string | null;
+  token_guardado: boolean;
+  secreto_guardado: boolean;
+}
+
+export interface SitioSeo {
+  configurado: boolean;
+  url: string | null;
+  repository: string | null;
+  branch: string;
+  content_path: string;
+  image_path: string;
+  publish_mode: "manual" | "auto";
+  publish_target: "db" | "github";
+  max_per_day: number;
+  max_per_week: number;
+  token_guardado: boolean;
+}
+
+export interface DetalleOrganizacion {
+  ok: boolean;
+  organization: Organizacion;
+  instagram: CredencialesInstagram;
+  seo_site: SitioSeo;
+}
+
+export const ETIQUETA_ESTADO_ORGANIZACION: Record<EstadoOrganizacion, string> = {
+  active: "Activa",
+  paused: "En pausa",
+  disabled: "Desactivada",
+};
+
+export const COLOR_ESTADO_ORGANIZACION: Record<EstadoOrganizacion, string> = {
+  active: "bg-green-500/10 text-green-700",
+  paused: "bg-amber-500/10 text-amber-700",
+  disabled: "bg-red-500/10 text-red-700",
+};
+
 export function fechaHora(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
