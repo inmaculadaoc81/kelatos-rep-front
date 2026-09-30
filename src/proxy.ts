@@ -78,8 +78,11 @@ export default auth((req) => {
   // dominio" aunque el email tenga forma @kelatos.com (p.ej.
   // ivan.gonzalez@kelatos.com sin cuenta de Gmail real) — es la vía
   // pensada solo para el kiosco, así que confina igual que una cuenta
-  // ajena al dominio. 2026-08-31.
+  // ajena al dominio. 2026-08-31. Excepción: accesoCompleto (petición del
+  // usuario, 2026-09-30) — una cuenta así entra igual de completo por
+  // Google o por contraseña, las dos puertas llevan al mismo sitio.
   const esSoloAsistencia = req.auth?.user?.asistenciaEmpleadoId != null &&
+    !req.auth?.user?.accesoCompleto &&
     (req.auth?.user?.viaCredentials || !esDominioKelatos(req.auth?.user?.email || ""));
   if (esSoloAsistencia && !enAsistencia) {
     return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));

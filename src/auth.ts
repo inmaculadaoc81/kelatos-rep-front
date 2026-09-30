@@ -67,12 +67,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = typeof creds?.password === "string" ? creds.password : "";
         if (!email || !password) return null;
         try {
-          const data = await kelatosApiPost<{ ok: boolean; empleado?: { id: number; nombre: string; email: string } }>(
+          const data = await kelatosApiPost<{ ok: boolean; empleado?: { id: number; nombre: string; email: string; accesoCompleto?: boolean } }>(
             "/v1/asistencia/login",
             { email, password }
           );
           if (!data.ok || !data.empleado) return null;
-          return { id: String(data.empleado.id), name: data.empleado.nombre, email: data.empleado.email };
+          // accesoCompleto (asistencia.empleados.acceso_completo): una cuenta
+          // marcada así entra igual por Credentials que por Google — jwt()
+          // lo lee de aquí abajo (user.accesoCompleto) solo en el login inicial.
+          return { id: String(data.empleado.id), name: data.empleado.nombre, email: data.empleado.email, accesoCompleto: !!data.empleado.accesoCompleto };
         } catch {
           return null;
         }
@@ -88,10 +91,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (esDominioKelatos(email)) return true;
       return ((await buscarEmpleadoAsistencia(email)) ?? null) !== null;
     },
-    async jwt({ token, account }) {
-      // "account" solo llega en el login inicial, no en refrescos
+    async jwt({ token, account, user }) {
+      // "account"/"user" solo llegan en el login inicial, no en refrescos
       // posteriores del JWT — hay que guardar el dato en el propio token.
       if (account) token.viaCredentials = account.provider === "credentials";
+      if (account?.provider === "credentials") token.accesoCompleto = !!(user as { accesoCompleto?: boolean } | undefined)?.accesoCompleto;
       if (token.email) {
         token.role = rolPara(token.email);
         // Se busca SIEMPRE, no solo para cuentas ajenas al dominio — una
@@ -131,8 +135,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // email tenga forma @kelatos.com — es la vía pensada solo para
       // empleados sin cuenta de Gmail real, deben quedar confinados al
       // kiosco igual que cualquier cuenta ajena al dominio (ver
-      // proxy.ts). Si no tiene alta en asistencia.empleados tampoco entra.
-      const permitido = email && !token.viaCredentials && esDominioKelatos(email)
+      // proxy.ts), SALVO que la cuenta tenga accesoCompleto (petición del
+      // usuario, 2026-09-30: soporte@kelatos.com necesita las dos puertas
+      // — Google o contraseña — a la misma cuenta con el mismo acceso).
+      // Si no tiene alta en asistencia.empleados tampoco entra.
+      const permitido = email && (!token.viaCredentials || token.accesoCompleto) && esDominioKelatos(email)
         ? true
         : !!email && token.asistenciaEmpleadoId != null;
       if (!permitido) {
@@ -144,6 +151,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.role = token.role || rolPara(email);
       session.user.asistenciaEmpleadoId = token.asistenciaEmpleadoId ?? null;
       session.user.viaCredentials = !!token.viaCredentials;
+      session.user.accesoCompleto = !!token.accesoCompleto;
       return session;
     },
   },
