@@ -104,10 +104,9 @@ export default function CobrosReparacionesPage() {
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroBanco, setFiltroBanco] = useState("");
 
-  const formasDisponibles = useMemo(
-    () => [...new Set(items.map((i) => i.forma_pago).filter((f): f is string => !!f))].sort(),
-    [items]
-  );
+  // Fijas (no derivadas de los datos presentes): esta vista es solo de estas dos formas de
+  // pago, así que Bizum debe poder elegirse aunque hoy no haya ningún registro con ese valor.
+  const formasDisponibles = ["transferencia", "bizum"];
   const bancosDisponibles = useMemo(
     () => [...new Set(items.map((i) => i.banco).filter((b): b is string => !!b))].sort(),
     [items]
