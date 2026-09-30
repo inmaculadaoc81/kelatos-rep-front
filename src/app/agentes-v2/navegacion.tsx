@@ -1,4 +1,4 @@
-import { Element3, Cpu, Message, Calendar, Chart, Notification, Setting2, Hierarchy, Global, Wallet, Clock, DocumentText, UserSearch, SearchNormal1, Flash, Category, Star1, Link2, TickCircle, Sms, Building } from "@/lib/icons";
+import { Element3, Cpu, Message, Calendar, Chart, Notification, Setting2, Hierarchy, Global, Clock, DocumentText, UserSearch, SearchNormal1, Flash, Category, Star1, Link2, TickCircle, Sms, Building } from "@/lib/icons";
 
 export interface ItemNav {
   label: string;
@@ -46,7 +46,6 @@ export const GRUPOS_DESPUES: GrupoNav[] = [
       { label: "Organizaciones", href: "/agentes-v2/organizaciones", icon: Building },
       { label: "Integraciones", href: "/agentes-v2/integraciones", icon: Link2 },
       { label: "Modelos IA", href: "/agentes-v2/modelos-ia", icon: Hierarchy },
-      { label: "Costes", href: "/agentes-v2/costes", icon: Wallet },
       { label: "Ajustes", href: "/agentes-v2/ajustes", icon: Setting2 },
     ],
   },
@@ -80,6 +79,5 @@ export const TITULO_SECCION: Record<string, string> = {
   informes: "Informes",
   integraciones: "Integraciones",
   "modelos-ia": "Modelos IA",
-  costes: "Costes",
   ajustes: "Ajustes",
 };

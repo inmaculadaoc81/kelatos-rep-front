@@ -53,7 +53,7 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
     <div>
       {cabecera}
       <div className="grid gap-5 md:grid-cols-[190px_minmax(0,1fr)]">
-        <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible" aria-label="Redes sociales">
+        <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible md:border-r md:border-border md:pr-4" aria-label="Redes sociales">
           {NAV.map((n, i) => (
             <button
               key={n.valor}

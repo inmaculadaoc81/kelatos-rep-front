@@ -29,9 +29,9 @@ export function OrganizacionSwitcher() {
         render={
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-transparent px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-border/40 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
           >
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sidebar-foreground/10 text-sidebar-foreground/70">
               <Building className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1 truncate text-left font-medium text-sidebar-foreground group-data-[collapsible=icon]:hidden">
