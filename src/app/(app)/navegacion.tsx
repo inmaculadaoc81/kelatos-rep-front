@@ -60,7 +60,7 @@ export const GRUPOS: GrupoNavegacion[] = [
     icon: Setting2,
     items: [
       { label: "Todas las Reparaciones", href: "/reparaciones", icon: ClipboardTick },
-      { label: "Cobros", href: "/reparaciones/cobros", icon: Wallet },
+      { label: "Transferencias", href: "/reparaciones/cobros", icon: Wallet },
       { label: "Presupuestos", href: "/presupuestos", icon: DocumentText },
       { label: "Recogidas", href: "/recogidas", icon: Truck },
       { label: "Punto Limpio", href: "/punto-limpio", icon: Trash },

@@ -60,8 +60,18 @@ function fmtFecha(fecha: string | null) {
   return new Date(fecha).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function fmtHora(fecha: string | null) {
+  if (!fecha) return null;
+  return new Date(fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Esta vista es solo de pagos por transferencia y Bizum — el resto de
+    formas de pago (efectivo, tarjeta, redsys...) se ven en "Cobros" general
+    o en "Efectivo", no aquí. */
+const FORMAS_TRANSFERENCIA = new Set(["transferencia", "bizum"]);
+
 export default function CobrosReparacionesPage() {
-  const [items, setItems] = useState<CobroReparacion[]>([]);
+  const [itemsRaw, setItemsRaw] = useState<CobroReparacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +82,7 @@ export default function CobrosReparacionesPage() {
       const res = await fetch("/api/reparaciones/cobros");
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setItems(data.resultados as CobroReparacion[]);
+      setItemsRaw(data.resultados as CobroReparacion[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -84,15 +94,22 @@ export default function CobrosReparacionesPage() {
     cargar();
   }, []);
 
+  const items = useMemo(() => itemsRaw.filter((i) => i.forma_pago && FORMAS_TRANSFERENCIA.has(i.forma_pago)), [itemsRaw]);
+
   // ── Filtros ──
   const [busqueda, setBusqueda] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [filtroForma, setFiltroForma] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroBanco, setFiltroBanco] = useState("");
 
   const formasDisponibles = useMemo(
     () => [...new Set(items.map((i) => i.forma_pago).filter((f): f is string => !!f))].sort(),
+    [items]
+  );
+  const bancosDisponibles = useMemo(
+    () => [...new Set(items.map((i) => i.banco).filter((b): b is string => !!b))].sort(),
     [items]
   );
 
@@ -115,14 +132,15 @@ export default function CobrosReparacionesPage() {
 
       const formaOk = !filtroForma || c.forma_pago === filtroForma;
       const estadoOk = !filtroEstado || c.estadoCobro === filtroEstado;
+      const bancoOk = !filtroBanco || c.banco === filtroBanco;
 
-      return textoOk && fechaOk && formaOk && estadoOk;
+      return textoOk && fechaOk && formaOk && estadoOk && bancoOk;
     });
-  }, [items, busqueda, fechaDesde, fechaHasta, filtroForma, filtroEstado]);
+  }, [items, busqueda, fechaDesde, fechaHasta, filtroForma, filtroEstado, filtroBanco]);
 
-  const hayFiltrosActivos = !!(busqueda || fechaDesde || fechaHasta || filtroForma || filtroEstado);
+  const hayFiltrosActivos = !!(busqueda || fechaDesde || fechaHasta || filtroForma || filtroEstado || filtroBanco);
   function limpiarFiltros() {
-    setBusqueda(""); setFechaDesde(""); setFechaHasta(""); setFiltroForma(""); setFiltroEstado("");
+    setBusqueda(""); setFechaDesde(""); setFechaHasta(""); setFiltroForma(""); setFiltroEstado(""); setFiltroBanco("");
   }
 
   const resumen = useMemo(() => {
@@ -149,9 +167,9 @@ export default function CobrosReparacionesPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Cobros</h1>
+          <h1 className="text-lg font-semibold">Transferencias</h1>
           <p className="text-sm text-muted-foreground">
-            Facturas y tickets generados en Reparaciones — día, cliente/equipo, forma de pago y si ya está cobrado.
+            Cobros por transferencia bancaria y Bizum en Reparaciones — día y hora, cliente/equipo, banco y si ya está cobrado.
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={cargar} disabled={cargando}>
@@ -201,6 +219,13 @@ export default function CobrosReparacionesPage() {
                 <SelectItem value="Pendiente">Pendiente</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filtroBanco || "todos"} onValueChange={(v) => v && setFiltroBanco(v === "todos" ? "" : v)}>
+              <SelectTrigger className="w-auto min-w-36"><SelectValue placeholder="Banco" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Banco: Todos</SelectItem>
+                {bancosDisponibles.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <span className="ml-auto text-xs text-muted-foreground">{itemsFiltrados.length} de {items.length}</span>
           </div>
         </div>
@@ -215,7 +240,7 @@ export default function CobrosReparacionesPage() {
           </div>
         ) : itemsFiltrados.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">
-            {items.length === 0 ? "No hay cobros registrados todavía." : "Ningún registro coincide con los filtros."}
+            {items.length === 0 ? "No hay transferencias ni Bizum registrados todavía." : "Ningún registro coincide con los filtros."}
           </p>
         ) : (
           <Table>
@@ -233,7 +258,10 @@ export default function CobrosReparacionesPage() {
             <TableBody>
               {itemsFiltrados.map((c, i) => (
                 <TableRow key={`${c.resguardo}-${c.tipo}-${i}`}>
-                  <TableCell className="text-xs whitespace-nowrap">{fmtFecha(c.fecha)}</TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {fmtFecha(c.fecha)}
+                    {fmtHora(c.fecha) && <span className="ml-1 text-muted-foreground">{fmtHora(c.fecha)}</span>}
+                  </TableCell>
                   <TableCell className="font-semibold">
                     <Link href={`/reparaciones?resguardo=${encodeURIComponent(c.resguardo)}`} className="hover:underline">
                       {c.resguardo}

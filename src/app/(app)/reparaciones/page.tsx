@@ -432,8 +432,8 @@ export default function ReparacionesPage() {
           >
             <Ticket className="size-4" /> Ticket Manual
           </Button>
-          <Button variant="outline" className="h-8 gap-1.5" title="Cobros" render={<Link href="/reparaciones/cobros" />}>
-            <Wallet className="size-4" /> Cobros
+          <Button variant="outline" className="h-8 gap-1.5" title="Transferencias" render={<Link href="/reparaciones/cobros" />}>
+            <Wallet className="size-4" /> Transferencias
           </Button>
         </div>
       </div>
