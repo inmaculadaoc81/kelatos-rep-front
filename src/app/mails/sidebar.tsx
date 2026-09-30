@@ -41,10 +41,18 @@ const GRUPOS: GrupoNavegacionBase[] = [
   },
 ];
 
+// Una cuenta accesoCompleto (migración 160, p.ej. soporte@kelatos.com) ve una
+// vista recortada: solo "Centro de mails", nada de Buzones/Leads/Direcciones
+// inválidas/Tipos de correo. Petición del usuario, 2026-09-30.
+const GRUPOS_RECORTADOS: GrupoNavegacionBase[] = [
+  { titulo: "Correo", icon: Sms, items: [{ label: "Centro de mails", href: "/mails/bandeja", icon: Sms }] },
+];
+
 /** Sidebar de Gestión MAILS — mismo esquema que el de Agentes (logo +
     trigger arriba, menú, NavUser abajo). */
 export function MailsSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
+  const grupos = session?.user?.accesoCompleto ? GRUPOS_RECORTADOS : GRUPOS;
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -80,7 +88,7 @@ export function MailsSidebar({ session }: { session: Session | null }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
-              {GRUPOS.map((grupo) =>
+              {grupos.map((grupo) =>
                 grupo.items.length === 1 ? (
                   <ItemDirecto key={grupo.titulo} item={grupo.items[0]} pathname={pathname} />
                 ) : (

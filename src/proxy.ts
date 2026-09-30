@@ -55,14 +55,43 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Gestión MAILS — vista aparte, solo administradores (mismo criterio que
-  // Agentes; los buzones guardan credenciales de correo). Las rutas de API
-  // repiten la comprobación (src/lib/mails-auth.ts).
+  // Agentes; los buzones guardan credenciales de correo), salvo cuentas
+  // accesoCompleto (petición del usuario, 2026-09-30: soporte@kelatos.com
+  // ve Gestión MAILS, pero con una vista restringida — ver
+  // GestionMailsSidebar/Centro de mails — que esta comprobación no decide,
+  // solo deja pasar la ruta). Las rutas de API repiten la comprobación
+  // (src/lib/mails-auth.ts), que también necesita la excepción.
   if (
     (req.nextUrl.pathname.startsWith("/mails") || req.nextUrl.pathname.startsWith("/api/mails")) &&
     req.auth?.user?.role !== "admin" &&
-    !esSuperadmin(req.auth?.user?.email)
+    !esSuperadmin(req.auth?.user?.email) &&
+    !req.auth?.user?.accesoCompleto
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+  // Tareas — oculto para cuentas accesoCompleto (petición del usuario,
+  // 2026-09-30: soporte@kelatos.com no debe tener este módulo). El menú ya
+  // lo oculta (nav-user.tsx); aquí se cierra también la ruta directa, mismo
+  // patrón de defensa en profundidad que el resto de módulos.
+  if (
+    (req.nextUrl.pathname.startsWith("/tareas") || req.nextUrl.pathname.startsWith("/api/tareas")) &&
+    req.auth?.user?.accesoCompleto
+  ) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+  // Dentro de Gestión MAILS, una cuenta accesoCompleto solo ve "Centro de
+  // mails" (/mails/bandeja) — Buzones/Leads/Direcciones inválidas/Tipos de
+  // correo quedan fuera, tanto la página como su API (ninguna la usa
+  // Centro de mails). Petición del usuario, 2026-09-30.
+  if (
+    req.auth?.user?.accesoCompleto &&
+    ["/mails/buzones", "/mails/leads", "/mails/direcciones", "/mails/tipos", "/api/mails/leads", "/api/mails/direcciones", "/api/mails/tipos"].some(
+      (r) => req.nextUrl.pathname.startsWith(r)
+    )
+  ) {
+    return req.nextUrl.pathname.startsWith("/api/")
+      ? NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
+      : NextResponse.redirect(new URL("/mails/bandeja", req.nextUrl.origin));
   }
   // Dashboard de Asistencia (fichajes) — un empleado que ficha puede no
   // tener cuenta @kelatos.com (login ampliado en src/auth.ts); esa cuenta

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { kelatosApiGet } from "@/lib/kelatos-api";
-import { accesoMails } from "@/lib/mails-auth";
+import { accesoMails, buzonesPropios } from "@/lib/mails-auth";
 import type { MensajeHilo } from "@/lib/mails";
 
 /** Todos los mensajes de la conversación de un mensaje (con su cuerpo). No marca nada como leído. */
@@ -10,7 +10,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   try {
     const { id } = await params;
     const data = await kelatosApiGet<{ ok: boolean; mensajes: MensajeHilo[] }>(`/v1/mails/mensajes/${encodeURIComponent(id)}/hilo`);
-    return NextResponse.json({ ok: true, mensajes: data.mensajes });
+    // Recorte por buzón propio, mismo criterio que /mensajes/[id] (2026-09-30).
+    const propios = await buzonesPropios(a);
+    const mensajes = propios ? data.mensajes.filter((m) => propios.includes(m.buzon_id)) : data.mensajes;
+    return NextResponse.json({ ok: true, mensajes });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Error desconocido" }, { status: 502 });
   }

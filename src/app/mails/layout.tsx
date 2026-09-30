@@ -7,12 +7,13 @@ import { MailsHeader } from "./header";
 import { AlertaBuzones } from "./alerta-buzones";
 
 // Dashboard aparte (mismo patrón que Agentes/Webs Kelatos/Transferencias),
-// fuera de (app)/. Acceso: administradores y superadmins. Esta comprobación
-// se duplica en src/proxy.ts (defensa en profundidad).
+// fuera de (app)/. Acceso: administradores, superadmins y cuentas
+// accesoCompleto (migración 160 — ven una vista recortada, ver sidebar.tsx).
+// Esta comprobación se duplica en src/proxy.ts (defensa en profundidad).
 export default async function MailsLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const esAdmin = session?.user?.role === "admin";
-  if (!esAdmin && !esSuperadmin(session?.user?.email)) redirect("/");
+  if (!esAdmin && !esSuperadmin(session?.user?.email) && !session?.user?.accesoCompleto) redirect("/");
 
   return (
     <SidebarProvider>

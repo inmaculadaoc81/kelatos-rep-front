@@ -51,6 +51,11 @@ export function NavUser({ session }: { session: Session | null }) {
   const nombre = session?.user?.name || session?.user?.email || "Usuario";
   const email = session?.user?.email || "";
   const esAdmin = session?.user?.role === "admin";
+  // Cuenta de "2 puertas" (migración 160, ver src/auth.ts) — acceso total al
+  // dashboard pero SIN rol admin/superadmin. Petición del usuario, 2026-09-30
+  // (soporte@kelatos.com): sin acceso a Tareas, pero SÍ a Gestión MAILS (con
+  // una vista restringida propia — ver mails-related components).
+  const accesoCompleto = !!session?.user?.accesoCompleto;
   const muestraTransferencias = puedeVerTransferencias(email);
   const puedeVerAsistencia = esAdmin || esSuperadmin(email);
   // Un empleado que solo ficha (sin cuenta @kelatos.com, ver src/auth.ts)
@@ -71,7 +76,9 @@ export function NavUser({ session }: { session: Session | null }) {
   const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
-  const puedeVerMails = esAdmin || esSuperadmin(email);
+  // accesoCompleto ve Gestión MAILS, pero con una vista restringida a solo
+  // "Centro de mails" y su propio buzón — ver GestionMailsSidebar.
+  const puedeVerMails = esAdmin || esSuperadmin(email) || accesoCompleto;
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -145,7 +152,7 @@ export function NavUser({ session }: { session: Session | null }) {
                   Reparaciones
                 </DropdownMenuItem>
               )}
-              {!enTareas && (
+              {!enTareas && !accesoCompleto && (
                 <DropdownMenuItem render={<Link href="/tareas" />}>
                   <IconoDashboard icon={ClipboardText} className="from-fuchsia-500 to-purple-600" />
                   Tareas
