@@ -23,14 +23,19 @@ function rolPara(email: string): RolUsuario {
  */
 /** `undefined` = no se pudo consultar (error del API), distinto de `null`
     (consultado: esa cuenta no es empleada) — así un fallo puntual no se
-    cachea como "no es empleado". */
-async function buscarEmpleadoAsistencia(email: string): Promise<number | null | undefined> {
+    cachea como "no es empleado". Trae también acceso_completo (migración
+    160): así una cuenta marcada así llega al mismo sitio sea cual sea el
+    proveedor (Google o Credentials) — no depende de que el campo
+    "sobreviva" el paso por el `user` que devuelve authorize(), que no es
+    un mecanismo probado en este proyecto para campos propios. */
+async function buscarEmpleadoAsistencia(email: string): Promise<{ id: number; accesoCompleto: boolean } | null | undefined> {
   try {
-    const data = await kelatosApiGet<{ ok: boolean; empleado: { id: number } | null }>(
+    const data = await kelatosApiGet<{ ok: boolean; empleado: { id: number; acceso_completo?: boolean } | null }>(
       "/v1/asistencia/empleados",
       { email }
     );
-    return data.empleado?.id ?? null;
+    if (!data.empleado) return null;
+    return { id: data.empleado.id, accesoCompleto: !!data.empleado.acceso_completo };
   } catch {
     // Si el API interno falla, no se bloquea el login de las cuentas
     // @kelatos.com normales — solo se pierde temporalmente el acceso al
@@ -67,15 +72,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = typeof creds?.password === "string" ? creds.password : "";
         if (!email || !password) return null;
         try {
-          const data = await kelatosApiPost<{ ok: boolean; empleado?: { id: number; nombre: string; email: string; accesoCompleto?: boolean } }>(
+          // acceso_completo (migración 160) no se lee aquí: jwt() lo consulta
+          // por su cuenta vía buscarEmpleadoAsistencia(), igual para Google
+          // que para Credentials — un solo sitio que decide, no dos que
+          // puedan desincronizarse.
+          const data = await kelatosApiPost<{ ok: boolean; empleado?: { id: number; nombre: string; email: string } }>(
             "/v1/asistencia/login",
             { email, password }
           );
           if (!data.ok || !data.empleado) return null;
-          // accesoCompleto (asistencia.empleados.acceso_completo): una cuenta
-          // marcada así entra igual por Credentials que por Google — jwt()
-          // lo lee de aquí abajo (user.accesoCompleto) solo en el login inicial.
-          return { id: String(data.empleado.id), name: data.empleado.nombre, email: data.empleado.email, accesoCompleto: !!data.empleado.accesoCompleto };
+          return { id: String(data.empleado.id), name: data.empleado.nombre, email: data.empleado.email };
         } catch {
           return null;
         }
@@ -91,17 +97,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (esDominioKelatos(email)) return true;
       return ((await buscarEmpleadoAsistencia(email)) ?? null) !== null;
     },
-    async jwt({ token, account, user }) {
-      // "account"/"user" solo llegan en el login inicial, no en refrescos
+    async jwt({ token, account }) {
+      // "account" solo llega en el login inicial, no en refrescos
       // posteriores del JWT — hay que guardar el dato en el propio token.
       if (account) token.viaCredentials = account.provider === "credentials";
-      if (account?.provider === "credentials") token.accesoCompleto = !!(user as { accesoCompleto?: boolean } | undefined)?.accesoCompleto;
       if (token.email) {
         token.role = rolPara(token.email);
         // Se busca SIEMPRE, no solo para cuentas ajenas al dominio — una
         // cuenta @kelatos.com también puede estar dada de alta como
         // empleado que ficha (p.ej. Daniela), y necesita su propio id de
-        // asistencia.empleados para poder fichar ella misma.
+        // asistencia.empleados para poder fichar ella misma. También trae
+        // acceso_completo (migración 160), igual para cualquier proveedor.
         //
         // Pero no en CADA evaluación del token: este callback corre en cada
         // petición autenticada (proxy.ts + cada auth() de una ruta API), y
@@ -109,8 +115,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // petición — más de la mitad de todo el tráfico a la API medido el
         // 2026-09-21. Se consulta al iniciar sesión y luego como mucho cada
         // 5 minutos (una cuenta recién dada de alta como empleada la ve como
-        // tarde en ese plazo). Un fallo del API no se cachea: se conserva el
-        // valor anterior y se reintenta en la siguiente petición.
+        // tarde en ese plazo; un cambio de acceso_completo tarda lo mismo en
+        // notarse). Un fallo del API no se cachea: se conserva el valor
+        // anterior y se reintenta en la siguiente petición.
         const ahora = Date.now();
         const vigente =
           !account &&
@@ -118,12 +125,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           typeof token.asistenciaComprobadaEn === "number" &&
           ahora - token.asistenciaComprobadaEn < REVISAR_EMPLEADO_CADA_MS;
         if (!vigente) {
-          const id = await buscarEmpleadoAsistencia(token.email);
-          if (id !== undefined) {
-            token.asistenciaEmpleadoId = id;
+          const info = await buscarEmpleadoAsistencia(token.email);
+          if (info !== undefined) {
+            token.asistenciaEmpleadoId = info ? info.id : null;
+            token.accesoCompleto = info ? info.accesoCompleto : false;
             token.asistenciaComprobadaEn = ahora;
           } else if (token.asistenciaEmpleadoId === undefined) {
             token.asistenciaEmpleadoId = null;
+            token.accesoCompleto = false;
           }
         }
       }
