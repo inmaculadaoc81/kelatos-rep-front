@@ -13,7 +13,13 @@ export async function GET() {
   try {
     const data = await kelatosApiGet<{ ok: boolean; buzones: Buzon[] }>("/v1/mails/buzones");
     const buzones = a.accesoCompleto ? data.buzones.filter((b) => b.email.toLowerCase() === a.email) : data.buzones;
-    return NextResponse.json({ ok: true, buzones, puedeGestionar: a.superadmin });
+    // puedeGestionar: dar de alta/editar/sincronizar buzones (credenciales) —
+    // sigue siendo solo superadmin. puedeEnviar: redactar/responder/reenviar
+    // dentro del propio buzón — una cuenta accesoCompleto sí puede (petición
+    // del usuario, 2026-09-30: "lo único que no tiene que tener acceso esa
+    // cuenta es ver otros buzones"); la ruta de envío igual comprueba que el
+    // buzón usado sea el suyo.
+    return NextResponse.json({ ok: true, buzones, puedeGestionar: a.superadmin, puedeEnviar: a.superadmin || a.accesoCompleto });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Error desconocido" }, { status: 502 });
   }

@@ -81,7 +81,8 @@ interface FiltroExterno {
 export default function CentroMailsPage() {
   const [buzones, setBuzones] = useState<Buzon[]>([]);
   const [cargandoBuzones, setCargandoBuzones] = useState(true);
-  // Enviar/responder es solo del superadmin (el backend lo vuelve a comprobar).
+  // Enviar/responder: superadmin, o una cuenta accesoCompleto dentro de su
+  // propio buzón (el backend lo vuelve a comprobar en ambos casos).
   const [puedeEnviar, setPuedeEnviar] = useState(false);
   const [redactar, setRedactar] = useState<{ abierto: boolean; n: number; borrador: BorradorCorreo }>({ abierto: false, n: 0, borrador: BORRADOR_VACIO });
   const [listo, setListo] = useState(false); // los filtros de la URL ya se leyeron
@@ -130,7 +131,7 @@ export default function CentroMailsPage() {
       const data = await res.json();
       if (data.ok) {
         setBuzones(data.buzones as Buzon[]);
-        setPuedeEnviar(!!data.puedeGestionar);
+        setPuedeEnviar(!!data.puedeEnviar);
       }
     } catch {
       /* la lista de buzones es secundaria: el centro sigue funcionando */
