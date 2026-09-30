@@ -13,6 +13,11 @@ function euros(n: number): string {
   return n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 }
 
+function eurosConSigno(n: number): string {
+  if (n === 0) return euros(0);
+  return `${n > 0 ? "+" : "−"}${euros(Math.abs(n))}`;
+}
+
 /** Anula (no borra) una retirada registrada por error: queda en la lista
     como "Anulada", con su motivo, y deja de restar del saldo. */
 export function AnularRetiradaDialog({
@@ -38,14 +43,15 @@ export function AnularRetiradaDialog({
     if (!motivo.trim()) return toast.error("El motivo de la anulación es obligatorio");
     setEnviando(true);
     try {
-      const res = await fetch(`/api/efectivo/retiradas/${retirada.retiradaId}/anular`, {
+      const recurso = retirada.tipo === "conteo" ? "conteos" : "retiradas";
+      const res = await fetch(`/api/efectivo/${recurso}/${retirada.retiradaId}/anular`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ motivo: motivo.trim() }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success(retirada.tipo === "cobro" ? "Cobro anulado" : "Retirada anulada");
+      toast.success(retirada.tipo === "cobro" ? "Cobro anulado" : retirada.tipo === "conteo" ? "Conteo anulado" : "Retirada anulada");
       setMotivo("");
       onOpenChange(false);
       onAnulada();
@@ -61,10 +67,15 @@ export function AnularRetiradaDialog({
       <DialogContent className="max-w-md sm:max-w-md" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
-            <CloseCircle className="size-5" /> {retirada?.tipo === "cobro" ? "Anular cobro" : "Anular retirada"}
+            <CloseCircle className="size-5" /> {retirada?.tipo === "cobro" ? "Anular cobro" : retirada?.tipo === "conteo" ? "Anular conteo" : "Anular retirada"}
           </DialogTitle>
           <DialogDescription>
-            {retirada?.tipo === "cobro" ? "El cobro dejará de sumar a la caja" : "La retirada dejará de restar de la caja"}, pero se conserva en la lista como &quot;Anulada&quot; junto con el motivo.
+            {retirada?.tipo === "cobro"
+              ? "El cobro dejará de sumar a la caja"
+              : retirada?.tipo === "conteo"
+                ? "El conteo deja de contar como verificación"
+                : "La retirada dejará de restar de la caja"}
+            , pero se conserva en la lista como &quot;Anulada&quot; junto con el motivo.
           </DialogDescription>
         </DialogHeader>
 
@@ -72,8 +83,8 @@ export function AnularRetiradaDialog({
           <div className="space-y-3">
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Importe</span>
-                <span className="font-semibold tabular-nums">{euros(Math.abs(retirada.importe))}</span>
+                <span className="text-muted-foreground">{retirada.tipo === "conteo" ? "Diferencia" : "Importe"}</span>
+                <span className="font-semibold tabular-nums">{retirada.tipo === "conteo" ? eurosConSigno(retirada.importe) : euros(Math.abs(retirada.importe))}</span>
               </div>
               <div className="mt-1 flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">Concepto</span>
@@ -102,7 +113,7 @@ export function AnularRetiradaDialog({
             Cancelar
           </Button>
           <Button variant="destructive" disabled={enviando || !motivo.trim()} onClick={anular}>
-            {enviando ? "Anulando…" : retirada?.tipo === "cobro" ? "Anular cobro" : "Anular retirada"}
+            {enviando ? "Anulando…" : retirada?.tipo === "cobro" ? "Anular cobro" : retirada?.tipo === "conteo" ? "Anular conteo" : "Anular retirada"}
           </Button>
         </DialogFooter>
       </DialogContent>

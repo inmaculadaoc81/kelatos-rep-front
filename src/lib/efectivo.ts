@@ -15,33 +15,37 @@ import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConI
     "Todo el historial" en la vista. Petición del usuario, 2026-09-21. */
 export const EFECTIVO_INICIO_CONTEO = "2026-09-21";
 
-export type TipoMovimientoEfectivo = "cobro" | "devolucion" | "retirada";
+export type TipoMovimientoEfectivo = "cobro" | "devolucion" | "retirada" | "conteo";
 
 export interface MovimientoEfectivo {
   id: string;
   fecha: string | null;
   tipo: TipoMovimientoEfectivo;
   /** De dónde viene el dinero: Reparación / Alquiler / Venta de piezas /
-      Factura manual / Ticket manual (vacío en retiradas). */
+      Factura manual / Ticket manual (vacío en retiradas y conteos). */
   origen: string;
   /** Tipo de documento (Ticket, Reparación, Rectificativa…) o el motivo de
-      la retirada. */
+      la retirada/conteo. */
   concepto: string;
   /** Resguardo / ID de alquiler / pedido al que pertenece (vacío en
-      retiradas y en documentos manuales sin reparación asociada). */
+      retiradas, conteos y en documentos manuales sin reparación asociada). */
   referencia: string;
   numero: string;
   cliente: string;
-  /** Con signo: positivo entra en caja, negativo sale. */
+  /** Con signo: positivo entra en caja, negativo sale. En un conteo es la
+      DIFERENCIA (contado − sistema), que no suma ni resta del saldo (ver
+      conSaldoAcumulado): un conteo verifica la caja, no mueve dinero. */
   importe: number;
   /** Rectificativa histórica sin importe guardado (ciclos anteriores a la
       migración 029): consta la devolución pero no se puede restar nada. */
   sinImporte?: boolean;
-  /** Solo retiradas. */
+  /** Solo retiradas/conteos. */
   retiradaId?: number;
   usuario?: string;
   anulada?: boolean;
   anuladaMotivo?: string;
+  /** Solo conteos: lo que había según el sistema en el momento de contar (foto, no se recalcula después). */
+  saldoSistema?: number;
 }
 
 export interface RetiradaEfectivoApi {
@@ -162,6 +166,48 @@ export function movimientosDeRetiradas(retiradas: RetiradaEfectivoApi[]): Movimi
   });
 }
 
+export interface ConteoEfectivoApi {
+  id: number | string;
+  fecha_hora: string;
+  importe_contado: number;
+  saldo_sistema: number;
+  diferencia: number;
+  motivo: string | null;
+  usuario: string;
+  anulado_en: string | null;
+  anulado_por: string | null;
+  anulado_motivo: string | null;
+}
+
+/** Un conteo compara caja física vs. sistema; nunca mueve dinero (ver
+    conSaldoAcumulado/resumir, que lo excluyen a propósito del saldo). */
+export function movimientosDeConteos(conteos: ConteoEfectivoApi[]): MovimientoEfectivo[] {
+  return conteos.map((c) => {
+    const diferencia = redondear(Number(c.diferencia) || 0);
+    const notaLibre = (c.motivo || "").trim();
+    return {
+      id: `cnt:${c.id}`,
+      fecha: c.fecha_hora,
+      tipo: "conteo" as TipoMovimientoEfectivo,
+      origen: "",
+      concepto: `Contado ${euros2(c.importe_contado)} · sistema ${euros2(c.saldo_sistema)}${notaLibre ? ` · ${notaLibre}` : ""}`,
+      referencia: "",
+      numero: "",
+      cliente: "",
+      importe: diferencia,
+      retiradaId: Number(c.id),
+      usuario: c.usuario,
+      anulada: !!c.anulado_en,
+      anuladaMotivo: c.anulado_motivo || undefined,
+      saldoSistema: redondear(Number(c.saldo_sistema) || 0),
+    };
+  });
+}
+
+function euros2(n: number): string {
+  return (Number(n) || 0).toLocaleString("es-ES", { style: "currency", currency: "EUR" });
+}
+
 export interface MovimientoConSaldo extends MovimientoEfectivo {
   /** Saldo de caja tras este movimiento (sobre TODO el historial, no solo
       el rango filtrado). */
@@ -169,7 +215,8 @@ export interface MovimientoConSaldo extends MovimientoEfectivo {
 }
 
 /** Ordena cronológicamente, calcula el saldo acumulado (las retiradas
-    anuladas no cuentan) y devuelve la lista más reciente primero. */
+    anuladas no cuentan; un conteo nunca cuenta, solo verifica) y devuelve
+    la lista más reciente primero. */
 export function conSaldoAcumulado(movimientos: MovimientoEfectivo[]): MovimientoConSaldo[] {
   const ascendente = [...movimientos].sort((a, b) => {
     const ta = a.fecha ? new Date(a.fecha).getTime() : 0;
@@ -178,7 +225,7 @@ export function conSaldoAcumulado(movimientos: MovimientoEfectivo[]): Movimiento
   });
   let saldo = 0;
   const out = ascendente.map((m) => {
-    if (!m.anulada) saldo = redondear(saldo + m.importe);
+    if (!m.anulada && m.tipo !== "conteo") saldo = redondear(saldo + m.importe);
     return { ...m, saldo };
   });
   return out.reverse();
@@ -192,13 +239,14 @@ export interface ResumenEfectivo {
 }
 
 /** Totales de una lista de movimientos (devoluciones/retiradas en positivo,
-    para poder mostrarlas como "− X" sin doble negación). */
+    para poder mostrarlas como "− X" sin doble negación). Un conteo no suma
+    ni resta aquí: no es un cobro ni una salida real de caja. */
 export function resumir(movimientos: MovimientoEfectivo[]): ResumenEfectivo {
   let cobros = 0;
   let devoluciones = 0;
   let retiradas = 0;
   for (const m of movimientos) {
-    if (m.anulada) continue;
+    if (m.anulada || m.tipo === "conteo") continue;
     if (m.tipo === "cobro") cobros += m.importe;
     else if (m.tipo === "devolucion") devoluciones += -m.importe;
     else retiradas += -m.importe;

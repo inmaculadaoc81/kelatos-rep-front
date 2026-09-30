@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, MoneySend, MoneyRecive, ArrowRotateLeft, Coin1, CloseCircle } from "@/lib/icons";
+import { Refresh2, SearchNormal1, MoneySend, MoneyRecive, ArrowRotateLeft, Coin1, CloseCircle, Verify } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { EFECTIVO_INICIO_CONTEO, MovimientoConSaldo, MovimientoEfectivo, TipoMovimientoEfectivo, conSaldoAcumulado, resumir } from "@/lib/efectivo";
 import { RetirarEfectivoDialog } from "./retirar-efectivo-dialog";
+import { ContarEfectivoDialog } from "./contar-efectivo-dialog";
 import { AnularRetiradaDialog } from "./anular-retirada-dialog";
 
 const TIMEZONE = "Europe/Madrid";
@@ -22,6 +23,7 @@ const ESTILO_TIPO: Record<TipoMovimientoEfectivo, { etiqueta: string; clase: str
   cobro: { etiqueta: "Cobro", clase: "bg-green-500/10 text-green-600" },
   devolucion: { etiqueta: "Devolución", clase: "bg-red-500/10 text-red-600" },
   retirada: { etiqueta: "Retirada", clase: "bg-amber-500/10 text-amber-600" },
+  conteo: { etiqueta: "Conteo", clase: "bg-blue-500/10 text-blue-600" },
 };
 
 function euros(n: number): string {
@@ -94,6 +96,7 @@ export default function EfectivoPage() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [retirarAbierto, setRetirarAbierto] = useState(false);
+  const [contarAbierto, setContarAbierto] = useState(false);
   const [anulando, setAnulando] = useState<MovimientoEfectivo | null>(null);
 
   async function cargar() {
@@ -266,6 +269,11 @@ export default function EfectivoPage() {
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
           {puedeRetirar && (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setContarAbierto(true)}>
+              <Verify className="size-4" /> Conteo
+            </Button>
+          )}
+          {puedeRetirar && (
             <Button size="sm" className="gap-1.5" onClick={() => setRetirarAbierto(true)}>
               <MoneySend className="size-4" /> Retirar efectivo
             </Button>
@@ -354,6 +362,7 @@ export default function EfectivoPage() {
             <SelectItem value="cobro">Cobros</SelectItem>
             <SelectItem value="devolucion">Devoluciones</SelectItem>
             <SelectItem value="retirada">Retiradas</SelectItem>
+            <SelectItem value="conteo">Conteos</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filtroOrigen || "__todos__"} onValueChange={(v) => setFiltroOrigen(!v || v === "__todos__" ? "" : v)}>
@@ -514,6 +523,7 @@ export default function EfectivoPage() {
       </div>
 
       {puedeRetirar && <RetirarEfectivoDialog open={retirarAbierto} onOpenChange={setRetirarAbierto} saldo={saldoActual} onRegistrada={cargar} />}
+      {puedeRetirar && <ContarEfectivoDialog open={contarAbierto} onOpenChange={setContarAbierto} saldo={saldoActual} onRegistrado={cargar} />}
       {puedeRetirar && <AnularRetiradaDialog retirada={anulando} onOpenChange={(o) => !o && setAnulando(null)} onAnulada={cargar} />}
     </div>
   );
