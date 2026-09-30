@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Send2, Paperclip2, CloseCircle, Warning2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,57 @@ interface AdjuntoNuevo {
 const MAX_ADJUNTOS = 5;
 // El backend admite 8 MB; aquí se deja un margen porque el archivo viaja en base64 (+33 %).
 const MAX_BYTES = 4 * 1024 * 1024;
+
+// Guardado local del borrador en curso — para que cerrar "Redactar" sin
+// enviar (por error, o al cerrar la pestaña) no pierda lo escrito. Solo
+// texto: los adjuntos no se guardan (podrían ser varios MB en base64) — al
+// reenviar ya se avisa de volver a adjuntar, mismo criterio aquí. Es por
+// navegador/dispositivo, no se sincroniza — un simple "colchón" de
+// seguridad, no un almacén fiable de borradores. Petición del usuario,
+// 2026-09-30.
+const CLAVE_BORRADOR = "kelatos_mails_borrador_pendiente";
+
+function borradorVacio(b: BorradorCorreo): boolean {
+  return !b.para.trim() && !b.cc.trim() && !b.asunto.trim() && !b.texto.trim();
+}
+
+function leerBorradorGuardado(): BorradorCorreo | null {
+  try {
+    const crudo = localStorage.getItem(CLAVE_BORRADOR);
+    if (!crudo) return null;
+    const d = JSON.parse(crudo) as Partial<BorradorCorreo>;
+    if (typeof d !== "object" || d === null) return null;
+    const b: BorradorCorreo = {
+      buzonId: typeof d.buzonId === "number" ? d.buzonId : null,
+      para: typeof d.para === "string" ? d.para : "",
+      cc: typeof d.cc === "string" ? d.cc : "",
+      asunto: typeof d.asunto === "string" ? d.asunto : "",
+      texto: typeof d.texto === "string" ? d.texto : "",
+      respondeA: typeof d.respondeA === "number" ? d.respondeA : null,
+      esReenvio: d.esReenvio === true,
+    };
+    return borradorVacio(b) ? null : b;
+  } catch {
+    return null;
+  }
+}
+
+function guardarBorrador(b: BorradorCorreo) {
+  try {
+    if (borradorVacio(b)) localStorage.removeItem(CLAVE_BORRADOR);
+    else localStorage.setItem(CLAVE_BORRADOR, JSON.stringify(b));
+  } catch {
+    /* almacenamiento bloqueado/lleno — el envío sigue funcionando igual, solo se pierde el colchón */
+  }
+}
+
+function borrarBorradorGuardado() {
+  try {
+    localStorage.removeItem(CLAVE_BORRADOR);
+  } catch {
+    /* nada que limpiar si ni siquiera se pudo leer */
+  }
+}
 
 function leerBase64(archivo: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -80,6 +131,32 @@ export function RedactarDialog({
       setForzar(false);
     }
   }
+
+  // Al abrir: si hay un borrador sin enviar guardado de una sesión anterior
+  // (distinto del que se acaba de prellenar, p.ej. una respuesta con cita),
+  // se ofrece recuperarlo en vez de sustituirlo en silencio.
+  useEffect(() => {
+    const guardado = leerBorradorGuardado();
+    if (!guardado) return;
+    toast.info("Tienes un borrador sin enviar de antes", {
+      duration: 15000,
+      action: { label: "Restaurar", onClick: () => setF(guardado) },
+    });
+  }, []);
+
+  // Autoguardado mientras se escribe (sin adjuntos) — se limpia solo al
+  // enviar con éxito; cancelar/cerrar sin enviar lo deja disponible para la
+  // próxima vez. Se salta el primer render: si no, el contenido ya
+  // prellenado (p.ej. la cita de una respuesta) pisaría en el acto el
+  // borrador viejo que el efecto de arriba acaba de ofrecer recuperar.
+  const primerRender = useRef(true);
+  useEffect(() => {
+    if (primerRender.current) {
+      primerRender.current = false;
+      return;
+    }
+    guardarBorrador(f);
+  }, [f]);
 
   async function elegirArchivos(lista: FileList | null) {
     if (!lista?.length) return;
@@ -132,6 +209,7 @@ export function RedactarDialog({
       toast.success(esRespuesta ? "Respuesta enviada" : "Correo enviado");
       if (data.rechazados?.length) toast.warning(`El servidor rechazó: ${(data.rechazados as string[]).join(", ")}`);
       if (data.aviso) toast.warning(data.aviso);
+      borrarBorradorGuardado();
       onOpenChange(false);
       onEnviado();
     } catch (e) {
