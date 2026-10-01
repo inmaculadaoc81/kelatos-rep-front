@@ -57,6 +57,10 @@ export function OrganizacionSwitcher() {
                       sola línea, el recorte se comía justo esa parte y todas se veían iguales en la lista (bug
                       real reportado 2026-10-01). Deja que el nombre pase a una segunda línea en vez de recortarlo. */}
                   <span className="flex-1 text-pretty wrap-break-word leading-snug">{o.name}</span>
+                  {/* Verde = tiene sitio SEO o Instagram configurado de verdad (ya viene calculado y ordenado
+                      primero desde el backend); sin esto no había forma de distinguir, de un vistazo, las
+                      organizaciones que ya funcionan de las que son solo un hueco reservado. */}
+                  {o.activa && <span className="size-2 shrink-0 rounded-full bg-emerald-500" title="Tiene algo configurado" />}
                   {o.id === organizacionId && <TickCircle className="size-4 shrink-0 text-primary" variant="Bold" />}
                 </CommandItem>
               ))}

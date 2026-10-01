@@ -154,6 +154,8 @@ export interface Organizacion {
   status: EstadoOrganizacion;
   created_at: string;
   updated_at: string;
+  /** Tiene sitio SEO o Instagram configurado de verdad (no solo el alta vacía) — el backend ya las devuelve primero. */
+  activa: boolean;
 }
 
 export interface CredencialesInstagram {
