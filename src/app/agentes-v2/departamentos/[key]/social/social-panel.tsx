@@ -51,7 +51,7 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
 
   return (
     <div className="-m-6 grid items-stretch md:min-h-[calc(100vh-3.5rem)] md:grid-cols-[220px_minmax(0,1fr)]">
-      <div className="min-w-0 space-y-5 p-6">
+      <div className="min-w-0 space-y-5 bg-white p-6">
         {cabecera}
         <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible" aria-label="Redes sociales">
           {NAV.map((n, i) => (
@@ -74,7 +74,7 @@ export function SocialPanel({ d, recargar, cabecera }: { d: DetalleDepartamento;
           <button type="button" onClick={() => setMarca(true)} className="mt-2 hidden rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/60 md:block">Marca…</button>
         </nav>
       </div>
-      <main className="min-w-0 border-t bg-muted p-6 md:border-t-0 md:border-l">
+      <main className="min-w-0 border-t bg-gray-50 p-6 md:border-t-0 md:border-l">
         {vista === "overview" && <Resumen d={d} recargar={recargar} ir={cambiar} />}
         {vista === "carruseles" && (abierto === null ? <CarruselesLista onAbrir={setAbierto} /> : <EditorCarrusel key={abierto} id={abierto} onVolver={() => setAbierto(null)} />)}
         {vista === "posts" && (abiertoPost === null ? <PostsLista onAbrir={setAbiertoPost} /> : <EditorPost key={abiertoPost} id={abiertoPost} onVolver={() => setAbiertoPost(null)} />)}
