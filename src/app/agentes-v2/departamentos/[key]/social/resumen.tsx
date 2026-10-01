@@ -80,17 +80,19 @@ function useAvisoTarea(job: JobAuto | null | undefined, ok: (r: unknown) => stri
 export function Resumen({ d, recargar, ir }: { d: DetalleDepartamento; recargar: () => void; ir: (v: "carruseles" | "temas" | "estrategia" | "horario") => void }) {
   const auto = useAuto();
   const panel = useV2<PanelSocial>("social/panel");
-  const [lanzando, setLanzando] = useState<"descubrir" | "producir" | null>(null);
+  const [lanzando, setLanzando] = useState<"descubrir" | "producir" | "producir_post" | null>(null);
   const a = auto.datos;
 
   useAvisoTarea(a?.jobs.descubrir, (r) => { const x = r as { propuestos?: number; duplicados?: number } | null; return x && typeof x.propuestos === "number" ? `${x.propuestos} temas nuevos (${x.duplicados ?? 0} duplicados descartados)` : "Búsqueda de temas terminada"; });
   useAvisoTarea(a?.jobs.producir, (r) => { const x = r as { creado?: boolean; motivo?: string; entrega?: string } | null; return x && x.creado === false ? x.motivo ?? "No se generó nada" : `Carrusel generado. ${x?.entrega ?? ""}`; });
+  useAvisoTarea(a?.jobs.producir_diario, (r) => { const x = r as { creado?: boolean; motivo?: string; entrega?: string } | null; return x && x.creado === false ? x.motivo ?? "No se generó nada" : `Post generado. ${x?.entrega ?? ""}`; });
 
-  const lanzar = async (que: "descubrir" | "producir") => {
+  const RUTA_LANZAR = { descubrir: "social/topics/discover", producir: "social/automation/run-now", producir_post: "social/automation/run-daily-now" } as const;
+  const lanzar = async (que: "descubrir" | "producir" | "producir_post") => {
     setLanzando(que);
     try {
-      await enviarV2("POST", que === "descubrir" ? "social/topics/discover" : "social/automation/run-now", {});
-      toast.success(que === "descubrir" ? "Buscando temas nuevos (unos 2 minutos)…" : "Generando el siguiente carrusel (3-5 minutos)…");
+      await enviarV2("POST", RUTA_LANZAR[que], {});
+      toast.success(que === "descubrir" ? "Buscando temas nuevos (unos 2 minutos)…" : que === "producir" ? "Generando el siguiente carrusel (3-5 minutos)…" : "Generando el siguiente post (3-5 minutos)…");
       await auto.recargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo lanzar la tarea");
@@ -109,18 +111,22 @@ export function Resumen({ d, recargar, ir }: { d: DetalleDepartamento; recargar:
       {auto.error && <ErrorCaja mensaje={auto.error} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi titulo="Hoy" valor={a ? `${a.hoy} / ${a.limites.dia}` : "—"} sub="carruseles automáticos" cargando={!a} />
-        <Kpi titulo="Últimos 7 días" valor={a ? `${a.semana} / ${a.limites.semana}` : "—"} sub="carruseles automáticos" cargando={!a} />
+        <Kpi titulo="Carruseles hoy" valor={a ? `${a.hoy} / ${a.limites.dia}` : "—"} sub="automáticos" cargando={!a} />
+        <Kpi titulo="Carruseles 7 días" valor={a ? `${a.semana} / ${a.limites.semana}` : "—"} sub="automáticos" cargando={!a} />
+        <Kpi titulo="Posts hoy" valor={a ? `${a.hoyPost} / ${a.limitesPost.dia}` : "—"} sub="automáticos" cargando={!a} />
+        <Kpi titulo="Posts 7 días" valor={a ? `${a.semanaPost} / ${a.limitesPost.semana}` : "—"} sub="automáticos" cargando={!a} />
         <Kpi titulo="Temas en cola" valor={String(cola)} sub={`${a?.topics.aprobado ?? 0} aprobados · ${a?.topics.propuesto ?? 0} propuestos`} cargando={!a} />
         <Kpi titulo="Carruseles" valor={String(panel.datos?.carruseles.total ?? 0)} sub={`${panel.datos?.carruseles.review ?? 0} en revisión`} cargando={!panel.datos} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" disabled={!a || enMarcha(a.jobs.producir) || lanzando !== null} onClick={() => lanzar("producir")}>{enMarcha(a?.jobs.producir) ? "Generando…" : "Generar el siguiente ahora"}</Button>
+        <Button size="sm" disabled={!a || enMarcha(a.jobs.producir) || lanzando !== null} onClick={() => lanzar("producir")}>{enMarcha(a?.jobs.producir) ? "Generando…" : "Generar el siguiente carrusel ahora"}</Button>
+        <Button size="sm" disabled={!a || enMarcha(a.jobs.producir_diario) || lanzando !== null} onClick={() => lanzar("producir_post")}>{enMarcha(a?.jobs.producir_diario) ? "Generando…" : "Generar el siguiente post ahora"}</Button>
         <Button size="sm" variant="outline" disabled={!a || enMarcha(a.jobs.descubrir) || lanzando !== null} onClick={() => lanzar("descubrir")}>{enMarcha(a?.jobs.descubrir) ? "Buscando temas…" : "Buscar temas ahora"}</Button>
         <span className="text-xs text-muted-foreground">Sirven para probar sin esperar al horario. Respetan la estrategia y no repiten temas ni tipos seguidos.</span>
       </div>
       {a?.jobs.producir?.state === "error" && <ErrorCaja mensaje={`El último carrusel automático falló: ${a.jobs.producir.error}`} />}
+      {a?.jobs.producir_diario?.state === "error" && <ErrorCaja mensaje={`El último post automático falló: ${a.jobs.producir_diario.error}`} />}
       {a?.jobs.descubrir?.state === "error" && <ErrorCaja mensaje={`La última búsqueda de temas falló: ${a.jobs.descubrir.error}`} />}
 
       <div className="grid gap-5 lg:grid-cols-2">

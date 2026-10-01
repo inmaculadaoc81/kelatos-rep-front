@@ -265,6 +265,10 @@ export interface ConfigAuto {
   aprobacion: "manual" | "auto";
   maxPorDia: number;
   maxPorSemana: number;
+  /** Cupos propios de Post, separados de los de carrusel (maxPorDia/maxPorSemana
+      de arriba) desde el 2026-10-01 — cada tipo tiene su propio horario automático. */
+  maxPorDiaPost: number;
+  maxPorSemanaPost: number;
   estilo: "marca" | "rotar";
   descubrir: boolean;
 }
@@ -279,10 +283,14 @@ export interface EstadoAuto {
   hoy: number;
   semana: number;
   limites: { dia: number; semana: number };
+  /** Mismas cifras que hoy/semana/limites, pero para Post (cupo separado desde el 2026-10-01). */
+  hoyPost: number;
+  semanaPost: number;
+  limitesPost: { dia: number; semana: number };
   topics: Record<string, number>;
   por_tipo: Record<string, number>;
   proximos: { id: number; title: string; tipo: string; status: string; sector: string | null; fecha: string | null }[];
-  jobs: { descubrir: JobAuto | null; producir: JobAuto | null };
+  jobs: { descubrir: JobAuto | null; producir: JobAuto | null; producir_diario: JobAuto | null };
 }
 
 export type EstadoTema = "propuesto" | "aprobado" | "en_curso" | "hecho" | "descartado";

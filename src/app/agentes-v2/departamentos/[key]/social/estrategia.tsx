@@ -87,12 +87,14 @@ function Formulario({ inicial, tipos, alGuardar }: { inicial: ConfigAuto; tipos:
       <section className="space-y-3 rounded-lg border p-4">
         <h3 className="text-sm font-semibold">Producción</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Campo etiqueta="Máximo por día"><Input type="number" min={1} max={10} value={c.maxPorDia} onChange={(e) => cambia({ maxPorDia: Number(e.target.value) || 1 })} className="h-8 text-sm" /></Campo>
-          <Campo etiqueta="Máximo en 7 días"><Input type="number" min={1} max={50} value={c.maxPorSemana} onChange={(e) => cambia({ maxPorSemana: Number(e.target.value) || 1 })} className="h-8 text-sm" /></Campo>
+          <Campo etiqueta="Máximo carruseles/día"><Input type="number" min={1} max={10} value={c.maxPorDia} onChange={(e) => cambia({ maxPorDia: Number(e.target.value) || 1 })} className="h-8 text-sm" /></Campo>
+          <Campo etiqueta="Máximo carruseles/7 días"><Input type="number" min={1} max={50} value={c.maxPorSemana} onChange={(e) => cambia({ maxPorSemana: Number(e.target.value) || 1 })} className="h-8 text-sm" /></Campo>
+          <Campo etiqueta="Máximo posts/día"><Input type="number" min={1} max={10} value={c.maxPorDiaPost} onChange={(e) => cambia({ maxPorDiaPost: Number(e.target.value) || 1 })} className="h-8 text-sm" /></Campo>
+          <Campo etiqueta="Máximo posts/7 días"><Input type="number" min={1} max={50} value={c.maxPorSemanaPost} onChange={(e) => cambia({ maxPorSemanaPost: Number(e.target.value) || 1 })} className="h-8 text-sm" /></Campo>
           <Campo etiqueta="Slides mínimo"><Input type="number" min={3} max={12} value={c.slidesMin} onChange={(e) => cambia({ slidesMin: Number(e.target.value) || 3 })} className="h-8 text-sm" /></Campo>
           <Campo etiqueta="Slides máximo"><Input type="number" min={3} max={12} value={c.slidesMax} onChange={(e) => cambia({ slidesMax: Number(e.target.value) || 3 })} className="h-8 text-sm" /></Campo>
         </div>
-        <p className="text-[11px] text-muted-foreground">Los carruseles que generes a mano no cuentan para estos máximos. Cuándo se lanza cada uno se ajusta en «Horario».</p>
+        <p className="text-[11px] text-muted-foreground">Carrusel y post tienen cupos independientes: el mismo día pueden salir los dos. Lo que generes a mano no cuenta para estos máximos. Cuándo se lanza cada uno se ajusta en «Horario».</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo etiqueta="Aprobación" ayuda={c.aprobacion === "manual" ? "Cada carrusel espera en Aprobaciones a que lo revises. Recomendado hasta que la publicación esté conectada." : "Quedan aprobados nada más generarse: tu workflow de n8n podrá cogerlos sin que hagas nada. Úsalo cuando confíes en el resultado."}>
             <Selector valor={c.aprobacion} onChange={(v) => cambia({ aprobacion: v })} opciones={[{ valor: "manual", texto: "Manual: pasa por revisión" }, { valor: "auto", texto: "Automática: aprobado al generarse" }]} />
