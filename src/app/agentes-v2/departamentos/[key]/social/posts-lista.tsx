@@ -10,7 +10,14 @@ import { EstadoBadge, Progreso, fechaCorta } from "./campos";
 import { NuevoPost } from "./nuevo-post";
 import { LAYOUTS, urlImagenPost, usePosts } from "./use-posts";
 
-const FILTROS: { valor: EstadoCarrusel | "todos"; texto: string }[] = [
+// "Publicados" por defecto (lo que de verdad importa a diario) y
+// "Sin publicar" agrupa todo lo demás en un solo filtro — petición del
+// usuario, 2026-10-01: antes "Todos" mezclaba publicado y sin publicar
+// en la misma vista, sin forma rápida de separarlos. Mismo criterio que
+// carruseles-lista.tsx.
+const FILTROS: { valor: EstadoCarrusel | "todos" | "sin_publicar"; texto: string }[] = [
+  { valor: "published", texto: "Publicados" },
+  { valor: "sin_publicar", texto: "Sin publicar" },
   { valor: "todos", texto: "Todos" },
   { valor: "draft", texto: "Borradores" },
   { valor: "generated", texto: "Generados" },
@@ -20,10 +27,12 @@ const FILTROS: { valor: EstadoCarrusel | "todos"; texto: string }[] = [
 
 export function PostsLista({ onAbrir }: { onAbrir: (id: number) => void }) {
   const { datos, error, cargando } = usePosts();
-  const [filtro, setFiltro] = useState<EstadoCarrusel | "todos">("todos");
+  const [filtro, setFiltro] = useState<EstadoCarrusel | "todos" | "sin_publicar">("published");
   const [nuevo, setNuevo] = useState(false);
 
-  const lista = (datos?.posts ?? []).filter((p) => filtro === "todos" || p.status === filtro);
+  const lista = (datos?.posts ?? []).filter(
+    (p) => filtro === "todos" || (filtro === "sin_publicar" ? p.status !== "published" : p.status === filtro)
+  );
 
   return (
     <div className="space-y-4">
@@ -46,8 +55,22 @@ export function PostsLista({ onAbrir }: { onAbrir: (id: number) => void }) {
       {!datos && cargando && <CargandoFilas />}
       {datos && lista.length === 0 && (
         <Vacio
-          titulo={filtro === "todos" ? "Todavía no hay posts" : `No hay posts en ese estado`}
-          texto={filtro === "todos" ? "Pulsa «Nuevo post», escribe el tema y la IA prepara la imagen y su copy para cada red." : undefined}
+          titulo={
+            filtro === "todos"
+              ? "Todavía no hay posts"
+              : filtro === "published"
+                ? "Todavía no hay posts publicados"
+                : filtro === "sin_publicar"
+                  ? "No hay posts sin publicar"
+                  : "No hay posts en ese estado"
+          }
+          texto={
+            filtro === "todos"
+              ? "Pulsa «Nuevo post», escribe el tema y la IA prepara la imagen y su copy para cada red."
+              : filtro === "published"
+                ? "Mira en «Sin publicar» para ver los que están en camino."
+                : undefined
+          }
         />
       )}
 

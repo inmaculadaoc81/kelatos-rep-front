@@ -9,7 +9,14 @@ import { EstadoBadge, Progreso, TipoBadge, fechaCorta } from "./campos";
 import { NuevoCarrusel } from "./nuevo-carrusel";
 import { ESTADO_TEXTO, urlImagen, useCarruseles, type EstadoCarrusel } from "./use-social";
 
-const FILTROS: { valor: EstadoCarrusel | "todos"; texto: string }[] = [
+// "Publicados" por defecto (lo que de verdad importa a diario) y
+// "Sin publicar" agrupa todo lo demás (borrador/generado/revisión/
+// aprobado/programado/rechazado) en un solo filtro — petición del
+// usuario, 2026-10-01: antes "Todos" mezclaba publicado y sin publicar
+// en la misma vista, sin forma rápida de separarlos.
+const FILTROS: { valor: EstadoCarrusel | "todos" | "sin_publicar"; texto: string }[] = [
+  { valor: "published", texto: "Publicados" },
+  { valor: "sin_publicar", texto: "Sin publicar" },
   { valor: "todos", texto: "Todos" },
   { valor: "draft", texto: "Borradores" },
   { valor: "generated", texto: "Generados" },
@@ -19,10 +26,12 @@ const FILTROS: { valor: EstadoCarrusel | "todos"; texto: string }[] = [
 
 export function CarruselesLista({ onAbrir }: { onAbrir: (id: number) => void }) {
   const { datos, error, cargando } = useCarruseles();
-  const [filtro, setFiltro] = useState<EstadoCarrusel | "todos">("todos");
+  const [filtro, setFiltro] = useState<EstadoCarrusel | "todos" | "sin_publicar">("published");
   const [nuevo, setNuevo] = useState(false);
 
-  const lista = (datos?.carousels ?? []).filter((c) => filtro === "todos" || c.status === filtro);
+  const lista = (datos?.carousels ?? []).filter(
+    (c) => filtro === "todos" || (filtro === "sin_publicar" ? c.status !== "published" : c.status === filtro)
+  );
 
   return (
     <div className="space-y-4">
@@ -45,8 +54,22 @@ export function CarruselesLista({ onAbrir }: { onAbrir: (id: number) => void }) 
       {!datos && cargando && <CargandoFilas />}
       {datos && lista.length === 0 && (
         <Vacio
-          titulo={filtro === "todos" ? "Todavía no hay carruseles" : `No hay carruseles ${ESTADO_TEXTO[filtro as EstadoCarrusel].texto.toLowerCase()}s`}
-          texto={filtro === "todos" ? "Pulsa «Nuevo carrusel», escribe el tema y la IA prepara las slides listas para Instagram." : undefined}
+          titulo={
+            filtro === "todos"
+              ? "Todavía no hay carruseles"
+              : filtro === "published"
+                ? "Todavía no hay carruseles publicados"
+                : filtro === "sin_publicar"
+                  ? "No hay carruseles sin publicar"
+                  : `No hay carruseles ${ESTADO_TEXTO[filtro].texto.toLowerCase()}s`
+          }
+          texto={
+            filtro === "todos"
+              ? "Pulsa «Nuevo carrusel», escribe el tema y la IA prepara las slides listas para Instagram."
+              : filtro === "published"
+                ? "Mira en «Sin publicar» para ver los que están en camino."
+                : undefined
+          }
         />
       )}
 

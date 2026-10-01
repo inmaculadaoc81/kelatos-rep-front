@@ -9,7 +9,12 @@ import { Progreso, fechaCorta } from "./campos";
 import { NuevoReel } from "./nuevo-reel";
 import { ESTADO_REEL_TEXTO, formatoTiempo, useReels, type EstadoReel } from "./use-reels";
 
-const FILTROS: { valor: EstadoReel | "todos"; texto: string }[] = [
+// "Publicados" por defecto y "Sin publicar" agrupa todo lo demás en un
+// solo filtro — petición del usuario, 2026-10-01, mismo criterio que
+// carruseles-lista.tsx/posts-lista.tsx.
+const FILTROS: { valor: EstadoReel | "todos" | "sin_publicar"; texto: string }[] = [
+  { valor: "published", texto: "Publicados" },
+  { valor: "sin_publicar", texto: "Sin publicar" },
   { valor: "todos", texto: "Todos" },
   { valor: "draft", texto: "Borradores" },
   { valor: "planning", texto: "Escribiendo guion" },
@@ -18,10 +23,12 @@ const FILTROS: { valor: EstadoReel | "todos"; texto: string }[] = [
 
 export function ReelsLista({ onAbrir }: { onAbrir: (id: number) => void }) {
   const { datos, error, cargando } = useReels();
-  const [filtro, setFiltro] = useState<EstadoReel | "todos">("todos");
+  const [filtro, setFiltro] = useState<EstadoReel | "todos" | "sin_publicar">("published");
   const [nuevo, setNuevo] = useState(false);
 
-  const lista = (datos?.reels ?? []).filter((r) => filtro === "todos" || r.status === filtro);
+  const lista = (datos?.reels ?? []).filter(
+    (r) => filtro === "todos" || (filtro === "sin_publicar" ? r.status !== "published" : r.status === filtro)
+  );
 
   return (
     <div className="space-y-4">
@@ -44,8 +51,22 @@ export function ReelsLista({ onAbrir }: { onAbrir: (id: number) => void }) {
       {!datos && cargando && <CargandoFilas />}
       {datos && lista.length === 0 && (
         <Vacio
-          titulo={filtro === "todos" ? "Todavía no hay reels" : "No hay reels en ese estado"}
-          texto={filtro === "todos" ? "Pulsa «Nuevo Reel», escribe el tema y la IA prepara el guion, las escenas y los subtítulos." : undefined}
+          titulo={
+            filtro === "todos"
+              ? "Todavía no hay reels"
+              : filtro === "published"
+                ? "Todavía no hay reels publicados"
+                : filtro === "sin_publicar"
+                  ? "No hay reels sin publicar"
+                  : "No hay reels en ese estado"
+          }
+          texto={
+            filtro === "todos"
+              ? "Pulsa «Nuevo Reel», escribe el tema y la IA prepara el guion, las escenas y los subtítulos."
+              : filtro === "published"
+                ? "Mira en «Sin publicar» para ver los que están en camino."
+                : undefined
+          }
         />
       )}
 
