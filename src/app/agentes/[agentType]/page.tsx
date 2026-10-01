@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PillBadge } from "@/components/pill-badge";
 import { AgentRun, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
+import { SeguridadDashboard } from "./seguridad-dashboard";
 
 /** Formulario de "nuevo run" — cada tipo de agente tiene su propia forma
     de arrancar (lead_research parte de sector/ubicación; linkedin_
@@ -244,16 +245,20 @@ export default function AgenteTipoPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nuevo run</CardTitle>
-        </CardHeader>
-        {agentType === "linkedin_intelligence" ? (
-          <NuevoRunLinkedIn onLanzada={(campaignId) => setPendienteCampaignId(campaignId)} />
-        ) : (
-          <NuevoRunLeadResearch agentType={agentType} onCreado={(runId) => router.push(`/agentes/${agentType}/${runId}`)} />
-        )}
-      </Card>
+      {agentType === "security_audit" ? (
+        <SeguridadDashboard runs={runs} cargando={cargando} onEjecutado={cargarRuns} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Nuevo run</CardTitle>
+          </CardHeader>
+          {agentType === "linkedin_intelligence" ? (
+            <NuevoRunLinkedIn onLanzada={(campaignId) => setPendienteCampaignId(campaignId)} />
+          ) : (
+            <NuevoRunLeadResearch agentType={agentType} onCreado={(runId) => router.push(`/agentes/${agentType}/${runId}`)} />
+          )}
+        </Card>
+      )}
 
       {pendienteCampaignId && (
         <Card className="border-dashed border-sky-300 bg-sky-50/60">

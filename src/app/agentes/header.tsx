@@ -24,7 +24,7 @@ export function AgentesHeader() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage className="text-primary-foreground">Agentes</BreadcrumbPage>
+            <BreadcrumbPage className="text-primary-foreground">Seguridad</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

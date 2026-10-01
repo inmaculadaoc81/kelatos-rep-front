@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -178,8 +178,8 @@ export function NavUser({ session }: { session: Session | null }) {
               )}
               {puedeVerAgentes && !enAgentes && (
                 <DropdownMenuItem render={<Link href="/agentes" />}>
-                  <IconoDashboard icon={Cpu} className="from-cyan-500 to-teal-600" />
-                  Agentes
+                  <IconoDashboard icon={SecuritySafe} className="from-cyan-500 to-teal-600" />
+                  Seguridad
                 </DropdownMenuItem>
               )}
               {puedeVerAgentes && !enAgentesV2 && (

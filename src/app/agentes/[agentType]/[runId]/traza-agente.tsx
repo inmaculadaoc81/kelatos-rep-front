@@ -73,6 +73,11 @@ const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: Luci
   linkedin_message_strategy: { label: "Mensajes LinkedIn", subtitulo: "Modelo medio" },
   outreach: { label: "Borradores de contacto", subtitulo: "Modelo medio" },
   marketing_manager: { label: "Marketing Manager", subtitulo: "Supervisión" },
+  // agente de Auditoría de seguridad (determinista, sin modelo)
+  npm_audit_backend: { label: "Dependencias · Backend", subtitulo: "npm audit" },
+  npm_audit_frontend: { label: "Dependencias · Frontend", subtitulo: "GitHub Dependabot" },
+  accesos_permisos: { label: "Accesos y permisos", subtitulo: "Código determinista" },
+  infra_vps: { label: "Infraestructura del VPS", subtitulo: "SSL, disco, backups" },
 };
 
 const MAX_CHIPS_VISIBLES = 4;
