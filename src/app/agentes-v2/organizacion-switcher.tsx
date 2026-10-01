@@ -41,7 +41,7 @@ export function OrganizacionSwitcher() {
           </button>
         }
       />
-      <PopoverContent align="start" className="w-72 p-0">
+      <PopoverContent align="start" className="w-80 p-0">
         <Command>
           <CommandInput placeholder="Buscar organización..." />
           <CommandList>
@@ -52,8 +52,12 @@ export function OrganizacionSwitcher() {
                   <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
                     <Building className="size-3" />
                   </span>
-                  <span className="flex-1 truncate">{o.name}</span>
-                  {o.id === organizacionId && <TickCircle className="size-4 text-primary" variant="Bold" />}
+                  {/* Varias organizaciones comparten el mismo prefijo largo ("Servicio Técnico de Ordenadores…") y
+                      lo único que las distingue es el final del nombre (Lenovo/HP/Asus/Dell…) — con truncate de una
+                      sola línea, el recorte se comía justo esa parte y todas se veían iguales en la lista (bug
+                      real reportado 2026-10-01). Deja que el nombre pase a una segunda línea en vez de recortarlo. */}
+                  <span className="flex-1 text-pretty wrap-break-word leading-snug">{o.name}</span>
+                  {o.id === organizacionId && <TickCircle className="size-4 shrink-0 text-primary" variant="Bold" />}
                 </CommandItem>
               ))}
             </CommandGroup>
