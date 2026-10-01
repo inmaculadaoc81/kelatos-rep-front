@@ -77,7 +77,13 @@ export default function AgenteRunDetallePage() {
 
   return (
     <div className="flex h-[calc(100svh-6.5rem)] gap-4 overflow-hidden">
-      <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} agentType={params.agentType} onActualizado={cargar} />
+      {/* security_audit es determinista (sin modelo, sin coste): el panel
+          de traza de la izquierda está pensado para un agente que
+          "piensa" (Reasoning/tokens/chat-of-thought) y no aporta nada
+          aquí -- solo se muestra su propio canvas, a ancho completo. */}
+      {params.agentType !== "security_audit" && (
+        <TrazaAgente run={run} steps={steps} tipoLabel={tipoLabel} agentType={params.agentType} onActualizado={cargar} />
+      )}
       {/* Cada tipo de agente tiene su propio canvas -- el de campaign_pipeline
           dibuja SU pipeline (discovery -> ... -> outreach), el de
           linkedin_intelligence dibuja el suyo (4 etapas propias). No hay

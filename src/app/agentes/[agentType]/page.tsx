@@ -298,8 +298,15 @@ export default function AgenteTipoPage() {
                   <TableHead>Creado</TableHead>
                   <TableHead>Objetivo</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Coste</TableHead>
-                  <TableHead>Tokens</TableHead>
+                  {/* security_audit es determinista (sin modelo): coste y
+                      tokens son siempre $0 / 0, así que no aportan nada
+                      en esta tabla y solo confunden. */}
+                  {agentType !== "security_audit" && (
+                    <>
+                      <TableHead>Coste</TableHead>
+                      <TableHead>Tokens</TableHead>
+                    </>
+                  )}
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -315,8 +322,12 @@ export default function AgenteTipoPage() {
                           {ESTADO_RUN_LABEL[run.status]}
                         </PillBadge>
                       </TableCell>
-                      <TableCell className="font-mono text-sm">${run.totalCostUsd.toFixed(4)}</TableCell>
-                      <TableCell className="font-mono text-sm">{run.totalTokensInput + run.totalTokensOutput}</TableCell>
+                      {agentType !== "security_audit" && (
+                        <>
+                          <TableCell className="font-mono text-sm">${run.totalCostUsd.toFixed(4)}</TableCell>
+                          <TableCell className="font-mono text-sm">{run.totalTokensInput + run.totalTokensOutput}</TableCell>
+                        </>
+                      )}
                       <TableCell>
                         <Button variant="link" size="xs" render={<Link href={`/agentes/${agentType}/${run.id}`} />}>
                           Ver detalle
