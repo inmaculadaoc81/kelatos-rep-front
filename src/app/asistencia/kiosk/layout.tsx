@@ -58,12 +58,29 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Guía de uso" onClick={() => setGuiaAbierta(true)}>
               <MessageQuestion className="size-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" disabled={cerrando} onClick={() => { setCerrando(true); signOut({ redirectTo: "/login" }); }}>
-              <Logout className="size-4" /> {cerrando ? "Saliendo…" : "Salir"}
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Salir" disabled={cerrando} onClick={() => { setCerrando(true); signOut({ redirectTo: "/login" }); }}>
+              <Logout className="size-4" />
             </Button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-lg gap-1 px-4 pb-2">
+      </header>
+      {/* pb-20: deja hueco para la barra fija de abajo, que si no tapa el
+          final del contenido. Barra abajo (en vez de pestañas arriba, como
+          antes) porque con 5 secciones las etiquetas ya no cabían en una
+          fila en móvil y se partían a dos líneas de forma desigual (bug
+          real visto en pantalla, 2026-10-03) — este patrón (icono encima,
+          etiqueta debajo, columnas iguales) es el habitual en apps móviles
+          y no tiene ese problema por diseño: cada pestaña tiene el mismo
+          ancho y el texto nunca necesita partirse. */}
+      <main className="flex-1 px-4 py-6 pb-20">
+        <div className="mx-auto max-w-lg space-y-4">
+          <RgpdModal open={necesitaRgpd} onAceptar={aceptarRgpd} />
+          <GuiaModal open={guiaAbierta} onClose={() => setGuiaAbierta(false)} />
+          {children}
+        </div>
+      </main>
+      <nav className="fixed inset-x-0 bottom-0 border-t bg-card pb-[env(safe-area-inset-bottom)]">
+        <div className="mx-auto grid max-w-lg grid-cols-5">
           {TABS.map((t) => {
             const Icon = t.icon;
             const activo = pathname === t.href;
@@ -72,23 +89,17 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
                 key={t.href}
                 href={t.href}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium",
-                  activo ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  "flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium whitespace-nowrap",
+                  activo ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <Icon className="size-3.5" /> {t.label}
+                <Icon className="size-5" />
+                {t.label}
               </Link>
             );
           })}
-        </nav>
-      </header>
-      <main className="flex-1 px-4 py-6">
-        <div className="mx-auto max-w-lg space-y-4">
-          <RgpdModal open={necesitaRgpd} onAceptar={aceptarRgpd} />
-          <GuiaModal open={guiaAbierta} onClose={() => setGuiaAbierta(false)} />
-          {children}
         </div>
-      </main>
+      </nav>
     </div>
   );
 }

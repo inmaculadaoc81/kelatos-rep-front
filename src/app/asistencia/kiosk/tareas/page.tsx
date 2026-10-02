@@ -32,6 +32,15 @@ export default function MisTareasPage() {
   const [guardandoInforme, setGuardandoInforme] = useState(false);
 
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
+  const [expandidas, setExpandidas] = useState<Set<number>>(new Set());
+
+  function alternarExpandida(id: number) {
+    setExpandidas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setCargando(true);
@@ -144,25 +153,37 @@ export default function MisTareasPage() {
           {normales.length === 0 ? (
             <p className="text-sm text-muted-foreground">No tienes ninguna tarea asignada.</p>
           ) : (
-            normales.map((t) => (
-              <div key={t.id} className="space-y-1.5 rounded-md border px-3 py-2">
-                <div className="flex items-start gap-2">
-                  <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", COLOR_PRIORIDAD[t.prioridad])} />
-                  <p className="flex-1 text-sm font-medium">{t.titulo}</p>
+            normales.map((t) => {
+              const expandida = expandidas.has(t.id);
+              return (
+                <div key={t.id} className="space-y-2 rounded-md border px-3 py-2.5">
+                  <div className="flex items-start gap-2">
+                    <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", COLOR_PRIORIDAD[t.prioridad])} />
+                    <p className="min-w-0 flex-1 text-sm font-medium wrap-break-word">{t.titulo}</p>
+                  </div>
+                  {t.descripcion && (
+                    <button
+                      type="button"
+                      onClick={() => alternarExpandida(t.id)}
+                      className="block w-full pl-3.5 text-left text-xs text-muted-foreground"
+                    >
+                      <span className={cn(!expandida && "line-clamp-2")}>{t.descripcion}</span>
+                      {!expandida && <span className="font-medium text-primary">Ver más</span>}
+                    </button>
+                  )}
+                  <div className="pl-3.5">
+                    <Select value={t.estado} onValueChange={(v) => v && cambiarEstado(t, v as EstadoTarea)}>
+                      <SelectTrigger className="h-8 w-full text-xs"><SelectValue>{(v: string) => ETIQUETA_ESTADO[v as EstadoTarea] || v}</SelectValue></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="en_progreso">En progreso</SelectItem>
+                        <SelectItem value="finalizada">Finalizada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                {t.descripcion && <p className="pl-3.5 text-xs text-muted-foreground">{t.descripcion}</p>}
-                <div className="pl-3.5">
-                  <Select value={t.estado} onValueChange={(v) => v && cambiarEstado(t, v as EstadoTarea)}>
-                    <SelectTrigger className="h-7 w-auto min-w-36 text-xs"><SelectValue>{(v: string) => ETIQUETA_ESTADO[v as EstadoTarea] || v}</SelectValue></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
-                      <SelectItem value="en_progreso">En progreso</SelectItem>
-                      <SelectItem value="finalizada">Finalizada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>
