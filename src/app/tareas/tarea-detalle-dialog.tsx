@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { EmpleadoTareas } from "@/app/api/tareas/empleados/route";
 import { ETIQUETA_ESTADO, ETIQUETA_PRIORIDAD, type EstadoTarea, type PrioridadTarea, type Tarea } from "@/lib/tareas";
 import { EtiquetasInput } from "./etiquetas-input";
@@ -245,6 +246,25 @@ export function TareaDetalleDialog({
                 <div className="mb-5 space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Etiquetas</Label>
                   <EtiquetasInput valor={etiquetas} onChange={(v) => { setEtiquetas(v); guardarCampos({ etiquetas: v }); }} />
+                </div>
+
+                <div className="mb-5 space-y-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={tarea.esDiaria} onCheckedChange={(c) => guardarCampos({ esDiaria: c === true })} />
+                    Tarea diaria (se repite cada día, se marca "hecha" desde "Mis tareas" en el kiosco)
+                  </label>
+                  {tarea.esDiaria && (
+                    <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                      {tarea.historialDiaria && tarea.historialDiaria.length > 0 ? (
+                        <>
+                          <p className="mb-1 font-medium text-foreground">Últimos días completados</p>
+                          <p>{tarea.historialDiaria.map((d) => fmt(d.fecha)).join(" · ")}</p>
+                        </>
+                      ) : (
+                        <p>Todavía no se ha marcado hecha ningún día.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2.5">

@@ -8,7 +8,7 @@ import { signOut } from "next-auth/react";
 import { RgpdModal } from "./rgpd-modal";
 import { GuiaModal } from "./guia-modal";
 import { Button } from "@/components/ui/button";
-import { Clock, Calendar, ClipboardText, Logout, MessageQuestion, Profile2User } from "@/lib/icons";
+import { Clock, Calendar, ClipboardText, ClipboardTick, Logout, MessageQuestion, Profile2User } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -19,6 +19,10 @@ const TABS = [
   // deja siempre visible (igual que las demás pestañas) — la propia página
   // explica qué hacer si todavía no tienes ninguno vinculado.
   { href: "/asistencia/kiosk/reunion", label: "Reunión", icon: Profile2User },
+  // Tareas propias (asignadas + autoasignadas) e informe de texto libre del
+  // día — petición del usuario, 2026-10-03. Vive dentro del kiosco a
+  // propósito, sin abrir /tareas (la vista completa, compartida, de admin).
+  { href: "/asistencia/kiosk/tareas", label: "Mis tareas", icon: ClipboardTick },
 ];
 
 /** Vista de cara al empleado que ficha — deliberadamente SIN el sidebar/

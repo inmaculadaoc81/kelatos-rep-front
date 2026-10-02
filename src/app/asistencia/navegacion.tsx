@@ -15,6 +15,7 @@ import {
   Cpu,
   Category2,
   DocumentText,
+  ClipboardTick,
 } from "@/lib/icons";
 export interface ItemNavegacionAsistencia {
   label: string;
@@ -40,6 +41,7 @@ export const GRUPO_KIOSCO: GrupoNavegacionAsistencia = {
     { href: "/asistencia/kiosk", label: "Fichar", icon: Clock },
     { href: "/asistencia/kiosk/mes", label: "Mi mes", icon: Calendar },
     { href: "/asistencia/kiosk/solicitudes", label: "Solicitudes", icon: ClipboardText },
+    { href: "/asistencia/kiosk/tareas", label: "Mis tareas", icon: ClipboardTick },
   ],
 };
 
@@ -56,6 +58,7 @@ export const GRUPO_ADMINISTRACION: GrupoNavegacionAsistencia = {
     { href: "/asistencia/admin/ausencias-parciales", label: "Ausencias parciales", icon: Health },
     { href: "/asistencia/admin/auditoria", label: "Auditoría", icon: SecuritySafe },
     { href: "/asistencia/admin/informe", label: "Informe mensual", icon: DocumentDownload },
+    { href: "/asistencia/admin/informes-diarios", label: "Informes diarios", icon: DocumentText },
   ],
 };
 

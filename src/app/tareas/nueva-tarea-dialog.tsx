@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { EmpleadoTareas } from "@/app/api/tareas/empleados/route";
 import { ETIQUETA_PRIORIDAD, type PrioridadTarea, type Tarea } from "@/lib/tareas";
 import { EtiquetasInput } from "./etiquetas-input";
@@ -26,11 +27,12 @@ export function NuevaTareaDialog({
   const [asignadoA, setAsignadoA] = useState("");
   const [prioridad, setPrioridad] = useState<PrioridadTarea>("media");
   const [etiquetas, setEtiquetas] = useState<string[]>([]);
+  const [esDiaria, setEsDiaria] = useState(false);
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().slice(0, 10));
   const [enviando, setEnviando] = useState(false);
 
   function limpiar() {
-    setTitulo(""); setDescripcion(""); setAsignadoA(""); setPrioridad("media"); setEtiquetas([]); setFechaInicio(new Date().toISOString().slice(0, 10));
+    setTitulo(""); setDescripcion(""); setAsignadoA(""); setPrioridad("media"); setEtiquetas([]); setEsDiaria(false); setFechaInicio(new Date().toISOString().slice(0, 10));
   }
 
   async function crear() {
@@ -40,7 +42,7 @@ export function NuevaTareaDialog({
       const res = await fetch("/api/tareas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo: titulo.trim(), descripcion: descripcion.trim() || undefined, asignadoA: asignadoA || undefined, prioridad, etiquetas, fechaInicio }),
+        body: JSON.stringify({ titulo: titulo.trim(), descripcion: descripcion.trim() || undefined, asignadoA: asignadoA || undefined, prioridad, etiquetas, esDiaria, fechaInicio }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -105,6 +107,10 @@ export function NuevaTareaDialog({
             <Label>Etiquetas</Label>
             <EtiquetasInput valor={etiquetas} onChange={setEtiquetas} />
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={esDiaria} onCheckedChange={(c) => setEsDiaria(c === true)} />
+            Tarea diaria (se repite cada día, sin fecha de fin — se marca "hecha" día a día)
+          </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>Cancelar</Button>
