@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Clock } from "@/lib/icons";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
+import { formatDuracion } from "@/lib/remote-workers";
 import { TipoFichajePill } from "../pills";
 import { FirmaPad } from "./firma-pad";
 
@@ -15,7 +16,25 @@ interface MiInfo {
   horario_nombre: string;
   hora_entrada: string;
   hora_salida: string;
+  /** Tiene un horario de referencia asignado pero no lo sigue en la práctica
+      (caso real: Cielo) — cambia las etiquetas del kiosco a Iniciar jornada/
+      Pausar/Reanudar/Finalizar jornada. Mismos 4 botones y mismo tipo_fichaje
+      de siempre, nada cambia en el backend salvo este campo informativo. */
+  horario_flexible: boolean;
 }
+
+/** Mismo indicador Activo/Reunión/Inactivo que ya existe en la pestaña
+    "Reunión" (viene de verdad del agente remoto, vía GET
+    /api/asistencia/kiosk/reunion) — se muestra aquí también para quien
+    tiene horario_flexible, junto a los botones de Iniciar/Pausar, en vez
+    de construir un cronómetro de fichaje aparte (petición del usuario). */
+interface HoyDispositivo {
+  active_seconds: number;
+  idle_seconds: number;
+  reunion_seconds: number;
+}
+
+const POLL_DISPOSITIVO_MS = 15000;
 
 function fechaHoyLarga(): string {
   const s = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -84,6 +103,16 @@ export default function KioskPage() {
   const [fichando, setFichando] = useState(false);
   const [mostrandoFirma, setMostrandoFirma] = useState(false);
   const [estadoAusencia, setEstadoAusencia] = useState<EstadoAusencia | null>(null);
+  const [hoyDispositivo, setHoyDispositivo] = useState<HoyDispositivo | null>(null);
+
+  async function cargarDispositivo() {
+    try {
+      const r = await fetch("/api/asistencia/kiosk/reunion").then((r) => r.json());
+      if (r.ok) setHoyDispositivo(r.detalle?.hoy || null);
+    } catch {
+      // best-effort — si falla el poll, se reintenta en el siguiente tick
+    }
+  }
 
   async function cargarEstadoAusencia() {
     try {
@@ -126,6 +155,14 @@ export default function KioskPage() {
     const intervalo = setInterval(cargarEstadoAusencia, POLL_AUSENCIA_MS);
     return () => clearInterval(intervalo);
   }, []);
+
+  useEffect(() => {
+    if (!info?.horario_flexible) return;
+    cargarDispositivo();
+    const intervalo = setInterval(cargarDispositivo, POLL_DISPOSITIVO_MS);
+    return () => clearInterval(intervalo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [info?.horario_flexible]);
 
   const abierto = fichajes.find((f) => !f.check_out);
 
@@ -235,37 +272,55 @@ export default function KioskPage() {
           ) : mostrandoFirma ? (
             <FirmaPad onCancelar={() => setMostrandoFirma(false)} onConfirmar={confirmarSalida} />
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                className="h-20 flex-col gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
-                disabled={fichando || !!abierto}
-                onClick={() => fichar("entrada")}
-              >
-                <span className="text-lg">☀️</span> Entrada
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-1"
-                disabled={fichando || !abierto}
-                onClick={() => fichar("salida_comida")}
-              >
-                <span className="text-lg">🍴</span> Salida comida
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-1"
-                disabled={fichando || !!abierto}
-                onClick={() => fichar("vuelta_comida")}
-              >
-                <span className="text-lg">↩️</span> Vuelta comida
-              </Button>
-              <Button
-                className="h-20 flex-col gap-1 bg-slate-800 text-white hover:bg-slate-900"
-                disabled={fichando || !abierto}
-                onClick={() => setMostrandoFirma(true)}
-              >
-                <span className="text-lg">🌙</span> Salida
-              </Button>
+            <div className="space-y-3">
+              {info?.horario_flexible && hoyDispositivo && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-md bg-green-500/10 p-2">
+                    <p className="text-[11px] text-muted-foreground">Activo</p>
+                    <p className="text-sm font-semibold tabular-nums">{formatDuracion(hoyDispositivo.active_seconds)}</p>
+                  </div>
+                  <div className="rounded-md bg-amber-500/10 p-2">
+                    <p className="text-[11px] text-muted-foreground">Reunión</p>
+                    <p className="text-sm font-semibold tabular-nums">{formatDuracion(hoyDispositivo.reunion_seconds)}</p>
+                  </div>
+                  <div className="rounded-md bg-muted p-2">
+                    <p className="text-[11px] text-muted-foreground">Inactivo</p>
+                    <p className="text-sm font-semibold tabular-nums">{formatDuracion(hoyDispositivo.idle_seconds)}</p>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="h-20 flex-col gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
+                  disabled={fichando || !!abierto}
+                  onClick={() => fichar("entrada")}
+                >
+                  <span className="text-lg">{info?.horario_flexible ? "▶️" : "☀️"}</span> {info?.horario_flexible ? "Iniciar jornada" : "Entrada"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-20 flex-col gap-1"
+                  disabled={fichando || !abierto}
+                  onClick={() => fichar("salida_comida")}
+                >
+                  <span className="text-lg">{info?.horario_flexible ? "⏸️" : "🍴"}</span> {info?.horario_flexible ? "Pausar" : "Salida comida"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-20 flex-col gap-1"
+                  disabled={fichando || !!abierto}
+                  onClick={() => fichar("vuelta_comida")}
+                >
+                  <span className="text-lg">{info?.horario_flexible ? "▶️" : "↩️"}</span> {info?.horario_flexible ? "Reanudar" : "Vuelta comida"}
+                </Button>
+                <Button
+                  className="h-20 flex-col gap-1 bg-slate-800 text-white hover:bg-slate-900"
+                  disabled={fichando || !abierto}
+                  onClick={() => setMostrandoFirma(true)}
+                >
+                  <span className="text-lg">{info?.horario_flexible ? "⏹️" : "🌙"}</span> {info?.horario_flexible ? "Finalizar jornada" : "Salida"}
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
