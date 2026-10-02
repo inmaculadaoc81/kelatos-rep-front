@@ -105,7 +105,7 @@ export function NuevaTareaDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Etiquetas</Label>
-            <EtiquetasInput valor={etiquetas} onChange={setEtiquetas} />
+            <EtiquetasInput valor={etiquetas} onChange={setEtiquetas} sugerenciasUrl="/api/tareas/etiquetas" />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={esDiaria} onCheckedChange={(c) => setEsDiaria(c === true)} />

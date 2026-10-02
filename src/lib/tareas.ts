@@ -37,6 +37,7 @@ export interface NotaTarea {
 export interface DiaCompletado {
   fecha: string;
   completadoPor: string;
+  nota: string | null;
   creadoEn: string;
 }
 
@@ -73,6 +74,7 @@ interface FilaNota {
 interface FilaDiaCompletado {
   fecha: string;
   completado_por: string;
+  nota?: string | null;
   creado_en: string;
 }
 
@@ -101,7 +103,7 @@ export function mapearNota(n: FilaNota): NotaTarea {
 }
 
 function mapearDiaCompletado(d: FilaDiaCompletado): DiaCompletado {
-  return { fecha: d.fecha, completadoPor: d.completado_por, creadoEn: d.creado_en };
+  return { fecha: d.fecha, completadoPor: d.completado_por, nota: d.nota ?? null, creadoEn: d.creado_en };
 }
 
 export function mapearTarea(f: FilaTarea): Tarea {

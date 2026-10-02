@@ -245,7 +245,7 @@ export function TareaDetalleDialog({
 
                 <div className="mb-5 space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Etiquetas</Label>
-                  <EtiquetasInput valor={etiquetas} onChange={(v) => { setEtiquetas(v); guardarCampos({ etiquetas: v }); }} />
+                  <EtiquetasInput valor={etiquetas} onChange={(v) => { setEtiquetas(v); guardarCampos({ etiquetas: v }); }} sugerenciasUrl="/api/tareas/etiquetas" />
                 </div>
 
                 <div className="mb-5 space-y-2">
@@ -257,8 +257,15 @@ export function TareaDetalleDialog({
                     <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                       {tarea.historialDiaria && tarea.historialDiaria.length > 0 ? (
                         <>
-                          <p className="mb-1 font-medium text-foreground">Últimos días completados</p>
-                          <p>{tarea.historialDiaria.map((d) => fmt(d.fecha)).join(" · ")}</p>
+                          <p className="mb-1.5 font-medium text-foreground">Últimos días completados</p>
+                          <div className="space-y-1">
+                            {tarea.historialDiaria.map((d) => (
+                              <div key={d.fecha}>
+                                <span className="font-medium text-foreground">{fmt(d.fecha)}</span>
+                                {d.nota && <span> — {d.nota}</span>}
+                              </div>
+                            ))}
+                          </div>
                         </>
                       ) : (
                         <p>Todavía no se ha marcado hecha ningún día.</p>
