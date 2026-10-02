@@ -15,9 +15,9 @@ function fmt(f: string) {
 
 /** Detalle de una tarea diaria — "es como una tarea normal pero dentro se
     puede marcar como cumplido y escribir opcionalmente lo que se hizo en
-    esa tarea" (petición del usuario, 2026-10-03). El checkbox de la lista
-    marca/desmarca rápido sin nota; este diálogo es para cuando se quiere
-    dejar constancia de qué se hizo — el admin lo ve con fecha y mensaje. */
+    esa tarea" (petición del usuario, 2026-10-03). Toda la fila de la lista
+    abre este diálogo (no hay marcado rápido sin pasar por aquí) — el admin
+    ve la nota con su fecha en el detalle de la tarea. */
 export function DiariaDetalleKioskDialog({
   tareaId, open, onOpenChange, onCambiada,
 }: {

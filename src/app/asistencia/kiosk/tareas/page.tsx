@@ -72,21 +72,6 @@ export default function MisTareasPage() {
     return () => clearInterval(t);
   }, [cargar]);
 
-  async function alternarDiariaRapido(t: Tarea) {
-    try {
-      const res = await fetch(`/api/asistencia/kiosk/tareas/${t.id}/diaria`, {
-        method: t.hechaHoy ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setTareas((prev) => prev.map((x) => (x.id === t.id ? (data.tarea as Tarea) : x)));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    }
-  }
-
   function actualizarTareaLocal(t: Tarea) {
     setTareas((prev) => prev.map((x) => (x.id === t.id ? t : x)));
   }
@@ -125,11 +110,16 @@ export default function MisTareasPage() {
           <CardHeader className="pb-2"><CardTitle className="text-sm">Diarias</CardTitle></CardHeader>
           <CardContent className="space-y-1.5">
             {diarias.map((t) => (
-              <div key={t.id} className="flex items-start gap-2.5 rounded-md border px-3 py-2 text-sm">
-                <Checkbox checked={t.hechaHoy} onCheckedChange={() => alternarDiariaRapido(t)} className="mt-0.5" />
-                <button type="button" onClick={() => setDiariaId(t.id)} className="min-w-0 flex-1 text-left">
-                  <span className={cn("line-clamp-1", t.hechaHoy && "text-muted-foreground line-through")}>{t.titulo}</span>
-                </button>
+              <div
+                key={t.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDiariaId(t.id)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDiariaId(t.id); } }}
+                className="flex items-start gap-2.5 rounded-md border px-3 py-2 text-sm hover:bg-muted/40"
+              >
+                <Checkbox checked={t.hechaHoy} className="pointer-events-none mt-0.5" tabIndex={-1} />
+                <span className={cn("line-clamp-1 min-w-0 flex-1", t.hechaHoy && "text-muted-foreground line-through")}>{t.titulo}</span>
               </div>
             ))}
           </CardContent>
