@@ -15,6 +15,8 @@ interface Item {
   title: string;
   department_key: string | null;
   department_name: string | null;
+  organization_key: string | null;
+  organization_name: string | null;
   status: string;
 }
 
@@ -142,7 +144,10 @@ export default function CalendarioPage() {
                   {itemsDelDia.slice(0, 3).map((it, i) => (
                     <div key={i} className="flex w-full items-center gap-1 truncate text-left text-[11px]">
                       <span className={cn("size-1.5 shrink-0 rounded-full", COLOR_TIPO[it.type])} />
-                      <span className="truncate">{it.title}</span>
+                      <span className="truncate">
+                        {it.organization_name && <span className="text-muted-foreground">{it.organization_name}: </span>}
+                        {it.title}
+                      </span>
                     </div>
                   ))}
                   {itemsDelDia.length > 3 && (
@@ -165,7 +170,10 @@ export default function CalendarioPage() {
               <li key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
                 <span className="w-12 font-medium tabular-nums">{new Date(it.at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>
                 <span className={cn("size-1.5 shrink-0 rounded-full", COLOR_TIPO[it.type])} />
-                <span className="truncate">{it.title}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate">{it.title}</p>
+                  {it.organization_name && <p className="truncate text-xs text-muted-foreground">{it.organization_name}</p>}
+                </div>
                 <span className="ml-auto shrink-0 text-xs text-muted-foreground">{it.department_name}{it.type === "approval" ? " · aprobación" : ""}</span>
               </li>
             ))}

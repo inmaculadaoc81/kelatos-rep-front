@@ -103,7 +103,7 @@ export function AgentesV2Sidebar({ session }: { session: Session | null }) {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader>
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-1">
           <Link
             href="/"
