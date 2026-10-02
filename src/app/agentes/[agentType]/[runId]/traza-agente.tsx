@@ -78,6 +78,11 @@ const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: Luci
   npm_audit_frontend: { label: "Dependencias · Frontend", subtitulo: "GitHub Dependabot" },
   accesos_permisos: { label: "Accesos y permisos", subtitulo: "Código determinista" },
   infra_vps: { label: "Infraestructura del VPS", subtitulo: "SSL, disco, backups" },
+  // agente de SEO de vídeo
+  youtube_datos: { label: "Datos de YouTube", subtitulo: "YouTube Data API" },
+  instagram_datos: { label: "Datos de Instagram", subtitulo: "Instagram Graph API" },
+  tiktok_snapchat_notas: { label: "TikTok y Snapchat", subtitulo: "Sin API de analíticas" },
+  recomendaciones: { label: "Recomendaciones", subtitulo: "Modelo medio" },
 };
 
 const MAX_CHIPS_VISIBLES = 4;

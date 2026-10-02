@@ -18,20 +18,32 @@ import {
   SidebarMenuSubItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { SecuritySafe } from "@/lib/icons";
+import type { ComponentType } from "react";
+import type { IconProps } from "iconsax-react";
+import { Cpu, SecuritySafe, Video } from "@/lib/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentType, hrefParaTipoAgente } from "@/lib/agentes";
 import { NavUser } from "../(app)/nav-user";
 
 // Este módulo era una plataforma genérica de varios tipos de agente
 // (Lead Research, Equipo de Marketing IA, LinkedIn) — se reserva ahora
-// para el agente de Auditoría de Seguridad (petición del usuario,
-// 2026-10-01). Los demás tipos NO se borran (sus campañas/leads/runs
-// siguen en la base de datos, accesibles si se visita su URL
-// directamente) — solo se ocultan de aquí: se filtra la lista que ya
-// devuelve el backend en vez de dejar de pedirla, así que si algún día
-// se quiere recuperar la vista genérica basta con quitar este filtro.
-const TIPOS_VISIBLES = new Set(["security_audit"]);
+// para los agentes "operativos" (Auditoría de Seguridad, SEO de vídeo;
+// petición del usuario, 2026-10-01 y 2026-10-03). Los demás tipos NO se
+// borran (sus campañas/leads/runs siguen en la base de datos, accesibles
+// si se visita su URL directamente) — solo se ocultan de aquí: se filtra
+// la lista que ya devuelve el backend en vez de dejar de pedirla, así que
+// si algún día se quiere recuperar la vista genérica basta con quitar
+// este filtro.
+const TIPOS_VISIBLES = new Set(["security_audit", "video_seo"]);
+
+// Icono por tipo — antes era SecuritySafe fijo para todos, válido mientras
+// solo hubiera un agente en este módulo. Con dos agentes de naturaleza
+// distinta hace falta distinguirlos; SecuritySafe de respaldo para un tipo
+// nuevo sin icono propio todavía.
+const ICONO_POR_TIPO: Record<string, ComponentType<IconProps>> = {
+  security_audit: SecuritySafe,
+  video_seo: Video,
+};
 
 export function AgentesSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
@@ -82,8 +94,8 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center gap-2 text-sidebar-foreground">
-            <SecuritySafe className="size-4 text-sidebar-primary" />
-            <span>Seguridad</span>
+            <Cpu className="size-4 text-sidebar-primary" />
+            <span>Agentes</span>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -95,6 +107,7 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
               <SidebarMenuSub className="mx-0 gap-1.5 border-none px-0">
                 {tipos.map((tipo) => {
                   const href = hrefParaTipoAgente(tipo.type);
+                  const Icono = ICONO_POR_TIPO[tipo.type] || SecuritySafe;
                   return (
                     <SidebarMenuSubItem key={tipo.type}>
                       <SidebarMenuSubButton isActive={pathname?.startsWith(href) ?? false} render={<Link href={href} />}>
@@ -102,7 +115,7 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
                           className={`size-1.5 shrink-0 rounded-full ${tipo.activo ? "bg-blue-500" : "bg-sidebar-foreground/25"}`}
                           title={tipo.activo ? "Con un run en curso" : "Sin actividad ahora mismo"}
                         />
-                        <SecuritySafe />
+                        <Icono />
                         <span className="truncate">{tipo.label}</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

@@ -14,6 +14,7 @@ import { PillBadge } from "@/components/pill-badge";
 import { AgentRun, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
 import { SeguridadDashboard } from "./seguridad-dashboard";
+import { VideoSeoDashboard } from "./video-seo-dashboard";
 
 /** Formulario de "nuevo run" — cada tipo de agente tiene su propia forma
     de arrancar (lead_research parte de sector/ubicación; linkedin_
@@ -247,6 +248,8 @@ export default function AgenteTipoPage() {
     <div className="space-y-6">
       {agentType === "security_audit" ? (
         <SeguridadDashboard runs={runs} cargando={cargando} onEjecutado={cargarRuns} />
+      ) : agentType === "video_seo" ? (
+        <VideoSeoDashboard runs={runs} cargando={cargando} onEjecutado={cargarRuns} />
       ) : (
         <Card>
           <CardHeader>
