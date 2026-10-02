@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useV2 } from "@/components/agentes-v2/use-v2";
+import { leerOrganizacionActual } from "../../../organizacion-context";
 
 export type EstadoCarrusel = "draft" | "generated" | "review" | "approved" | "scheduled" | "published" | "rejected";
 export type TipoSlide = "cover" | "body_card" | "body_stat" | "body_step" | "body_comparison" | "body_list" | "body_quote" | "image_text" | "grid" | "cta";
@@ -159,9 +160,14 @@ export const ESTADO_TEXTO: Record<EstadoCarrusel, { texto: string; clase: string
   rejected: { texto: "Rechazado", clase: "bg-red-500/10 text-red-700 dark:text-red-300" },
 };
 
-/** `sello` (la fecha de la slide) evita ver una imagen antigua en caché cuando se vuelve a dibujar con el mismo número de versión. */
-export const urlImagen = (carruselId: number, slideId: number, version: number, sello?: string) =>
-  `/api/agentes-v2/social/carousels/${carruselId}/slides/${slideId}/image?v=${version}${sello ? `&t=${new Date(sello).getTime()}` : ""}`;
+/** `sello` (la fecha de la slide) evita ver una imagen antigua en caché cuando se vuelve a dibujar con el mismo número
+    de versión. Lleva `organization_id` (leído de localStorage, no de React: esto se usa como `src` de un <img>, fuera
+    de cualquier hook) porque sin él el backend caía siempre en la organización por defecto — las imágenes de
+    cualquier otra organización salían en blanco (bug real, 2026-10-02). */
+export const urlImagen = (carruselId: number, slideId: number, version: number, sello?: string) => {
+  const org = leerOrganizacionActual();
+  return `/api/agentes-v2/social/carousels/${carruselId}/slides/${slideId}/image?v=${version}${sello ? `&t=${new Date(sello).getTime()}` : ""}${org ? `&organization_id=${org}` : ""}`;
+};
 
 /** Vuelve a consultar cada pocos segundos mientras haya una generación en marcha. */
 function useSondeo(hayTrabajo: boolean, recargar: () => void) {

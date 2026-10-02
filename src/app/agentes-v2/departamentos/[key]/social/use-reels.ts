@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useV2 } from "@/components/agentes-v2/use-v2";
+import { leerOrganizacionActual } from "../../../organizacion-context";
 import type { ContenidoSlide, Diseno } from "./use-social";
 
 export const DURACIONES_REEL = [15, 30, 45, 60] as const;
@@ -103,9 +104,18 @@ export interface DetalleReel {
 
 export interface PanelReels { ok: boolean; reels: { total: number; draft: number; planning: number; generating: number } }
 
-export const urlEscenaImagen = (reelId: number, sceneId: number) => `/api/agentes-v2/social/reels/${reelId}/scenes/${sceneId}/image`;
+// Llevan `organization_id` (ver urlImagen en use-social.ts: mismo bug, misma solución) — sin él, el vídeo y las
+// escenas de cualquier organización que no sea la de por defecto salían en blanco (bug real, 2026-10-02).
+export const urlEscenaImagen = (reelId: number, sceneId: number) => {
+  const org = leerOrganizacionActual();
+  return `/api/agentes-v2/social/reels/${reelId}/scenes/${sceneId}/image${org ? `?organization_id=${org}` : ""}`;
+};
 /** `sello` (updated_at) evita ver un vídeo antiguo en caché tras volver a renderizar. */
-export const urlVideoReel = (reelId: number, sello?: string) => `/api/agentes-v2/social/reels/${reelId}/video${sello ? `?t=${new Date(sello).getTime()}` : ""}`;
+export const urlVideoReel = (reelId: number, sello?: string) => {
+  const org = leerOrganizacionActual();
+  const qs = [sello ? `t=${new Date(sello).getTime()}` : "", org ? `organization_id=${org}` : ""].filter(Boolean).join("&");
+  return `/api/agentes-v2/social/reels/${reelId}/video${qs ? `?${qs}` : ""}`;
+};
 
 function useSondeo(hayTrabajo: boolean, recargar: () => void) {
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useV2 } from "@/components/agentes-v2/use-v2";
+import { leerOrganizacionActual } from "../../../organizacion-context";
 import type { ContenidoSlide, Diseno, EstadoCarrusel } from "./use-social";
 
 export const LAYOUT_TIPOS = ["educational_card", "single_image", "quote", "statistic", "promotional_card", "announcement", "testimonial", "case_study"] as const;
@@ -83,9 +84,12 @@ export interface DetallePost {
 
 export interface PanelPosts { ok: boolean; posts: { total: number; draft: number; generated: number; review: number; approved: number } }
 
-/** `sello` evita ver la imagen anterior en caché al volver a dibujar con el mismo número de versión. */
-export const urlImagenPost = (postId: number, version: number, sello?: string) =>
-  `/api/agentes-v2/social/posts/${postId}/image?v=${version}${sello ? `&t=${new Date(sello).getTime()}` : ""}`;
+/** `sello` evita ver la imagen anterior en caché al volver a dibujar con el mismo número de versión. Lleva
+    `organization_id` (ver urlImagen en use-social.ts: mismo bug, misma solución). */
+export const urlImagenPost = (postId: number, version: number, sello?: string) => {
+  const org = leerOrganizacionActual();
+  return `/api/agentes-v2/social/posts/${postId}/image?v=${version}${sello ? `&t=${new Date(sello).getTime()}` : ""}${org ? `&organization_id=${org}` : ""}`;
+};
 
 function useSondeo(hayTrabajo: boolean, recargar: () => void) {
   useEffect(() => {
