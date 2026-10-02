@@ -22,6 +22,7 @@ import { Category } from "@/lib/icons";
 import type { DepartamentoResumen } from "@/lib/agentes-v2";
 import { NavUser } from "../(app)/nav-user";
 import { GRUPOS_ANTES, GRUPOS_DESPUES, ICONO_DEPARTAMENTO, type GrupoNav } from "./navegacion";
+import { useOrganizacion } from "./organizacion-context";
 import { OrganizacionSwitcher } from "./organizacion-switcher";
 
 function Grupo({ grupo, pathname, pendientes = 0, enCurso = 0 }: { grupo: GrupoNav; pathname: string; pendientes?: number; enCurso?: number }) {
@@ -57,6 +58,7 @@ function Grupo({ grupo, pathname, pendientes = 0, enCurso = 0 }: { grupo: GrupoN
     Los departamentos se cargan de la base de datos: añadir uno nuevo no requiere tocar este archivo. */
 export function AgentesV2Sidebar({ session }: { session: Session | null }) {
   const pathname = usePathname() || "";
+  const { organizacionId } = useOrganizacion();
   const [departamentos, setDepartamentos] = useState<DepartamentoResumen[]>([]);
   const [cargando, setCargando] = useState(true);
   const [pendientes, setPendientes] = useState(0);
@@ -85,15 +87,19 @@ export function AgentesV2Sidebar({ session }: { session: Session | null }) {
       .catch(() => {});
   }, [pathname]);
 
+  // Depende de organizacionId: cada organización tiene sus propios departamentos activos (p. ej. Captación de
+  // leads solo existe para quien vende el propio servicio) — sin esto, la barra lateral se quedaba pegada a la
+  // lista de la primera organización cargada y no cambiaba al usar el selector (bug real, 2026-10-02).
   useEffect(() => {
-    fetch("/api/agentes-v2/departments", { cache: "no-store" })
+    const qs = organizacionId ? `?organization_id=${organizacionId}` : "";
+    fetch(`/api/agentes-v2/departments${qs}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (data.ok) setDepartamentos(data.departments as DepartamentoResumen[]);
       })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, []);
+  }, [organizacionId]);
 
   return (
     <Sidebar collapsible="icon">
