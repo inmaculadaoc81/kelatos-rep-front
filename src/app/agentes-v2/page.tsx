@@ -5,7 +5,7 @@ import { Cpu, Refresh2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { useV2 } from "@/components/agentes-v2/use-v2";
 import { Cabecera, CargandoFilas, ErrorCaja, Kpi, ProximasEjecuciones, TarjetaDepartamento, TablaRuns } from "@/components/agentes-v2/componentes";
-import { usd, type Panel } from "@/lib/agentes-v2";
+import type { Panel } from "@/lib/agentes-v2";
 
 /** Panel de Marketing: estado de los departamentos, próximas ejecuciones, aprobaciones, costes y actividad. */
 export default function PanelMarketingPage() {
@@ -26,14 +26,13 @@ export default function PanelMarketingPage() {
       />
       {error && <ErrorCaja mensaje={error} />}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Kpi titulo="Departamentos activos" valor={`${activos} de ${datos?.departments.length ?? 0}`} sub="los demás siguen en preparación" cargando={cargando && !datos} />
         <Kpi titulo="Aprobaciones pendientes" valor={String(datos?.pending_approvals ?? 0)} sub="esperan una decisión humana" cargando={cargando && !datos} />
-        <Kpi titulo="Coste de IA (30 días)" valor={usd(datos?.costs.agent_cost_usd_30d ?? 0)} sub="lo que cuestan los agentes" cargando={cargando && !datos} />
         <Kpi
           titulo="Inversión en anuncios (30 días)"
           valor={gasto.length ? gasto.map((g) => `${g.total.toLocaleString("es-ES", { maximumFractionDigits: 2 })} ${g.currency}`).join(" · ") : "0 €"}
-          sub="dinero pagado a plataformas, aparte del coste de IA"
+          sub="dinero pagado a plataformas"
           cargando={cargando && !datos}
         />
       </div>

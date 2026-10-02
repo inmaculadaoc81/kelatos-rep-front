@@ -1,4 +1,4 @@
-import { Element3, Cpu, Message, Calendar, Chart, Notification, Setting2, Hierarchy, Global, Clock, DocumentText, UserSearch, SearchNormal1, Flash, Category, Star1, Link2, TickCircle, Sms, Building } from "@/lib/icons";
+import { Element3, Cpu, Message, Calendar, Chart, Notification, Setting2, Hierarchy, Global, Clock, DocumentText, UserSearch, SearchNormal1, Category, Star1, Link2, Sms, Building } from "@/lib/icons";
 
 export interface ItemNav {
   label: string;
@@ -26,8 +26,6 @@ export const GRUPOS_DESPUES: GrupoNav[] = [
   {
     titulo: "Trabajo",
     items: [
-      { label: "Campañas", href: "/agentes-v2/campanas", icon: Flash },
-      { label: "Aprobaciones", href: "/agentes-v2/aprobaciones", icon: TickCircle },
       { label: "Calendario", href: "/agentes-v2/calendario", icon: Calendar },
       { label: "En vivo", href: "/agentes-v2/en-vivo", icon: Cpu },
       { label: "Ejecuciones", href: "/agentes-v2/ejecuciones", icon: Clock },

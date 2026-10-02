@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { useV2 } from "@/components/agentes-v2/use-v2";
 import { Cabecera, CargandoFilas, ErrorCaja, Kpi, Vacio } from "@/components/agentes-v2/componentes";
-import { fechaHora, usd } from "@/lib/agentes-v2";
+import { fechaHora } from "@/lib/agentes-v2";
 import { cn } from "@/lib/utils";
 
 interface Actividad {
@@ -34,8 +34,6 @@ const CONFIG_EJECUCIONES = {
   runs_failed: { label: "Con error", color: "#d9534f" },
 } satisfies ChartConfig;
 
-const CONFIG_COSTE = { ai_cost_usd: { label: "Coste de IA (US$)", color: "#4f6bed" } } satisfies ChartConfig;
-
 function Sparkline({ puntos }: { puntos: { value: number }[] }) {
   if (puntos.length < 2) return <span className="text-[11px] text-muted-foreground">Sin histórico</span>;
   const v = puntos.map((p) => p.value);
@@ -50,7 +48,8 @@ function Sparkline({ puntos }: { puntos: { value: number }[] }) {
   );
 }
 
-/** Analítica: actividad real del sistema (ejecuciones, aprobaciones, coste de IA) y métricas que registren los departamentos. */
+/** Analítica: actividad real del sistema (ejecuciones, aprobaciones, cambios de estrategia) y métricas que registren
+    los departamentos. Sin coste de IA: la IA que usa Kelatos es local, no de pago por token. */
 export default function AnaliticaPage() {
   const [dias, setDias] = useState<(typeof PERIODOS)[number]>(30);
   const [depto, setDepto] = useState("");
@@ -83,39 +82,24 @@ export default function AnaliticaPage() {
         <CargandoFilas n={2} />
       ) : act.datos ? (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Kpi titulo="Ejecuciones" valor={String(act.datos.totals.runs)} sub={`últimos ${act.datos.days} días`} />
             <Kpi titulo="Aprobaciones decididas" valor={String(act.datos.totals.approvals_decided)} sub={`${act.datos.totals.pending_approvals} pendientes ahora`} />
             <Kpi titulo="Cambios de estrategia" valor={String(act.datos.totals.strategy_changes)} sub="aplicados desde el AI CMO" />
-            <Kpi titulo="Coste de IA" valor={usd(act.datos.by_day.reduce((s, d) => s + d.ai_cost_usd, 0))} sub="agentes + AI CMO" />
           </div>
           {hayActividad ? (
-            <div className="mb-6 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-lg border p-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">Ejecuciones por día</p>
-                <ChartContainer config={CONFIG_EJECUCIONES} className="h-44 w-full">
-                  <BarChart data={datosGrafico} margin={{ left: -20, right: 4, top: 4 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24} fontSize={11} />
-                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={11} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="runs_completed" stackId="a" fill="var(--color-runs_completed)" radius={[0, 0, 2, 2]} />
-                    <Bar dataKey="runs_failed" stackId="a" fill="var(--color-runs_failed)" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">Coste de IA por día (US$)</p>
-                <ChartContainer config={CONFIG_COSTE} className="h-44 w-full">
-                  <BarChart data={datosGrafico} margin={{ left: -10, right: 4, top: 4 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24} fontSize={11} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="ai_cost_usd" fill="var(--color-ai_cost_usd)" radius={2} />
-                  </BarChart>
-                </ChartContainer>
-              </div>
+            <div className="mb-6 rounded-lg border p-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Ejecuciones por día</p>
+              <ChartContainer config={CONFIG_EJECUCIONES} className="h-44 w-full">
+                <BarChart data={datosGrafico} margin={{ left: -20, right: 4, top: 4 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24} fontSize={11} />
+                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={11} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="runs_completed" stackId="a" fill="var(--color-runs_completed)" radius={[0, 0, 2, 2]} />
+                  <Bar dataKey="runs_failed" stackId="a" fill="var(--color-runs_failed)" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
             </div>
           ) : (
             <div className="mb-6"><Vacio titulo="Sin actividad en este periodo" texto="Las ejecuciones, aprobaciones y consultas al AI CMO aparecerán aquí en cuanto ocurran." /></div>
