@@ -16,13 +16,14 @@ import { ItemDirecto, GrupoColapsable } from "@/components/sidebar-grupo-colapsa
 import type { Session } from "next-auth";
 import { gruposVisibles } from "./navegacion";
 import { NavUser } from "./nav-user";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 
 export function AppSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
   const superadmin = esSuperadmin(session?.user?.email);
   const esAdmin = session?.user?.role === "admin" || superadmin;
-  const grupos = gruposVisibles({ esAdmin, superadmin });
+  const efectivoSoloLectura = puedeVerEfectivoSoloLectura(session?.user?.email);
+  const grupos = gruposVisibles({ esAdmin, superadmin, efectivoSoloLectura });
 
   return (
     <Sidebar collapsible="icon">

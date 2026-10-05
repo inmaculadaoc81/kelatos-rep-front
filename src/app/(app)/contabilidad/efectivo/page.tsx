@@ -25,6 +25,10 @@ interface Datos {
   categorias: { retirada: string[]; ingreso: string[]; nombres: Record<string, string> };
   bancos: { id: number; nombre: string }[];
   saldoCaja: number;
+  /** Cuenta con acceso estrecho a esta página únicamente (ver
+      puedeVerEfectivoSoloLectura) — oculta los controles de clasificar,
+      que el backend rechazaría de todas formas. */
+  soloLectura?: boolean;
 }
 
 const ETIQUETA: Record<string, string> = {
@@ -83,7 +87,7 @@ export default function EfectivoPage() {
       <Cabecera
         icono={<Coin1 className="size-4.5" />}
         titulo="Efectivo y caja"
-        descripcion="Indica el destino de cada retirada o ingreso de caja para poder contabilizarlo"
+        descripcion={datos?.soloLectura ? "Solo lectura — consulta de los movimientos de caja" : "Indica el destino de cada retirada o ingreso de caja para poder contabilizarlo"}
         acciones={
           <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
@@ -124,8 +128,15 @@ export default function EfectivoPage() {
                   <TableCell className="text-right tabular-nums">{num(m.importe)}</TableCell>
                   <TableCell className="max-w-xs truncate text-sm">{m.motivo}</TableCell>
                   <TableCell>
-                    {m.anulada ? null : m.contabilizado ? (
-                      <span className="text-sm text-muted-foreground">{ETIQUETA[m.categoria || ""] || m.categoria} · contabilizado</span>
+                    {m.anulada ? null : m.contabilizado || datos.soloLectura ? (
+                      m.categoria ? (
+                        <span className="text-sm text-muted-foreground">
+                          {ETIQUETA[m.categoria] || m.categoria}
+                          {m.contabilizado && " · contabilizado"}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">Sin clasificar</span>
+                      )
                     ) : (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <select className="h-8 rounded-md border bg-background px-2 text-sm" disabled={guardando === m.id} value={m.categoria || ""} onChange={(e) => clasificar(m, e.target.value)} aria-label="Destino">

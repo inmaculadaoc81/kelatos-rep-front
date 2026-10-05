@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "node:crypto";
 import { auth } from "@/auth";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 import { origenPropio } from "@/lib/publico-seguridad";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,14 @@ const TOKEN = process.env.KELATOS_API_TOKEN;
 async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> }) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase();
-  if (!email || (session?.user?.role !== "admin" && !esSuperadmin(email))) {
+  if (!email) {
+    return NextResponse.json({ ok: false, error: "Solo los administradores pueden acceder a Contabilidad" }, { status: 403 });
+  }
+  const esAdminCompleto = session?.user?.role === "admin" || esSuperadmin(email);
+  // Acceso estrecho: ve solo "efectivo", y solo en lectura — nunca puede
+  // clasificar movimientos ni tocar ninguna otra sección del módulo.
+  const esEfectivoSoloLectura = !esAdminCompleto && puedeVerEfectivoSoloLectura(email);
+  if (!esAdminCompleto && !esEfectivoSoloLectura) {
     return NextResponse.json({ ok: false, error: "Solo los administradores pueden acceder a Contabilidad" }, { status: 403 });
   }
   if (!BASE_URL || !TOKEN) return NextResponse.json({ ok: false, error: "API no configurada" }, { status: 500 });
@@ -29,6 +36,12 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
     return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });
   }
   const metodo = req.method.toUpperCase();
+  if (esEfectivoSoloLectura && ruta[0] !== "efectivo") {
+    return NextResponse.json({ ok: false, error: "Esta cuenta solo tiene acceso a Efectivo y caja" }, { status: 403 });
+  }
+  if (esEfectivoSoloLectura && metodo !== "GET") {
+    return NextResponse.json({ ok: false, error: "Esta cuenta tiene acceso de solo lectura" }, { status: 403 });
+  }
   if (metodo !== "GET" && !origenPropio(req)) {
     return NextResponse.json({ ok: false, error: "Solicitud no permitida" }, { status: 403 });
   }
@@ -66,6 +79,13 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
       datos = texto ? JSON.parse(texto) : {};
     } catch {
       return NextResponse.json({ ok: false, error: res.status === 429 ? "Demasiadas solicitudes; espera un momento." : `Respuesta inválida del servidor (HTTP ${res.status})` }, { status: 502 });
+    }
+    // Para la cuenta de solo-lectura, se avisa en la propia respuesta — la
+    // página de Efectivo usa esto para no pintar los desplegables de
+    // clasificar (el backend ya los rechazaría igualmente, esto es solo
+    // para no ofrecer un control que iba a fallar).
+    if (esEfectivoSoloLectura && datos && typeof datos === "object" && !Array.isArray(datos)) {
+      (datos as Record<string, unknown>).soloLectura = true;
     }
     return NextResponse.json(datos, { status: res.status });
   } catch {

@@ -20,7 +20,7 @@ import { gruposVisibles } from "./navegacion";
  * (href !== null); las que aún viven solo en Apps Script no aparecen,
  * igual que en el propio menú lateral.
  */
-export function BuscadorGlobal({ esAdmin = false }: { esAdmin?: boolean }) {
+export function BuscadorGlobal({ esAdmin = false, efectivoSoloLectura = false }: { esAdmin?: boolean; efectivoSoloLectura?: boolean }) {
   const [abierto, setAbierto] = useState(false);
   const router = useRouter();
 
@@ -58,7 +58,7 @@ export function BuscadorGlobal({ esAdmin = false }: { esAdmin?: boolean }) {
         <CommandInput placeholder="Busca una página..." />
         <CommandList>
           <CommandEmpty>Sin resultados.</CommandEmpty>
-          {gruposVisibles({ esAdmin, superadmin: false }).map((grupo) => {
+          {gruposVisibles({ esAdmin, superadmin: false, efectivoSoloLectura }).map((grupo) => {
             const items = grupo.items.filter((item) => item.href);
             if (items.length === 0) return null;
             return (

@@ -160,11 +160,27 @@ export const ITEM_RESENAS: ItemNavegacion = {
   claseColor: "text-amber-500 hover:text-amber-600 data-active:text-amber-600 dark:text-yellow-400 dark:hover:text-yellow-300 dark:data-active:text-yellow-300 [&>svg]:text-current",
 };
 
+/** Grupo mínimo para cuentas con puedeVerEfectivoSoloLectura (ver
+    superadmin.ts): un único enlace, nada más del módulo — no reutiliza
+    GRUPO_CONTABILIDAD a propósito, que listaría 19 secciones a las que
+    esta cuenta no tiene acceso (la ruta ya las bloquea, pero no tiene
+    sentido ni mostrarlas). */
+const GRUPO_EFECTIVO_SOLO_LECTURA: GrupoNavegacion = {
+  titulo: "Contabilidad",
+  icon: Bank,
+  claseIcono: "text-green-600 dark:text-green-400",
+  items: [{ label: "Efectivo y caja", href: "/contabilidad/efectivo", icon: Coin1 }],
+};
+
 /** Menú según el rol: Contabilidad (tras Facturación) y Reporte de reseñas
-    (en Informes) solo para admins; el grupo Admin solo para superadmins. */
-export function gruposVisibles({ esAdmin, superadmin }: { esAdmin: boolean; superadmin: boolean }): GrupoNavegacion[] {
+    (en Informes) solo para admins; el grupo Admin solo para superadmins;
+    Efectivo y caja en solitario para puedeVerEfectivoSoloLectura. */
+export function gruposVisibles({
+  esAdmin, superadmin, efectivoSoloLectura = false,
+}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean }): GrupoNavegacion[] {
   const base = GRUPOS.flatMap((g) => {
     if (esAdmin && g.titulo === "Facturación") return [g, GRUPO_CONTABILIDAD];
+    if (!esAdmin && efectivoSoloLectura && g.titulo === "Facturación") return [g, GRUPO_EFECTIVO_SOLO_LECTURA];
     if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS] }];
     return [g];
   });

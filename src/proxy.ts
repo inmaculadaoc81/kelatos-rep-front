@@ -1,6 +1,6 @@
 import { auth, esDominioKelatos } from "@/auth";
 import { NextResponse } from "next/server";
-import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -21,10 +21,18 @@ export default auth((req) => {
   }
   // Contabilidad (Importaciones / DUA…) — solo administradores; el menú ya la
   // oculta al resto (navegacion.tsx) y aquí se cierra también la ruta directa.
+  // Excepción estrecha: cuentas con puedeVerEfectivoSoloLectura pueden entrar
+  // SOLO a /contabilidad/efectivo (página) y /api/contabilidad/efectivo* (la
+  // propia ruta ya exige además GET para esas cuentas) — ninguna otra
+  // sección de Contabilidad. Petición del usuario, 2026-10-05.
   if (
     (["/importaciones", "/api/importaciones", "/reporte-resenas", "/api/resenas", "/contabilidad", "/api/contabilidad"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
     req.auth?.user?.role !== "admin" &&
-    !esSuperadmin(req.auth?.user?.email)
+    !esSuperadmin(req.auth?.user?.email) &&
+    !(
+      puedeVerEfectivoSoloLectura(req.auth?.user?.email) &&
+      (req.nextUrl.pathname.startsWith("/contabilidad/efectivo") || req.nextUrl.pathname.startsWith("/api/contabilidad/efectivo"))
+    )
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }

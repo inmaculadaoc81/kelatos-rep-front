@@ -25,3 +25,15 @@ const TRANSFERENCIAS_EMAILS_EXTRA = new Set(["soporte@kelatos.com"]);
 export function puedeVerTransferencias(email: string | null | undefined): boolean {
   return esSuperadmin(email) || (!!email && TRANSFERENCIAS_EMAILS_EXTRA.has(email.toLowerCase()));
 }
+
+/**
+ * Acceso de SOLO LECTURA a "Efectivo y caja" dentro de Contabilidad —
+ * ninguna otra sección del módulo, y sin poder clasificar movimientos
+ * (eso sigue siendo solo para admins/superadmins). Petición del usuario,
+ * 2026-10-05: soporte@kelatos.com.
+ */
+const EFECTIVO_SOLO_LECTURA_EMAILS_EXTRA = new Set(["soporte@kelatos.com"]);
+
+export function puedeVerEfectivoSoloLectura(email: string | null | undefined): boolean {
+  return !!email && EFECTIVO_SOLO_LECTURA_EMAILS_EXTRA.has(email.toLowerCase());
+}
