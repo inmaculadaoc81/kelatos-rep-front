@@ -14,6 +14,8 @@ import {
   Verify,
   Chart,
   CloseCircle,
+  CloseSquare,
+  Trash,
 } from "@/lib/icons";
 import { MetricCard, AlertCard } from "../metric-card";
 import { MetricasDashboard, CardFiltroId } from "@/lib/metricas";
@@ -82,6 +84,8 @@ export function DashboardMetricas({
             <MetricCard titulo="En Reparación" valor={metricas.enReparacion} unidad="equipos" icon={Setting2} tono="slate" proporcion={prop(metricas.enReparacion)} onClick={() => onFiltrar("enReparacion")} activo={cardFiltro === "enReparacion"} />
             <MetricCard titulo="Listos p/ Recoger" valor={metricas.listos} unidad="equipos" icon={TickCircle} tono="green" proporcion={prop(metricas.listos)} onClick={() => onFiltrar("listos")} activo={cardFiltro === "listos"} />
             <MetricCard titulo="No tiene Reparación" valor={metricas.sinReparacion} unidad="equipos" icon={CloseCircle} tono="red" proporcion={prop(metricas.sinReparacion)} onClick={() => onFiltrar("sinReparacion")} activo={cardFiltro === "sinReparacion"} />
+            <MetricCard titulo="Ppto. Rechazado" valor={metricas.pptoRechazado} unidad="equipos" icon={CloseSquare} tono="orange" proporcion={prop(metricas.pptoRechazado)} onClick={() => onFiltrar("pptoRechazado")} activo={cardFiltro === "pptoRechazado"} />
+            <MetricCard titulo="Abandonado" valor={metricas.abandonado} unidad="equipos" icon={Trash} tono="slate" proporcion={prop(metricas.abandonado)} onClick={() => onFiltrar("abandonado")} activo={cardFiltro === "abandonado"} />
             <MetricCard titulo="Ppto. Enviado" valor={metricas.pptoEnviado} unidad="equipos" icon={Send2} tono="indigo" proporcion={prop(metricas.pptoEnviado)} onClick={() => onFiltrar("pptoEnviado")} activo={cardFiltro === "pptoEnviado"} />
             <MetricCard titulo="Ppto. Aceptado" valor={metricas.pptosAceptados} unidad="equipos" icon={Verify} tono="emerald" proporcion={prop(metricas.pptosAceptados)} onClick={() => onFiltrar("pptoAceptado")} activo={cardFiltro === "pptoAceptado"} />
             <MetricCard titulo="Pieza Entregada" valor={metricas.piezaEntregada} unidad="equipos" icon={Box1} tono="teal" proporcion={prop(metricas.piezaEntregada)} onClick={() => onFiltrar("piezaEntregada")} activo={cardFiltro === "piezaEntregada"} />

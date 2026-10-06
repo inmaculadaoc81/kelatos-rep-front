@@ -50,6 +50,8 @@ const NOMBRE_CARD: Record<CardFiltroId, string> = {
   enReparacion: "En Reparación",
   listos: "Listos p/ Recoger",
   sinReparacion: "No tiene Reparación",
+  pptoRechazado: "Ppto. Rechazado",
+  abandonado: "Abandonado",
   pptoEnviado: "Ppto. Enviado",
   pptoAceptado: "Ppto. Aceptado",
   piezaEntregada: "Pieza Entregada",
