@@ -9,6 +9,7 @@ import { AgentRun, AgentStep } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
 import {
   Recomendaciones, ResumenInstagram, ResumenTikTokSnapchat, ResumenYoutube,
+  TablaPublicacionesInstagram, TablaVideosYoutube,
   TarjetaInstagram, TarjetaRecomendaciones, TarjetaTikTokSnapchat, TarjetaYoutube,
 } from "./video-seo-componentes";
 
@@ -37,6 +38,8 @@ export function VideoSeoDashboard({ runs, cargando, onEjecutado }: { runs: Agent
   }, [ultimoCompletado?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pasoPor = (step: string) => pasos?.find((p) => p.step === step && p.status === "completed")?.output as unknown;
+  const youtube = pasoPor("youtube_datos") as ResumenYoutube | undefined;
+  const instagram = pasoPor("instagram_datos") as ResumenInstagram | undefined;
 
   async function ejecutarAhora() {
     setEjecutando(true);
@@ -83,10 +86,12 @@ export function VideoSeoDashboard({ runs, cargando, onEjecutado }: { runs: Agent
       ) : (
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
-            <TarjetaYoutube r={pasoPor("youtube_datos") as ResumenYoutube | undefined} />
-            <TarjetaInstagram r={pasoPor("instagram_datos") as ResumenInstagram | undefined} />
+            <TarjetaYoutube r={youtube} />
+            <TarjetaInstagram r={instagram} />
             <TarjetaTikTokSnapchat r={pasoPor("tiktok_snapchat_notas") as ResumenTikTokSnapchat | undefined} />
           </div>
+          <TablaVideosYoutube r={youtube} />
+          <TablaPublicacionesInstagram r={instagram} />
           <TarjetaRecomendaciones r={pasoPor("recomendaciones") as Recomendaciones | undefined} />
         </div>
       )}

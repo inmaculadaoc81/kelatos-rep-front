@@ -1,7 +1,22 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TarjetaSeveridad, type Severidad } from "./seguridad-componentes";
+
+const num = (n: number) => n.toLocaleString("es-ES");
+
+function duracionFmt(seg: number | null) {
+  if (seg === null) return "—";
+  const m = Math.floor(seg / 60);
+  const s = seg % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function fechaFmt(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+}
 
 export interface VideoYoutube {
   id: string;
@@ -89,6 +104,93 @@ export function TarjetaTikTokSnapchat({ r }: { r?: ResumenTikTokSnapchat }) {
       {r.tiktok?.motivo && <p className="text-xs text-muted-foreground">TikTok: {r.tiktok.motivo}</p>}
       {r.snapchat?.motivo && <p className="text-xs text-muted-foreground">Snapchat: {r.snapchat.motivo}</p>}
     </TarjetaSeveridad>
+  );
+}
+
+/** Analítica real por vídeo — los datos ya se bajaban de YouTube (vistas,
+    likes, comentarios, duración, etiquetas) pero antes solo se usaban para
+    redactar las recomendaciones en prosa, sin mostrarse en ningún sitio.
+    Ordenado por vistas: los más vistos primero, igual criterio que
+    cualquier analítica de contenido. */
+export function TablaVideosYoutube({ r }: { r?: ResumenYoutube }) {
+  if (!r || r.configurado === false || !r.videos?.length) return null;
+  const videos = [...r.videos].sort((a, b) => b.vistas - a.vistas);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">Vídeos analizados (YouTube)</CardTitle>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Título</TableHead>
+              <TableHead className="text-right">Vistas</TableHead>
+              <TableHead className="text-right">Likes</TableHead>
+              <TableHead className="text-right">Comentarios</TableHead>
+              <TableHead className="text-right">Duración</TableHead>
+              <TableHead className="text-right">Etiquetas</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {videos.map((v) => (
+              <TableRow key={v.id}>
+                <TableCell className="max-w-xs truncate text-sm" title={v.titulo}>
+                  {v.titulo}
+                  {v.esShort && <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Short</span>}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{num(v.vistas)}</TableCell>
+                <TableCell className="text-right tabular-nums">{num(v.likes)}</TableCell>
+                <TableCell className="text-right tabular-nums">{num(v.comentarios)}</TableCell>
+                <TableCell className="text-right tabular-nums">{duracionFmt(v.duracionSeg)}</TableCell>
+                <TableCell className={`text-right tabular-nums ${v.numTags === 0 ? "text-amber-700" : ""}`}>{v.numTags}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Mismo criterio que TablaVideosYoutube, para las publicaciones de Instagram
+    — el caption no se guarda completo (solo su longitud), así que se
+    muestra la longitud en caracteres, no el texto. */
+export function TablaPublicacionesInstagram({ r }: { r?: ResumenInstagram }) {
+  if (!r || r.configurado === false || !r.publicaciones?.length) return null;
+  const publicaciones = [...r.publicaciones].sort((a, b) => b.likes - a.likes);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">Publicaciones analizadas (Instagram)</CardTitle>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Tipo</TableHead>
+              <TableHead className="text-right">Likes</TableHead>
+              <TableHead className="text-right">Comentarios</TableHead>
+              <TableHead className="text-right">Longitud caption</TableHead>
+              <TableHead>Hashtags</TableHead>
+              <TableHead className="text-right">Fecha</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {publicaciones.map((p, i) => (
+              <TableRow key={i}>
+                <TableCell className="text-sm">{p.tipo || "—"}</TableCell>
+                <TableCell className="text-right tabular-nums">{num(p.likes)}</TableCell>
+                <TableCell className="text-right tabular-nums">{num(p.comentarios)}</TableCell>
+                <TableCell className="text-right tabular-nums">{p.captionLongitud}</TableCell>
+                <TableCell className={`text-sm ${!p.tieneHashtags ? "text-amber-700" : "text-muted-foreground"}`}>{p.tieneHashtags ? "Sí" : "No"}</TableCell>
+                <TableCell className="text-right text-sm text-muted-foreground">{fechaFmt(p.fecha)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
 
