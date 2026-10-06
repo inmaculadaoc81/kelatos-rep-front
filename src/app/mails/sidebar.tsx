@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { Sms, Setting2, Building, CloseCircle, Send2 } from "@/lib/icons";
+import { Sms, Setting2, Building, CloseCircle, Send2, Magicpen } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const GRUPOS: GrupoNavegacionBase[] = [
@@ -33,6 +33,11 @@ const GRUPOS: GrupoNavegacionBase[] = [
       { label: "Leads", href: "/mails/leads", icon: Building },
       { label: "Direcciones inválidas", href: "/mails/direcciones", icon: CloseCircle },
     ],
+  },
+  {
+    titulo: "Agente de leads",
+    icon: Magicpen,
+    items: [{ label: "Campañas", href: "/mails/agente-leads", icon: Magicpen }],
   },
   {
     titulo: "Envíos",
