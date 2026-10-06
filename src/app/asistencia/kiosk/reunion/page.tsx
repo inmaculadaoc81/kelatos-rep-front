@@ -20,6 +20,12 @@ interface Hoy {
   reunion_seconds: number;
 }
 
+interface ReunionHoy {
+  id: number;
+  inicio: string;
+  fin: string | null;
+}
+
 const POLL_MS = 15000;
 
 /** Mientras el PC no toca teclado/ratón durante una reunión (llamada,
@@ -31,6 +37,7 @@ export default function ReunionPage() {
   const [cargando, setCargando] = useState(true);
   const [dispositivo, setDispositivo] = useState<Dispositivo | null>(null);
   const [hoy, setHoy] = useState<Hoy | null>(null);
+  const [reunionesHoy, setReunionesHoy] = useState<ReunionHoy[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [ahora, setAhora] = useState(() => Date.now());
 
@@ -42,6 +49,7 @@ export default function ReunionPage() {
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       setDispositivo(data.dispositivo);
       setHoy(data.detalle?.hoy || null);
+      setReunionesHoy((data.detalle?.reunionesHoy as ReunionHoy[]) || []);
     } catch (e) {
       if (!silencioso) toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -187,6 +195,35 @@ export default function ReunionPage() {
                 <p className="text-sm font-semibold tabular-nums">{formatDuracion(hoy.idle_seconds)}</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hoy && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><Sms className="size-4" /> Reuniones de hoy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {reunionesHoy.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin reuniones registradas hoy.</p>
+            ) : (
+              <ul className="divide-y">
+                {reunionesHoy.map((r) => {
+                  const inicio = new Date(r.inicio);
+                  const finMs = r.fin ? new Date(r.fin).getTime() : ahora;
+                  const hora = (d: Date) => d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <li key={r.id} className="flex items-center justify-between py-2 text-sm">
+                      <span className="tabular-nums">
+                        {hora(inicio)} – {r.fin ? hora(new Date(r.fin)) : "en curso"}
+                      </span>
+                      <span className="font-semibold tabular-nums">{formatDuracion(Math.max(0, Math.floor((finMs - inicio.getTime()) / 1000)))}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </CardContent>
         </Card>
       )}
