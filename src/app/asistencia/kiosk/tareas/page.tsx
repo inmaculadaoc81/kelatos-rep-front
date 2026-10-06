@@ -183,6 +183,7 @@ export default function MisTareasPage() {
         onOpenChange={setInformeAbierto}
         informe={informe}
         mios={mios}
+        diariasHechasHoy={diarias.filter((t) => t.hechaHoy)}
         onGuardado={(nuevo) => { setInforme(nuevo); cargar(true); }}
       />
     </div>
