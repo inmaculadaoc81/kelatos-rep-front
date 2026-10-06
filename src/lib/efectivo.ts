@@ -113,7 +113,16 @@ export function movimientosDeFacturas(facturas: FacturaCliente[]): MovimientoEfe
     const montoEfectivoMulti = esMultiforma ? montoEfectivoDesglose(f.formaPagoDesglose) : 0;
     if (!esFormaPagoEfectivo(f.formaPago) && !(esMultiforma && montoEfectivoMulti > 0)) continue;
 
-    const esRectificativa = f.tipo === "rectificativa";
+    // Una "Nueva Factura Manual" con líneas negativas (creada a mano para
+    // registrar una devolución, en vez de generarla con el botón
+    // "Rectificativa" del sistema) nunca lleva num_factura_rectificativa
+    // — expandirManuales() la etiqueta tipo:"manual" igual que cualquier
+    // factura normal. Sin esto, su total negativo se contaba en valor
+    // absoluto como un COBRO de caja en vez de una devolución (bug real
+    // encontrado, 2026-10-06: MANUAL-3-000127/136/139, -200€/-45,29€/-150€
+    // sumando de más en "Cobrado" y ausentes de "Devuelto").
+    const esDevolucionManualNegativa = f.tipo === "manual" && f.total < 0;
+    const esRectificativa = f.tipo === "rectificativa" || esDevolucionManualNegativa;
     // Un documento Pendiente/Anulado aún no ha movido dinero; una
     // rectificativa sí, siempre (es la devolución del cobro original).
     if (!esRectificativa && estadoFacturaDerivado(f) !== "Cobrada") continue;
