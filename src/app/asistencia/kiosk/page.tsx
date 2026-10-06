@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Clock } from "@/lib/icons";
+import Link from "next/link";
+import { Clock, Video } from "@/lib/icons";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { formatDuracion } from "@/lib/remote-workers";
 import { TipoFichajePill } from "../pills";
@@ -21,6 +22,8 @@ interface MiInfo {
       Pausar/Reanudar/Finalizar jornada. Mismos 4 botones y mismo tipo_fichaje
       de siempre, nada cambia en el backend salvo este campo informativo. */
   horario_flexible: boolean;
+  /** Acceso al panel de contenido (community manager y administración). */
+  puedeContenido?: boolean;
 }
 
 /** Mismo indicador Activo/Reunión/Inactivo que ya existe en la pestaña
@@ -248,6 +251,11 @@ export default function KioskPage() {
               {info.hora_entrada} – {info.hora_salida}
               {info.horario_nombre && ` (${info.horario_nombre})`}
             </span>
+          )}
+          {info?.puedeContenido && (
+            <Link href="/asistencia/kiosk/contenido" className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted/40">
+              <Video className="size-3.5" /> Panel de contenido
+            </Link>
           )}
         </CardHeader>
         <CardContent>
