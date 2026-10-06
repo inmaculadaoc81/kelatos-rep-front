@@ -62,8 +62,8 @@ export interface ResumenInstagram {
 }
 
 export interface ResumenTikTokSnapchat {
-  tiktok?: { configurado: boolean; motivo?: string };
-  snapchat?: { configurado: boolean; motivo?: string };
+  tiktok?: { configurado: boolean; motivo?: string; basadoEnInstagram?: boolean };
+  snapchat?: { configurado: boolean; motivo?: string; basadoEnInstagram?: boolean };
 }
 
 export interface Recomendaciones {
@@ -396,21 +396,26 @@ export function SeccionInstagram({ r, recomendaciones }: { r?: ResumenInstagram;
 
 export function SeccionTikTokSnapchat({ r, recomendacionesTiktok, recomendacionesSnapchat }: { r?: ResumenTikTokSnapchat; recomendacionesTiktok?: string[]; recomendacionesSnapchat?: string[] }) {
   if (!r) return <SeccionVaciaOSinDatos titulo="TikTok y Snapchat" />;
+  const basadoEnInstagram = r.tiktok?.basadoEnInstagram || r.snapchat?.basadoEnInstagram;
   return (
     <section className="overflow-hidden rounded-lg border bg-card">
       <CabeceraSeccion titulo="TikTok y Snapchat" severidad="sindato" />
       <div className="space-y-4 p-4">
-        <p className="text-sm text-muted-foreground">Sin datos reales de la cuenta todavía — las recomendaciones de abajo son buenas prácticas generales, no un análisis de tus vídeos.</p>
+        {basadoEnInstagram ? (
+          <p className="text-sm text-muted-foreground">Ninguna de las dos tiene API de analíticas propia, pero como se sube el <strong>mismo contenido que en Instagram</strong>, las recomendaciones de abajo se basan en su rendimiento real — no son buenas prácticas genéricas.</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Sin datos reales de la cuenta todavía — las recomendaciones de abajo son buenas prácticas generales, no un análisis de tus vídeos.</p>
+        )}
         {r.tiktok?.motivo && <p className="text-xs text-muted-foreground">TikTok: {r.tiktok.motivo}</p>}
         {r.snapchat?.motivo && <p className="text-xs text-muted-foreground">Snapchat: {r.snapchat.motivo}</p>}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <p className="mb-1.5 text-xs font-semibold text-muted-foreground">TikTok</p>
-            <ListaRecomendaciones items={recomendacionesTiktok} esGenerico />
+            <ListaRecomendaciones items={recomendacionesTiktok} esGenerico={!basadoEnInstagram} />
           </div>
           <div>
             <p className="mb-1.5 text-xs font-semibold text-muted-foreground">Snapchat</p>
-            <ListaRecomendaciones items={recomendacionesSnapchat} esGenerico />
+            <ListaRecomendaciones items={recomendacionesSnapchat} esGenerico={!basadoEnInstagram} />
           </div>
         </div>
       </div>
