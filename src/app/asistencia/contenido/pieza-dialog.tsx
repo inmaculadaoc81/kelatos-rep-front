@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CloseCircle, Trash, Add } from "@/lib/icons";
-import { ESTADOS, REDES, TIPOS, aInputFechaHora, type EstadoPieza, type Pieza, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
+import { ESTADOS, REDES, TIPOS, aInputFechaHora, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
 
 interface Borrador {
   titulo: string;
@@ -49,6 +49,10 @@ export function PiezaDialog({
   const [pieza, setPieza] = useState<Pieza | null>(null);
   const [borrador, setBorrador] = useState<Borrador | null>(null);
   const [subtareas, setSubtareas] = useState<Subtarea[]>([]);
+  const [necesidades, setNecesidades] = useState<Necesidad[]>([]);
+  const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [nuevaNecesidad, setNuevaNecesidad] = useState("");
+  const [responsableNecesidad, setResponsableNecesidad] = useState("");
   const [nuevaSubtarea, setNuevaSubtarea] = useState("");
   const [guardando, setGuardando] = useState(false);
 
@@ -64,12 +68,25 @@ export function PiezaDialog({
         setPieza(p);
         setBorrador(aBorrador(p));
         setSubtareas(p.subtareas ?? []);
+        setNecesidades(p.necesidades ?? []);
       })
       .catch(() => toast.error("Error desconocido"));
     return () => {
       activo = false;
     };
   }, [open, piezaId]);
+
+  useEffect(() => {
+    if (!open) return;
+    let activo = true;
+    fetch("/api/asistencia/kiosk/contenido/empleados")
+      .then((r) => r.json())
+      .then((d) => { if (activo && d.ok) setEmpleados(d.empleados as Empleado[]); })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [open]);
 
   function cambiar<K extends keyof Borrador>(clave: K, valor: Borrador[K]) {
     setBorrador((b) => (b ? { ...b, [clave]: valor } : b));
@@ -172,6 +189,38 @@ export function PiezaDialog({
     }
   }
 
+  async function pedirNecesidad() {
+    if (!piezaId) return;
+    if (!nuevaNecesidad.trim() || !responsableNecesidad) return toast.error("Describe el recurso y elige a quién se lo pides");
+    try {
+      const res = await fetch(`/api/asistencia/kiosk/contenido/${piezaId}/necesidades`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descripcion: nuevaNecesidad.trim(), responsableId: Number(responsableNecesidad) }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setNecesidades((data.pieza as Pieza).necesidades ?? []);
+      setNuevaNecesidad("");
+      toast.success("Pedido enviado: aparece en sus Mis tareas");
+      onCambiada();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
+  async function quitarNecesidad(n: Necesidad) {
+    try {
+      const res = await fetch(`/api/asistencia/kiosk/contenido/necesidades/${n.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setNecesidades((data.pieza as Pieza).necesidades ?? []);
+      onCambiada();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
@@ -256,6 +305,35 @@ export function PiezaDialog({
                   <Button variant="outline" size="icon" onClick={agregarSubtarea} title="Añadir subtarea">
                     <Add className="size-4" />
                   </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2 border-t pt-3">
+                <p className="text-xs font-semibold text-muted-foreground">Recursos que necesito de otros</p>
+                {necesidades.length === 0 && <p className="text-xs text-muted-foreground">Nada pedido todavía.</p>}
+                {necesidades.map((n) => (
+                  <div key={n.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{n.descripcion}</span>
+                      <span className="block text-[11px] text-muted-foreground">{n.responsableNombre ?? "Sin asignar"}</span>
+                    </span>
+                    <span className={n.recibido ? "shrink-0 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700" : "shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"}>
+                      {n.recibido ? "Recibido" : "Pendiente"}
+                    </span>
+                    <Button variant="ghost" size="icon-sm" onClick={() => quitarNecesidad(n)} title="Quitar recurso">
+                      <Trash className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <div className="space-y-2 rounded-md bg-muted/40 p-2">
+                  <Input value={nuevaNecesidad} onChange={(e) => setNuevaNecesidad(e.target.value)} placeholder="Qué necesitas (p. ej. el vídeo del cliente)" />
+                  <div className="flex items-center gap-2">
+                    <select className="h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-sm" value={responsableNecesidad} onChange={(e) => setResponsableNecesidad(e.target.value)}>
+                      <option value="">¿Quién lo tiene?</option>
+                      {empleados.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
+                    </select>
+                    <Button variant="outline" size="sm" onClick={pedirNecesidad}>Pedir</Button>
+                  </div>
                 </div>
               </div>
             </div>

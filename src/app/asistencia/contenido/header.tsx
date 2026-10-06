@@ -13,7 +13,8 @@ import {
 
 const SECCIONES: Record<string, string> = {
   "/asistencia/contenido": "Piezas",
-  "/asistencia/contenido/programacion": "Programación",
+  "/asistencia/contenido/calendario": "Calendario",
+  "/asistencia/contenido/recursos": "Recursos",
 };
 
 /** Cabecera del panel de contenido, mismo esquema que la de Gestión MAILS. */

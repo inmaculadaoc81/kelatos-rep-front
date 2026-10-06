@@ -161,6 +161,9 @@ export default function MisTareasPage() {
               >
                 <span className={cn("size-1.5 shrink-0 rounded-full", COLOR_PRIORIDAD[t.prioridad])} />
                 <span className="min-w-0 flex-1 truncate font-medium">{t.titulo}</span>
+                {t.etiquetas.slice(0, 2).map((e) => (
+                  <span key={e} className="shrink-0 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium capitalize text-violet-700 dark:text-violet-300">{e}</span>
+                ))}
                 {t.numNotas > 0 && (
                   <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
                     <Message className="size-3" /> {t.numNotas}

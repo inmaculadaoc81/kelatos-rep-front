@@ -10,6 +10,23 @@ export interface Subtarea {
   orden: number;
 }
 
+/** Recurso que la community manager pide a otra persona. Su estado sale de la
+    tarea asignada: recibido cuando esa persona la finaliza. */
+export interface Necesidad {
+  id: number;
+  piezaId: number;
+  descripcion: string;
+  responsableId: number | null;
+  responsableNombre: string | null;
+  tareaId: number | null;
+  recibido: boolean;
+}
+
+export interface Empleado {
+  id: number;
+  nombre: string;
+}
+
 export interface Pieza {
   id: number;
   titulo: string;
@@ -26,6 +43,7 @@ export interface Pieza {
   subtareasTotal: number;
   subtareasHechas: number;
   subtareas?: Subtarea[];
+  necesidades: Necesidad[];
 }
 
 export const ESTADOS: { valor: EstadoPieza; etiqueta: string; color: string }[] = [

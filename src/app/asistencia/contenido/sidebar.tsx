@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { Calendar, Video } from "@/lib/icons";
+import { Calendar, Folder2, Video } from "@/lib/icons";
 import { NavUser } from "@/app/(app)/nav-user";
 
 const GRUPOS: GrupoNavegacionBase[] = [
@@ -23,7 +23,8 @@ const GRUPOS: GrupoNavegacionBase[] = [
     icon: Video,
     items: [
       { label: "Piezas", href: "/asistencia/contenido", icon: Video },
-      { label: "Programación", href: "/asistencia/contenido/programacion", icon: Calendar },
+      { label: "Calendario", href: "/asistencia/contenido/calendario", icon: Calendar },
+      { label: "Recursos", href: "/asistencia/contenido/recursos", icon: Folder2 },
     ],
   },
 ];
