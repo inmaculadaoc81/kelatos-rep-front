@@ -446,6 +446,15 @@ export default function ReparacionesPage() {
           <Input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
+            onKeyDown={(e) => {
+              // Lector de códigos de barras (teclado USB): escribe el resguardo
+              // y pulsa Enter — si coincide con una reparación cargada, se abre
+              // directamente su ficha. Petición del usuario, 2026-10-06.
+              const valor = busqueda.trim();
+              if (e.key === "Enter" && valor && reparaciones.some((r) => r.resguardo === valor)) {
+                setResguardoDetalle(valor);
+              }
+            }}
             placeholder="Buscar por cliente, teléfono, resguardo..."
             className="h-8 w-64 pl-8"
           />
