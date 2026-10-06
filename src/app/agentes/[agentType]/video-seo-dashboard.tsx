@@ -9,13 +9,16 @@ import { AgentRun, AgentStep } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
 import {
   Recomendaciones, ResumenInstagram, ResumenTikTokSnapchat, ResumenYoutube,
-  TablaPublicacionesInstagram, TablaVideosYoutube,
-  TarjetaInstagram, TarjetaRecomendaciones, TarjetaTikTokSnapchat, TarjetaYoutube,
+  SeccionInstagram, SeccionTikTokSnapchat, SeccionYoutube,
 } from "./video-seo-componentes";
 
-/** Panel del agente de SEO de vídeo: 3 tarjetas de datos + recomendaciones del
-    último run completado + botón para lanzar uno nuevo a mano. Mismo patrón
-    que SeguridadDashboard — lee los pasos vía GET /api/agentes/runs/:id. */
+/** Panel del agente de SEO de vídeo: una sección por plataforma (resumen +
+    comparativas + tabla + recomendaciones juntos, no repartidos por la
+    pantalla) del último run completado + botón para lanzar uno nuevo a
+    mano. Mismo patrón que SeguridadDashboard — lee los pasos vía
+    GET /api/agentes/runs/:id. Reorganizado 2026-10-06 (petición del
+    usuario: demasiado "entreverado" antes, resumen y tabla sin relación
+    visual con sus recomendaciones). */
 export function VideoSeoDashboard({ runs, cargando, onEjecutado }: { runs: AgentRun[]; cargando: boolean; onEjecutado: () => void }) {
   const [pasos, setPasos] = useState<AgentStep[] | null>(null);
   const [cargandoPasos, setCargandoPasos] = useState(true);
@@ -40,6 +43,8 @@ export function VideoSeoDashboard({ runs, cargando, onEjecutado }: { runs: Agent
   const pasoPor = (step: string) => pasos?.find((p) => p.step === step && p.status === "completed")?.output as unknown;
   const youtube = pasoPor("youtube_datos") as ResumenYoutube | undefined;
   const instagram = pasoPor("instagram_datos") as ResumenInstagram | undefined;
+  const tiktokSnapchat = pasoPor("tiktok_snapchat_notas") as ResumenTikTokSnapchat | undefined;
+  const recomendaciones = pasoPor("recomendaciones") as Recomendaciones | undefined;
 
   async function ejecutarAhora() {
     setEjecutando(true);
@@ -78,21 +83,13 @@ export function VideoSeoDashboard({ runs, cargando, onEjecutado }: { runs: Agent
 
       {cargando || cargandoPasos ? (
         <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
-          </div>
-          <Skeleton className="h-40 w-full" />
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <TarjetaYoutube r={youtube} />
-            <TarjetaInstagram r={instagram} />
-            <TarjetaTikTokSnapchat r={pasoPor("tiktok_snapchat_notas") as ResumenTikTokSnapchat | undefined} />
-          </div>
-          <TablaVideosYoutube r={youtube} />
-          <TablaPublicacionesInstagram r={instagram} />
-          <TarjetaRecomendaciones r={pasoPor("recomendaciones") as Recomendaciones | undefined} />
+        <div className="space-y-4">
+          <SeccionYoutube r={youtube} recomendaciones={recomendaciones?.youtube} />
+          <SeccionInstagram r={instagram} recomendaciones={recomendaciones?.instagram} />
+          <SeccionTikTokSnapchat r={tiktokSnapchat} recomendacionesTiktok={recomendaciones?.tiktok} recomendacionesSnapchat={recomendaciones?.snapchat} />
         </div>
       )}
       {ultimoCompletado && (
