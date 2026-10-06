@@ -8,7 +8,7 @@ import { signOut } from "next-auth/react";
 import { RgpdModal } from "./rgpd-modal";
 import { GuiaModal } from "./guia-modal";
 import { Button } from "@/components/ui/button";
-import { Clock, Calendar, ClipboardText, ClipboardTick, Logout, MessageQuestion, Profile2User } from "@/lib/icons";
+import { Clock, Calendar, ClipboardText, ClipboardTick, Logout, MessageQuestion, Profile2User, Video } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -35,12 +35,17 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
   const [necesitaRgpd, setNecesitaRgpd] = useState(false);
   const [guiaAbierta, setGuiaAbierta] = useState(false);
   const [cerrando, setCerrando] = useState(false);
+  const [puedeContenido, setPuedeContenido] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
     fetch("/api/asistencia/kiosk/rgpd")
       .then((r) => r.json())
       .then((d) => { if (d.ok) setNecesitaRgpd(!d.informado); })
+      .catch(() => {});
+    fetch("/api/asistencia/contenido/acceso")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setPuedeContenido(d.puedeContenido === true); })
       .catch(() => {});
   }, []);
 
@@ -55,6 +60,11 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
         <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
           <Image src="/logos/kelatos.png" alt="Kelatos" width={145} height={41} priority unoptimized className="h-7 w-auto" />
           <div className="flex items-center gap-1">
+            {puedeContenido && (
+              <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Panel de contenido" render={<Link href="/asistencia/contenido" />}>
+                <Video className="size-4" />
+              </Button>
+            )}
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Guía de uso" onClick={() => setGuiaAbierta(true)}>
               <MessageQuestion className="size-4" />
             </Button>
