@@ -950,6 +950,13 @@ interface FilaAlquilerSql {
   fianza_cobrada: string | number | null;
   envio_activado: string | null;
   metodo_pago: string | null;
+  /** Forma de pago propia de la devolución (rectificativa) — independiente
+      de metodo_pago, que es el de la factura original. null en
+      rectificativas generadas antes de esta columna (2026-10-06): se cae
+      a metodo_pago como antes, único dato que había entonces. */
+  forma_pago_rectificativa: string | null;
+  banco_rectificativa: string | null;
+  forma_pago_rectificativa_desglose: { forma: string; monto: number; banco: string | null }[] | null;
   estado_factura: string | null;
 
   numero_factura: string | null;
@@ -1056,8 +1063,11 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         fecha: fechaDe(numero),
         url: urlValida(url),
         total: totalRectificativaAlquiler({ guardado: totalRect, previsto, fianzaBase: fianza }),
-        formaPago: texto(row.metodo_pago),
-        banco: "",
+        formaPago: texto(row.forma_pago_rectificativa) || texto(row.metodo_pago),
+        banco: texto(row.banco_rectificativa) || "",
+        formaPagoDesglose: Array.isArray(row.forma_pago_rectificativa_desglose)
+          ? row.forma_pago_rectificativa_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+          : null,
         estadoFactura: "",
         tipo: "rectificativa",
       });

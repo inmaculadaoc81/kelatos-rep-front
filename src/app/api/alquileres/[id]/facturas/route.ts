@@ -99,6 +99,25 @@ export async function POST(
   // formas fusionando datos.* sobre el nivel superior.
   const raw = (await req.json()) as Record<string, unknown> & { datos?: Record<string, unknown> };
   const solicitud = { ...raw, ...(raw.datos && typeof raw.datos === "object" ? raw.datos : {}) } as SolicitudFacturaAlquiler & { requestId: string };
+  // formaPagoParaPayload() (selector-forma-pago.tsx) también manda
+  // referencia/formaPagoDesglose — SolicitudFacturaAlquiler no los tipa
+  // (histórico: nunca se guardaban), pero sí llegan en el objeto real.
+  const pagoExtra = solicitud as unknown as { referencia?: string; formaPagoDesglose?: unknown };
+
+  /** Columnas de la devolución (rectificativa_fianza y alquiler_rectificativa
+      comparten la MISMA rectificativa "vigente" por alquiler) — antes la
+      forma de pago elegida en la pantalla solo se imprimía en el PDF,
+      nunca se guardaba, así que la vista de Efectivo seguía mostrando el
+      método de la factura ORIGINAL para la devolución. Petición del
+      usuario, 2026-10-06. */
+  function columnasFormaPagoRectificativa() {
+    return {
+      forma_pago_rectificativa: solicitud.formaPago || null,
+      banco_rectificativa: solicitud.banco || null,
+      forma_pago_rectificativa_referencia: pagoExtra.referencia || null,
+      forma_pago_rectificativa_desglose: pagoExtra.formaPagoDesglose ? JSON.stringify(pagoExtra.formaPagoDesglose) : null,
+    };
+  }
   if (!solicitud?.requestId || !/^[0-9a-f-]{36}$/i.test(solicitud.requestId)) {
     return NextResponse.json({ ok: false, error: "requestId inválido" }, { status: 400 });
   }
@@ -243,6 +262,7 @@ export async function POST(
         columnas: {
           numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: -fianzaConIva(fianza),
           cliente_factura: JSON.stringify(solicitud.cliente),
+          ...columnasFormaPagoRectificativa(),
         },
       });
 
@@ -290,6 +310,7 @@ export async function POST(
         columnas: {
           numero_factura_rectificativa: doc.numero, url_factura_rectificativa: doc.url, total_factura_rectificativa: doc.total,
           cliente_factura: JSON.stringify(solicitud.cliente),
+          ...columnasFormaPagoRectificativa(),
         },
       });
 
