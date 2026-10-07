@@ -259,7 +259,9 @@ function NuevaPiezaDialog({
             <div className="space-y-1.5">
               <Label htmlFor="npTipo">Tipo</Label>
               <Select value={tipo || SIN_VALOR} onValueChange={(v) => setTipo((v && v !== SIN_VALOR ? v : "") as TipoPieza | "")}>
-                <SelectTrigger id="npTipo" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectTrigger id="npTipo" className="w-full">
+                  <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(TIPOS, v as TipoPieza))}</SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SIN_VALOR}>—</SelectItem>
                   {TIPOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
@@ -269,7 +271,9 @@ function NuevaPiezaDialog({
             <div className="space-y-1.5">
               <Label htmlFor="npRed">Red social</Label>
               <Select value={red || SIN_VALOR} onValueChange={(v) => setRed((v && v !== SIN_VALOR ? v : "") as RedSocial | "")}>
-                <SelectTrigger id="npRed" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectTrigger id="npRed" className="w-full">
+                  <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(REDES, v as RedSocial))}</SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SIN_VALOR}>—</SelectItem>
                   {REDES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
@@ -279,7 +283,9 @@ function NuevaPiezaDialog({
             <div className="space-y-1.5">
               <Label htmlFor="npEstado">Estado</Label>
               <Select value={estado} onValueChange={(v) => v && setEstado(v as EstadoPieza)}>
-                <SelectTrigger id="npEstado" className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="npEstado" className="w-full">
+                  <SelectValue>{(v: string) => etiquetaDe(ESTADOS, v as EstadoPieza)}</SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {ESTADOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
                 </SelectContent>

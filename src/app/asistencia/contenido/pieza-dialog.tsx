@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CloseCircle, Trash, Add, Video } from "@/lib/icons";
-import { colorDeRed, ESTADOS, REDES, TIPOS, aInputFechaHora, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
+import { colorDeRed, ESTADOS, REDES, TIPOS, aInputFechaHora, etiquetaDe, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
 
 const SIN_VALOR = "__ninguno__";
 
@@ -270,7 +270,9 @@ export function PiezaDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="pzEstado">Estado</Label>
                   <Select value={borrador.estado} onValueChange={(v) => v && cambiar("estado", v as EstadoPieza)}>
-                    <SelectTrigger id="pzEstado" className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="pzEstado" className="w-full">
+                      <SelectValue>{(v: string) => etiquetaDe(ESTADOS, v as EstadoPieza)}</SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       {ESTADOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
                     </SelectContent>
@@ -283,7 +285,9 @@ export function PiezaDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="pzTipo">Tipo</Label>
                   <Select value={borrador.tipo || SIN_VALOR} onValueChange={(v) => cambiar("tipo", (v && v !== SIN_VALOR ? v : "") as TipoPieza | "")}>
-                    <SelectTrigger id="pzTipo" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectTrigger id="pzTipo" className="w-full">
+                      <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(TIPOS, v as TipoPieza))}</SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={SIN_VALOR}>—</SelectItem>
                       {TIPOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
@@ -293,7 +297,9 @@ export function PiezaDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="pzRed">Red social</Label>
                   <Select value={borrador.redSocial || SIN_VALOR} onValueChange={(v) => cambiar("redSocial", (v && v !== SIN_VALOR ? v : "") as RedSocial | "")}>
-                    <SelectTrigger id="pzRed" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectTrigger id="pzRed" className="w-full">
+                      <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(REDES, v as RedSocial))}</SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={SIN_VALOR}>—</SelectItem>
                       {REDES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
@@ -373,10 +379,14 @@ export function PiezaDialog({
                   <Input value={nuevaNecesidad} onChange={(e) => setNuevaNecesidad(e.target.value)} placeholder="Qué necesitas (p. ej. el vídeo del cliente)" />
                   <div className="flex items-center gap-2">
                     <Select value={responsableNecesidad || SIN_VALOR} onValueChange={(v) => setResponsableNecesidad(v && v !== SIN_VALOR ? v : "")}>
-                      <SelectTrigger className="min-w-0 flex-1"><SelectValue placeholder="¿Quién lo tiene?" /></SelectTrigger>
+                      <SelectTrigger className="min-w-0 flex-1">
+                        <SelectValue>{(v: string) => (v === SIN_VALOR ? "¿Quién lo tiene?" : empleados.find((e) => String(e.id) === v)?.nombre ?? v)}</SelectValue>
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={SIN_VALOR} disabled>¿Quién lo tiene?</SelectItem>
-                        {empleados.map((x) => <SelectItem key={x.id} value={String(x.id)}>{x.nombre}</SelectItem>)}
+                        {[...empleados].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map((x) => (
+                          <SelectItem key={x.id} value={String(x.id)}>{x.nombre}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Button variant="outline" size="sm" onClick={pedirNecesidad}>Pedir</Button>
