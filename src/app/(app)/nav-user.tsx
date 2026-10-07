@@ -214,6 +214,18 @@ export function NavUser({ session }: { session: Session | null }) {
                   Contenido
                 </DropdownMenuItem>
               )}
+              {/* Vuelta al kiosco de fichaje desde Contenido — antes era un
+                  icono suelto en ContenidoHeader; petición del usuario,
+                  2026-10-07: tiene que estar aquí, igual que el resto de
+                  botones de cambiar de dashboard. Fuera de los `!esSoloAsistencia`
+                  de arriba a propósito: Jeannie (cuenta solo-asistencia) es
+                  quien más lo necesita, para volver de Contenido al kiosco. */}
+              {enContenido && (
+                <DropdownMenuItem render={<Link href="/asistencia/kiosk" />}>
+                  <IconoDashboard icon={Clock} className="from-emerald-500 to-teal-600" />
+                  Fichaje
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
