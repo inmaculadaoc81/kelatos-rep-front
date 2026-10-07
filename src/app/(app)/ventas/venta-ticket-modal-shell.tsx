@@ -115,6 +115,7 @@ export function VentaTicketModalShell({
                     formaPagoOriginal={venta.formaPagoTicket}
                     yaGenerada={d.rectificativa}
                     corregida={d.corregida}
+                    motivoRectificativa={venta.motivoTicketRectificativa}
                     onGenerada={onActualizado}
                   />
                 </TabsContent>
@@ -128,6 +129,7 @@ export function VentaTicketModalShell({
                     formaPagoOriginal={venta.formaPagoTicket}
                     rectificativa={d.rectificativa}
                     corregida={d.corregida}
+                    motivoRectificativa={venta.motivoTicketRectificativa}
                     onActualizado={onActualizado}
                   />
                 </TabsContent>

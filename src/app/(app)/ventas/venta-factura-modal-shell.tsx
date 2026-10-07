@@ -112,6 +112,7 @@ export function VentaFacturaModalShell({
                 clienteEmailDefault={clienteEmailDefault}
                 yaGenerada={venta.facturaRectificativa}
                 corregida={venta.facturaCorregida}
+                motivoRectificativa={venta.motivoFacturaRectificativa}
                 modoDevolucion
                 onGenerada={onActualizado}
               />
@@ -132,6 +133,7 @@ export function VentaFacturaModalShell({
                 clienteEmailDefault={clienteEmailDefault}
                 rectificativa={venta.facturaRectificativa}
                 corregida={venta.facturaCorregida}
+                motivoRectificativa={venta.motivoFacturaRectificativa}
                 onActualizado={onActualizado}
               />
             </TabsContent>

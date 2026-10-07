@@ -632,6 +632,7 @@ export function TabDevolucionRectificativo({
   clienteEmailDefault,
   yaGenerada,
   corregida,
+  motivoRectificativa,
   modoDevolucion,
   permiteCorregida = true,
   duracionAlquiler,
@@ -650,6 +651,9 @@ export function TabDevolucionRectificativo({
   clienteEmailDefault: string;
   yaGenerada: { numeroFactura: string; urlFactura: string } | null;
   corregida?: { numeroFactura: string; urlFactura: string } | null;
+  /** Motivo ya guardado de esta rectificativa (solo Venta por ahora — el
+      resto de orígenes lo muestran en su propia pestaña "PDF / Enviar"). */
+  motivoRectificativa?: string;
   modoDevolucion: boolean;
   /** false = no ofrecer "¿lo generaste por error? genera la corregida" —
       para entidades donde el flujo de corregida no está implementado
@@ -681,6 +685,9 @@ export function TabDevolucionRectificativo({
           <TickCircle className="size-4 shrink-0" />
           Ya existe una factura rectificativa para esta factura: <strong>{yaGenerada.numeroFactura}</strong>
         </div>
+        {motivoRectificativa && (
+          <p className="text-sm text-muted-foreground">Motivo: <span className="italic">{motivoRectificativa}</span></p>
+        )}
         {yaGenerada.urlFactura && (
           <Button variant="outline" className="gap-1.5" nativeButton={false} render={<Link href={yaGenerada.urlFactura} target="_blank" rel="noreferrer" />}>
             <DocumentText className="size-4" /> Ver PDF de la rectificativa
@@ -836,6 +843,7 @@ export function TabRectificativo({
   clienteEmailDefault,
   rectificativa,
   corregida,
+  motivoRectificativa,
   onActualizado,
 }: {
   resguardo: string;
@@ -850,6 +858,8 @@ export function TabRectificativo({
   formaPagoOriginal: string;
   clienteEmailDefault: string;
   rectificativa: { numeroFactura: string; urlFactura: string } | null;
+  /** Motivo ya guardado de esta rectificativa (solo Venta por ahora). */
+  motivoRectificativa?: string;
   corregida: { numeroFactura: string; urlFactura: string } | null;
   onActualizado: () => void;
 }) {
@@ -883,6 +893,9 @@ export function TabRectificativo({
           <TickCircle className="size-4 shrink-0" />
           Rectificativa generada. Ahora emite la factura corregida.
         </div>
+        {motivoRectificativa && (
+          <p className="text-sm text-muted-foreground">Motivo: <span className="italic">{motivoRectificativa}</span></p>
+        )}
         <Button className="w-full gap-1.5" onClick={() => setAbrirCorregida(true)}>
           <ArrowRight2 className="size-4" /> Generar factura corregida
         </Button>
@@ -939,6 +952,7 @@ export function TabDevolucionTicket({
   formaPagoOriginal,
   yaGenerada,
   corregida,
+  motivoRectificativa,
   onGenerada,
 }: {
   apiRectificativaUrl: string;
@@ -956,6 +970,8 @@ export function TabDevolucionTicket({
   formaPagoOriginal: string;
   yaGenerada: DocTicket | null;
   corregida: DocTicket | null;
+  /** Motivo ya guardado de esta rectificativa (solo Venta por ahora). */
+  motivoRectificativa?: string;
   onGenerada: () => void;
 }) {
   const [motivo, setMotivo] = useState("");
@@ -971,6 +987,9 @@ export function TabDevolucionTicket({
           <TickCircle className="size-4 shrink-0" />
           Ya existe una rectificativa para este ticket: <strong>{yaGenerada.numeroFactura}</strong>
         </div>
+        {motivoRectificativa && (
+          <p className="text-sm text-muted-foreground">Motivo: <span className="italic">{motivoRectificativa}</span></p>
+        )}
         {yaGenerada.urlFactura && (
           <Button variant="outline" className="gap-1.5" nativeButton={false} render={<Link href={yaGenerada.urlFactura} target="_blank" rel="noreferrer" />}>
             <DocumentText className="size-4" /> Ver PDF de la rectificativa
@@ -1058,6 +1077,7 @@ export function TabRectificativoTicket({
   formaPagoOriginal,
   rectificativa,
   corregida,
+  motivoRectificativa,
   onActualizado,
 }: {
   apiRectificativaUrl: string;
@@ -1068,6 +1088,8 @@ export function TabRectificativoTicket({
   formaPagoOriginal: string;
   rectificativa: DocTicket | null;
   corregida: DocTicket | null;
+  /** Motivo ya guardado de esta rectificativa (solo Venta por ahora). */
+  motivoRectificativa?: string;
   onActualizado: () => void;
 }) {
   const [abrirCorregida, setAbrirCorregida] = useState(false);
@@ -1095,6 +1117,9 @@ export function TabRectificativoTicket({
           <TickCircle className="size-4 shrink-0" />
           Rectificativa generada. Ahora emite el ticket corregido.
         </div>
+        {motivoRectificativa && (
+          <p className="text-sm text-muted-foreground">Motivo: <span className="italic">{motivoRectificativa}</span></p>
+        )}
         <Button className="w-full gap-1.5" onClick={() => setAbrirCorregida(true)}>
           <ArrowRight2 className="size-4" /> Generar ticket corregido
         </Button>
