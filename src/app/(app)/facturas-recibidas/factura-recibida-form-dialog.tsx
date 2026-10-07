@@ -508,6 +508,10 @@ export function FacturaRecibidaFormDialog({
       // encontrado (null) no debe borrar algo que el usuario ya escribió.
       if (data.proveedorIdSugerido) set("proveedorId", data.proveedorIdSugerido);
       if (e.numeroFacturaProveedor) set("numeroFacturaProveedor", e.numeroFacturaProveedor);
+      // Bug real reportado, 2026-10-07: la IA sí lee la serie (se ve en el
+      // resumen, "Serie: ...") pero nunca se copiaba al campo real del
+      // formulario — el número de factura quedaba guardado sin su serie.
+      if (e.serieProveedor) set("serieProveedor", e.serieProveedor);
       if (e.fechaExpedicion) set("fechaExpedicion", e.fechaExpedicion);
       if (e.baseImponible !== null) set("baseImponible", e.baseImponible);
       if (e.tipoIva !== null) set("tipoIva", e.tipoIva);
