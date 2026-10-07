@@ -3,17 +3,26 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Add, Video } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-import { ESTADOS, REDES, TIPOS, etiquetaDe, type EstadoPieza, type Pieza, type RedSocial, type TipoPieza } from "@/lib/contenido";
+import { colorDeRed, ESTADOS, REDES, TIPOS, etiquetaDe, type EstadoPieza, type Pieza, type RedSocial, type TipoPieza } from "@/lib/contenido";
 import { PiezaDialog } from "./pieza-dialog";
 
 const POLL_MS = 30000;
+
+// Acento por columna — mismo valor que ESTADOS.color pero solo el tono
+// base, para la franja superior de la columna (un detalle que ESTADOS.color
+// por sí solo no cubre: ese es fondo+texto de la píldora, no un borde).
+const ACENTO_COLUMNA: Record<EstadoPieza, string> = {
+  pendiente: "bg-amber-500",
+  en_proceso: "bg-sky-500",
+  listo: "bg-emerald-500",
+};
 
 function formatFecha(iso: string | null) {
   if (!iso) return null;
@@ -21,6 +30,16 @@ function formatFecha(iso: string | null) {
   return d.toLocaleString("es-ES", iso.length === 10
     ? { day: "2-digit", month: "short" }
     : { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Urgencia de una fecha límite (solo fecha, no fecha+hora programada) —
+    vencida en rojo, a 2 días o menos en ámbar, el resto sin marcar. */
+function urgenciaFecha(iso: string): "vencida" | "proxima" | null {
+  const limite = new Date(iso.length === 10 ? `${iso}T23:59:59` : iso).getTime();
+  const diffDias = (limite - Date.now()) / 86400000;
+  if (diffDias < 0) return "vencida";
+  if (diffDias <= 2) return "proxima";
+  return null;
 }
 
 /** Panel de contenido de la community manager: piezas agrupadas por estado,
@@ -76,50 +95,90 @@ export default function ContenidoPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <Video className="size-4" /> Contenido
-        </h2>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setNuevaAbierta(true)}>
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Video className="size-4" /> Contenido
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{piezas.length} pieza{piezas.length === 1 ? "" : "s"} en total</p>
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={() => setNuevaAbierta(true)}>
           <Add className="size-4" /> Nueva pieza
         </Button>
       </div>
 
-      {ESTADOS.map((estado) => {
-        const lista = piezas.filter((p) => p.estado === estado.valor);
-        return (
-          <Card key={estado.valor}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span>{estado.etiqueta}</span>
-                <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", estado.color)}>{lista.length}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1.5">
-              {lista.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nada en este estado.</p>
-              ) : (
-                lista.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSeleccionada(p.id)}
-                    className="flex w-full flex-col gap-1 rounded-md border px-3 py-2 text-left text-sm hover:bg-muted/40"
-                  >
-                    <span className="truncate font-medium">{p.titulo}</span>
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                      <span>{etiquetaDe(REDES, p.redSocial as RedSocial | null)}</span>
-                      <span>{etiquetaDe(TIPOS, p.tipo as TipoPieza | null)}</span>
-                      {p.fechaLimite && <span>Límite {formatFecha(p.fechaLimite)}</span>}
-                      {p.programadaPara && <span>Programada {formatFecha(p.programadaPara)}</span>}
-                      {p.subtareasTotal > 0 && <span>Subtareas {p.subtareasHechas}/{p.subtareasTotal}</span>}
-                    </span>
-                  </button>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
+      <div className="grid items-start gap-4 md:grid-cols-3">
+        {ESTADOS.map((estado) => {
+          const lista = piezas.filter((p) => p.estado === estado.valor);
+          return (
+            <Card key={estado.valor} className="gap-0 overflow-hidden py-0">
+              <div className={cn("h-1", ACENTO_COLUMNA[estado.valor])} />
+              <div className="flex items-center justify-between border-b bg-muted/30 px-3.5 py-2.5">
+                <span className="text-sm font-semibold">{estado.etiqueta}</span>
+                <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums", estado.color)}>{lista.length}</span>
+              </div>
+              <CardContent className="space-y-2 p-3">
+                {lista.length === 0 ? (
+                  <p className="px-1 py-6 text-center text-xs text-muted-foreground">Nada en este estado.</p>
+                ) : (
+                  lista.map((p) => {
+                    const urgencia = p.fechaLimite ? urgenciaFecha(p.fechaLimite) : null;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSeleccionada(p.id)}
+                        className="flex w-full flex-col gap-2 rounded-lg border bg-card px-3 py-2.5 text-left text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
+                      >
+                        <span className="truncate font-medium">{p.titulo}</span>
+
+                        {(p.redSocial || p.tipo) && (
+                          <span className="flex flex-wrap items-center gap-1">
+                            {p.redSocial && (
+                              <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-medium", colorDeRed(p.redSocial as RedSocial))}>
+                                {etiquetaDe(REDES, p.redSocial as RedSocial | null)}
+                              </span>
+                            )}
+                            {p.tipo && (
+                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                {etiquetaDe(TIPOS, p.tipo as TipoPieza | null)}
+                              </span>
+                            )}
+                          </span>
+                        )}
+
+                        {p.subtareasTotal > 0 && (
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                              <span
+                                className="block h-full rounded-full bg-primary"
+                                style={{ width: `${Math.round((p.subtareasHechas / p.subtareasTotal) * 100)}%` }}
+                              />
+                            </span>
+                            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{p.subtareasHechas}/{p.subtareasTotal}</span>
+                          </span>
+                        )}
+
+                        {(p.fechaLimite || p.programadaPara) && (
+                          <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
+                            {p.fechaLimite && (
+                              <span className={cn(
+                                urgencia === "vencida" ? "font-medium text-destructive" : urgencia === "proxima" ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                              )}>
+                                Límite {formatFecha(p.fechaLimite)}
+                              </span>
+                            )}
+                            {p.programadaPara && <span className="text-muted-foreground">Programada {formatFecha(p.programadaPara)}</span>}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       <PiezaDialog
         piezaId={seleccionada}

@@ -19,6 +19,13 @@ export interface ItemNavegacionBase {
   icon: React.ElementType;
   /** Clases opcionales para destacar un item (p. ej. texto en verde). */
   claseColor?: string;
+  /** Solo activo en coincidencia EXACTA de ruta, nunca por prefijo — para
+      un item "índice" cuyo href es la raíz de la que cuelgan sus propios
+      hermanos (p. ej. "Piezas" en /asistencia/contenido, con "Calendario"
+      en /asistencia/contenido/calendario): sin esto, activo() marcaba
+      ambos a la vez porque /asistencia/contenido/calendario empieza por
+      /asistencia/contenido/ (bug real reportado 2026-10-07). */
+  exacto?: boolean;
 }
 
 export interface GrupoNavegacionBase {
@@ -37,8 +44,10 @@ export interface GrupoNavegacionBase {
  * colapsable con cabecera + chevron. Extraído de src/app/(app)/sidebar.tsx
  * (2026-09-15) para reutilizarlo en Asistencia sin duplicar el patrón.
  */
-/** Activo en la propia página o en una subpágina suya (p. ej. /mails/tipos/x → "Tipos de correo"). */
-function activo(pathname: string, href: string): boolean {
+/** Activo en la propia página o en una subpágina suya (p. ej. /mails/tipos/x → "Tipos de correo"),
+    salvo que el item pida coincidencia exacta (ver ItemNavegacionBase.exacto). */
+function activo(pathname: string, href: string, exacto?: boolean): boolean {
+  if (exacto) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -57,7 +66,7 @@ export function ItemDirecto({ item, pathname }: { item: ItemNavegacionBase; path
   }
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton isActive={activo(pathname, item.href)} tooltip={item.label} render={<Link href={item.href} />}>
+      <SidebarMenuButton isActive={activo(pathname, item.href, item.exacto)} tooltip={item.label} render={<Link href={item.href} />}>
         <Icon />
         <span>{item.label}</span>
       </SidebarMenuButton>
@@ -120,7 +129,7 @@ export function GrupoColapsable({
               }
               return (
                 <SidebarMenuSubItem key={item.label}>
-                  <SidebarMenuSubButton isActive={activo(pathname, item.href)} className={item.claseColor} render={<Link href={item.href} />}>
+                  <SidebarMenuSubButton isActive={activo(pathname, item.href, item.exacto)} className={item.claseColor} render={<Link href={item.href} />}>
                     <Icon />
                     <span>{item.label}</span>
                   </SidebarMenuSubButton>

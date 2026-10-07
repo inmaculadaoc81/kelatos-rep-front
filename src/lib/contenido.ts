@@ -60,14 +60,21 @@ export const TIPOS: { valor: TipoPieza; etiqueta: string }[] = [
   { valor: "pdf", etiqueta: "PDF" },
 ];
 
-export const REDES: { valor: RedSocial; etiqueta: string }[] = [
-  { valor: "youtube", etiqueta: "YouTube" },
-  { valor: "facebook", etiqueta: "Facebook" },
-  { valor: "tiktok", etiqueta: "TikTok" },
-  { valor: "instagram", etiqueta: "Instagram" },
-  { valor: "x", etiqueta: "X" },
-  { valor: "snapchat", etiqueta: "Snapchat" },
+export const REDES: { valor: RedSocial; etiqueta: string; color: string }[] = [
+  { valor: "youtube", etiqueta: "YouTube", color: "bg-red-500/10 text-red-700 dark:text-red-400" },
+  { valor: "facebook", etiqueta: "Facebook", color: "bg-blue-500/10 text-blue-700 dark:text-blue-400" },
+  { valor: "tiktok", etiqueta: "TikTok", color: "bg-slate-500/10 text-slate-700 dark:text-slate-300" },
+  { valor: "instagram", etiqueta: "Instagram", color: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400" },
+  { valor: "x", etiqueta: "X", color: "bg-neutral-500/10 text-neutral-700 dark:text-neutral-300" },
+  { valor: "snapchat", etiqueta: "Snapchat", color: "bg-yellow-500/10 text-yellow-800 dark:text-yellow-500" },
 ];
+
+/** Color de una red social por valor — "" (sin red asignada) o un valor sin
+    entrada en REDES cae a un gris neutro, nunca a un color con significado
+    propio ya usado para otra cosa. */
+export function colorDeRed(red: RedSocial | null | undefined): string {
+  return REDES.find((r) => r.valor === red)?.color ?? "bg-muted text-muted-foreground";
+}
 
 export function etiquetaDe<T extends string>(lista: { valor: T; etiqueta: string }[], valor: T | null | undefined): string {
   return lista.find((x) => x.valor === valor)?.etiqueta ?? "—";
