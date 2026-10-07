@@ -100,6 +100,7 @@ export const Coin1 = withDefaults(Iconsax.Coin1);
 export const Monitor = withDefaults(Iconsax.Monitor);
 export const MessageQuestion = withDefaults(Iconsax.MessageQuestion);
 export const Message = withDefaults(Iconsax.Message);
+export const Microphone = withDefaults(Iconsax.Microphone);
 export const MoreCircle = withDefaults(Iconsax.MoreCircle);
 export const Notification = withDefaults(Iconsax.Notification);
 export const PauseCircle = withDefaults(Iconsax.PauseCircle);

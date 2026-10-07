@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import type { ComponentType } from "react";
 import type { IconProps } from "iconsax-react";
-import { Cpu, SecuritySafe, Video } from "@/lib/icons";
+import { Cpu, SecuritySafe, Video, Microphone } from "@/lib/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentType, hrefParaTipoAgente } from "@/lib/agentes";
 import { NavUser } from "../(app)/nav-user";
@@ -34,7 +34,7 @@ import { NavUser } from "../(app)/nav-user";
 // la lista que ya devuelve el backend en vez de dejar de pedirla, así que
 // si algún día se quiere recuperar la vista genérica basta con quitar
 // este filtro.
-const TIPOS_VISIBLES = new Set(["security_audit", "video_seo"]);
+const TIPOS_VISIBLES = new Set(["security_audit", "video_seo", "pr_opportunities"]);
 
 // Icono por tipo — antes era SecuritySafe fijo para todos, válido mientras
 // solo hubiera un agente en este módulo. Con dos agentes de naturaleza
@@ -43,6 +43,7 @@ const TIPOS_VISIBLES = new Set(["security_audit", "video_seo"]);
 const ICONO_POR_TIPO: Record<string, ComponentType<IconProps>> = {
   security_audit: SecuritySafe,
   video_seo: Video,
+  pr_opportunities: Microphone,
 };
 
 export function AgentesSidebar({ session }: { session: Session | null }) {

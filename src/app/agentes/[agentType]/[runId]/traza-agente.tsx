@@ -83,6 +83,9 @@ const PASO_INFO: Record<string, { label: string; subtitulo?: string; icon?: Luci
   instagram_datos: { label: "Datos de Instagram", subtitulo: "Instagram Graph API" },
   tiktok_snapchat_notas: { label: "TikTok y Snapchat", subtitulo: "Sin API de analíticas" },
   recomendaciones: { label: "Recomendaciones", subtitulo: "Modelo medio" },
+  // agente de Oportunidades de PR
+  perfil_empresa: { label: "Perfil de la empresa", subtitulo: "Código determinista" },
+  oportunidades: { label: "Oportunidades de PR", subtitulo: "Modelo medio" },
 };
 
 const MAX_CHIPS_VISIBLES = 4;

@@ -15,6 +15,7 @@ import { AgentRun, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
 import { SeguridadDashboard } from "./seguridad-dashboard";
 import { VideoSeoDashboard } from "./video-seo-dashboard";
+import { PrOportunidadesDashboard } from "./pr-oportunidades-dashboard";
 
 /** Formulario de "nuevo run" — cada tipo de agente tiene su propia forma
     de arrancar (lead_research parte de sector/ubicación; linkedin_
@@ -250,6 +251,8 @@ export default function AgenteTipoPage() {
         <SeguridadDashboard runs={runs} cargando={cargando} onEjecutado={cargarRuns} />
       ) : agentType === "video_seo" ? (
         <VideoSeoDashboard runs={runs} cargando={cargando} onEjecutado={cargarRuns} />
+      ) : agentType === "pr_opportunities" ? (
+        <PrOportunidadesDashboard runs={runs} cargando={cargando} onEjecutado={cargarRuns} />
       ) : (
         <Card>
           <CardHeader>

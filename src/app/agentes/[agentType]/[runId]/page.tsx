@@ -9,6 +9,7 @@ import { CanvasAgente } from "./canvas-agente";
 import { CanvasLinkedIn } from "./canvas-linkedin";
 import { CanvasSeguridad } from "./canvas-seguridad";
 import { CanvasVideoSeo } from "./canvas-video-seo";
+import { CanvasPrOportunidades } from "./canvas-pr-oportunidades";
 
 // Vista de detalle de un run — por ahora SOLO el panel de traza (cómo va
 // el agente) + un contenedor vacío a la derecha reservado para más
@@ -94,6 +95,7 @@ export default function AgenteRunDetallePage() {
       {params.agentType === "linkedin_intelligence" && <CanvasLinkedIn run={run} steps={steps} tipoLabel={tipoLabel} />}
       {params.agentType === "security_audit" && <CanvasSeguridad run={run} steps={steps} tipoLabel={tipoLabel} />}
       {params.agentType === "video_seo" && <CanvasVideoSeo run={run} steps={steps} tipoLabel={tipoLabel} />}
+      {params.agentType === "pr_opportunities" && <CanvasPrOportunidades run={run} steps={steps} tipoLabel={tipoLabel} />}
     </div>
   );
 }
