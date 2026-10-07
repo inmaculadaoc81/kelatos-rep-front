@@ -43,7 +43,10 @@ export function CorreccionesView({ soloRemotos = false }: { soloRemotos?: boolea
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState<number | null>(null);
   const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
-  const empleadosRemotosIds = useEmpleadosRemotosIds(soloRemotos);
+  // Siempre, no solo en soloRemotos — la vista Local también necesita
+  // saber quién es remoto para EXCLUIRLO (ver itemsVisibles abajo). Mismo
+  // bug real que en Fichajes (fichajes-view.tsx), 2026-10-08.
+  const empleadosRemotosIds = useEmpleadosRemotosIds(true);
 
   async function cargar() {
     setCargando(true);
@@ -58,10 +61,12 @@ export function CorreccionesView({ soloRemotos = false }: { soloRemotos?: boolea
 
   useEffect(() => { cargar(); }, []);
 
-  const itemsVisibles = useMemo(
-    () => (soloRemotos && empleadosRemotosIds ? items.filter((c) => empleadosRemotosIds.has(c.employee_id)) : items),
-    [items, soloRemotos, empleadosRemotosIds],
-  );
+  const itemsVisibles = useMemo(() => {
+    if (!empleadosRemotosIds) return items;
+    return soloRemotos
+      ? items.filter((c) => empleadosRemotosIds.has(c.employee_id))
+      : items.filter((c) => !empleadosRemotosIds.has(c.employee_id));
+  }, [items, soloRemotos, empleadosRemotosIds]);
 
   function aplicarFiltrosColumna(lista: Correccion[], colExcluida?: ColumnaFiltrable): Correccion[] {
     let out = lista;

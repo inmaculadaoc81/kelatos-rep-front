@@ -172,7 +172,13 @@ function agrupar(lista: Fichaje[], agruparPor: AgruparPor): Grupo[] | null {
  */
 export function FichajesView({ soloRemotos = false }: { soloRemotos?: boolean }) {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const empleadosRemotosIds = useEmpleadosRemotosIds(soloRemotos);
+  // Hace falta SIEMPRE, no solo en modo soloRemotos — la vista "Local"
+  // también necesita saber quién es remoto, para EXCLUIRLO (ver
+  // empleadosVisibles/fichajesVisibles abajo). Antes solo se pedía cuando
+  // soloRemotos=true, así que en Local nunca había nada contra lo que
+  // filtrar y se veía a todo el mundo sin distinción — bug real reportado,
+  // 2026-10-08: "en fichajes de local sale los fichajes de los remotos".
+  const empleadosRemotosIds = useEmpleadosRemotosIds(true);
   const [fichajes, setFichajes] = useState<Fichaje[]>([]);
   const [empleadoId, setEmpleadoId] = useState("");
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>("todas");
@@ -210,15 +216,22 @@ export function FichajesView({ soloRemotos = false }: { soloRemotos?: boolean })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empleadoId, filtroFecha, personalizado]);
 
-  const empleadosVisibles = useMemo(
-    () => (soloRemotos && empleadosRemotosIds ? empleados.filter((e) => empleadosRemotosIds.has(e.id)) : empleados),
-    [empleados, soloRemotos, empleadosRemotosIds],
-  );
+  // En modo soloRemotos (Remote Work) se incluye solo a quien SÍ tiene un
+  // dispositivo remoto; en modo normal (Local) se excluye a quien SÍ lo
+  // tiene — antes esta segunda mitad no existía (ver comentario arriba).
+  const empleadosVisibles = useMemo(() => {
+    if (!empleadosRemotosIds) return empleados;
+    return soloRemotos
+      ? empleados.filter((e) => empleadosRemotosIds.has(e.id))
+      : empleados.filter((e) => !empleadosRemotosIds.has(e.id));
+  }, [empleados, soloRemotos, empleadosRemotosIds]);
 
-  const fichajesVisibles = useMemo(
-    () => (soloRemotos && empleadosRemotosIds ? fichajes.filter((f) => empleadosRemotosIds.has(f.employee_id)) : fichajes),
-    [fichajes, soloRemotos, empleadosRemotosIds],
-  );
+  const fichajesVisibles = useMemo(() => {
+    if (!empleadosRemotosIds) return fichajes;
+    return soloRemotos
+      ? fichajes.filter((f) => empleadosRemotosIds.has(f.employee_id))
+      : fichajes.filter((f) => !empleadosRemotosIds.has(f.employee_id));
+  }, [fichajes, soloRemotos, empleadosRemotosIds]);
 
   function aplicarFiltrosColumna(lista: Fichaje[], colExcluida?: ColumnaFiltrable): Fichaje[] {
     let out = lista;
