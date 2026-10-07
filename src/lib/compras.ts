@@ -22,6 +22,12 @@ export interface CompraFila {
   fechaEstimada: string | null;
   fechaRecepcion: string | null;
   estado: string;
+  /** Lo que dice la página de seguimiento del proveedor/mensajería,
+      anotado a mano (sin integración automática con ningún proveedor) —
+      "" = sin revisar todavía. Petición del usuario, 2026-10-07: para
+      detectar pedidos marcados "Recibido" internamente sin que la
+      plataforma confirme la entrega. */
+  estadoPlataforma: string;
   recibidoPor: string;
   problemaTipo: string;
   codigoDevolucion: string;
@@ -53,6 +59,7 @@ interface FilaCompraSql {
   fecha_estimada: string | null;
   fecha_recepcion: string | null;
   estado: string | null;
+  estado_plataforma: string | null;
   recibido_por: string | null;
   problema_tipo: string | null;
   codigo_devolucion: string | null;
@@ -81,6 +88,7 @@ export function mapearCompra(row: FilaCompraSql): CompraFila {
     fechaEstimada: row.fecha_estimada,
     fechaRecepcion: row.fecha_recepcion,
     estado: row.estado || "",
+    estadoPlataforma: row.estado_plataforma || "",
     recibidoPor: row.recibido_por || "",
     problemaTipo: row.problema_tipo || "",
     codigoDevolucion: row.codigo_devolucion || "",
@@ -162,4 +170,13 @@ export const ESTILO_BADGE_ESTADO: Record<string, string> = {
   Problema: "border-destructive/40 text-destructive",
   "Pieza Rota": "border-destructive/40 text-destructive",
   "Pieza Defectuosa": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+};
+
+export const ESTADOS_PLATAFORMA = ["Enviado", "En tránsito", "Entregado", "Incidencia"] as const;
+
+export const ESTILO_BADGE_PLATAFORMA: Record<string, string> = {
+  Enviado: "border-sky-500/40 text-sky-700 dark:text-sky-400",
+  "En tránsito": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  Entregado: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+  Incidencia: "border-destructive/40 text-destructive",
 };

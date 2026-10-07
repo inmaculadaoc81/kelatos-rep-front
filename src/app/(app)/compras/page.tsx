@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CompraFila, ESTILO_BADGE_ESTADO, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor, precioLegible } from "@/lib/compras";
+import { CompraFila, ESTADOS_PLATAFORMA, ESTILO_BADGE_ESTADO, ESTILO_BADGE_PLATAFORMA, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor, precioLegible } from "@/lib/compras";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import type { Empleado } from "@/app/api/empleados/route";
 
@@ -159,6 +159,31 @@ export default function ComprasPage() {
     }
   }
 
+  // "Estado plataforma" — anotación manual de lo que dice la página de
+  // seguimiento del proveedor/mensajería (sin integración automática con
+  // ningún proveedor). Petición del usuario, 2026-10-07: dos columnas más
+  // en Compras para detectar pedidos marcados "Recibido" internamente sin
+  // que la plataforma confirme la entrega. Actualización local (no hace
+  // falta recargar toda la tabla por anotar un solo campo).
+  const [actualizandoPlataforma, setActualizandoPlataforma] = useState<string | null>(null);
+  async function actualizarEstadoPlataforma(pedidoId: string, estadoPlataforma: string) {
+    setActualizandoPlataforma(pedidoId);
+    try {
+      const res = await fetch(`/api/pedidos/${pedidoId}/estado-plataforma`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estadoPlataforma }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      setCompras((prev) => prev.map((c) => (c.pedidoId === pedidoId ? { ...c, estadoPlataforma } : c)));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setActualizandoPlataforma(null);
+    }
+  }
+
   const hayFiltros = !!(fechaDesde || fechaHasta || proveedorId || compradoPor || orden);
 
   return (
@@ -255,6 +280,8 @@ export default function ComprasPage() {
               <TableHead>Fecha pedido</TableHead>
               <TableHead>Fecha estimada</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Estado plataforma</TableHead>
+              <TableHead>Recepción</TableHead>
               <TableHead>Enlace</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -263,14 +290,14 @@ export default function ComprasPage() {
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 12 }).map((__, j) => (
+                  {Array.from({ length: 14 }).map((__, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))}
             {!cargando && compras.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
                   Ningún pedido de piezas coincide con los filtros
                 </TableCell>
               </TableRow>
@@ -322,6 +349,40 @@ export default function ComprasPage() {
                       <span className={`inline-flex whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium ${ESTILO_BADGE_ESTADO[c.estado] || "border-muted-foreground/30 text-muted-foreground"}`}>
                         {c.estado || "—"}
                       </span>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={c.estadoPlataforma || "SinRevisar"}
+                        onValueChange={(v) => actualizarEstadoPlataforma(c.pedidoId, v && v !== "SinRevisar" ? v : "")}
+                      >
+                        <SelectTrigger
+                          disabled={actualizandoPlataforma === c.pedidoId}
+                          className={`h-7 w-auto gap-1 border px-2 text-xs font-medium ${ESTILO_BADGE_PLATAFORMA[c.estadoPlataforma] || "border-muted-foreground/30 text-muted-foreground"}`}
+                        >
+                          <SelectValue>{(v: string) => (v === "SinRevisar" ? "Sin revisar" : v)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SinRevisar">Sin revisar</SelectItem>
+                          {ESTADOS_PLATAFORMA.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      {c.estado === "Recibido" ? (
+                        c.estadoPlataforma === "Entregado" ? (
+                          <span className="inline-flex items-center gap-0.5 whitespace-nowrap text-xs font-medium text-emerald-700 dark:text-emerald-400" title="Recepción interna y plataforma coinciden">
+                            <TickCircle className="size-3.5" />
+                            <TickCircle className="size-3.5" />
+                            <span className="ml-0.5">Confirmado</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-destructive" title="Marcado Recibido pero la plataforma no confirma la entrega — revisar">
+                            <Warning2 className="size-3.5" /> Sin confirmar en plataforma
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {c.enlace ? (
