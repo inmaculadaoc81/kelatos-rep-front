@@ -248,6 +248,13 @@ export function FacturaRecibidaFormDialog({
   borrador?: BorradorFactura;
 }) {
   const [datos, setDatos] = useState<Formulario>(() => (facturaExistente ? desdeExistente(facturaExistente) : vacio(borrador)));
+  // Desglose de IVA (deducible/no deducible) colapsado por defecto — en el
+  // caso normal (totalmente deducible) solo molesta repetir el mismo
+  // importe 3 veces. Se fuerza visible solo si el usuario lo pide a mano
+  // (este estado) o si los datos YA cargados tienen una deducción parcial
+  // real (ver mostrarDesgloseIva más abajo) — nunca se oculta un dato ya
+  // distinto sin que el usuario lo pida.
+  const [desgloseIvaForzado, setDesgloseIvaForzado] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [nuevoProveedorAbierto, setNuevoProveedorAbierto] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -590,6 +597,26 @@ export function FacturaRecibidaFormDialog({
 
   const mostrarAvisoDuplicado = esEdicion && facturaExistente!.posibleDuplicado && !datos.duplicadoConfirmado;
 
+  // Verificación real de los importes — petición del usuario, 2026-10-07:
+  // el cartel verde de abajo mostraba la suma pero nunca comprobaba que de
+  // verdad cuadrara con el Importe total escrito. Tolerancia de 2 céntimos
+  // (solo redondeo), más estricta que el margen de 0,5€ del backend
+  // (pensado para ruido de la lectura OCR, no para feedback mientras se
+  // escribe a mano).
+  const TOLERANCIA_CUADRE = 0.02;
+  const cuotaEsperada = Math.round(datos.baseImponible * datos.tipoIva) / 100;
+  const cuotaCuadra = Math.abs(cuotaEsperada - datos.cuotaIvaSoportado) < TOLERANCIA_CUADRE;
+  const totalEsperado = Math.round((datos.baseImponible + datos.cuotaIvaSoportado) * 100) / 100;
+  const totalCuadra = Math.abs(totalEsperado - datos.importeTotal) < TOLERANCIA_CUADRE;
+
+  // Desglose deducible/no deducible — colapsado salvo que de verdad haya
+  // una deducción parcial (o el usuario pida ajustarla a mano): repetir el
+  // mismo importe en 2 campos más cuando todo es deducible no aporta nada,
+  // petición del usuario. "Normal" = deducible igual que soportado y nada
+  // marcado como no deducible.
+  const esDeduccionParcialReal = Math.abs(datos.cuotaIvaDeducible - datos.cuotaIvaSoportado) >= TOLERANCIA_CUADRE || datos.ivaNoDeducible >= TOLERANCIA_CUADRE;
+  const mostrarDesgloseIva = desgloseIvaForzado || esDeduccionParcialReal;
+
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
@@ -800,21 +827,26 @@ export function FacturaRecibidaFormDialog({
                     set("tipoIva", n);
                     const cuota = Math.round(datos.baseImponible * n) / 100;
                     set("cuotaIvaSoportado", cuota);
-                    set("cuotaIvaDeducible", cuota);
+                    if (!mostrarDesgloseIva) { set("cuotaIvaDeducible", cuota); set("ivaNoDeducible", 0); }
                     set("importeTotal", Math.round((datos.baseImponible + cuota) * 100) / 100);
                   }} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="frCuotaSoportado">Cuota de IVA soportado (€)</Label>
-                  <DecimalInput id="frCuotaSoportado" className={CLASE_IMPORTE} value={datos.cuotaIvaSoportado} onChange={(n) => set("cuotaIvaSoportado", n)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="frCuotaDeducible">Cuota de IVA deducible (€) *</Label>
-                  <DecimalInput id="frCuotaDeducible" className={CLASE_IMPORTE} value={datos.cuotaIvaDeducible} onChange={(n) => set("cuotaIvaDeducible", n)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="frIvaNoDeducible">IVA no deducible (€)</Label>
-                  <DecimalInput id="frIvaNoDeducible" className={CLASE_IMPORTE} value={datos.ivaNoDeducible} onChange={(n) => set("ivaNoDeducible", n)} />
+                  <Label htmlFor="frCuotaSoportado" className="flex items-center gap-1">
+                    Cuota de IVA soportado (€)
+                    {cuotaCuadra ? (
+                      <TickCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <Warning2 className="size-3.5 text-amber-600 dark:text-amber-400" />
+                    )}
+                  </Label>
+                  <DecimalInput id="frCuotaSoportado" className={CLASE_IMPORTE} value={datos.cuotaIvaSoportado} onChange={(n) => {
+                    set("cuotaIvaSoportado", n);
+                    if (!mostrarDesgloseIva) { set("cuotaIvaDeducible", n); set("ivaNoDeducible", 0); }
+                  }} />
+                  {!cuotaCuadra && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400">Con {datos.tipoIva}% de {euros(datos.baseImponible)} esperaríamos {euros(cuotaEsperada)}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frTotal">Importe total (€) *</Label>
@@ -826,11 +858,56 @@ export function FacturaRecibidaFormDialog({
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm dark:bg-emerald-950/40">
-                <span className="text-emerald-800/80 dark:text-emerald-300/80">
+              {/* Deducible/no deducible — colapsado al caso normal (todo
+                  deducible) para no repetir el mismo importe 3 veces;
+                  petición del usuario, 2026-10-07: "solo ponga doble check
+                  o un puntito verde si está bien". Se expande solo (y queda
+                  expandido) si los datos YA tienen una deducción parcial
+                  real, o si el usuario lo pide con el enlace de abajo. */}
+              {mostrarDesgloseIva ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="frCuotaDeducible">Cuota de IVA deducible (€) *</Label>
+                    <DecimalInput id="frCuotaDeducible" className={CLASE_IMPORTE} value={datos.cuotaIvaDeducible} onChange={(n) => set("cuotaIvaDeducible", n)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="frIvaNoDeducible">IVA no deducible (€)</Label>
+                    <DecimalInput id="frIvaNoDeducible" className={CLASE_IMPORTE} value={datos.ivaNoDeducible} onChange={(n) => set("ivaNoDeducible", n)} />
+                  </div>
+                  <div className="flex items-end pb-1.5 sm:col-span-2 lg:col-span-2">
+                    <button type="button" className="text-xs text-primary hover:underline" onClick={() => { setDesgloseIvaForzado(false); set("cuotaIvaDeducible", datos.cuotaIvaSoportado); set("ivaNoDeducible", 0); }}>
+                      Es totalmente deducible, ocultar este desglose
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+                  <TickCircle className="size-3.5" /> Totalmente deducible
+                  <button type="button" className="ml-2 text-primary hover:underline" onClick={() => setDesgloseIvaForzado(true)}>
+                    ¿Deducción parcial?
+                  </button>
+                </div>
+              )}
+
+              <div className={cn(
+                "mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm",
+                totalCuadra ? "bg-emerald-50 dark:bg-emerald-950/40" : "bg-amber-50 dark:bg-amber-950/40"
+              )}>
+                <span className={cn("flex items-center gap-1.5", totalCuadra ? "text-emerald-800/80 dark:text-emerald-300/80" : "text-amber-800 dark:text-amber-300")}>
+                  {totalCuadra ? <TickCircle className="size-4 shrink-0" /> : <Warning2 className="size-4 shrink-0" />}
                   Base {euros(datos.baseImponible)} + IVA {euros(datos.cuotaIvaSoportado)}
                 </span>
-                <span className="text-base font-semibold tabular-nums text-emerald-800 dark:text-emerald-300">= {euros(datos.importeTotal)}</span>
+                <span className={cn(
+                  "text-base font-semibold tabular-nums",
+                  totalCuadra ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300"
+                )}>
+                  {totalCuadra ? "=" : "≠"} {euros(datos.importeTotal)}
+                </span>
+                {!totalCuadra && (
+                  <p className="w-full text-xs text-amber-700 dark:text-amber-400">
+                    Debería dar {euros(totalEsperado)} — revisa la base, el IVA o el importe total antes de registrar.
+                  </p>
+                )}
               </div>
 
               <div className="mt-4 rounded-md border border-dashed p-3">
