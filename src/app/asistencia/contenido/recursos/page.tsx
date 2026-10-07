@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { colorDeRed, ESTADOS, etiquetaDe, REDES, TIPOS, type Pieza, type RedSocial, type TipoPieza } from "@/lib/contenido";
 import { Warning2 } from "@/lib/icons";
+import { MaterialDrive } from "../drive-material";
 import { PiezaDialog } from "../pieza-dialog";
 
 const POLL_MS = 30000;
@@ -50,6 +51,8 @@ export default function RecursosPage() {
 
   return (
     <div className="space-y-4">
+      <MaterialDrive />
+
       <Card className="gap-0 overflow-hidden py-0">
         <div className="flex items-center justify-between border-b bg-amber-500/5 px-3.5 py-2.5">
           <span className="flex items-center gap-1.5 text-sm font-semibold">
