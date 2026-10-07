@@ -21,8 +21,12 @@ const GRUPOS: GrupoNavegacionBase[] = [
   {
     titulo: "Contenido",
     icon: Video,
+    items: [{ label: "Piezas", href: "/asistencia/contenido", icon: Video, exacto: true }],
+  },
+  {
+    titulo: "Planificación",
+    icon: Calendar,
     items: [
-      { label: "Piezas", href: "/asistencia/contenido", icon: Video, exacto: true },
       { label: "Calendario", href: "/asistencia/contenido/calendario", icon: Calendar },
       { label: "Recursos", href: "/asistencia/contenido/recursos", icon: Folder2 },
     ],
