@@ -308,6 +308,15 @@ export default function FormularioClientePage() {
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ resguardo: string } | null>(null);
   const [errorEnvio, setErrorEnvio] = useState("");
+  // El código de acceso puede caducar/usarse mientras el cliente rellena
+  // los 8 pasos (puede llevar varios minutos) — sin esto, el único camino
+  // era perder todo lo rellenado y volver a empezar desde la pantalla de
+  // código. Petición del usuario, 2026-10-07: dejar escribir uno nuevo
+  // aquí mismo y reintentar el mismo envío, sin tocar los datos ya
+  // completados. El backend solo rechaza esto con 409 (código inválido);
+  // cualquier otro fallo (red, campos, etc.) no activa este bloque.
+  const [codigoInvalido, setCodigoInvalido] = useState(false);
+  const [nuevoCodigo, setNuevoCodigo] = useState("");
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [clienteEncontrado, setClienteEncontrado] = useState(false);
   const dniBuscadoRef = useRef("");
@@ -506,10 +515,12 @@ export default function FormularioClientePage() {
     setPaso((p) => Math.max(p - 1, 1));
   }
 
-  async function enviar() {
+  async function enviar(codigoOverride?: string) {
     if (!validarPasoActual()) return;
+    const codigoAUsar = codigoOverride ?? codigoAcceso;
     setEnviando(true);
     setErrorEnvio("");
+    setCodigoInvalido(false);
     try {
       // Red de seguridad además del onBlur del campo — por si el email
       // llega aquí sin pasar por ese blur (autocompletado del navegador,
@@ -517,7 +528,7 @@ export default function FormularioClientePage() {
       const res = await fetch("/api/formulario-cliente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...datos, email: corregirTypoDominioEmail(datos.email), codigoAcceso }),
+        body: JSON.stringify({ ...datos, email: corregirTypoDominioEmail(datos.email), codigoAcceso: codigoAUsar }),
       });
       // Un cuerpo de petición demasiado grande (fotos sin comprimir) lo
       // puede rechazar la propia plataforma antes de llegar al código de la
@@ -533,7 +544,14 @@ export default function FormularioClientePage() {
         );
       }
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "No se pudo registrar la solicitud.");
+      if (!data.ok) {
+        // El backend solo devuelve 409 cuando el código de acceso ya no es
+        // válido (incorrecto/caducado/usado) — nunca llegó a reservar nada
+        // todavía en ese caso, así que reintentar con uno nuevo es seguro.
+        if (res.status === 409) setCodigoInvalido(true);
+        throw new Error(data.error || "No se pudo registrar la solicitud.");
+      }
+      if (codigoOverride) setCodigoAcceso(codigoOverride);
       borrarBorrador();
       setResultado({ resguardo: data.resguardo });
     } catch (e) {
@@ -541,6 +559,13 @@ export default function FormularioClientePage() {
     } finally {
       setEnviando(false);
     }
+  }
+
+  async function reintentarConNuevoCodigo() {
+    const codigo = nuevoCodigo.trim();
+    if (codigo.length !== 6) return;
+    setNuevoCodigo("");
+    await enviar(codigo);
   }
 
   if (resultado) {
@@ -926,6 +951,27 @@ export default function FormularioClientePage() {
           </div>
         )}
 
+        {codigoInvalido && (
+          <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <p className="mb-2 text-xs font-medium text-amber-800 dark:text-amber-400">
+              Pide un código nuevo al personal y escríbelo aquí — no hace falta repetir el formulario.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={nuevoCodigo}
+                onChange={(e) => setNuevoCodigo(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoFocus
+                className="h-11 flex-1 text-center text-lg font-bold tracking-[0.3em]"
+                placeholder="------"
+              />
+              <Button type="button" onClick={reintentarConNuevoCodigo} disabled={enviando || nuevoCodigo.length < 6} className="h-11 shrink-0 px-4">
+                {enviando ? "Enviando…" : "Reintentar"}
+              </Button>
+            </div>
+          </div>
+        )}
+
           <div className="mt-6 flex justify-between border-t pt-5 lg:border-t-0 lg:pt-8">
             <Button type="button" variant="outline" onClick={anterior} className={cn("h-11 px-5", paso === 1 && "invisible")}>
               ← Anterior
@@ -935,7 +981,7 @@ export default function FormularioClientePage() {
                 Siguiente →
               </Button>
             ) : (
-              <Button type="button" onClick={enviar} disabled={enviando} className="h-11 px-5">
+              <Button type="button" onClick={() => enviar()} disabled={enviando} className="h-11 px-5">
                 {enviando ? "Enviando…" : "Enviar solicitud"}
               </Button>
             )}
