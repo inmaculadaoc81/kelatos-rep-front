@@ -172,7 +172,7 @@ function CampoBuscable({
     `incierto` marca un campo que la propia IA (o la verificación de cuadre
     base+IVA=total del backend) no da por seguro — se pinta en ámbar con un
     aviso explícito en vez del check verde, para que no pase desapercibido. */
-function CampoResumen({ etiqueta, valor, advertencia, incierto }: { etiqueta: string; valor: string | null; advertencia?: string; incierto?: boolean }) {
+function CampoResumen({ etiqueta, valor, advertencia, incierto, nota }: { etiqueta: string; valor: string | null; advertencia?: string; incierto?: boolean; nota?: string }) {
   const encontrado = !!valor;
   return (
     <div className="flex items-start gap-1.5">
@@ -188,6 +188,10 @@ function CampoResumen({ etiqueta, valor, advertencia, incierto }: { etiqueta: st
         {encontrado ? <span className="font-medium text-foreground">{valor}</span> : <span className="text-muted-foreground/70">no encontrado</span>}
         {advertencia && <span className="block text-amber-600 dark:text-amber-400">{advertencia}</span>}
         {incierto && !advertencia && <span className="block text-amber-600 dark:text-amber-400">la IA no está segura — revísalo con el original</span>}
+        {/* Distinto de "advertencia" (ámbar, algo dudoso) — azul, informativo:
+            no hay nada que revisar, solo avisa de que se dio de alta un
+            proveedor nuevo solo. */}
+        {nota && !advertencia && <span className="block text-sky-600 dark:text-sky-400">{nota}</span>}
       </span>
     </div>
   );
@@ -275,7 +279,7 @@ export function FacturaRecibidaFormDialog({
   const [origenAutomatico, setOrigenAutomatico] = useState(false);
   // Recap de lo que la IA encontró en la última lectura — para verlo de un
   // vistazo sin tener que rastrear cada campo del formulario uno a uno.
-  const [resumenOcr, setResumenOcr] = useState<{ extraido: FacturaOcrExtraido; proveedorEncontrado: boolean } | null>(null);
+  const [resumenOcr, setResumenOcr] = useState<{ extraido: FacturaOcrExtraido; proveedorEncontrado: boolean; proveedorCreado: boolean } | null>(null);
   // Si la IA marcó campos como inciertos, exige un vistazo explícito del
   // usuario antes de dejar registrar — así una lectura mal hecha no se
   // convierte en un registro real sin que nadie la haya comprobado.
@@ -498,7 +502,7 @@ export function FacturaRecibidaFormDialog({
         setResumenOcr(null);
         return;
       }
-      setResumenOcr({ extraido: e, proveedorEncontrado: !!data.proveedorIdSugerido });
+      setResumenOcr({ extraido: e, proveedorEncontrado: !!data.proveedorIdSugerido, proveedorCreado: !!data.proveedorCreado });
       setAdvertenciasVistas(false);
       // Solo se pisan campos que la IA de verdad leyó — un valor no
       // encontrado (null) no debe borrar algo que el usuario ya escribió.
@@ -516,6 +520,8 @@ export function FacturaRecibidaFormDialog({
 
       if (e.advertencias.length > 0) {
         toast.warning(`La IA no está segura de ${e.advertencias.length} dato(s) — revísalos en el resumen antes de registrar`);
+      } else if (data.proveedorCreado) {
+        toast.success(`Datos rellenados — proveedor "${e.proveedorNombre}" registrado automáticamente (no estaba dado de alta)`);
       } else if (e.proveedorNombre && !data.proveedorIdSugerido) {
         toast.warning(`Datos rellenados — el proveedor leído ("${e.proveedorNombre}") no coincide con ninguno dado de alta. Búscalo o créalo.`);
       } else {
@@ -678,7 +684,8 @@ export function FacturaRecibidaFormDialog({
                     <CampoResumen
                       etiqueta="Proveedor"
                       valor={resumenOcr.extraido.proveedorNombre}
-                      advertencia={resumenOcr.extraido.proveedorNombre && !resumenOcr.proveedorEncontrado ? "no coincide con ninguno dado de alta" : undefined}
+                      advertencia={resumenOcr.extraido.proveedorNombre && !resumenOcr.proveedorEncontrado && !resumenOcr.proveedorCreado ? "no coincide con ninguno dado de alta" : undefined}
+                      nota={resumenOcr.proveedorCreado ? "proveedor nuevo, registrado automáticamente" : undefined}
                       incierto={resumenOcr.extraido.advertencias.includes("proveedorNombre")}
                     />
                     <CampoResumen etiqueta="NIF/CIF proveedor" valor={resumenOcr.extraido.proveedorDniCif} incierto={resumenOcr.extraido.advertencias.includes("proveedorDniCif")} />
