@@ -1,6 +1,6 @@
 export type EstadoPieza = "pendiente" | "en_proceso" | "listo";
-export type TipoPieza = "video" | "reel" | "single_post" | "carrusel" | "pdf";
-export type RedSocial = "youtube" | "facebook" | "tiktok" | "instagram" | "x" | "snapchat";
+export type TipoPieza = "video" | "reel" | "single_post" | "carrusel" | "pdf" | "imagen";
+export type RedSocial = "youtube" | "facebook" | "tiktok" | "instagram" | "x" | "snapchat" | "linkedin";
 
 export interface Subtarea {
   id: number;
@@ -58,6 +58,7 @@ export const TIPOS: { valor: TipoPieza; etiqueta: string }[] = [
   { valor: "single_post", etiqueta: "Single post" },
   { valor: "carrusel", etiqueta: "Carrusel" },
   { valor: "pdf", etiqueta: "PDF" },
+  { valor: "imagen", etiqueta: "Imagen" },
 ];
 
 export const REDES: { valor: RedSocial; etiqueta: string; color: string }[] = [
@@ -67,6 +68,7 @@ export const REDES: { valor: RedSocial; etiqueta: string; color: string }[] = [
   { valor: "instagram", etiqueta: "Instagram", color: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400" },
   { valor: "x", etiqueta: "X", color: "bg-neutral-500/10 text-neutral-700 dark:text-neutral-300" },
   { valor: "snapchat", etiqueta: "Snapchat", color: "bg-yellow-500/10 text-yellow-800 dark:text-yellow-500" },
+  { valor: "linkedin", etiqueta: "LinkedIn", color: "bg-sky-700/10 text-sky-800 dark:text-sky-400" },
 ];
 
 /** Color de una red social por valor — "" (sin red asignada) o un valor sin

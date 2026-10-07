@@ -22,7 +22,6 @@ interface Borrador {
   tipo: TipoPieza | "";
   redSocial: RedSocial | "";
   descripcion: string;
-  recursos: string;
   enlaceSubida: string;
   programadaPara: string;
 }
@@ -35,7 +34,6 @@ function aBorrador(p: Pieza): Borrador {
     tipo: p.tipo ?? "",
     redSocial: p.redSocial ?? "",
     descripcion: p.descripcion ?? "",
-    recursos: p.recursos.join("\n"),
     enlaceSubida: p.enlaceSubida ?? "",
     programadaPara: aInputFechaHora(p.programadaPara),
   };
@@ -101,7 +99,6 @@ export function PiezaDialog({
     if (!borrador.titulo.trim()) return toast.error("El título es obligatorio");
     setGuardando(true);
     try {
-      const recursos = borrador.recursos.split("\n").map((r) => r.trim()).filter(Boolean);
       const res = await fetch(`/api/asistencia/kiosk/contenido/${piezaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -112,7 +109,6 @@ export function PiezaDialog({
           tipo: borrador.tipo || null,
           red_social: borrador.redSocial || null,
           descripcion: borrador.descripcion.trim() || null,
-          recursos,
           enlace_subida: borrador.enlaceSubida.trim() || null,
           programada_para: borrador.programadaPara ? new Date(borrador.programadaPara).toISOString() : null,
         }),
@@ -309,13 +305,8 @@ export function PiezaDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="pzDescripcion">Copy / caption</Label>
+                <Label htmlFor="pzDescripcion">Motivo</Label>
                 <Textarea id="pzDescripcion" rows={4} value={borrador.descripcion} onChange={(e) => cambiar("descripcion", e.target.value)} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="pzRecursos">Recursos (un enlace por línea)</Label>
-                <Textarea id="pzRecursos" rows={3} value={borrador.recursos} onChange={(e) => cambiar("recursos", e.target.value)} placeholder="https://drive.google.com/…" />
               </div>
 
               <div className="space-y-1.5">
