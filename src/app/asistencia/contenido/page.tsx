@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Add, Video } from "@/lib/icons";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ import { colorDeRed, ESTADOS, REDES, TIPOS, etiquetaDe, type EstadoPieza, type P
 import { PiezaDialog } from "./pieza-dialog";
 
 const POLL_MS = 30000;
+const SIN_VALOR = "__ninguno__";
 
 // Acento por columna — mismo valor que ESTADOS.color pero solo el tono
 // base, para la franja superior de la columna (un detalle que ESTADOS.color
@@ -256,23 +258,32 @@ function NuevaPiezaDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="npTipo">Tipo</Label>
-              <select id="npTipo" className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={tipo} onChange={(e) => setTipo(e.target.value as TipoPieza | "")}>
-                <option value="">—</option>
-                {TIPOS.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
-              </select>
+              <Select value={tipo || SIN_VALOR} onValueChange={(v) => setTipo((v && v !== SIN_VALOR ? v : "") as TipoPieza | "")}>
+                <SelectTrigger id="npTipo" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SIN_VALOR}>—</SelectItem>
+                  {TIPOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="npRed">Red social</Label>
-              <select id="npRed" className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={red} onChange={(e) => setRed(e.target.value as RedSocial | "")}>
-                <option value="">—</option>
-                {REDES.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
-              </select>
+              <Select value={red || SIN_VALOR} onValueChange={(v) => setRed((v && v !== SIN_VALOR ? v : "") as RedSocial | "")}>
+                <SelectTrigger id="npRed" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SIN_VALOR}>—</SelectItem>
+                  {REDES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="npEstado">Estado</Label>
-              <select id="npEstado" className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={estado} onChange={(e) => setEstado(e.target.value as EstadoPieza)}>
-                {ESTADOS.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
-              </select>
+              <Select value={estado} onValueChange={(v) => v && setEstado(v as EstadoPieza)}>
+                <SelectTrigger id="npEstado" className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ESTADOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="npFecha">Fecha límite</Label>

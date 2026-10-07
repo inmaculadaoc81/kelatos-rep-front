@@ -7,9 +7,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CloseCircle, Trash, Add } from "@/lib/icons";
-import { ESTADOS, REDES, TIPOS, aInputFechaHora, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
+import { cn } from "@/lib/utils";
+import { CloseCircle, Trash, Add, Video } from "@/lib/icons";
+import { colorDeRed, ESTADOS, REDES, TIPOS, aInputFechaHora, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
+
+const SIN_VALOR = "__ninguno__";
 
 interface Borrador {
   titulo: string;
@@ -228,14 +232,35 @@ export function PiezaDialog({
           <div className="p-6 text-sm text-muted-foreground">Cargando…</div>
         ) : (
           <>
-            <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
-              <DialogTitle className="text-sm font-semibold">Pieza de contenido</DialogTitle>
+            <div className="flex items-start justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+              <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Video className="size-4 text-primary" /> Pieza de contenido
+              </DialogTitle>
               <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={() => onOpenChange(false)}>
                 <CloseCircle className="size-4" />
               </Button>
             </div>
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(() => {
+                  const estadoActual = ESTADOS.find((e) => e.valor === borrador.estado);
+                  return estadoActual && (
+                    <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", estadoActual.color)}>{estadoActual.etiqueta}</span>
+                  );
+                })()}
+                {borrador.redSocial && (
+                  <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", colorDeRed(borrador.redSocial as RedSocial))}>
+                    {REDES.find((r) => r.valor === borrador.redSocial)?.etiqueta}
+                  </span>
+                )}
+                {borrador.tipo && (
+                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    {TIPOS.find((t) => t.valor === borrador.tipo)?.etiqueta}
+                  </span>
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="pzTitulo">Título *</Label>
                 <Input id="pzTitulo" value={borrador.titulo} onChange={(e) => cambiar("titulo", e.target.value)} />
@@ -244,9 +269,12 @@ export function PiezaDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="pzEstado">Estado</Label>
-                  <select id="pzEstado" className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={borrador.estado} onChange={(e) => cambiar("estado", e.target.value as EstadoPieza)}>
-                    {ESTADOS.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
-                  </select>
+                  <Select value={borrador.estado} onValueChange={(v) => v && cambiar("estado", v as EstadoPieza)}>
+                    <SelectTrigger id="pzEstado" className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ESTADOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pzFecha">Fecha límite</Label>
@@ -254,17 +282,23 @@ export function PiezaDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pzTipo">Tipo</Label>
-                  <select id="pzTipo" className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={borrador.tipo} onChange={(e) => cambiar("tipo", e.target.value as TipoPieza | "")}>
-                    <option value="">—</option>
-                    {TIPOS.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
-                  </select>
+                  <Select value={borrador.tipo || SIN_VALOR} onValueChange={(v) => cambiar("tipo", (v && v !== SIN_VALOR ? v : "") as TipoPieza | "")}>
+                    <SelectTrigger id="pzTipo" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SIN_VALOR}>—</SelectItem>
+                      {TIPOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pzRed">Red social</Label>
-                  <select id="pzRed" className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={borrador.redSocial} onChange={(e) => cambiar("redSocial", e.target.value as RedSocial | "")}>
-                    <option value="">—</option>
-                    {REDES.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
-                  </select>
+                  <Select value={borrador.redSocial || SIN_VALOR} onValueChange={(v) => cambiar("redSocial", (v && v !== SIN_VALOR ? v : "") as RedSocial | "")}>
+                    <SelectTrigger id="pzRed" className="w-full"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SIN_VALOR}>—</SelectItem>
+                      {REDES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -289,10 +323,17 @@ export function PiezaDialog({
               </div>
 
               <div className="space-y-2 border-t pt-3">
-                <p className="text-xs font-semibold text-muted-foreground">Subtareas</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground">Subtareas</p>
+                  {subtareas.length > 0 && (
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {subtareas.filter((s) => s.hecha).length}/{subtareas.length}
+                    </span>
+                  )}
+                </div>
                 {subtareas.length === 0 && <p className="text-xs text-muted-foreground">Sin subtareas todavía.</p>}
                 {subtareas.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm">
+                  <div key={s.id} className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-sm shadow-sm">
                     <Checkbox checked={s.hecha} onCheckedChange={(c) => marcarSubtarea(s, c === true)} />
                     <span className={s.hecha ? "min-w-0 flex-1 truncate text-muted-foreground line-through" : "min-w-0 flex-1 truncate"}>{s.titulo}</span>
                     <Button variant="ghost" size="icon-sm" onClick={() => quitarSubtarea(s)} title="Quitar subtarea">
@@ -312,12 +353,15 @@ export function PiezaDialog({
                 <p className="text-xs font-semibold text-muted-foreground">Recursos que necesito de otros</p>
                 {necesidades.length === 0 && <p className="text-xs text-muted-foreground">Nada pedido todavía.</p>}
                 {necesidades.map((n) => (
-                  <div key={n.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm">
+                  <div key={n.id} className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-sm shadow-sm">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{n.descripcion}</span>
                       <span className="block text-[11px] text-muted-foreground">{n.responsableNombre ?? "Sin asignar"}</span>
                     </span>
-                    <span className={n.recibido ? "shrink-0 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700" : "shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"}>
+                    <span className={cn(
+                      "shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
+                      n.recibido ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                    )}>
                       {n.recibido ? "Recibido" : "Pendiente"}
                     </span>
                     <Button variant="ghost" size="icon-sm" onClick={() => quitarNecesidad(n)} title="Quitar recurso">
@@ -325,13 +369,16 @@ export function PiezaDialog({
                     </Button>
                   </div>
                 ))}
-                <div className="space-y-2 rounded-md bg-muted/40 p-2">
+                <div className="space-y-2 rounded-lg border bg-muted/40 p-2.5">
                   <Input value={nuevaNecesidad} onChange={(e) => setNuevaNecesidad(e.target.value)} placeholder="Qué necesitas (p. ej. el vídeo del cliente)" />
                   <div className="flex items-center gap-2">
-                    <select className="h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-sm" value={responsableNecesidad} onChange={(e) => setResponsableNecesidad(e.target.value)}>
-                      <option value="">¿Quién lo tiene?</option>
-                      {empleados.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
-                    </select>
+                    <Select value={responsableNecesidad || SIN_VALOR} onValueChange={(v) => setResponsableNecesidad(v && v !== SIN_VALOR ? v : "")}>
+                      <SelectTrigger className="min-w-0 flex-1"><SelectValue placeholder="¿Quién lo tiene?" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={SIN_VALOR} disabled>¿Quién lo tiene?</SelectItem>
+                        {empleados.map((x) => <SelectItem key={x.id} value={String(x.id)}>{x.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                     <Button variant="outline" size="sm" onClick={pedirNecesidad}>Pedir</Button>
                   </div>
                 </div>
