@@ -58,11 +58,20 @@ export function NavUser({ session }: { session: Session | null }) {
   const accesoCompleto = !!session?.user?.accesoCompleto;
   const muestraTransferencias = puedeVerTransferencias(email);
   const puedeVerAsistencia = esAdmin || esSuperadmin(email);
-  // Un empleado que solo ficha (sin cuenta @kelatos.com, ver src/auth.ts)
-  // no tiene acceso a nada fuera de /asistencia — "Mi perfil" y
-  // "Configuración" no le sirven de nada (proxy.ts lo rebotaría de vuelta
-  // al kiosco), así que se ocultan para esa cuenta.
-  const esSoloAsistencia = session?.user?.asistenciaEmpleadoId != null && !esDominioKelatos(email);
+  // Un empleado que solo ficha no tiene acceso a nada fuera de /asistencia
+  // — "Mi perfil", "Configuración" y los botones de cambiar de dashboard no
+  // le sirven de nada (proxy.ts lo rebotaría de vuelta al kiosco), así que
+  // se ocultan para esa cuenta. MISMA fórmula que esSoloAsistencia en
+  // src/proxy.ts (la que de verdad bloquea el acceso) — una versión más
+  // simple aquí (sin viaCredentials/accesoCompleto) dejaba visibles
+  // "Reparaciones"/"Tareas" para una cuenta de kiosco con email @kelatos.com
+  // vía Credentials (p. ej. Jeannie): el dominio por sí solo no basta,
+  // porque Credentials existe precisamente para empleados con un email con
+  // forma @kelatos.com que NO deben tratarse como cuenta del dominio (bug
+  // real reportado 2026-10-07).
+  const esSoloAsistencia = session?.user?.asistenciaEmpleadoId != null &&
+    !session?.user?.accesoCompleto &&
+    (!!session?.user?.viaCredentials || !esDominioKelatos(email));
   // Este componente se reutiliza en el sidebar de Transferencias — el
   // enlace de cambio de dashboard debe apuntar siempre al OTRO, no siempre
   // a Transferencias.
@@ -146,13 +155,13 @@ export function NavUser({ session }: { session: Session | null }) {
                   entrada (oculta solo cuando ya estás ahí). Petición del
                   usuario, 2026-09-09: "para cada vista su respectivo botón
                   que no salga". */}
-              {!enReparaciones && (
+              {!esSoloAsistencia && !enReparaciones && (
                 <DropdownMenuItem render={<Link href="/" />}>
                   <IconoDashboard icon={ClipboardTick} className="from-amber-500 to-orange-600" />
                   Reparaciones
                 </DropdownMenuItem>
               )}
-              {!enTareas && !accesoCompleto && (
+              {!esSoloAsistencia && !enTareas && !accesoCompleto && (
                 <DropdownMenuItem render={<Link href="/tareas" />}>
                   <IconoDashboard icon={ClipboardText} className="from-fuchsia-500 to-purple-600" />
                   Tareas
