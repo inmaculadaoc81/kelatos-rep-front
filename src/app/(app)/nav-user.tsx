@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -82,6 +82,7 @@ export function NavUser({ session }: { session: Session | null }) {
   const enAgentes = (pathname?.startsWith("/agentes") ?? false) && !enAgentesV2;
   const enMails = pathname?.startsWith("/mails") ?? false;
   const enTareas = pathname?.startsWith("/tareas") ?? false;
+  const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
   const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
@@ -201,6 +202,16 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/mails" />}>
                   <IconoDashboard icon={Sms} className="from-rose-500 to-pink-600" />
                   Gestión MAILS
+                </DropdownMenuItem>
+              )}
+              {/* Panel de contenido de la community manager — antes solo
+                  accesible por URL directa o para una única cuenta admin
+                  (ver lib/contenido-acceso.ts); ampliado a cualquier admin
+                  y enlazado aquí, petición del usuario, 2026-10-07. */}
+              {esAdmin && !enContenido && (
+                <DropdownMenuItem render={<Link href="/asistencia/contenido" />}>
+                  <IconoDashboard icon={Video} className="from-pink-500 to-fuchsia-600" />
+                  Contenido
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
