@@ -1,17 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { colorDeRed, ESTADOS, etiquetaDe, REDES, TIPOS, type Pieza, type RedSocial, type TipoPieza } from "@/lib/contenido";
+import { type Pieza } from "@/lib/contenido";
 import { Warning2 } from "@/lib/icons";
 import { MaterialDrive } from "../drive-material";
 import { PiezaDialog } from "../pieza-dialog";
 
 const POLL_MS = 30000;
 
-/** Qué recursos faltan para cada pieza, quién los tiene y qué enlaces ya hay. */
+function iniciales(nombre: string): string {
+  const partes = nombre.trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+/** Solo "Recursos pendientes" — la lista completa de piezas que había aquí
+    antes se quitó (petición del usuario, 2026-10-07: duplicaba el tablero
+    Kanban de /asistencia/contenido sin aportar nada que esa vista no
+    tuviera ya). Esta pantalla queda para lo único que de verdad no está
+    en otro sitio: qué le pediste a cada compañero y todavía no te ha dado. */
 export default function RecursosPage() {
   const [piezas, setPiezas] = useState<Pieza[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -43,11 +54,6 @@ export default function RecursosPage() {
   const pendientes = piezas.flatMap((p) =>
     p.necesidades.filter((n) => !n.recibido).map((n) => ({ pieza: p, necesidad: n })),
   );
-  const ordenadas = [...piezas].sort((a, b) => {
-    const fa = a.programadaPara ?? a.fechaLimite ?? "9999";
-    const fb = b.programadaPara ?? b.fechaLimite ?? "9999";
-    return fa < fb ? -1 : fa > fb ? 1 : 0;
-  });
 
   return (
     <div className="space-y-4">
@@ -73,56 +79,18 @@ export default function RecursosPage() {
                 <span className="block truncate font-medium">{necesidad.descripcion}</span>
                 <span className="block truncate text-[11px] text-muted-foreground">Para «{pieza.titulo}»</span>
               </span>
-              <span className={cn(
-                "shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
-                necesidad.responsableNombre ? "bg-muted text-muted-foreground" : "bg-destructive/10 text-destructive"
-              )}>
-                {necesidad.responsableNombre ?? "Sin asignar"}
-              </span>
+              {necesidad.responsableNombre ? (
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <Avatar size="sm">
+                    <AvatarFallback className="bg-primary/10 text-primary">{iniciales(necesidad.responsableNombre)}</AvatarFallback>
+                  </Avatar>
+                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">{necesidad.responsableNombre}</span>
+                </span>
+              ) : (
+                <span className="shrink-0 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[11px] font-medium text-destructive">Sin asignar</span>
+              )}
             </button>
           ))}
-        </CardContent>
-      </Card>
-
-      <Card className="gap-0 overflow-hidden py-0">
-        <div className="border-b bg-muted/30 px-3.5 py-2.5">
-          <span className="text-sm font-semibold">Piezas</span>
-        </div>
-        <CardContent className="space-y-2 p-3">
-          {ordenadas.length === 0 && <p className="px-1 py-6 text-center text-xs text-muted-foreground">Todavía no hay piezas.</p>}
-          {ordenadas.map((p) => {
-            const estado = ESTADOS.find((e) => e.valor === p.estado);
-            const recibidos = p.necesidades.filter((n) => n.recibido).length;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSeleccionada(p.id)}
-                className="flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border bg-card px-3 py-2.5 text-left text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
-              >
-                <span className="min-w-0 flex-1 truncate font-medium">{p.titulo}</span>
-                {p.redSocial && (
-                  <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-medium", colorDeRed(p.redSocial as RedSocial))}>
-                    {etiquetaDe(REDES, p.redSocial as RedSocial | null)}
-                  </span>
-                )}
-                {p.tipo && (
-                  <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {etiquetaDe(TIPOS, p.tipo as TipoPieza | null)}
-                  </span>
-                )}
-                {p.necesidades.length > 0 && (
-                  <span className="text-[11px] text-muted-foreground">
-                    Recursos <span className="tabular-nums">{recibidos}/{p.necesidades.length}</span>
-                  </span>
-                )}
-                {p.recursos.length > 0 && (
-                  <span className="text-[11px] text-muted-foreground">Enlaces <span className="tabular-nums">{p.recursos.length}</span></span>
-                )}
-                {estado && <span className={cn("ml-auto rounded-md px-1.5 py-0.5 text-[11px] font-medium", estado.color)}>{estado.etiqueta}</span>}
-              </button>
-            );
-          })}
         </CardContent>
       </Card>
 
