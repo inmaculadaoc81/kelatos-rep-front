@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { kelatosApiPost } from "@/lib/kelatos-api";
+import type { TipoDocumentoFactura } from "@/lib/facturas-recibidas";
 
 export interface FacturaOcrExtraido {
   proveedorNombre: string | null;
   proveedorDniCif: string | null;
   numeroFacturaProveedor: string | null;
   serieProveedor: string | null;
+  tipoDocumento: TipoDocumentoFactura | null;
   fechaExpedicion: string | null;
   baseImponible: number | null;
   tipoIva: number | null;

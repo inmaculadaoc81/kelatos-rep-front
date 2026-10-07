@@ -365,6 +365,7 @@ export function FacturaRecibidaFormDialog({
   async function guardar() {
     if (!datos.proveedorId) return toast.error("Selecciona el proveedor");
     if (!datos.numeroFacturaProveedor.trim()) return toast.error("El número de factura del proveedor es obligatorio");
+    if (!datos.tipoDocumento) return toast.error("El tipo de documento es obligatorio");
     if (!datos.fechaExpedicion) return toast.error("La fecha de expedición es obligatoria");
     if (!datos.baseImponible) return toast.error("La base imponible es obligatoria");
     if (!datos.importeTotal) return toast.error("El importe total es obligatorio");
@@ -512,6 +513,7 @@ export function FacturaRecibidaFormDialog({
       // resumen, "Serie: ...") pero nunca se copiaba al campo real del
       // formulario — el número de factura quedaba guardado sin su serie.
       if (e.serieProveedor) set("serieProveedor", e.serieProveedor);
+      if (e.tipoDocumento) set("tipoDocumento", e.tipoDocumento);
       if (e.fechaExpedicion) set("fechaExpedicion", e.fechaExpedicion);
       if (e.baseImponible !== null) set("baseImponible", e.baseImponible);
       if (e.tipoIva !== null) set("tipoIva", e.tipoIva);
@@ -695,6 +697,11 @@ export function FacturaRecibidaFormDialog({
                     <CampoResumen etiqueta="NIF/CIF proveedor" valor={resumenOcr.extraido.proveedorDniCif} incierto={resumenOcr.extraido.advertencias.includes("proveedorDniCif")} />
                     <CampoResumen etiqueta="Nº de factura" valor={resumenOcr.extraido.numeroFacturaProveedor} incierto={resumenOcr.extraido.advertencias.includes("numeroFacturaProveedor")} />
                     <CampoResumen etiqueta="Serie" valor={resumenOcr.extraido.serieProveedor} incierto={resumenOcr.extraido.advertencias.includes("serieProveedor")} />
+                    <CampoResumen
+                      etiqueta="Tipo de documento"
+                      valor={resumenOcr.extraido.tipoDocumento ? ETIQUETA_TIPO_DOCUMENTO[resumenOcr.extraido.tipoDocumento] : null}
+                      incierto={resumenOcr.extraido.advertencias.includes("tipoDocumento")}
+                    />
                     <CampoResumen etiqueta="Fecha de expedición" valor={resumenOcr.extraido.fechaExpedicion} incierto={resumenOcr.extraido.advertencias.includes("fechaExpedicion")} />
                     <CampoResumen etiqueta="Base imponible" valor={resumenOcr.extraido.baseImponible !== null ? euros(resumenOcr.extraido.baseImponible) : null} incierto={resumenOcr.extraido.advertencias.includes("baseImponible")} />
                     <CampoResumen etiqueta="% IVA" valor={resumenOcr.extraido.tipoIva !== null ? `${resumenOcr.extraido.tipoIva}%` : null} incierto={resumenOcr.extraido.advertencias.includes("tipoIva")} />
@@ -749,7 +756,7 @@ export function FacturaRecibidaFormDialog({
                   <Input id="frFechaRecepcion" type="date" value={datos.fechaRecepcion} onChange={(e) => set("fechaRecepcion", e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Tipo de documento</Label>
+                  <Label>Tipo de documento *</Label>
                   <Select value={datos.tipoDocumento || "Ninguno"} onValueChange={(v) => set("tipoDocumento", (v && v in ETIQUETA_TIPO_DOCUMENTO ? v : "") as TipoDocumentoFactura | "")}>
                     <SelectTrigger className="w-full">
                       <SelectValue>{(v: string) => (v in ETIQUETA_TIPO_DOCUMENTO ? ETIQUETA_TIPO_DOCUMENTO[v as TipoDocumentoFactura] : "Sin especificar")}</SelectValue>
