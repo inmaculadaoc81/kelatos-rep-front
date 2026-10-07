@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DecimalInput } from "@/components/ui/decimal-input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { Venta } from "@/lib/ventas";
@@ -247,6 +248,13 @@ export function TicketManualDialog({
   // solo para enviarlo. Mismo mecanismo de doble confirmación que
   // TabPdfEnviar (correo destacado + useConfirm), pero inline aquí.
   const [enviandoTicket, setEnviandoTicket] = useState(false);
+  // Motivo obligatorio cuando el ticket sale en negativo (anulación
+  // informal, sin pasar por el ciclo de rectificativa) — petición del
+  // usuario, 2026-10-07. "En negativo" = baseImponible < 0 (el total ANTES
+  // de IVA, igual que persiste el backend), no "alguna línea negativa" —
+  // un descuento normal (p.ej. revisión pagada) también tiene precio
+  // negativo en una línea sin que el ticket sea una anulación.
+  const [motivoNegativo, setMotivoNegativo] = useState("");
   const confirmar = useConfirm();
 
   function seleccionarCliente(c: Cliente) {
@@ -285,6 +293,7 @@ export function TicketManualDialog({
           : esVenta && venta ? lineasDesdeVenta(venta) : !esVenta && resguardo && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]
       );
       setDescuentoGlobal(0);
+      setMotivoNegativo("");
       const estadoTicketPrevio = esVenta ? venta?.estadoTicket : detalle?.estadoTicket;
       setEstado(estadoTicketPrevio === "Pendiente" ? "Pendiente" : "Cobrada");
       setResultado(yaGenerado ? { numeroTicket: numeroTicketPrevio, urlTicket: urlTicketPrevio || "" } : null);
@@ -352,6 +361,9 @@ export function TicketManualDialog({
     if (lineasValidas.length === 0) return toast.error("Añade al menos una línea con descripción y cantidad");
     const errorPago = validarFormaPago(pago, total);
     if (errorPago) return toast.error(errorPago);
+    if (baseImponible < 0 && !motivoNegativo.trim()) {
+      return toast.error("El motivo es obligatorio para un ticket con importe negativo");
+    }
     // El descuento global se envía como una línea propia negativa — igual
     // que factura-reparacion-dialog.tsx — para que quede reflejado y
     // visible en el PDF (la plantilla no tiene una segunda columna de
@@ -375,6 +387,7 @@ export function TicketManualDialog({
         body: JSON.stringify({
           lineas: lineasValidas,
           estado,
+          motivo: motivoNegativo.trim(),
           ...formaPagoParaPayload(pago),
           ...(esManualStandalone
             ? { cliente: { nombre: clienteNombre.trim(), email: clienteEmail.trim() } }
@@ -613,6 +626,22 @@ export function TicketManualDialog({
                 </table>
               </div>
             </div>
+
+            {baseImponible < 0 && (
+              <div className="space-y-1.5 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                <Label htmlFor="tmMotivoNegativo" className="text-amber-800 dark:text-amber-400">
+                  Motivo del importe negativo *
+                </Label>
+                <Textarea
+                  id="tmMotivoNegativo"
+                  rows={2}
+                  value={motivoNegativo}
+                  onChange={(e) => setMotivoNegativo(e.target.value)}
+                  disabled={!!resultado}
+                  placeholder="Por qué este ticket se genera con importe negativo (anulación)…"
+                />
+              </div>
+            )}
 
             {!esManualStandalone && !resultado && (
               <p className="text-xs text-muted-foreground">

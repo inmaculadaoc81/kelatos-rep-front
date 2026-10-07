@@ -40,11 +40,15 @@ export async function POST(
   const banco = typeof datos?.banco === "string" ? datos.banco : "";
   const referencia = typeof datos?.referencia === "string" ? datos.referencia : "";
   const formaPagoDesglose = Array.isArray(datos?.formaPagoDesglose) ? datos.formaPagoDesglose : undefined;
+  // Motivo obligatorio cuando el ticket sale en negativo (anulación
+  // informal) — petición del usuario, 2026-10-07; el backend lo exige
+  // solo si el total calculado da negativo, no por mandarlo aquí siempre.
+  const motivo = typeof datos?.motivo === "string" ? datos.motivo : "";
 
   try {
     const resultado = await kelatosApiPost<RespuestaTicketVenta>(
       `/v1/ventas/${encodeURIComponent(ventaId)}/ticket-venta`,
-      { requestId: crypto.randomUUID(), usuario, lineas, estado, formaPago, banco, referencia, formaPagoDesglose }
+      { requestId: crypto.randomUUID(), usuario, lineas, estado, formaPago, banco, referencia, formaPagoDesglose, motivo }
     );
     return NextResponse.json({ ok: true, numeroTicket: resultado.numeroTicket, urlTicket: resultado.urlTicket, venta: resultado.venta });
   } catch (error) {
