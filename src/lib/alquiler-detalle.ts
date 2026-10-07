@@ -34,6 +34,7 @@ interface FilaAlquilerRaw {
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
   total_factura_rectificativa: string | number | null;
+  motivo_rectificativa: string | null;
   numero_factura_corregida: string | null;
   url_factura_corregida: string | null;
   total_factura_corregida: string | number | null;
@@ -69,6 +70,8 @@ export interface AlquilerFacturaDetalle {
   formaPago: string;
   estadoFactura: string;
   rectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number } | null;
+  /** Motivo ya guardado de la rectificativa vigente (desde la migración 173). */
+  motivoRectificativa: string;
   corregida: { numeroFactura: string; urlFactura: string; totalFactura: number } | null;
   /** Versión activa antes de un ajuste de duración/corrección — misma fila
       de kelatos_app.alquileres, mismo resguardo que la factura activa, pero
@@ -148,6 +151,7 @@ export function mapAlquilerFacturaDetalle(row: FilaAlquilerRaw): AlquilerFactura
     rectificativa: row.numero_factura_rectificativa
       ? { numeroFactura: row.numero_factura_rectificativa, urlFactura: row.url_factura_rectificativa || "", totalFactura: totalRectificativaAlquiler({ guardado: numero(row.total_factura_rectificativa), previsto: numero(row.total_previsto), fianzaBase: numero(row.fianza_cobrada) }) }
       : null,
+    motivoRectificativa: row.motivo_rectificativa || "",
     corregida: row.numero_factura_corregida
       ? { numeroFactura: row.numero_factura_corregida, urlFactura: row.url_factura_corregida || "", totalFactura: numero(row.total_factura_corregida) }
       : null,

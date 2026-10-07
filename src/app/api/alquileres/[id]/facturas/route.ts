@@ -116,6 +116,12 @@ export async function POST(
       banco_rectificativa: solicitud.banco || null,
       forma_pago_rectificativa_referencia: pagoExtra.referencia || null,
       forma_pago_rectificativa_desglose: pagoExtra.formaPagoDesglose ? JSON.stringify(pagoExtra.formaPagoDesglose) : null,
+      // El formulario de "Devolución" (alquiler_rectificativa) ya lo pedía
+      // como obligatorio, pero se descartaba sin guardarlo en ningún sitio
+      // — petición del usuario, 2026-10-07. rectificativa_fianza (el otro
+      // tipo que comparte esta función) no tiene motivo en su formulario;
+      // el cast es solo para leerlo si existe, sin ensanchar su tipo.
+      motivo_rectificativa: (solicitud as { motivo?: string }).motivo?.trim() || null,
     };
   }
   if (!solicitud?.requestId || !/^[0-9a-f-]{36}$/i.test(solicitud.requestId)) {

@@ -147,6 +147,7 @@ export function AlquilerModalShell({
                   lineasOriginales={lineasOriginales}
                   clienteOriginal={clienteOriginal}
                   formaPagoOriginal={detalle.formaPago}
+                  motivoRectificativa={detalle.motivoRectificativa}
                   clienteEmailDefault={detalle.cliente.email}
                   // detalle.rectificativa viene de numero_factura_rectificativa,
                   // un ÚNICO campo en kelatos_app.alquileres reutilizado para
