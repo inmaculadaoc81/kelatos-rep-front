@@ -302,6 +302,7 @@ interface FilaReparacionFacturadaSql {
   total_factura: string | number | null;
   fecha_factura: string | null;
   forma_pago: string | null;
+  forma_pago_desglose: { forma: string; monto: number; banco: string | null }[] | null;
   banco: string | null;
   estado_factura: string | null;
   factura_borrador: boolean | null;
@@ -312,6 +313,7 @@ interface FilaReparacionFacturadaSql {
   total_factura_revision: string | number | null;
   fecha_factura_revision: string | null;
   forma_pago_revision: string | null;
+  forma_pago_revision_desglose: { forma: string; monto: number; banco: string | null }[] | null;
   banco_revision: string | null;
   estado_factura_revision: string | null;
   cliente_factura_revision: ClienteFacturaJson | string | null;
@@ -328,6 +330,7 @@ interface FilaReparacionFacturadaSql {
   total_ticket_mensajeria: string | number | null;
   estado_ticket_mensajeria: string | null;
   forma_pago_ticket_mensajeria: string | null;
+  forma_pago_ticket_mensajeria_desglose: { forma: string; monto: number; banco: string | null }[] | null;
 
   numero_factura_anticipo: string | null;
   url_factura_anticipo: string | null;
@@ -335,6 +338,7 @@ interface FilaReparacionFacturadaSql {
   estado_factura_anticipo: string | null;
   fecha_factura_anticipo: string | null;
   forma_pago_anticipo: string | null;
+  forma_pago_anticipo_desglose: { forma: string; monto: number; banco: string | null }[] | null;
   cliente_factura_anticipo: ClienteFacturaJson | string | null;
 
   numero_ticket_anticipo: string | null;
@@ -343,6 +347,7 @@ interface FilaReparacionFacturadaSql {
   total_ticket_anticipo: string | number | null;
   estado_ticket_anticipo: string | null;
   forma_pago_ticket_anticipo: string | null;
+  forma_pago_ticket_anticipo_desglose: { forma: string; monto: number; banco: string | null }[] | null;
 
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -373,6 +378,7 @@ interface FilaReparacionFacturadaSql {
   total_ticket: string | number | null;
   estado_ticket: string | null;
   forma_pago_ticket: string | null;
+  forma_pago_ticket_desglose: { forma: string; monto: number; banco: string | null }[] | null;
   banco_ticket: string | null;
 
   numero_ticket_rectificativa: string | null;
@@ -425,6 +431,7 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "total_factura",
   "fecha_factura",
   "forma_pago",
+  "forma_pago_desglose",
   "banco",
   "estado_factura",
   "factura_borrador",
@@ -434,6 +441,7 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "total_factura_revision",
   "fecha_factura_revision",
   "forma_pago_revision",
+  "forma_pago_revision_desglose",
   "banco_revision",
   "estado_factura_revision",
   "cliente_factura_revision",
@@ -448,12 +456,14 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "total_ticket_mensajeria",
   "estado_ticket_mensajeria",
   "forma_pago_ticket_mensajeria",
+  "forma_pago_ticket_mensajeria_desglose",
   "numero_factura_anticipo",
   "url_factura_anticipo",
   "anticipo_importe",
   "estado_factura_anticipo",
   "fecha_factura_anticipo",
   "forma_pago_anticipo",
+  "forma_pago_anticipo_desglose",
   "cliente_factura_anticipo",
   "numero_ticket_anticipo",
   "url_ticket_anticipo",
@@ -461,6 +471,7 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "total_ticket_anticipo",
   "estado_ticket_anticipo",
   "forma_pago_ticket_anticipo",
+  "forma_pago_ticket_anticipo_desglose",
   "numero_factura_rectificativa",
   "url_factura_rectificativa",
   "total_factura_rectificativa",
@@ -485,6 +496,7 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "total_ticket",
   "estado_ticket",
   "forma_pago_ticket",
+  "forma_pago_ticket_desglose",
   "banco_ticket",
   "numero_ticket_rectificativa",
   "url_ticket_rectificativa",
@@ -555,6 +567,9 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_factura,
       formaPago: texto(row.forma_pago),
       banco: texto(row.banco),
+      formaPagoDesglose: Array.isArray(row.forma_pago_desglose)
+        ? row.forma_pago_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+        : null,
       estadoFactura: texto(row.estado_factura),
       tipo,
     });
@@ -572,6 +587,9 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_factura_revision,
       formaPago: texto(row.forma_pago_revision),
       banco: texto(row.banco_revision),
+      formaPagoDesglose: Array.isArray(row.forma_pago_revision_desglose)
+        ? row.forma_pago_revision_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+        : null,
       estadoFactura: texto(row.estado_factura_revision),
       tipo: "revision",
     });
@@ -616,6 +634,9 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_ticket_mensajeria || row.fecha_factura || null,
       formaPago: texto(row.forma_pago_ticket_mensajeria),
       banco: "",
+      formaPagoDesglose: Array.isArray(row.forma_pago_ticket_mensajeria_desglose)
+        ? row.forma_pago_ticket_mensajeria_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+        : null,
       estadoFactura: row.estado_ticket_mensajeria === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "mensajeria",
       esTicket: true,
@@ -639,6 +660,9 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_factura_anticipo || row.fecha_factura || null,
       formaPago: texto(row.forma_pago_anticipo) || texto(row.forma_pago),
       banco: "",
+      formaPagoDesglose: Array.isArray(row.forma_pago_anticipo_desglose)
+        ? row.forma_pago_anticipo_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+        : null,
       estadoFactura: texto(row.estado_factura_anticipo),
       tipo: "anticipo",
     });
@@ -659,6 +683,9 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_ticket_anticipo || row.fecha_factura || null,
       formaPago: texto(row.forma_pago_ticket_anticipo),
       banco: "",
+      formaPagoDesglose: Array.isArray(row.forma_pago_ticket_anticipo_desglose)
+        ? row.forma_pago_ticket_anticipo_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+        : null,
       estadoFactura: row.estado_ticket_anticipo === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "anticipo",
       esTicket: true,
@@ -769,6 +796,9 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       fecha: row.fecha_ticket,
       formaPago: texto(row.forma_pago_ticket),
       banco: texto(row.banco_ticket),
+      formaPagoDesglose: Array.isArray(row.forma_pago_ticket_desglose)
+        ? row.forma_pago_ticket_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+        : null,
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
     });
