@@ -124,16 +124,18 @@ export default function StockPiezasPage() {
           <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => {
-              setEditando(null);
-              setFormAbierto(true);
-            }}
-          >
-            <Add className="size-4" /> Nueva Pieza
-          </Button>
+          {esSuperadmin && (
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                setEditando(null);
+                setFormAbierto(true);
+              }}
+            >
+              <Add className="size-4" /> Nueva Pieza
+            </Button>
+          )}
         </div>
       </div>
 
@@ -247,7 +249,7 @@ export default function StockPiezasPage() {
                           setFormAbierto(true);
                         }}
                       >
-                        <Edit2 className="size-3.5" /> Editar
+                        <Edit2 className="size-3.5" /> {esSuperadmin ? "Editar" : "Ver"}
                       </Button>
                       {p.categoria === "CARGADOR" && (
                         <Button
@@ -278,6 +280,7 @@ export default function StockPiezasPage() {
         key={editando?.referencia || "__nueva__"}
         piezaExistente={editando}
         categorias={categorias}
+        puedeEditarCatalogo={esSuperadmin}
         open={formAbierto}
         onOpenChange={setFormAbierto}
         onGuardado={cargar}

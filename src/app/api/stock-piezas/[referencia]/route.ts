@@ -10,6 +10,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ refere
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  if (!esSuperadmin(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { referencia } = await params;
   const datos = (await req.json()) as DatosStockPiezaForm;

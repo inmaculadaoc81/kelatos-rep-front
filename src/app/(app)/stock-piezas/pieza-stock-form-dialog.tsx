@@ -47,6 +47,7 @@ export function PiezaStockFormDialog({
   categorias,
   valoresIniciales,
   origenResguardo,
+  puedeEditarCatalogo = true,
   open,
   onOpenChange,
   onGuardado,
@@ -57,6 +58,14 @@ export function PiezaStockFormDialog({
   valoresIniciales?: Partial<DatosStockPiezaForm>;
   /** Resguardo de origen cuando la pieza procede de un reciclaje interno de Punto Limpio. */
   origenResguardo?: string;
+  /** Si puede editar nombre/precio/categoría/proveedor/etc. (no afecta a
+      pedir reposición ni marcar recibido, que siguen disponibles para
+      cualquier empleado). Por defecto true: Punto Limpio y el alta desde
+      "Pedido por pantallazo" no pasan esta prop y mantienen su
+      comportamiento de siempre. Petición del usuario, 2026-10-10: la
+      cuenta de soporte (empleado) ya no gestiona el catálogo, solo el
+      superadmin. */
+  puedeEditarCatalogo?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGuardado: () => void;
@@ -232,6 +241,10 @@ export function PiezaStockFormDialog({
     }
   }
 
+  // Solo bloquea los campos del catálogo (nombre/precio/categoría/...) — los
+  // pedidos de reposición y "Recibido" de más abajo siguen activos siempre.
+  const soloLecturaCatalogo = esEdicion && !puedeEditarCatalogo;
+
   const pedidosPendientes = pedidos.filter((p) => p.estado === "pendiente");
   const pedidosRecibidos = pedidos.filter((p) => p.estado === "recibido").slice(0, 5);
 
@@ -251,6 +264,12 @@ export function PiezaStockFormDialog({
           </DialogTitle>
         </DialogHeader>
 
+        {soloLecturaCatalogo && (
+          <p className="-mt-1 text-xs text-muted-foreground">
+            Solo el superadmin puede cambiar estos datos — puedes seguir pidiendo reposición y marcando pedidos como recibidos más abajo.
+          </p>
+        )}
+
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5 sm:col-span-1">
@@ -266,13 +285,13 @@ export function PiezaStockFormDialog({
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="spNombre">Nombre *</Label>
-              <Input id="spNombre" placeholder="Ej: Cuchilla Thermomix" value={datos.nombre} onChange={(e) => actualizar("nombre", e.target.value)} />
+              <Input id="spNombre" placeholder="Ej: Cuchilla Thermomix" value={datos.nombre} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("nombre", e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="spCategoria">Categoría</Label>
-            <Input id="spCategoria" list="spCategoriasList" placeholder="Ej: Thermomix, Robots..." value={datos.categoria} onChange={(e) => actualizar("categoria", e.target.value)} />
+            <Input id="spCategoria" list="spCategoriasList" placeholder="Ej: Thermomix, Robots..." value={datos.categoria} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("categoria", e.target.value)} />
             <datalist id="spCategoriasList">
               {categorias.map((c) => (
                 <option key={c} value={c} />
@@ -282,21 +301,21 @@ export function PiezaStockFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="spDescripcion">Descripción / notas</Label>
-            <Input id="spDescripcion" placeholder="Modelo compatible, observaciones..." value={datos.descripcion} onChange={(e) => actualizar("descripcion", e.target.value)} />
+            <Input id="spDescripcion" placeholder="Modelo compatible, observaciones..." value={datos.descripcion} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("descripcion", e.target.value)} />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="spCoste">Coste interno (€)</Label>
-              <Input id="spCoste" type="number" min={0} step="0.01" value={datos.costeInterno} onChange={(e) => actualizar("costeInterno", parseFloat(e.target.value) || 0)} />
+              <Input id="spCoste" type="number" min={0} step="0.01" value={datos.costeInterno} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("costeInterno", parseFloat(e.target.value) || 0)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="spPrecio">Precio cliente (€)</Label>
-              <Input id="spPrecio" type="number" min={0} step="0.01" value={datos.precioCliente} onChange={(e) => actualizar("precioCliente", parseFloat(e.target.value) || 0)} />
+              <Input id="spPrecio" type="number" min={0} step="0.01" value={datos.precioCliente} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("precioCliente", parseFloat(e.target.value) || 0)} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="spManoObra">Mano de obra (€)</Label>
-              <Input id="spManoObra" type="number" min={0} step="0.01" value={datos.manoObra} onChange={(e) => actualizar("manoObra", parseFloat(e.target.value) || 0)} />
+              <Input id="spManoObra" type="number" min={0} step="0.01" value={datos.manoObra} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("manoObra", parseFloat(e.target.value) || 0)} />
               <p className="text-[11px] text-muted-foreground">Se suma automáticamente al elegir la pieza en presupuestos/facturas.</p>
             </div>
           </div>
@@ -304,15 +323,15 @@ export function PiezaStockFormDialog({
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label htmlFor="spProveedor">Proveedor</Label>
-              <Input id="spProveedor" value={datos.proveedor} onChange={(e) => actualizar("proveedor", e.target.value)} />
+              <Input id="spProveedor" value={datos.proveedor} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("proveedor", e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="spStockDisp">Stock disponible</Label>
-              <Input id="spStockDisp" type="number" min={0} step="1" value={datos.stockDisponible} onChange={(e) => actualizar("stockDisponible", parseInt(e.target.value) || 0)} />
+              <Input id="spStockDisp" type="number" min={0} step="1" value={datos.stockDisponible} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("stockDisponible", parseInt(e.target.value) || 0)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="spStockMin">Stock mínimo (alerta)</Label>
-              <Input id="spStockMin" type="number" min={0} step="1" value={datos.stockMinimo} onChange={(e) => actualizar("stockMinimo", parseInt(e.target.value) || 0)} />
+              <Input id="spStockMin" type="number" min={0} step="1" value={datos.stockMinimo} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("stockMinimo", parseInt(e.target.value) || 0)} />
             </div>
           </div>
 
@@ -443,11 +462,13 @@ export function PiezaStockFormDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>
-            Cancelar
+            {soloLecturaCatalogo ? "Cerrar" : "Cancelar"}
           </Button>
-          <Button onClick={guardar} disabled={enviando}>
-            {enviando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Crear pieza"}
-          </Button>
+          {!soloLecturaCatalogo && (
+            <Button onClick={guardar} disabled={enviando}>
+              {enviando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Crear pieza"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
 
