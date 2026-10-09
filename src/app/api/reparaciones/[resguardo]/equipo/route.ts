@@ -6,6 +6,7 @@ import { kelatosApiPost } from "@/lib/kelatos-api";
 export interface DatosEditarEquipo {
   modelo: string;
   sintoma: string;
+  casillero?: string;
 }
 
 interface RespuestaEquipo {
@@ -13,6 +14,7 @@ interface RespuestaEquipo {
   row: {
     equipo_modelo: string;
     sintoma: string;
+    casillero: string | null;
   };
 }
 
@@ -38,13 +40,14 @@ export async function PATCH(
         usuario,
         modelo: datos.modelo.trim(),
         sintoma: datos.sintoma.trim(),
+        casillero: (datos.casillero || "").trim(),
       },
       "PATCH"
     );
 
     return NextResponse.json({
       ok: true,
-      equipo: { modelo: resultado.row.equipo_modelo, sintoma: resultado.row.sintoma },
+      equipo: { modelo: resultado.row.equipo_modelo, sintoma: resultado.row.sintoma, casillero: resultado.row.casillero || "" },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";

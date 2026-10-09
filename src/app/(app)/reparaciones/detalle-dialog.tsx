@@ -7,6 +7,7 @@ import {
   DocumentText,
   Box,
   Printer,
+  ScanBarcode,
   CloseCircle,
   Trash,
   Receipt,
@@ -60,6 +61,7 @@ import { ReportarProblemaPiezaDialog } from "./reportar-problema-pieza-dialog";
 import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
+import { imprimirEtiquetaResguardoConFeedback } from "@/lib/imprimir-etiqueta";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -377,10 +379,27 @@ export function DetalleReparacionDialog({
   const [editarPedidoAbierto, setEditarPedidoAbierto] = useState(false);
   const [recepcionAbierta, setRecepcionAbierta] = useState(false);
   const [imprimiendoResguardo, setImprimiendoResguardo] = useState(false);
+  const [imprimiendoEtiqueta, setImprimiendoEtiqueta] = useState(false);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [clienteSeLoLlevoAbierto, setClienteSeLoLlevoAbierto] = useState(false);
   const [puntoLimpioAbierto, setPuntoLimpioAbierto] = useState(false);
   const esSuperadmin = useEsSuperadmin();
+
+  async function imprimirEtiqueta() {
+    if (!resguardo || imprimiendoEtiqueta) return;
+    setImprimiendoEtiqueta(true);
+    try {
+      const ok = await imprimirEtiquetaResguardoConFeedback(resguardo);
+      if (ok) {
+        toast.success("Etiqueta enviada a la impresora");
+        actualizarTodo();
+      } else {
+        toast.error("No se pudo imprimir — comprueba que el puente de impresión esté corriendo en este PC");
+      }
+    } finally {
+      setImprimiendoEtiqueta(false);
+    }
+  }
 
   async function imprimirResguardo() {
     if (!resguardo || imprimiendoResguardo) return;
@@ -717,6 +736,7 @@ export function DetalleReparacionDialog({
                   <Dato label="Estado entrega" valor={detalle.estadoEntrega} />
                   <Dato label="Nº factura" valor={detalle.numeroFactura} />
                   <Dato label="Recepción en local" valor={detalle.equipoEnLocal} />
+                  <Dato label="Etiqueta" valor={detalle.etiquetaImpresaEn ? `✓ Impresa ${formatearFechaHora(detalle.etiquetaImpresaEn)}` : "No impresa"} />
                 </div>
               </m.section>
 
@@ -974,6 +994,9 @@ export function DetalleReparacionDialog({
           )}
           <Button variant="outline" className="gap-1.5" disabled={imprimiendoResguardo} onClick={imprimirResguardo}>
             <Printer className="size-4" /> {imprimiendoResguardo ? "Generando..." : "Imprimir resguardo"}
+          </Button>
+          <Button variant="outline" className="gap-1.5" disabled={imprimiendoEtiqueta} onClick={imprimirEtiqueta} title="Etiqueta física para pegar en el equipo (datos de Kelatos + código de barras)">
+            <ScanBarcode className="size-4" /> {imprimiendoEtiqueta ? "Imprimiendo..." : "Imprimir etiqueta"}
           </Button>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Cerrar

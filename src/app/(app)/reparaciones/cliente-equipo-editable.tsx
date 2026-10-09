@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Lock, Personalcard, Call, Sms, Location, TickCircle, CloseCircle, Copy } from "@/lib/icons";
+import { Edit2, Lock, Personalcard, Call, Sms, Location, TickCircle, CloseCircle, Copy, Box1 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,11 +170,13 @@ export function EquipoEditable({
   const [editando, setEditando] = useState(false);
   const [modelo, setModelo] = useState("");
   const [sintomaTexto, setSintomaTexto] = useState("");
+  const [casillero, setCasillero] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   function empezarEdicion() {
     setModelo(detalle.equipo.modelo);
     setSintomaTexto(detalle.equipo.sintoma);
+    setCasillero(detalle.equipo.casillero);
     setEditando(true);
   }
 
@@ -185,7 +187,7 @@ export function EquipoEditable({
       const res = await fetch(`/api/reparaciones/${detalle.resguardo}/equipo`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modelo, sintoma: sintomaTexto }),
+        body: JSON.stringify({ modelo, sintoma: sintomaTexto, casillero }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -205,6 +207,10 @@ export function EquipoEditable({
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Equipo</h3>
         <Input placeholder="Modelo del equipo" value={modelo} onChange={(e) => setModelo(e.target.value)} />
         <Textarea placeholder="Síntoma" rows={2} value={sintomaTexto} onChange={(e) => setSintomaTexto(e.target.value)} />
+        <div className="flex items-center gap-1.5">
+          <Box1 className="size-4 shrink-0 text-muted-foreground" />
+          <Input placeholder="Casillero (p. ej. A3)" value={casillero} onChange={(e) => setCasillero(e.target.value)} />
+        </div>
         <div className="flex gap-1.5 pt-0.5">
           <Button size="sm" className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700" onClick={guardar} disabled={guardando}>
             <TickCircle className="size-3.5" /> {guardando ? "Guardando..." : "Guardar"}
@@ -230,7 +236,14 @@ export function EquipoEditable({
       ) : (
         <TituloEditable onEditar={empezarEdicion}>Equipo</TituloEditable>
       )}
-      <p className="text-base font-semibold">{detalle.equipo.modelo || "-"}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-base font-semibold">{detalle.equipo.modelo || "-"}</p>
+        {detalle.equipo.casillero && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400" title="Casillero donde está guardado el equipo">
+            <Box1 className="size-3" /> {detalle.equipo.casillero}
+          </span>
+        )}
+      </div>
       <p className="text-sm"><span className="text-muted-foreground">Síntoma:</span> {sintoma.principal || "-"}</p>
       {sintoma.extras.length > 0 && (
         <div className="space-y-0.5">

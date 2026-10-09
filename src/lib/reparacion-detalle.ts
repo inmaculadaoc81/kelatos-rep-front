@@ -73,6 +73,13 @@ interface FilaReparacionSqlDetalle {
   direccion_envio: string | null;
   equipo_modelo: string | null;
   sintoma: string | null;
+  /** Dónde está guardado físicamente el equipo en el local (estantería,
+      casillero), para que el personal lo localice rápido — migración 179. */
+  casillero: string | null;
+  /** Cuándo se imprimió de verdad la etiqueta física del resguardo (datos
+      de Kelatos + código de barras) — null si nunca se ha imprimido,
+      automático o a mano (migración 179). */
+  etiqueta_impresa_en: string | null;
   estado: string | null;
   presupuesto_aceptado_id: string | null;
   tecnico_asignado: string | null;
@@ -369,7 +376,9 @@ export interface ReparacionDetalle {
   resguardo: string;
   fechaRecepcion: string | null;
   cliente: { nombre: string; telefono: string; email: string; direccion: string };
-  equipo: { modelo: string; sintoma: string };
+  equipo: { modelo: string; sintoma: string; casillero: string };
+  /** null si la etiqueta física nunca se ha imprimido. */
+  etiquetaImpresaEn: string | null;
   estado: string;
   presupuestoAceptadoId: string;
   tecnicoAsignado: string;
@@ -597,7 +606,9 @@ export function mapearReparacionDetalle(
     equipo: {
       modelo: row.equipo_modelo || "",
       sintoma: row.sintoma || "",
+      casillero: row.casillero || "",
     },
+    etiquetaImpresaEn: fecha(row.etiqueta_impresa_en),
     estado: row.estado || "",
     presupuestoAceptadoId: row.presupuesto_aceptado_id || "",
     tecnicoAsignado: row.tecnico_asignado || "",
