@@ -7,6 +7,7 @@ import { NavbarCodigoAcceso } from "./navbar-codigo-acceso";
 import { NotificacionesBell } from "./notificaciones-bell";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { CodigoAccesoProvider } from "./codigo-acceso-context";
+import { EscanerCodigoBarras } from "./escaner-codigo-barras";
 
 // El redirect a /login ya lo hace proxy.ts a nivel de middleware para
 // todas las rutas de este grupo — aquí solo se lee la sesión para pasar
@@ -15,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth();
   return (
     <CodigoAccesoProvider>
+      <EscanerCodigoBarras />
       <SidebarProvider>
         <AppSidebar session={session} />
         <SidebarInset>

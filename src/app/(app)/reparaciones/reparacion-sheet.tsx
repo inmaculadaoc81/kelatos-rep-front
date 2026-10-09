@@ -28,6 +28,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Reparacion } from "@/lib/reparaciones";
+import { imprimirEtiquetaResguardo } from "@/lib/imprimir-etiqueta";
 import { normalizarNumeroLocal } from "@/lib/telefono";
 import { PiezaForm, TipoLineaPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
@@ -325,6 +326,12 @@ export function ReparacionSheet({
       // revisión (20€) corresponde y hay email, se abre automáticamente el
       // modal de factura de revisión justo después de confirmar/registrar.
       const resguardoFinal = esConfirmar ? reparacionPendiente!.resguardo : data.resguardo;
+
+      // Tanto al confirmar una recepción del Formulario Web como al dar de
+      // alta una reparación directamente, se imprime la etiqueta física
+      // (datos de Kelatos + código de barras del resguardo) — petición del
+      // usuario, 2026-10-09.
+      imprimirEtiquetaResguardo(resguardoFinal);
 
       // Digitalización de cintas confirmada desde el Formulario Web: a
       // diferencia de "Nueva Reparación" (altas/route.ts ya crea y acepta
