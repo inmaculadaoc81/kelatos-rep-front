@@ -142,6 +142,7 @@ const COLOR_PROVEEDOR: [string, string][] = [
   ["ebay", "bg-blue-500/10 text-blue-700 dark:text-blue-400"],
   ["asus", "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400"],
   ["aswoo", "bg-teal-500/10 text-teal-700 dark:text-teal-400"],
+  ["aswo", "bg-teal-500/10 text-teal-700 dark:text-teal-400"],
   ["lenovo", "bg-rose-500/10 text-rose-700 dark:text-rose-400"],
   ["msi", "bg-violet-500/10 text-violet-700 dark:text-violet-400"],
   ["pccomponentes", "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400"],

@@ -6,8 +6,9 @@ import { FacturaRecibidaFormDialog } from "../facturas-recibidas/factura-recibid
 import { FacturasEnlazadasDialog } from "../facturas-recibidas/facturas-enlazadas-dialog";
 import {
   Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle, Book1,
-  ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3,
+  ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, DocumentUpload,
 } from "@/lib/icons";
+import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,6 +70,7 @@ export default function ComprasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState<string | null>(null);
+  const [pedidoProveedorAbierto, setPedidoProveedorAbierto] = useState(false);
   const consulta = useRef(0);
 
   useEffect(() => {
@@ -193,9 +195,14 @@ export default function ComprasPage() {
           <h1 className="text-lg font-semibold">Compras</h1>
           <p className="text-sm text-muted-foreground">Pedidos de piezas registrados desde Reparaciones — proveedor, enlace de compra y estado de cada uno</p>
         </div>
-        <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
-          <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setPedidoProveedorAbierto(true)}>
+            <DocumentUpload className="size-4" /> Pedido por pantallazo
+          </Button>
+          <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
+            <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
@@ -484,6 +491,12 @@ export default function ComprasPage() {
           baseImponible: borradorFactura.costo ?? 0, importeTotal: borradorFactura.costo ?? 0,
         } : undefined}
         onGuardado={() => { setBorradorFactura(null); cargar(); }}
+      />
+
+      <PedidoProveedorDialog
+        open={pedidoProveedorAbierto}
+        onOpenChange={setPedidoProveedorAbierto}
+        onRegistrado={cargar}
       />
     </div>
   );
