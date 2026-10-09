@@ -23,6 +23,7 @@ import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import type { CompraFila } from "@/lib/compras";
 import type { PedidoStockBusqueda } from "@/app/api/stock-piezas/pedidos/buscar/route";
 import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route";
+import { ArticulosStockRevision, articulosEmparejadosAEditables, type ArticuloStockEditable } from "./articulos-stock-revision";
 import {
   FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
   ETIQUETA_TIPO_DOCUMENTO, ETIQUETA_CATEGORIA, euros,
@@ -287,6 +288,7 @@ export function FacturaRecibidaFormDialog({
   // Recap de lo que la IA encontró en la última lectura — para verlo de un
   // vistazo sin tener que rastrear cada campo del formulario uno a uno.
   const [resumenOcr, setResumenOcr] = useState<{ extraido: FacturaOcrExtraido; proveedorEncontrado: boolean; proveedorCreado: boolean } | null>(null);
+  const [articulosStock, setArticulosStock] = useState<ArticuloStockEditable[]>([]);
   // Si la IA marcó campos como inciertos, exige un vistazo explícito del
   // usuario antes de dejar registrar — así una lectura mal hecha no se
   // convierte en un registro real sin que nadie la haya comprobado.
@@ -400,6 +402,21 @@ export function FacturaRecibidaFormDialog({
         pedidoId: datos.pedidoId.trim(), stockPedidoId: datos.stockPedidoId ? Number(datos.stockPedidoId) : null,
         estadoRevision: datos.estadoRevision, observacionesInternas: datos.observacionesInternas.trim(),
         origen: !esEdicion && origenAutomatico ? "automatico" : undefined,
+        // Solo al CREAR — reaplicar en una edición duplicaría el stock ya
+        // sumado la primera vez.
+        articulosStock: !esEdicion
+          ? articulosStock
+              .filter((a) => a.aplicar && a.cantidad > 0)
+              .map((a) =>
+                a.referencia.trim()
+                  ? { referencia: a.referencia.trim(), cantidad: a.cantidad }
+                  : {
+                      nombre: a.nombre,
+                      cantidad: a.cantidad,
+                      nuevaPieza: { nombre: a.nombre, categoria: a.categoria, costeInterno: a.costeInterno, precioCliente: a.precioCliente, manoObra: 0 },
+                    }
+              )
+          : undefined,
       };
       const url = esEdicion ? `/api/facturas-recibidas/${facturaExistente!.id}` : "/api/facturas-recibidas";
       const res = await fetch(url, {
@@ -530,6 +547,7 @@ export function FacturaRecibidaFormDialog({
       if (e.moneda) set("moneda", e.moneda);
       if (e.descripcion) set("descripcion", e.descripcion);
       setOrigenAutomatico(true);
+      setArticulosStock(articulosEmparejadosAEditables(data.articulosEmparejados || []));
 
       if (e.advertencias.length > 0) {
         toast.warning(`La IA no está segura de ${e.advertencias.length} dato(s) — revísalos en el resumen antes de registrar`);
@@ -1017,6 +1035,11 @@ export function FacturaRecibidaFormDialog({
                         </span>
                       ))}
                     </div>
+                  </div>
+                )}
+                {datos.almacen === "stock" && articulosStock.length > 0 && (
+                  <div className="sm:col-span-2 lg:col-span-4">
+                    <ArticulosStockRevision articulos={articulosStock} onCambiar={setArticulosStock} />
                   </div>
                 )}
                 <div className="space-y-1.5">
