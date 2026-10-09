@@ -43,3 +43,24 @@ export async function imprimirEtiquetaResguardoConFeedback(resguardo: string): P
     return false;
   }
 }
+
+const PUENTE_IMPRESORA_PIEZA_URL = "http://127.0.0.1:9876/imprimir-etiqueta-pieza";
+
+/** Etiqueta de una pieza de Stock (p. ej. un cargador) para pegar en el
+    objeto físico — código de barras de su referencia, para luego
+    escanearla y precargarla en un Ticket/Factura (ver
+    escaner-codigo-barras.tsx). Botón manual en Stock de Piezas. */
+export async function imprimirEtiquetaPieza(referencia: string, nombre: string): Promise<boolean> {
+  if (!referencia) return false;
+  try {
+    const res = await fetch(PUENTE_IMPRESORA_PIEZA_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ referencia, nombre }),
+    });
+    const data = await res.json();
+    return !!data.ok;
+  } catch {
+    return false;
+  }
+}

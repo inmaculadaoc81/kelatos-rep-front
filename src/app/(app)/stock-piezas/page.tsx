@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, Warning2, Add, Edit2, Trash } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Warning2, Add, Edit2, Trash, ScanBarcode } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { StockPieza } from "@/lib/stock-piezas";
+import { imprimirEtiquetaPieza } from "@/lib/imprimir-etiqueta";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { PiezaStockFormDialog } from "./pieza-stock-form-dialog";
 
@@ -33,6 +34,18 @@ export default function StockPiezasPage() {
   const [categoria, setCategoria] = useState("");
   const [soloBajo, setSoloBajo] = useState(false);
   const [formAbierto, setFormAbierto] = useState(false);
+  const [imprimiendoEtiqueta, setImprimiendoEtiqueta] = useState<string | null>(null);
+
+  async function imprimirEtiqueta(p: StockPieza) {
+    setImprimiendoEtiqueta(p.referencia);
+    try {
+      const ok = await imprimirEtiquetaPieza(p.referencia, p.descripcion || p.nombre);
+      if (ok) toast.success("Etiqueta enviada a la impresora");
+      else toast.error("No se pudo imprimir — comprueba que el puente de impresión esté corriendo en este PC");
+    } finally {
+      setImprimiendoEtiqueta(null);
+    }
+  }
   const [editando, setEditando] = useState<StockPieza | null>(null);
   const esSuperadmin = useEsSuperadmin();
 
@@ -228,6 +241,18 @@ export default function StockPiezasPage() {
                       >
                         <Edit2 className="size-3.5" /> Editar
                       </Button>
+                      {p.categoria === "CARGADOR" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1"
+                          disabled={imprimiendoEtiqueta === p.referencia}
+                          onClick={() => imprimirEtiqueta(p)}
+                          title="Imprimir etiqueta con código de barras para pegar en el cargador"
+                        >
+                          <ScanBarcode className="size-3.5" /> {imprimiendoEtiqueta === p.referencia ? "Imprimiendo..." : "Etiqueta"}
+                        </Button>
+                      )}
                       {esSuperadmin && (
                         <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" onClick={() => eliminar(p)}>
                           <Trash className="size-3.5" /> Eliminar
