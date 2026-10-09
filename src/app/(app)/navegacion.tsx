@@ -97,6 +97,7 @@ export const GRUPOS: GrupoNavegacion[] = [
       { label: "Reporte de Facturas", href: "/reporte-facturas", icon: ClipboardText },
       { label: "Efectivo", href: "/efectivo", icon: Coin1, claseColor: "text-green-600 hover:text-green-700 data-active:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:data-active:text-green-300 [&>svg]:text-current" },
       { label: "TPV", href: "/tpv", icon: CardPos, claseColor: "text-purple-600 hover:text-purple-700 data-active:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 dark:data-active:text-purple-300 [&>svg]:text-current" },
+      { label: "Tarjetas", href: "/tarjetas", icon: Bank, claseColor: "text-blue-600 hover:text-blue-700 data-active:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:data-active:text-blue-300 [&>svg]:text-current" },
     ],
   },
   {
