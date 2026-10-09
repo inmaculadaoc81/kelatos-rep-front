@@ -359,31 +359,35 @@ export function PiezaStockFormDialog({
                       <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1" onClick={() => setPedirEnlace(e)}>
                         <Truck className="size-3.5" /> Pedir
                       </Button>
-                      <button type="button" className="shrink-0 text-muted-foreground hover:text-destructive" title="Eliminar enlace" onClick={() => eliminarEnlace(e.id)}>
-                        <Trash className="size-3.5" />
-                      </button>
+                      {!soloLecturaCatalogo && (
+                        <button type="button" className="shrink-0 text-muted-foreground hover:text-destructive" title="Eliminar enlace" onClick={() => eliminarEnlace(e.id)}>
+                          <Trash className="size-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="flex items-end gap-1.5">
-                <div className="w-28 space-y-1">
-                  <Label className="text-[11px]">Proveedor</Label>
-                  <Input className="h-8 text-xs" value={nuevoProveedor} onChange={(e) => setNuevoProveedor(e.target.value)} />
+              {!soloLecturaCatalogo && (
+                <div className="flex items-end gap-1.5">
+                  <div className="w-28 space-y-1">
+                    <Label className="text-[11px]">Proveedor</Label>
+                    <Input className="h-8 text-xs" value={nuevoProveedor} onChange={(e) => setNuevoProveedor(e.target.value)} />
+                  </div>
+                  <div className="w-20 space-y-1">
+                    <Label className="text-[11px]">Costo (€)</Label>
+                    <Input className="h-8 text-xs" type="number" min={0} step="0.01" value={nuevoCosto} onChange={(e) => setNuevoCosto(e.target.value)} />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <Label className="text-[11px]">Enlace *</Label>
+                    <Input className="h-8 text-xs" placeholder="https://..." value={nuevoEnlace} onChange={(e) => setNuevoEnlace(e.target.value)} />
+                  </div>
+                  <Button size="icon-sm" className="h-8 w-8 shrink-0" onClick={agregarEnlace} disabled={agregandoEnlace} title="Agregar enlace">
+                    <AddCircle className="size-4" />
+                  </Button>
                 </div>
-                <div className="w-20 space-y-1">
-                  <Label className="text-[11px]">Costo (€)</Label>
-                  <Input className="h-8 text-xs" type="number" min={0} step="0.01" value={nuevoCosto} onChange={(e) => setNuevoCosto(e.target.value)} />
-                </div>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <Label className="text-[11px]">Enlace *</Label>
-                  <Input className="h-8 text-xs" placeholder="https://..." value={nuevoEnlace} onChange={(e) => setNuevoEnlace(e.target.value)} />
-                </div>
-                <Button size="icon-sm" className="h-8 w-8 shrink-0" onClick={agregarEnlace} disabled={agregandoEnlace} title="Agregar enlace">
-                  <AddCircle className="size-4" />
-                </Button>
-              </div>
+              )}
 
               {pedidosPendientes.length > 0 && (
                 <div className="space-y-1.5 pt-1">

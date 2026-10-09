@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
+import { esSuperadmin } from "@/lib/superadmin";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  if (!esSuperadmin(session.user.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { id } = await params;
   try {
