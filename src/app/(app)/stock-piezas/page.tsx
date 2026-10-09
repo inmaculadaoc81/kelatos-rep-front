@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { StockPieza } from "@/lib/stock-piezas";
 import { imprimirEtiquetaPieza } from "@/lib/imprimir-etiqueta";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
+import { useConfirm } from "@/components/confirm-provider";
 import { PiezaStockFormDialog } from "./pieza-stock-form-dialog";
 
 function euros(n: number): string {
@@ -35,8 +36,15 @@ export default function StockPiezasPage() {
   const [soloBajo, setSoloBajo] = useState(false);
   const [formAbierto, setFormAbierto] = useState(false);
   const [imprimiendoEtiqueta, setImprimiendoEtiqueta] = useState<string | null>(null);
+  const confirmar = useConfirm();
 
   async function imprimirEtiqueta(p: StockPieza) {
+    const ok0 = await confirmar(`¿Imprimir la etiqueta de "${p.descripcion || p.nombre}" (ref ${p.referencia})?`, {
+      titulo: "Imprimir etiqueta",
+      detalle: "Se mandará a la impresora conectada a este PC ahora mismo.",
+    });
+    if (!ok0) return;
+
     setImprimiendoEtiqueta(p.referencia);
     try {
       const ok = await imprimirEtiquetaPieza(p.referencia, p.descripcion || p.nombre);
