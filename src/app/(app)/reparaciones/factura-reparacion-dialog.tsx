@@ -64,8 +64,8 @@ function lineaVacia(): LineaEditable {
  */
 function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
   const lineas: LineaEditable[] = [];
-  const add = (descripcion: string, cantidad: number, precioUnitario: number) =>
-    lineas.push({ referencia: "", descripcion, cantidad, descuentoPct: 0, precioUnitario });
+  const add = (descripcion: string, cantidad: number, precioUnitario: number, referencia = "") =>
+    lineas.push({ referencia, descripcion, cantidad, descuentoPct: 0, precioUnitario });
 
   let datosCintas: { tipos?: Record<string, number>; precioUnitario?: number; precioPorCinta?: number; precioBobina?: number } | null = null;
   try {
@@ -144,7 +144,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
             const desc = (pieza.descripcion || "").toLowerCase();
             if (desc.includes("descuento") && desc.includes("revis")) continue;
             const precio = (pieza.precio || pieza.costo || 0) * remFactor;
-            add(etiqueta(pieza.descripcion || "Pieza", p), 1, precio);
+            add(etiqueta(pieza.descripcion || "Pieza", p), 1, precio, pieza.referenciaStock || "");
           }
         } else if ((p.precioPiezas || 0) > 0) {
           hayPiezas = true;
