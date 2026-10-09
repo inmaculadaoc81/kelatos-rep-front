@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Receipt, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Send2, Box1 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -73,10 +73,14 @@ export function NuevaFacturaManualDialog({
   open,
   onOpenChange,
   onGenerada,
+  lineaInicial,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGenerada: () => void;
+  /** Precarga una única línea al abrir (p. ej. al escanear el código de
+      barras de una pieza de Stock, como un cargador). */
+  lineaInicial?: { referencia: string; descripcion: string; precio: number };
 }) {
   const [serie, setSerie] = useState<"1" | "3">("1");
   const [nombre, setNombre] = useState("");
@@ -100,6 +104,13 @@ export function NuevaFacturaManualDialog({
   const [resultado, setResultado] = useState<{ numeroFactura: string; urlPdf: string; entidadId: string } | null>(null);
   const [enviandoFactura, setEnviandoFactura] = useState(false);
   const confirmar = useConfirm();
+
+  useEffect(() => {
+    if (open && lineaInicial) {
+      setLineas([{ referencia: lineaInicial.referencia, descripcion: lineaInicial.descripcion, cantidad: 1, precio: lineaInicial.precio }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const subtotal = lineas.reduce((s, l) => s + l.cantidad * l.precio * (1 - (l.descuento || 0) / 100), 0);
   const pctGlobal = Math.min(100, Math.max(0, descuentoGlobalPct || 0));

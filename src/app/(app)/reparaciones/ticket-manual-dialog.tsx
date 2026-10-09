@@ -198,6 +198,7 @@ export function TicketManualDialog({
   detalle,
   ventaId,
   venta,
+  lineaInicial,
   onGenerado,
 }: {
   open: boolean;
@@ -206,6 +207,10 @@ export function TicketManualDialog({
   detalle?: ReparacionDetalle;
   ventaId?: string;
   venta?: Venta;
+  /** Precarga una única línea (p. ej. al escanear el código de barras de
+      una pieza de Stock, como un cargador) — solo se usa en modo
+      standalone (sin resguardo/venta), nunca pisa un ticket ya generado. */
+  lineaInicial?: { referencia: string; descripcion: string; precio: number };
   onGenerado?: () => void;
 }) {
   const esVenta = !!ventaId;
@@ -290,7 +295,13 @@ export function TicketManualDialog({
       setLineas(
         yaGenerado && lineasPersistidas.length > 0
           ? lineasPersistidas
-          : esVenta && venta ? lineasDesdeVenta(venta) : !esVenta && resguardo && detalle ? lineasDesdePresupuestos(detalle) : [lineaVacia()]
+          : esVenta && venta
+            ? lineasDesdeVenta(venta)
+            : !esVenta && resguardo && detalle
+              ? lineasDesdePresupuestos(detalle)
+              : lineaInicial
+                ? [{ referencia: lineaInicial.referencia, descripcion: lineaInicial.descripcion, cantidad: 1, precio: lineaInicial.precio, descuento: 0 }]
+                : [lineaVacia()]
       );
       setDescuentoGlobal(0);
       setMotivoNegativo("");
