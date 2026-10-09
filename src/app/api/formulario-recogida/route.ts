@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     // firma_recogida_url/fotos_recogida apunten a archivos reales.
     const archivos = await kelatosApiPost<{ ok: boolean; firmaUrl: string; fotoUrl: string }>(
       `/v1/formulario/${encodeURIComponent(resguardo)}/archivos`,
-      { firmaBase64, fotos: Array.isArray(fotos) ? fotos : [] }
+      { firmaBase64, fotos: Array.isArray(fotos) ? fotos : [], etapa: "recogida" }
     );
     if (!archivos.firmaUrl) {
       return NextResponse.json({ ok: false, error: "No se pudo guardar la firma" }, { status: 502 });
