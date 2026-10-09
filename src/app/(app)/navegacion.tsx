@@ -61,6 +61,7 @@ export const GRUPOS: GrupoNavegacion[] = [
     icon: Setting2,
     items: [
       { label: "Todas las Reparaciones", href: "/reparaciones", icon: ClipboardTick },
+      { label: "Historial", href: "/historial", icon: Clock },
       { label: "Transferencias", href: "/reparaciones/cobros", icon: Wallet },
       { label: "Presupuestos", href: "/presupuestos", icon: DocumentText },
       { label: "Recogidas", href: "/recogidas", icon: Truck },
@@ -102,7 +103,6 @@ export const GRUPOS: GrupoNavegacion[] = [
     titulo: "Informes",
     icon: ClipboardText,
     items: [
-      { label: "Historial", href: "/historial", icon: Clock },
       { label: "Reportes", href: "/reportes", icon: Chart },
       { label: "Registro de Acciones", href: "/registro-acciones", icon: Hierarchy },
       { label: "Reporte Equipos", href: "/reporte-equipos", icon: Monitor },
