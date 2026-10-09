@@ -97,6 +97,7 @@ export const Money = withDefaults(Iconsax.Money);
 export const MoneyRecive = withDefaults(Iconsax.MoneyRecive);
 export const MoneySend = withDefaults(Iconsax.MoneySend);
 export const Coin1 = withDefaults(Iconsax.Coin1);
+export const CardPos = withDefaults(Iconsax.CardPos);
 export const Monitor = withDefaults(Iconsax.Monitor);
 export const MessageQuestion = withDefaults(Iconsax.MessageQuestion);
 export const Message = withDefaults(Iconsax.Message);
