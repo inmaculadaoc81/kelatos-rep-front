@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft2, MoneyRecive, Gallery, Bank } from "@/lib/icons";
 import { resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
-import { METODOS_TPV, TpvFotoApi, TpvImporteApi } from "@/lib/tpv";
+import { METODOS_TPV, MovimientoTpv, TpvFotoApi, TpvImporteApi } from "@/lib/tpv";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { style: "currency", currency: "EUR" });
@@ -17,6 +18,57 @@ function euros(n: number): string {
 function etiquetaDia(dia: string): string {
   const txt = new Date(`${dia}T12:00:00Z`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+function formatearHora(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const hora = d.toLocaleTimeString("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false });
+  return hora === "00:00" ? "—" : hora;
+}
+
+/** Lista compacta de los cobros/devoluciones que suman el total "Sistema"
+    de un tipo de pago — solo para consultar, no edita nada. Petición del
+    usuario, 2026-10-12: "que salga el modal con cada uno de los cobros,
+    solo para ver el listado, no tan grande". */
+function ListadoMovimientosDialog({ metodo, movimientos, onOpenChange }: { metodo: (typeof METODOS_TPV)[number] | null; movimientos: MovimientoTpv[]; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={!!metodo} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-base">{metodo?.label}</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-80 overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="h-8">Hora</TableHead>
+                <TableHead className="h-8">Cliente</TableHead>
+                <TableHead className="h-8 text-right">Importe</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {movimientos.length === 0 && (
+                <TableRow><TableCell colSpan={3} className="py-4 text-center text-sm text-muted-foreground">Sin movimientos</TableCell></TableRow>
+              )}
+              {movimientos.map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell className="whitespace-nowrap text-xs">{formatearHora(m.fecha)}</TableCell>
+                  <TableCell className="max-w-36 truncate text-xs" title={`${m.cliente || "-"} · ${m.concepto}${m.numero ? ` · ${m.numero}` : ""}`}>
+                    {m.cliente || m.concepto || "-"}
+                  </TableCell>
+                  <TableCell className={`whitespace-nowrap text-right text-xs font-medium tabular-nums ${m.importe < 0 ? "text-red-600" : "text-foreground"}`}>
+                    {euros(m.importe)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /**
@@ -33,6 +85,7 @@ function etiquetaDia(dia: string): string {
 export function DiaDetalleVista({
   dia,
   segunSistemaDia,
+  movimientosDia,
   importesDia,
   fotosDia,
   onVolver,
@@ -40,6 +93,7 @@ export function DiaDetalleVista({
 }: {
   dia: string;
   segunSistemaDia: Record<string, number>;
+  movimientosDia: MovimientoTpv[];
   importesDia: TpvImporteApi[];
   fotosDia: TpvFotoApi[];
   onVolver: () => void;
@@ -49,6 +103,7 @@ export function DiaDetalleVista({
   const [guardando, setGuardando] = useState<string | null>(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const inputFotoRef = useRef<HTMLInputElement | null>(null);
+  const [metodoListado, setMetodoListado] = useState<(typeof METODOS_TPV)[number] | null>(null);
 
   const importePorMetodo = new Map(importesDia.map((i) => [i.metodo, i]));
 
@@ -180,7 +235,15 @@ export function DiaDetalleVista({
                 return (
                   <TableRow key={metodo.value}>
                     <TableCell className="whitespace-nowrap text-sm font-medium">{metodo.label}</TableCell>
-                    <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">{euros(sistema)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
+                      {sistema !== 0 ? (
+                        <button type="button" className="underline-offset-2 hover:underline" title="Ver los cobros de este tipo" onClick={() => setMetodoListado(metodo)}>
+                          {euros(sistema)}
+                        </button>
+                      ) : (
+                        euros(sistema)
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <DecimalInput
@@ -233,6 +296,12 @@ export function DiaDetalleVista({
         </Button>
         <input ref={inputFotoRef} type="file" accept="image/*" multiple className="hidden" onChange={onSeleccionarFotos} />
       </div>
+
+      <ListadoMovimientosDialog
+        metodo={metodoListado}
+        movimientos={metodoListado ? movimientosDia.filter((m) => m.metodo === metodoListado.value) : []}
+        onOpenChange={(o) => !o && setMetodoListado(null)}
+      />
     </div>
   );
 }

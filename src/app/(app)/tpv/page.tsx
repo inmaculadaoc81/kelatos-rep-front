@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CardPos, Refresh2, MoneyRecive, Bank } from "@/lib/icons";
-import { METODOS_TPV, TpvFotoApi, TpvImporteApi } from "@/lib/tpv";
+import { METODOS_TPV, MovimientoTpv, TpvFotoApi, TpvImporteApi, diaMadrid } from "@/lib/tpv";
 import { CalendarioTpv } from "./calendario-tpv";
 import { DiaDetalleVista } from "./dia-detalle-vista";
 
@@ -29,6 +29,7 @@ function clavesMes(mes: Date): string {
  */
 export default function TpvPage() {
   const [segunSistema, setSegunSistema] = useState<Record<string, Record<string, number>>>({});
+  const [movimientos, setMovimientos] = useState<MovimientoTpv[]>([]);
   const [importes, setImportes] = useState<TpvImporteApi[]>([]);
   const [fotos, setFotos] = useState<TpvFotoApi[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -47,6 +48,7 @@ export default function TpvPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       setSegunSistema(data.segunSistema);
+      setMovimientos(data.movimientos as MovimientoTpv[]);
       setImportes(data.importes as TpvImporteApi[]);
       setFotos(data.fotos as TpvFotoApi[]);
     } catch (e) {
@@ -83,6 +85,7 @@ export default function TpvPage() {
         <DiaDetalleVista
           dia={diaSeleccionado}
           segunSistemaDia={segunSistema[diaSeleccionado] || {}}
+          movimientosDia={movimientos.filter((m) => diaMadrid(m.fecha) === diaSeleccionado)}
           importesDia={importes.filter((i) => i.fecha === diaSeleccionado)}
           fotosDia={fotos.filter((f) => f.fecha === diaSeleccionado)}
           onVolver={() => setDiaSeleccionado(null)}
