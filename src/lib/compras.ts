@@ -10,6 +10,12 @@
  */
 
 export interface CompraFila {
+  /** "reparacion" (kelatos_app.pedidos) o "venta" (kelatos_app.items_venta,
+      pedido de pieza a un cliente sin reparación) — distingue qué detalle
+      abrir al hacer clic en la fila y qué acciones tienen sentido.
+      Petición del usuario, 2026-10-12: que los pedidos de Ventas también se
+      vean en Compras. */
+  origen: "reparacion" | "venta";
   pedidoId: string;
   piezaId: string;
   resguardo: string;
@@ -47,6 +53,7 @@ export interface CompraFila {
 }
 
 interface FilaCompraSql {
+  origen: "reparacion" | "venta";
   pedido_id: string;
   pieza_id: string | null;
   resguardo: string | null;
@@ -76,6 +83,7 @@ interface FilaCompraSql {
 
 export function mapearCompra(row: FilaCompraSql): CompraFila {
   return {
+    origen: row.origen === "venta" ? "venta" : "reparacion",
     pedidoId: row.pedido_id || "",
     piezaId: row.pieza_id || "",
     resguardo: row.resguardo || "",

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
+import { DetalleVentaDialog } from "../ventas/detalle-venta-dialog";
 import { FacturaRecibidaFormDialog } from "../facturas-recibidas/factura-recibida-form-dialog";
 import { FacturasEnlazadasDialog } from "../facturas-recibidas/facturas-enlazadas-dialog";
 import {
@@ -51,6 +52,7 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
 
 export default function ComprasPage() {
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
+  const [ventaDetalleId, setVentaDetalleId] = useState<string | null>(null);
   const [borradorFactura, setBorradorFactura] = useState<CompraFila | null>(null);
   const [facturasDePedido, setFacturasDePedido] = useState<CompraFila | null>(null);
   const [compras, setCompras] = useState<CompraFila[]>([]);
@@ -321,15 +323,17 @@ export default function ComprasPage() {
                   <TableRow
                     key={c.pedidoId}
                     className={c.resguardo ? "cursor-pointer hover:bg-muted/40" : undefined}
-                    onClick={c.resguardo ? () => setResguardoDetalle(c.resguardo) : undefined}
-                    title={c.resguardo ? `Abrir resguardo ${c.resguardo}` : undefined}
+                    onClick={c.resguardo ? () => (c.origen === "venta" ? setVentaDetalleId(c.resguardo) : setResguardoDetalle(c.resguardo)) : undefined}
+                    title={c.resguardo ? (c.origen === "venta" ? `Abrir pedido de venta ${c.resguardo}` : `Abrir resguardo ${c.resguardo}`) : undefined}
                   >
                     <TableCell className="whitespace-nowrap font-mono text-xs">{c.pedidoId}</TableCell>
                     <TableCell className="max-w-48">
                       {c.resguardo ? (
                         <div>
                           <span className="block truncate text-sm font-medium">{c.clienteNombre || c.resguardo}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{c.resguardo}{c.equipoModelo ? ` · ${c.equipoModelo}` : ""}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {c.origen === "venta" ? "Venta de piezas" : c.resguardo}{c.equipoModelo ? ` · ${c.equipoModelo}` : ""}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -363,24 +367,30 @@ export default function ComprasPage() {
                       </span>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Select
-                        value={c.estadoPlataforma || "SinRevisar"}
-                        onValueChange={(v) => actualizarEstadoPlataforma(c.pedidoId, v && v !== "SinRevisar" ? v : "")}
-                      >
-                        <SelectTrigger
-                          disabled={actualizandoPlataforma === c.pedidoId}
-                          className={`h-7 w-auto gap-1 border px-2 text-xs font-medium ${ESTILO_BADGE_PLATAFORMA[c.estadoPlataforma] || "border-muted-foreground/30 text-muted-foreground"}`}
+                      {c.origen === "venta" ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <Select
+                          value={c.estadoPlataforma || "SinRevisar"}
+                          onValueChange={(v) => actualizarEstadoPlataforma(c.pedidoId, v && v !== "SinRevisar" ? v : "")}
                         >
-                          <SelectValue>{(v: string) => (v === "SinRevisar" ? "Sin revisar" : v)}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SinRevisar">Sin revisar</SelectItem>
-                          {ESTADOS_PLATAFORMA.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                          <SelectTrigger
+                            disabled={actualizandoPlataforma === c.pedidoId}
+                            className={`h-7 w-auto gap-1 border px-2 text-xs font-medium ${ESTILO_BADGE_PLATAFORMA[c.estadoPlataforma] || "border-muted-foreground/30 text-muted-foreground"}`}
+                          >
+                            <SelectValue>{(v: string) => (v === "SinRevisar" ? "Sin revisar" : v)}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SinRevisar">Sin revisar</SelectItem>
+                            {ESTADOS_PLATAFORMA.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </TableCell>
                     <TableCell>
-                      {c.estado === "Recibido" ? (
+                      {c.origen === "venta" ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : c.estado === "Recibido" ? (
                         c.estadoPlataforma === "Entregado" ? (
                           <span className="inline-flex items-center gap-0.5 whitespace-nowrap text-xs font-medium text-emerald-700 dark:text-emerald-400" title="Recepción interna y plataforma coinciden">
                             <TickCircle className="size-3.5" />
@@ -407,22 +417,28 @@ export default function ComprasPage() {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1.5">
-                        {sig && (
-                          <Button size="sm" variant="outline" className="h-7 gap-1" disabled={enviando === c.pedidoId} onClick={() => cambiarEstado(c.pedidoId, sig.estado)}>
-                            <sig.icono className="size-3.5" /> {sig.etiqueta}
-                          </Button>
+                        {c.origen === "venta" ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <>
+                            {sig && (
+                              <Button size="sm" variant="outline" className="h-7 gap-1" disabled={enviando === c.pedidoId} onClick={() => cambiarEstado(c.pedidoId, sig.estado)}>
+                                <sig.icono className="size-3.5" /> {sig.etiqueta}
+                              </Button>
+                            )}
+                            {c.facturasCount > 0 && (
+                              <Button size="sm" variant="outline" className="h-7 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400" onClick={() => setFacturasDePedido(c)} title="Ver las facturas del Libro de Compras enlazadas a este pedido">
+                                <Book1 className="size-3.5" /> Facturas ({c.facturasCount})
+                              </Button>
+                            )}
+                            {c.estado === "Recibido" && c.proveedorId && c.facturasCount === 0 && (
+                              <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setBorradorFactura(c)} title="Registrar la factura de este pedido en el Libro de Compras">
+                                <Book1 className="size-3.5" /> Registrar factura
+                              </Button>
+                            )}
+                            {!sig && c.facturasCount === 0 && !(c.estado === "Recibido" && c.proveedorId) && <span className="text-muted-foreground">—</span>}
+                          </>
                         )}
-                        {c.facturasCount > 0 && (
-                          <Button size="sm" variant="outline" className="h-7 gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400" onClick={() => setFacturasDePedido(c)} title="Ver las facturas del Libro de Compras enlazadas a este pedido">
-                            <Book1 className="size-3.5" /> Facturas ({c.facturasCount})
-                          </Button>
-                        )}
-                        {c.estado === "Recibido" && c.proveedorId && c.facturasCount === 0 && (
-                          <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setBorradorFactura(c)} title="Registrar la factura de este pedido en el Libro de Compras">
-                            <Book1 className="size-3.5" /> Registrar factura
-                          </Button>
-                        )}
-                        {!sig && c.facturasCount === 0 && !(c.estado === "Recibido" && c.proveedorId) && <span className="text-muted-foreground">—</span>}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -475,6 +491,13 @@ export default function ComprasPage() {
       <DetalleReparacionDialog
         resguardo={resguardoDetalle}
         onOpenChange={(open) => !open && setResguardoDetalle(null)}
+        onActualizado={cargar}
+      />
+
+      <DetalleVentaDialog
+        ventaId={ventaDetalleId}
+        open={!!ventaDetalleId}
+        onOpenChange={(open) => !open && setVentaDetalleId(null)}
         onActualizado={cargar}
       />
 

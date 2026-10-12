@@ -32,6 +32,7 @@ export async function POST(
         requestId: crypto.randomUUID(),
         usuario,
         proveedor_id: datos.proveedorId,
+        proveedor_otro: datos.proveedorOtro?.trim() || "",
         numero_pedido: datos.numeroPedido.trim(),
         fecha_estimada: datos.fechaEstimada,
         enlace: datos.enlace.trim(),

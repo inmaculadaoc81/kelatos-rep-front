@@ -31,6 +31,7 @@ export async function POST(
         costo: datos.costo,
         precio: datos.precio,
         proveedor_id: datos.proveedorId,
+        proveedor_otro: datos.proveedorOtro?.trim() || "",
         enlace: datos.enlace.trim(),
       }
     );

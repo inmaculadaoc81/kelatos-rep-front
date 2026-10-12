@@ -1,6 +1,7 @@
 "use client";
 
 import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
+import { esProveedorOtro } from "@/lib/formato-pedido";
 import { useEffect, useState } from "react";
 import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket, ScanBarcode } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -100,6 +101,7 @@ export function DetalleVentaDialog({
 
   const [itemPidiendo, setItemPidiendo] = useState<string | null>(null);
   const [pedProveedor, setPedProveedor] = useState("");
+  const [pedProveedorOtro, setPedProveedorOtro] = useState("");
   const [pedNumero, setPedNumero] = useState("");
   const [pedFecha, setPedFecha] = useState("");
   const [pedEnlace, setPedEnlace] = useState("");
@@ -109,7 +111,14 @@ export function DetalleVentaDialog({
   const [nuevoCosto, setNuevoCosto] = useState(0);
   const [nuevoPrecio, setNuevoPrecio] = useState(0);
   const [nuevoProveedor, setNuevoProveedor] = useState("");
+  const [nuevoProveedorOtro, setNuevoProveedorOtro] = useState("");
   const [nuevoEnlace, setNuevoEnlace] = useState("");
+
+  /** "Otro" (catálogo id 10, mismo criterio que Compras): cuando se elige
+      este proveedor hay que indicar a mano qué plataforma es de verdad. */
+  function esOtro(proveedorId: string): boolean {
+    return esProveedorOtro(proveedores.find((p) => p.proveedorId === proveedorId)?.nombre);
+  }
 
   const [enviando, setEnviando] = useState(false);
 
@@ -193,6 +202,7 @@ export function DetalleVentaDialog({
     setAgregando(false);
     setItemPidiendo(item.itemId);
     setPedProveedor(item.proveedorId || "");
+    setPedProveedorOtro(item.proveedorOtro || "");
     setPedNumero("");
     setPedFecha("");
     setPedEnlace(item.enlace || "");
@@ -201,6 +211,7 @@ export function DetalleVentaDialog({
   async function confirmarPedido() {
     if (!itemPidiendo) return;
     if (!pedProveedor) return toast.error("Selecciona un proveedor");
+    if (esOtro(pedProveedor) && !pedProveedorOtro.trim()) return toast.error("Indica qué plataforma es");
     if (!pedNumero.trim()) return toast.error("El Nº de pedido es obligatorio");
     if (numeroPedidoEsEnlace(pedNumero)) return toast.error(MENSAJE_NUMERO_PEDIDO_ENLACE);
     if (!pedFecha) return toast.error("La fecha estimada es obligatoria");
@@ -210,7 +221,11 @@ export function DetalleVentaDialog({
       const res = await fetch(`/api/items-venta/${itemPidiendo}/registrar-pedido`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proveedorId: pedProveedor, numeroPedido: pedNumero.trim(), fechaEstimada: pedFecha, enlace: pedEnlace.trim() }),
+        body: JSON.stringify({
+          proveedorId: pedProveedor,
+          proveedorOtro: esOtro(pedProveedor) ? pedProveedorOtro.trim() : "",
+          numeroPedido: pedNumero.trim(), fechaEstimada: pedFecha, enlace: pedEnlace.trim(),
+        }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -264,6 +279,7 @@ export function DetalleVentaDialog({
     setNuevoCosto(0);
     setNuevoPrecio(0);
     setNuevoProveedor("");
+    setNuevoProveedorOtro("");
     setNuevoEnlace("");
   }
 
@@ -273,13 +289,18 @@ export function DetalleVentaDialog({
     if (nuevoCosto <= 0) return toast.error("El costo es obligatorio");
     if (nuevoPrecio <= 0) return toast.error("El precio es obligatorio");
     if (!nuevoProveedor) return toast.error("El proveedor es obligatorio");
+    if (esOtro(nuevoProveedor) && !nuevoProveedorOtro.trim()) return toast.error("Indica qué plataforma es");
     if (!nuevoEnlace.trim()) return toast.error("El enlace es obligatorio");
     setEnviando(true);
     try {
       const res = await fetch(`/api/ventas/${venta.ventaId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descripcion: nuevoDesc.trim(), costo: nuevoCosto, precio: nuevoPrecio, proveedorId: nuevoProveedor, enlace: nuevoEnlace.trim() }),
+        body: JSON.stringify({
+          descripcion: nuevoDesc.trim(), costo: nuevoCosto, precio: nuevoPrecio,
+          proveedorId: nuevoProveedor, proveedorOtro: esOtro(nuevoProveedor) ? nuevoProveedorOtro.trim() : "",
+          enlace: nuevoEnlace.trim(),
+        }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -426,13 +447,20 @@ export function DetalleVentaDialog({
                   <DecimalInput placeholder="Precio *" value={nuevoPrecio} onChange={setNuevoPrecio} />
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Select value={nuevoProveedor} onValueChange={(v) => setNuevoProveedor(v || "")}>
+                  <Select value={nuevoProveedor} onValueChange={(v) => { setNuevoProveedor(v || ""); setNuevoProveedorOtro(""); }}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Proveedor *" /></SelectTrigger>
                     <SelectContent>
                       {proveedores.map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Input placeholder="Enlace *" value={nuevoEnlace} onChange={(e) => setNuevoEnlace(e.target.value)} />
+                  {esOtro(nuevoProveedor) ? (
+                    <Input placeholder="¿Qué plataforma? *" value={nuevoProveedorOtro} onChange={(e) => setNuevoProveedorOtro(e.target.value)} />
+                  ) : (
+                    <Input placeholder="Enlace *" value={nuevoEnlace} onChange={(e) => setNuevoEnlace(e.target.value)} />
+                  )}
+                  {esOtro(nuevoProveedor) && (
+                    <Input className="sm:col-span-2" placeholder="Enlace *" value={nuevoEnlace} onChange={(e) => setNuevoEnlace(e.target.value)} />
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={confirmarAgregar} disabled={enviando}>
@@ -462,7 +490,7 @@ export function DetalleVentaDialog({
               <div className="space-y-2 rounded-lg border border-sky-500/40 bg-sky-500/5 p-3">
                 <p className="text-xs font-semibold">Registrar Pedido</p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  <Select value={pedProveedor} onValueChange={(v) => setPedProveedor(v || "")}>
+                  <Select value={pedProveedor} onValueChange={(v) => { setPedProveedor(v || ""); setPedProveedorOtro(""); }}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Proveedor *" /></SelectTrigger>
                     <SelectContent>
                       {proveedores.map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
@@ -471,6 +499,9 @@ export function DetalleVentaDialog({
                   <Input placeholder="Nº Pedido *" value={pedNumero} onChange={(e) => setPedNumero(e.target.value)} />
                   <Input type="date" placeholder="Fecha estimada *" min={new Date().toISOString().slice(0, 10)} value={pedFecha} onChange={(e) => setPedFecha(e.target.value)} />
                 </div>
+                {esOtro(pedProveedor) && (
+                  <Input placeholder="¿Qué plataforma? *" value={pedProveedorOtro} onChange={(e) => setPedProveedorOtro(e.target.value)} />
+                )}
                 <Input placeholder="Enlace *" value={pedEnlace} onChange={(e) => setPedEnlace(e.target.value)} />
                 <div className="flex gap-2">
                   <Button size="sm" className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700" onClick={confirmarPedido} disabled={enviando}>

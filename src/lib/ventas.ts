@@ -14,6 +14,9 @@ export interface ItemVenta {
   precio: number;
   proveedorId: string;
   proveedorNombre: string;
+  /** Nombre libre de la plataforma cuando proveedorId es "Otro" (id 10) —
+      obligatorio en ese caso, igual que ya exigía Compras. */
+  proveedorOtro: string;
   numeroPedido: string;
   enlace: string;
   fechaPedido: string | null;
@@ -138,6 +141,7 @@ interface FilaItemVentaSql {
   precio: string | number | null;
   proveedor_id: string | null;
   proveedor_nombre: string | null;
+  proveedor_otro: string | null;
   numero_pedido: string | null;
   enlace: string | null;
   fecha_pedido: string | null;
@@ -157,6 +161,7 @@ export function mapearItem(row: FilaItemVentaSql): ItemVenta {
     precio: Number(row.precio) || 0,
     proveedorId: row.proveedor_id || "",
     proveedorNombre: row.proveedor_nombre || "",
+    proveedorOtro: row.proveedor_otro || "",
     numeroPedido: row.numero_pedido || "",
     enlace: row.enlace || "",
     fechaPedido: row.fecha_pedido || null,
@@ -291,6 +296,7 @@ export interface DatosNuevoItem {
   costo: number;
   precio: number;
   proveedorId: string;
+  proveedorOtro: string;
   enlace: string;
 }
 
@@ -302,6 +308,7 @@ export interface DatosEditarItem {
 
 export interface DatosRegistrarPedido {
   proveedorId: string;
+  proveedorOtro: string;
   numeroPedido: string;
   fechaEstimada: string;
   enlace: string;
