@@ -51,7 +51,7 @@ export const METODOS_PAGO = [
   { value: "bizum", label: "Bizum" },
 ];
 export const METODOS_PAGO_RECT = [...METODOS_PAGO, { value: "redsys", label: "Redsys" }];
-export const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+export { BANCOS } from "@/lib/bancos";
 
 // Mismos colores/etiquetas que tipoBadgeMap en _mfaRenderResumen (Index.html)
 // — "corregida" tampoco tiene entrada ahí (tipoBadgeMap[tipo] || '' queda en

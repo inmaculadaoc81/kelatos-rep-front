@@ -29,6 +29,7 @@ function clavesMes(mes: Date): string {
  */
 export default function TpvPage() {
   const [segunSistema, setSegunSistema] = useState<Record<string, Record<string, number>>>({});
+  const [segunSistemaDesglosado, setSegunSistemaDesglosado] = useState<Record<string, Record<string, number>>>({});
   const [movimientos, setMovimientos] = useState<MovimientoTpv[]>([]);
   const [importes, setImportes] = useState<TpvImporteApi[]>([]);
   const [fotos, setFotos] = useState<TpvFotoApi[]>([]);
@@ -48,6 +49,7 @@ export default function TpvPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       setSegunSistema(data.segunSistema);
+      setSegunSistemaDesglosado(data.segunSistemaDesglosado);
       setMovimientos(data.movimientos as MovimientoTpv[]);
       setImportes(data.importes as TpvImporteApi[]);
       setFotos(data.fotos as TpvFotoApi[]);
@@ -85,6 +87,7 @@ export default function TpvPage() {
         <DiaDetalleVista
           dia={diaSeleccionado}
           segunSistemaDia={segunSistema[diaSeleccionado] || {}}
+          segunSistemaDesglosadoDia={segunSistemaDesglosado[diaSeleccionado] || {}}
           movimientosDia={movimientos.filter((m) => diaMadrid(m.fecha) === diaSeleccionado)}
           importesDia={importes.filter((i) => i.fecha === diaSeleccionado)}
           fotosDia={fotos.filter((f) => f.fecha === diaSeleccionado)}

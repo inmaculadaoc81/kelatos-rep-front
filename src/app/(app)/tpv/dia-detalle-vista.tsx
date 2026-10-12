@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft2, MoneyRecive, Gallery, Bank, CloseCircle } from "@/lib/icons";
 import { resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
-import { METODOS_TPV, MovimientoTpv, TpvFotoApi, TpvImporteApi } from "@/lib/tpv";
+import { METODOS_TPV, MovimientoTpv, TpvFotoApi, TpvImporteApi, FilaDesgloseTpv, FILAS_DESGLOSE_TPV, filaDesgloseSinBanco } from "@/lib/tpv";
 import { useConfirm } from "@/components/confirm-provider";
 
 function euros(n: number): string {
@@ -33,12 +33,12 @@ function formatearHora(iso: string | null): string {
     de un tipo de pago — solo para consultar, no edita nada. Petición del
     usuario, 2026-10-12: "que salga el modal con cada uno de los cobros,
     solo para ver el listado, no tan grande". */
-function ListadoMovimientosDialog({ metodo, movimientos, onOpenChange }: { metodo: (typeof METODOS_TPV)[number] | null; movimientos: MovimientoTpv[]; onOpenChange: (open: boolean) => void }) {
+function ListadoMovimientosDialog({ fila, movimientos, onOpenChange }: { fila: FilaDesgloseTpv | null; movimientos: MovimientoTpv[]; onOpenChange: (open: boolean) => void }) {
   return (
-    <Dialog open={!!metodo} onOpenChange={onOpenChange}>
+    <Dialog open={!!fila} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base">{metodo?.label}</DialogTitle>
+          <DialogTitle className="text-base">{fila?.label}</DialogTitle>
         </DialogHeader>
         <div className="max-h-80 overflow-y-auto">
           <Table>
@@ -86,6 +86,7 @@ function ListadoMovimientosDialog({ metodo, movimientos, onOpenChange }: { metod
 export function DiaDetalleVista({
   dia,
   segunSistemaDia,
+  segunSistemaDesglosadoDia,
   movimientosDia,
   importesDia,
   fotosDia,
@@ -94,6 +95,7 @@ export function DiaDetalleVista({
 }: {
   dia: string;
   segunSistemaDia: Record<string, number>;
+  segunSistemaDesglosadoDia: Record<string, number>;
   movimientosDia: MovimientoTpv[];
   importesDia: TpvImporteApi[];
   fotosDia: TpvFotoApi[];
@@ -104,7 +106,7 @@ export function DiaDetalleVista({
   const [guardando, setGuardando] = useState<string | null>(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const inputFotoRef = useRef<HTMLInputElement | null>(null);
-  const [metodoListado, setMetodoListado] = useState<(typeof METODOS_TPV)[number] | null>(null);
+  const [filaListado, setFilaListado] = useState<FilaDesgloseTpv | null>(null);
   const [eliminandoFoto, setEliminandoFoto] = useState<number | string | null>(null);
   // Quitar una fila de la vista — no borra ni cambia ningún dato, solo
   // deja de mostrarse en este repaso (no se recuerda al salir y volver
@@ -203,22 +205,34 @@ export function DiaDetalleVista({
 
   const vendido = METODOS_TPV.reduce((acc, m) => acc + (segunSistemaDia[m.value] || 0), 0);
 
+  // Una fila por banco para tarjeta/transferencia (en vez de un total
+  // único por método) — petición del usuario, 2026-10-12: "que no se
+  // sumen... que se vea una fila por cada tipo de transferencia/tarjeta
+  // bancaria". Las filas "sin banco" (datos de antes de este cambio) solo
+  // se añaden si ese día tienen importe — no ensucian un día ya migrado.
+  const filasBase: FilaDesgloseTpv[] = [
+    ...FILAS_DESGLOSE_TPV,
+    ...(["tarjeta", "transferencia"] as const)
+      .map((m) => filaDesgloseSinBanco(m))
+      .filter((f) => (segunSistemaDesglosadoDia[f.clave] || 0) !== 0 || importesDia.some((i) => i.metodo === f.clave)),
+  ];
+
   // Todos los tipos, siempre — una fila en 0 € es información tan válida
   // como una con movimiento. Petición del usuario, 2026-10-12: "que
   // salgan todos los tipos de pago... si no se cobró nada que salga 0".
-  const filas = METODOS_TPV.reduce<{ metodo: (typeof METODOS_TPV)[number]; sistema: number; confirmado: number; totalAcumulado: number }[]>(
-    (acc, m) => {
-      const sistema = segunSistemaDia[m.value] || 0;
-      const v = valorDeclarado(m.value);
+  const filas = filasBase.reduce<{ fila: FilaDesgloseTpv; sistema: number; confirmado: number; totalAcumulado: number }[]>(
+    (acc, fila) => {
+      const sistema = segunSistemaDesglosadoDia[fila.clave] || 0;
+      const v = valorDeclarado(fila.clave);
       const previo = acc.length ? acc[acc.length - 1].totalAcumulado : 0;
       const totalAcumulado = Math.round((previo + v.importe) * 100) / 100;
-      return [...acc, { metodo: m, sistema, confirmado: v.importe, totalAcumulado }];
+      return [...acc, { fila, sistema, confirmado: v.importe, totalAcumulado }];
     },
     []
   );
   const confirmadoTotal = filas.length ? filas[filas.length - 1].totalAcumulado : 0;
   const diferencia = Math.round((vendido - confirmadoTotal) * 100) / 100;
-  const filasVisibles = filas.filter((f) => !filasOcultas.has(f.metodo.value));
+  const filasVisibles = filas.filter((f) => !filasOcultas.has(f.fila.clave));
 
   return (
     <div className="space-y-4">
@@ -265,15 +279,15 @@ export function DiaDetalleVista({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filasVisibles.map(({ metodo, sistema, confirmado, totalAcumulado }) => {
-                const dirty = esDirty(metodo.value);
-                const v = valorDeclarado(metodo.value);
+              {filasVisibles.map(({ fila, sistema, confirmado, totalAcumulado }) => {
+                const dirty = esDirty(fila.clave);
+                const v = valorDeclarado(fila.clave);
                 return (
-                  <TableRow key={metodo.value}>
-                    <TableCell className="whitespace-nowrap text-sm font-medium">{metodo.label}</TableCell>
+                  <TableRow key={fila.clave}>
+                    <TableCell className="whitespace-nowrap text-sm font-medium">{fila.label}</TableCell>
                     <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
                       {sistema !== 0 ? (
-                        <button type="button" className="underline-offset-2 hover:underline" title="Ver los cobros de este tipo" onClick={() => setMetodoListado(metodo)}>
+                        <button type="button" className="underline-offset-2 hover:underline" title="Ver los cobros de este tipo" onClick={() => setFilaListado(fila)}>
                           {euros(sistema)}
                         </button>
                       ) : (
@@ -286,23 +300,23 @@ export function DiaDetalleVista({
                           className="h-8 w-24"
                           placeholder="0,00"
                           value={confirmado}
-                          onChange={(n) => setDeclarado((prev) => ({ ...prev, [metodo.value]: { importe: n, notas: v.notas } }))}
+                          onChange={(n) => setDeclarado((prev) => ({ ...prev, [fila.clave]: { importe: n, notas: v.notas } }))}
                         />
                         <Input
                           className="h-8 min-w-32 flex-1"
                           placeholder="Nota (opcional)"
                           maxLength={500}
                           value={v.notas}
-                          onChange={(e) => setDeclarado((prev) => ({ ...prev, [metodo.value]: { importe: v.importe, notas: e.target.value } }))}
+                          onChange={(e) => setDeclarado((prev) => ({ ...prev, [fila.clave]: { importe: v.importe, notas: e.target.value } }))}
                         />
                         <Button
                           size="sm"
                           variant={dirty ? "default" : "outline"}
                           className="h-8 shrink-0"
-                          disabled={guardando === metodo.value || !dirty}
-                          onClick={() => guardarDeclaracion(metodo.value)}
+                          disabled={guardando === fila.clave || !dirty}
+                          onClick={() => guardarDeclaracion(fila.clave)}
                         >
-                          {guardando === metodo.value ? "Guardando…" : "Guardar"}
+                          {guardando === fila.clave ? "Guardando…" : "Guardar"}
                         </Button>
                       </div>
                     </TableCell>
@@ -312,7 +326,7 @@ export function DiaDetalleVista({
                         type="button"
                         className="text-muted-foreground hover:text-destructive"
                         title="Quitar de la vista (no borra nada)"
-                        onClick={() => setFilasOcultas((prev) => new Set(prev).add(metodo.value))}
+                        onClick={() => setFilasOcultas((prev) => new Set(prev).add(fila.clave))}
                       >
                         <CloseCircle className="size-4" />
                       </button>
@@ -356,9 +370,9 @@ export function DiaDetalleVista({
       </div>
 
       <ListadoMovimientosDialog
-        metodo={metodoListado}
-        movimientos={metodoListado ? movimientosDia.filter((m) => m.metodo === metodoListado.value) : []}
-        onOpenChange={(o) => !o && setMetodoListado(null)}
+        fila={filaListado}
+        movimientos={filaListado ? movimientosDia.filter((m) => m.metodo === filaListado.metodo && m.banco === filaListado.banco) : []}
+        onOpenChange={(o) => !o && setFilaListado(null)}
       />
     </div>
   );

@@ -64,7 +64,7 @@ export function PiezaStockFormDialog({
   /** Si puede editar nombre/precio/categoría/proveedor/etc. (no afecta a
       pedir reposición ni marcar recibido, que siguen disponibles para
       cualquier empleado). Por defecto true: Punto Limpio y el alta desde
-      "Pedido por pantallazo" no pasan esta prop y mantienen su
+      "Subir pedido con IA" no pasan esta prop y mantienen su
       comportamiento de siempre. Petición del usuario, 2026-10-10: la
       cuenta de soporte (empleado) ya no gestiona el catálogo, solo el
       superadmin. */
@@ -304,7 +304,7 @@ export function PiezaStockFormDialog({
                 disabled={soloLecturaCatalogo}
                 onChange={(e) => actualizar("nombreInternoProveedor", e.target.value)}
               />
-              <p className="text-[11px] text-muted-foreground">Lo usa la IA de &quot;Pedido por pantallazo&quot; para reconocer esta pieza — obligatorio si no hay nombre comercial.</p>
+              <p className="text-[11px] text-muted-foreground">Lo usa la IA de &quot;Subir pedido con IA&quot; para reconocer esta pieza — obligatorio si no hay nombre comercial.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="spCodigoProveedor">Código de proveedor</Label>

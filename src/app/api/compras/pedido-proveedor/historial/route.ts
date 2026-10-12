@@ -41,7 +41,7 @@ function mapear(f: FilaRegistroSql): RegistroPedidoProveedor {
 }
 
 /** Proxy de GET /v1/compras/pedido-proveedor/registros — para el botón
-    "Historial" junto a "Pedido por pantallazo": qué se ha registrado con
+    "Historial" junto a "Subir pedido con IA": qué se ha registrado con
     esa función, más reciente primero. */
 export async function GET() {
   try {

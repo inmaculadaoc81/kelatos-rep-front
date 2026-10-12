@@ -199,9 +199,9 @@ export default function ComprasPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setPedidoProveedorAbierto(true)}>
-            <DocumentUpload className="size-4" /> Pedido por pantallazo
+            <DocumentUpload className="size-4" /> Subir pedido con IA
           </Button>
-          <Button variant="outline" size="icon" className="size-8" onClick={() => setHistorialPedidoProveedorAbierto(true)} title="Historial de Pedido por pantallazo">
+          <Button variant="outline" size="icon" className="size-8" onClick={() => setHistorialPedidoProveedorAbierto(true)} title="Historial de Subir pedido con IA">
             <Clock className="size-4" />
           </Button>
           <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">

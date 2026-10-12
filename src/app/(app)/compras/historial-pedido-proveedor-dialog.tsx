@@ -12,7 +12,7 @@ function fechaHora(iso: string): string {
   });
 }
 
-/** Historial breve de lo registrado con "Pedido por pantallazo" — una
+/** Historial breve de lo registrado con "Subir pedido con IA" — una
     tarjeta por cada vez que se pulsó "Registrar pedidos", con la lista de
     líneas aplicadas y a dónde fue cada una (stock o resguardo). Petición
     del usuario, 2026-10-12: poder ver rápido qué se ha dado de alta con
@@ -35,7 +35,7 @@ export function HistorialPedidoProveedorDialog({ open, onOpenChange }: { open: b
       <DialogContent className="flex max-h-[85vh] w-full flex-col gap-0 p-0 sm:max-w-xl">
         <div className="flex items-center gap-2 border-b px-4 py-3">
           <DialogTitle className="flex items-center gap-1.5">
-            <Clock className="size-5" /> Historial de &quot;Pedido por pantallazo&quot;
+            <Clock className="size-5" /> Historial de &quot;Subir pedido con IA&quot;
           </DialogTitle>
         </div>
 

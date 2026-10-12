@@ -53,6 +53,7 @@ export function validarFormaPago(valor: ValorFormaPago, total?: number): string 
   if (!valor.metodo) return "Selecciona la forma de pago";
   if (valor.metodo === "tarjeta" && !valor.banco) return "Selecciona el banco para tarjeta bancaria";
   if (valor.metodo === "transferencia" && !valor.referencia.trim()) return "Indica la referencia de la transferencia";
+  if (valor.metodo === "transferencia" && !valor.banco) return "Selecciona el banco para transferencia bancaria";
 
   if (valor.metodo === METODO_MULTIFORMA) {
     const [a, b] = valor.desglose;
@@ -61,6 +62,8 @@ export function validarFormaPago(valor: ValorFormaPago, total?: number): string 
     if (b.forma === "tarjeta" && !b.banco) return "Selecciona el banco de la segunda forma de pago";
     if (a.forma === "transferencia" && !a.referencia?.trim()) return "Indica la referencia de la primera forma de pago";
     if (b.forma === "transferencia" && !b.referencia?.trim()) return "Indica la referencia de la segunda forma de pago";
+    if (a.forma === "transferencia" && !a.banco) return "Selecciona el banco de la primera forma de pago";
+    if (b.forma === "transferencia" && !b.banco) return "Selecciona el banco de la segunda forma de pago";
     if (!(a.monto > 0)) return "El importe de la primera forma de pago debe ser mayor que 0";
     if (!(b.monto > 0)) return "El importe de la segunda forma de pago debe ser mayor que 0";
     if (total !== undefined) {
@@ -83,13 +86,13 @@ export function validarFormaPago(valor: ValorFormaPago, total?: number): string 
 export function formaPagoParaPayload(valor: ValorFormaPago) {
   return {
     formaPago: valor.metodo,
-    banco: valor.metodo === "tarjeta" ? valor.banco : "",
+    banco: valor.metodo === "tarjeta" || valor.metodo === "transferencia" ? valor.banco : "",
     referencia: valor.metodo === "transferencia" ? valor.referencia.trim() : "",
     formaPagoDesglose: valor.metodo === METODO_MULTIFORMA
       ? valor.desglose.map((d) => ({
           forma: d.forma,
           monto: d.monto,
-          banco: d.forma === "tarjeta" ? d.banco : undefined,
+          banco: d.forma === "tarjeta" || d.forma === "transferencia" ? d.banco : undefined,
           referencia: d.forma === "transferencia" ? d.referencia : undefined,
         }))
       : undefined,
@@ -119,7 +122,7 @@ function SubFormaPago({
           {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
         </SelectContent>
       </Select>
-      {entrada.forma === "tarjeta" && (
+      {(entrada.forma === "tarjeta" || entrada.forma === "transferencia") && (
         <div className="space-y-1">
           <Label className="text-[11px] text-muted-foreground">Banco *</Label>
           <Select value={entrada.banco || ""} onValueChange={(v) => onChange({ banco: v || "" })} disabled={disabled}>
@@ -195,7 +198,7 @@ export function SelectorFormaPago({
               <SelectItem value={METODO_MULTIFORMA}>Multiforma (varias formas de pago)</SelectItem>
             </SelectContent>
           </Select>
-          {value.metodo === "tarjeta" && (
+          {(value.metodo === "tarjeta" || value.metodo === "transferencia") && (
             <div className="mt-1.5 space-y-1">
               <Label className="text-xs text-muted-foreground">Banco *</Label>
               <Select value={value.banco} onValueChange={(v) => onChange({ ...value, banco: v || "" })} disabled={disabled}>

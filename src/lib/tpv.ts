@@ -12,6 +12,7 @@
  * usuario, 2026-10-09/12.
  */
 import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConIva } from "@/lib/facturas-cliente";
+import { BANCOS } from "@/lib/bancos";
 
 export const METODOS_TPV = [
   { value: "tarjeta", label: "Tarjeta bancaria" },
@@ -118,6 +119,91 @@ export function segunSistemaPorDia(facturas: FacturaCliente[]): Record<string, R
   return out;
 }
 
+// ── Desglose por banco (tarjeta/transferencia) para la vista de un día ──
+// Petición del usuario, 2026-10-12: que "Tarjeta bancaria" y
+// "Transferencia bancaria" no se sumen en una sola fila, sino una fila por
+// banco (mismo dato "banco" que ya guarda tarjeta desde siempre, extendido
+// a transferencia ese mismo día). segunSistemaPorDia()/METODOS_TPV NO se
+// tocan — los sigue usando el calendario mensual (ahí no hace falta tanto
+// detalle) y el libro de movimientos.
+
+const SIN_BANCO = "_sin_banco";
+
+export interface FilaDesgloseTpv {
+  clave: string;
+  metodo: MetodoTpv;
+  banco: string | null;
+  label: string;
+}
+
+/** Filas que SIEMPRE se muestran (haya o no movimiento ese día) — mismo
+    criterio ya usado para METODOS_TPV. Las filas "sin banco" (datos de
+    antes de este cambio, sin banco guardado) se añaden aparte, solo si
+    tienen importe, para no ensuciar un día ya migrado. */
+export const FILAS_DESGLOSE_TPV: FilaDesgloseTpv[] = [
+  ...BANCOS.map((b) => ({ clave: `tarjeta:${b}`, metodo: "tarjeta" as MetodoTpv, banco: b, label: `Tarjeta bancaria · ${b}` })),
+  { clave: "tarjeta_virtual", metodo: "tarjeta_virtual" as MetodoTpv, banco: null, label: "Tarjeta virtual" },
+  { clave: "bizum", metodo: "bizum" as MetodoTpv, banco: null, label: "Bizum" },
+  ...BANCOS.map((b) => ({ clave: `transferencia:${b}`, metodo: "transferencia" as MetodoTpv, banco: b, label: `Transferencia bancaria · ${b}` })),
+  { clave: "efectivo", metodo: "efectivo" as MetodoTpv, banco: null, label: "Efectivo" },
+];
+
+export function claveDesgloseTpv(metodo: string, banco: string | null | undefined): string {
+  if (metodo === "tarjeta" || metodo === "transferencia") {
+    const b = (banco || "").trim();
+    return b ? `${metodo}:${b}` : `${metodo}:${SIN_BANCO}`;
+  }
+  return metodo;
+}
+
+export function filaDesgloseSinBanco(metodo: "tarjeta" | "transferencia"): FilaDesgloseTpv {
+  return {
+    clave: `${metodo}:${SIN_BANCO}`,
+    metodo,
+    banco: null,
+    label: `${etiquetaMetodoTpv(metodo)} · Sin especificar`,
+  };
+}
+
+/** Igual que segunSistemaPorDia() pero la clave es claveDesgloseTpv() en
+    vez del método plano — una entrada por banco para tarjeta/transferencia. */
+export function segunSistemaPorDiaDesglosado(facturas: FacturaCliente[]): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  const suma = (dia: string, clave: string, delta: number) => {
+    if (!dia) return;
+    if (!out[dia]) out[dia] = {};
+    out[dia][clave] = redondear((out[dia][clave] || 0) + delta);
+  };
+
+  for (const f of facturas) {
+    const dia = diaMadrid(f.fecha);
+    if (!dia) continue;
+
+    const esMultiforma = (f.formaPago || "").trim().toLowerCase() === "multiforma";
+    const esDevolucionManualNegativa = f.tipo === "manual" && f.total < 0;
+    const esRectificativa = f.tipo === "rectificativa" || esDevolucionManualNegativa;
+    if (!esRectificativa && estadoFacturaDerivado(f) !== "Cobrada") continue;
+
+    if (esMultiforma) {
+      if (!f.formaPagoDesglose?.length) continue;
+      for (const d of f.formaPagoDesglose) {
+        if (!METODOS_TPV_VALORES.includes(d.forma)) continue;
+        const monto = redondear(d.monto);
+        if (monto <= 0) continue;
+        suma(dia, claveDesgloseTpv(d.forma, d.banco), esRectificativa ? -monto : monto);
+      }
+      continue;
+    }
+
+    const metodo = (f.formaPago || "").trim().toLowerCase();
+    if (!METODOS_TPV_VALORES.includes(metodo)) continue;
+    const importe = redondear(Math.abs(montoConIva(f)));
+    suma(dia, claveDesgloseTpv(metodo, f.banco), esRectificativa ? -importe : importe);
+  }
+
+  return out;
+}
+
 // ── Libro de movimientos (vista "TPV" al estilo Efectivo/Tarjetas) ──────
 
 export type TipoMovimientoTpv = "cobro" | "devolucion";
@@ -127,6 +213,9 @@ export interface MovimientoTpv {
   fecha: string | null;
   tipo: TipoMovimientoTpv;
   metodo: MetodoTpv;
+  /** Solo relevante cuando metodo es tarjeta/transferencia — para filtrar
+      el listado de movimientos por banco en el desglose del día. */
+  banco: string | null;
   origen: string;
   concepto: string;
   referencia: string;
@@ -173,11 +262,13 @@ export function movimientosDeTpv(facturas: FacturaCliente[]): MovimientoTpv[] {
       for (const metodo of METODOS_TPV_VALORES as readonly MetodoTpv[]) {
         const monto = redondear(montoPorFormaDesglose(f.formaPagoDesglose, metodo));
         if (monto <= 0) continue;
+        const entradaDesglose = f.formaPagoDesglose.find((d) => d.forma === metodo);
         out.push({
           id: `doc:${f.numero}:${metodo}`,
           fecha: f.fecha,
           tipo: esRectificativa ? "devolucion" : "cobro",
           metodo,
+          banco: entradaDesglose?.banco || null,
           origen: origenDe(f),
           concepto: `${conceptoDe(f)} (parte en ${etiquetaMetodoTpv(metodo).toLowerCase()})`,
           referencia: f.resguardo,
@@ -197,6 +288,7 @@ export function movimientosDeTpv(facturas: FacturaCliente[]): MovimientoTpv[] {
       fecha: f.fecha,
       tipo: esRectificativa ? "devolucion" : "cobro",
       metodo: metodo as MetodoTpv,
+      banco: f.banco || null,
       origen: origenDe(f),
       concepto: conceptoDe(f),
       referencia: f.resguardo,

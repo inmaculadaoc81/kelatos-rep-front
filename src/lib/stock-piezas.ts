@@ -8,7 +8,7 @@ interface FilaStockPiezaSql {
   referencia: string;
   nombre: string | null;
   /** Nombre EXACTO tal cual lo pone el proveedor en su catálogo — usado
-      por la IA de "Pedido por pantallazo" para reconocer si un producto
+      por la IA de "Subir pedido con IA" para reconocer si un producto
       leído ya existe, mucho más fiable que comparar contra el nombre
       comercial. Petición del usuario, 2026-10-12. */
   nombre_interno_proveedor: string | null;

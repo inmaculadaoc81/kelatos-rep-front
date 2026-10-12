@@ -349,7 +349,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-2xl lg:max-w-3xl">
         <div className="flex items-center justify-between gap-3 border-b px-4 py-3 pr-12">
-          <DialogTitle className="flex items-center gap-1.5"><DocumentUpload className="size-5" /> Pedido por pantallazo</DialogTitle>
+          <DialogTitle className="flex items-center gap-1.5"><DocumentUpload className="size-5" /> Subir pedido con IA</DialogTitle>
         </div>
 
         <div className="flex min-h-0 flex-1">
