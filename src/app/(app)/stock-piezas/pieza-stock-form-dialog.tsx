@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock, mapearEnlaceCompra, mapearPedidoStock } from "@/lib/stock-piezas";
 
 function vacio(): DatosStockPiezaForm {
-  return { referencia: "", nombre: "", nombreInternoProveedor: "", codigoProveedor: "", idPedidoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
+  return { referencia: "", nombre: "", nombreInternoProveedor: "", nombresInternoProveedorAlt: [], codigoProveedor: "", idPedidoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
 }
 
 function desdeExistente(p: StockPieza): DatosStockPiezaForm {
@@ -25,6 +25,7 @@ function desdeExistente(p: StockPieza): DatosStockPiezaForm {
     referencia: p.referencia,
     nombre: p.nombre,
     nombreInternoProveedor: p.nombreInternoProveedor,
+    nombresInternoProveedorAlt: p.nombresInternoProveedorAlt,
     codigoProveedor: p.codigoProveedor,
     idPedidoProveedor: p.idPedidoProveedor,
     descripcion: p.descripcion,
@@ -75,6 +76,7 @@ export function PiezaStockFormDialog({
 }) {
   const [datos, setDatos] = useState<DatosStockPiezaForm>(() => (piezaExistente ? desdeExistente(piezaExistente) : { ...vacio(), ...valoresIniciales }));
   const [enviando, setEnviando] = useState(false);
+  const [nuevoNombreAlt, setNuevoNombreAlt] = useState("");
   const esEdicion = piezaExistente !== null;
 
   const [historial, setHistorial] = useState<{ id: number; fecha_hora: string; usuario: string | null; descripcion: string }[]>([]);
@@ -132,6 +134,25 @@ export function PiezaStockFormDialog({
 
   function actualizar<K extends keyof DatosStockPiezaForm>(campo: K, valor: DatosStockPiezaForm[K]) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
+  }
+
+  // La misma pieza puede llamarse distinto según el proveedor — se guardan
+  // en la propia fila (no es una tabla aparte como "Enlaces de compra"),
+  // así que solo se tocan en local y se mandan juntas al Guardar/Crear.
+  // Petición del usuario, 2026-10-12.
+  function agregarNombreAlt() {
+    const n = nuevoNombreAlt.trim();
+    if (!n) return;
+    if (datos.nombresInternoProveedorAlt.some((x) => x.toLowerCase() === n.toLowerCase())) {
+      setNuevoNombreAlt("");
+      return;
+    }
+    actualizar("nombresInternoProveedorAlt", [...datos.nombresInternoProveedorAlt, n]);
+    setNuevoNombreAlt("");
+  }
+
+  function quitarNombreAlt(nombre: string) {
+    actualizar("nombresInternoProveedorAlt", datos.nombresInternoProveedorAlt.filter((n) => n !== nombre));
   }
 
   async function guardar() {
@@ -305,6 +326,35 @@ export function PiezaStockFormDialog({
                 onChange={(e) => actualizar("nombreInternoProveedor", e.target.value)}
               />
               <p className="text-[11px] text-muted-foreground">Lo usa la IA de &quot;Subir pedido con IA&quot; para reconocer esta pieza — obligatorio si no hay nombre comercial.</p>
+
+              {datos.nombresInternoProveedorAlt.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {datos.nombresInternoProveedorAlt.map((n) => (
+                    <span key={n} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                      {n}
+                      {!soloLecturaCatalogo && (
+                        <button type="button" className="text-muted-foreground hover:text-destructive" title="Quitar" onClick={() => quitarNombreAlt(n)}>
+                          <Trash className="size-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {!soloLecturaCatalogo && (
+                <div className="flex items-center gap-1.5 pt-1">
+                  <Input
+                    className="h-7 text-xs"
+                    placeholder="Otro nombre con el que algún proveedor la llame…"
+                    value={nuevoNombreAlt}
+                    onChange={(e) => setNuevoNombreAlt(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); agregarNombreAlt(); } }}
+                  />
+                  <Button size="icon-sm" variant="outline" className="h-7 w-7 shrink-0" onClick={agregarNombreAlt} title="Añadir nombre alternativo">
+                    <AddCircle className="size-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="spCodigoProveedor">Código de proveedor</Label>

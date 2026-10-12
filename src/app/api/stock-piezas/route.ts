@@ -44,6 +44,7 @@ export async function POST(req: Request) {
       referencia,
       nombre: nombre || "",
       nombre_interno_proveedor: nombreInternoProveedor || "",
+      nombres_interno_proveedor_alt: Array.isArray(datos.nombresInternoProveedorAlt) ? datos.nombresInternoProveedorAlt.map((n) => n.trim()).filter(Boolean) : [],
       codigo_proveedor: (datos.codigoProveedor || "").trim(),
       id_pedido_proveedor: (datos.idPedidoProveedor || "").trim(),
       descripcion: (datos.descripcion || "").trim(),

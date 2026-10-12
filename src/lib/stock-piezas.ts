@@ -12,6 +12,10 @@ interface FilaStockPiezaSql {
       leído ya existe, mucho más fiable que comparar contra el nombre
       comercial. Petición del usuario, 2026-10-12. */
   nombre_interno_proveedor: string | null;
+  /** Nombres alternativos al principal — la misma pieza puede llamarse
+      distinto según el proveedor que la venda. Petición del usuario,
+      2026-10-12. */
+  nombres_interno_proveedor_alt: string[] | null;
   /** Código/ID del artículo en el catálogo del proveedor (si se conoce) —
       otra forma de identificarlo, aparte del nombre. */
   codigo_proveedor: string | null;
@@ -38,6 +42,7 @@ export interface StockPieza {
       alguien le ponga uno a mano (ver nombreInternoProveedor). */
   nombre: string;
   nombreInternoProveedor: string;
+  nombresInternoProveedorAlt: string[];
   codigoProveedor: string;
   idPedidoProveedor: string;
   descripcion: string;
@@ -58,6 +63,7 @@ export interface DatosStockPiezaForm {
   referencia: string;
   nombre: string;
   nombreInternoProveedor: string;
+  nombresInternoProveedorAlt: string[];
   codigoProveedor: string;
   idPedidoProveedor: string;
   descripcion: string;
@@ -164,6 +170,7 @@ export function mapearStockPieza(row: FilaStockPiezaSql): StockPieza {
     referencia: row.referencia,
     nombre: row.nombre || "",
     nombreInternoProveedor: row.nombre_interno_proveedor || "",
+    nombresInternoProveedorAlt: Array.isArray(row.nombres_interno_proveedor_alt) ? row.nombres_interno_proveedor_alt : [],
     codigoProveedor: row.codigo_proveedor || "",
     idPedidoProveedor: row.id_pedido_proveedor || "",
     descripcion: row.descripcion || "",
