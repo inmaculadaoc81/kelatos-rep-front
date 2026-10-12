@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, Warning2, Add, Edit2, Trash, ScanBarcode } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Warning2, Add, Edit2, Trash, ScanBarcode, TickCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -188,6 +188,7 @@ export default function StockPiezasPage() {
             <TableRow>
               <TableHead>Referencia</TableHead>
               <TableHead>Nombre</TableHead>
+              <TableHead title="Si tiene puesto el nombre interno (proveedor), para que la IA la reconozca">Equivalente</TableHead>
               <TableHead>Categoría</TableHead>
               <TableHead className="text-right">Coste</TableHead>
               <TableHead className="text-right">Precio cliente</TableHead>
@@ -202,7 +203,7 @@ export default function StockPiezasPage() {
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 10 }).map((__, j) => (
+                  {Array.from({ length: 11 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -212,7 +213,7 @@ export default function StockPiezasPage() {
 
             {!cargando && filtradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                   Sin resultados
                 </TableCell>
               </TableRow>
@@ -237,6 +238,17 @@ export default function StockPiezasPage() {
                       <div className="text-xs text-sky-600 dark:text-sky-400" title="Nombre interno (proveedor)">
                         {p.nombreInternoProveedor}
                       </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {p.nombreInternoProveedor ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400" title={p.nombreInternoProveedor}>
+                        <TickCircle className="size-3" /> Sí
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400" title="Sin nombre interno (proveedor) — la IA de Subir pedido con IA no podrá reconocerla por nombre">
+                        <Warning2 className="size-3" /> No
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.categoria || "-"}</TableCell>
