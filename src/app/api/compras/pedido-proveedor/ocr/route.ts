@@ -12,6 +12,10 @@ export interface LineaPedidoProveedorLeida {
       hay) — se usa para reconocer una pieza ya existente con más
       fiabilidad que comparando solo nombres. */
   codigoProveedor: string | null;
+  /** Código corto que aparece junto/debajo al nombre del artículo en el
+      pantallazo (p. ej. "#R696190" en ASWO) — distinto del código de
+      fabricante, otra seña exacta para el emparejamiento. */
+  idPedidoProveedor: string | null;
   cantidad: number;
   precioUnitario: number | null;
   /** Texto crudo leído bajo "Texto del pedido" — se muestra en la revisión

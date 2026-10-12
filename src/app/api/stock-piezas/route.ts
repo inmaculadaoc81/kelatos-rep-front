@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       nombre: nombre || "",
       nombre_interno_proveedor: nombreInternoProveedor || "",
       codigo_proveedor: (datos.codigoProveedor || "").trim(),
+      id_pedido_proveedor: (datos.idPedidoProveedor || "").trim(),
       descripcion: (datos.descripcion || "").trim(),
       categoria: (datos.categoria || "").trim(),
       coste_interno: datos.costeInterno || 0,

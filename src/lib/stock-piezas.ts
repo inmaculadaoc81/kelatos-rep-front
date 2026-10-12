@@ -15,6 +15,11 @@ interface FilaStockPiezaSql {
   /** Código/ID del artículo en el catálogo del proveedor (si se conoce) —
       otra forma de identificarlo, aparte del nombre. */
   codigo_proveedor: string | null;
+  /** Código corto que el proveedor muestra junto al nombre del artículo en
+      su pantalla de pedido (p. ej. "#R696190" en ASWO) — distinto del
+      código de fabricante. Tercera seña exacta para el emparejamiento
+      automático. Petición del usuario, 2026-10-12. */
+  id_pedido_proveedor: string | null;
   descripcion: string | null;
   coste_interno: string | number | null;
   precio_cliente: string | number | null;
@@ -34,6 +39,7 @@ export interface StockPieza {
   nombre: string;
   nombreInternoProveedor: string;
   codigoProveedor: string;
+  idPedidoProveedor: string;
   descripcion: string;
   costeInterno: number;
   precioCliente: number;
@@ -53,6 +59,7 @@ export interface DatosStockPiezaForm {
   nombre: string;
   nombreInternoProveedor: string;
   codigoProveedor: string;
+  idPedidoProveedor: string;
   descripcion: string;
   categoria: string;
   costeInterno: number;
@@ -158,6 +165,7 @@ export function mapearStockPieza(row: FilaStockPiezaSql): StockPieza {
     nombre: row.nombre || "",
     nombreInternoProveedor: row.nombre_interno_proveedor || "",
     codigoProveedor: row.codigo_proveedor || "",
+    idPedidoProveedor: row.id_pedido_proveedor || "",
     descripcion: row.descripcion || "",
     costeInterno: numero(row.coste_interno),
     precioCliente,

@@ -93,6 +93,7 @@ export default function StockPiezasPage() {
           p.nombre.toLowerCase().includes(q) ||
           p.nombreInternoProveedor.toLowerCase().includes(q) ||
           p.codigoProveedor.toLowerCase().includes(q) ||
+          p.idPedidoProveedor.toLowerCase().includes(q) ||
           p.descripcion.toLowerCase().includes(q) ||
           p.proveedor.toLowerCase().includes(q)
       );

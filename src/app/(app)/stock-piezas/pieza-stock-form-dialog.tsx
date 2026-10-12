@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock, mapearEnlaceCompra, mapearPedidoStock } from "@/lib/stock-piezas";
 
 function vacio(): DatosStockPiezaForm {
-  return { referencia: "", nombre: "", nombreInternoProveedor: "", codigoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
+  return { referencia: "", nombre: "", nombreInternoProveedor: "", codigoProveedor: "", idPedidoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
 }
 
 function desdeExistente(p: StockPieza): DatosStockPiezaForm {
@@ -26,6 +26,7 @@ function desdeExistente(p: StockPieza): DatosStockPiezaForm {
     nombre: p.nombre,
     nombreInternoProveedor: p.nombreInternoProveedor,
     codigoProveedor: p.codigoProveedor,
+    idPedidoProveedor: p.idPedidoProveedor,
     descripcion: p.descripcion,
     categoria: p.categoria,
     costeInterno: p.costeInterno,
@@ -308,7 +309,20 @@ export function PiezaStockFormDialog({
             <div className="space-y-1.5">
               <Label htmlFor="spCodigoProveedor">Código de proveedor</Label>
               <Input id="spCodigoProveedor" value={datos.codigoProveedor} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("codigoProveedor", e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">Ej: el &quot;Cod. fabricante&quot; de la columna del proveedor.</p>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="spIdPedidoProveedor">ID de pedido (proveedor)</Label>
+            <Input
+              id="spIdPedidoProveedor"
+              placeholder="Ej: R696190 (el código corto junto al nombre)"
+              value={datos.idPedidoProveedor}
+              disabled={soloLecturaCatalogo}
+              onChange={(e) => actualizar("idPedidoProveedor", e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">Tercera seña para que la IA reconozca la pieza — opcional, basta con una de las tres.</p>
           </div>
 
           <div className="space-y-1.5">

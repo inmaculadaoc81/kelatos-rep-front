@@ -27,6 +27,7 @@ interface CandidatoResguardo {
 interface LineaPedidoEditable {
   nombre: string;
   codigoProveedor: string;
+  idPedidoProveedor: string;
   cantidad: number;
   textoPedido: string;
   aplicar: boolean;
@@ -57,6 +58,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
   return {
     nombre: l.nombre,
     codigoProveedor: l.codigoProveedor || "",
+    idPedidoProveedor: l.idPedidoProveedor || "",
     cantidad: l.cantidad,
     textoPedido: l.textoPedido,
     aplicar: true,
@@ -259,6 +261,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 nombre: l.nombreComercial.trim(),
                 nombreInternoProveedor: l.nombreInternoProveedor.trim(),
                 codigoProveedor: l.codigoProveedor.trim(),
+                idPedidoProveedor: l.idPedidoProveedor.trim(),
                 descripcion: l.textoPedido ? `Detectado en pedido ${proveedorNombre} — ref. original: ${l.textoPedido}` : "",
                 categoria: l.categoria, costeInterno: l.costeInterno, precioCliente: l.precioCliente, manoObra: 0,
                 proveedor: proveedorNombre, stockDisponible: 0, stockMinimo: 0,
@@ -415,6 +418,10 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground">Código proveedor</Label>
                                     <Input className="h-8" value={l.codigoProveedor} onChange={(e) => actualizar(i, { codigoProveedor: e.target.value })} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">ID de pedido</Label>
+                                    <Input className="h-8" value={l.idPedidoProveedor} onChange={(e) => actualizar(i, { idPedidoProveedor: e.target.value })} />
                                   </div>
                                   <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground">Nombre comercial (opcional)</Label>
