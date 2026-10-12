@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft2, MoneyRecive, Gallery, Bank } from "@/lib/icons";
+import { ArrowLeft2, MoneyRecive, Gallery, Bank, CloseCircle } from "@/lib/icons";
 import { resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
 import { METODOS_TPV, MovimientoTpv, TpvFotoApi, TpvImporteApi } from "@/lib/tpv";
+import { useConfirm } from "@/components/confirm-provider";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { style: "currency", currency: "EUR" });
@@ -104,6 +105,8 @@ export function DiaDetalleVista({
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const inputFotoRef = useRef<HTMLInputElement | null>(null);
   const [metodoListado, setMetodoListado] = useState<(typeof METODOS_TPV)[number] | null>(null);
+  const [eliminandoFoto, setEliminandoFoto] = useState<number | string | null>(null);
+  const confirmar = useConfirm();
 
   const importePorMetodo = new Map(importesDia.map((i) => [i.metodo, i]));
 
@@ -170,6 +173,26 @@ export function DiaDetalleVista({
       onCambiado();
     } finally {
       setSubiendoFoto(false);
+    }
+  }
+
+  async function eliminarFoto(foto: TpvFotoApi) {
+    const ok = await confirmar(`¿Eliminar esta foto del ticket de cierre?`, {
+      titulo: "Eliminar foto",
+      detalle: "No se puede deshacer.",
+    });
+    if (!ok) return;
+    setEliminandoFoto(foto.id);
+    try {
+      const res = await fetch(`/api/tpv/fotos/${foto.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Foto eliminada");
+      onCambiado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEliminandoFoto(null);
     }
   }
 
@@ -286,10 +309,21 @@ export function DiaDetalleVista({
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MoneyRecive className="size-3.5" /> Ticket de cierre:</span>
         {fotosDia.map((f) => (
-          <a key={f.id} href={`/api/tpv/archivo/${f.drive_file_id}`} target="_blank" rel="noopener noreferrer" className="block size-10 overflow-hidden rounded-md border bg-background" title={f.nombre_original || "Foto de cierre"}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/api/tpv/archivo/${f.drive_file_id}`} alt="Foto de cierre TPV" className="size-full object-cover" />
-          </a>
+          <div key={f.id} className="relative size-10 shrink-0">
+            <a href={`/api/tpv/archivo/${f.drive_file_id}`} target="_blank" rel="noopener noreferrer" className="block size-10 overflow-hidden rounded-md border bg-background" title={f.nombre_original || "Foto de cierre"}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/api/tpv/archivo/${f.drive_file_id}`} alt="Foto de cierre TPV" className="size-full object-cover" />
+            </a>
+            <button
+              type="button"
+              className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-background text-muted-foreground shadow hover:text-destructive disabled:opacity-50"
+              title="Eliminar foto"
+              disabled={eliminandoFoto === f.id}
+              onClick={() => eliminarFoto(f)}
+            >
+              <CloseCircle className="size-4" />
+            </button>
+          </div>
         ))}
         <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" disabled={subiendoFoto} onClick={() => inputFotoRef.current?.click()}>
           <Gallery className="size-3.5" /> {subiendoFoto ? "Subiendo…" : "Añadir foto"}
