@@ -51,8 +51,11 @@ import {
   tipoPermiteMarcarCobrada,
   formaPagoLabel,
 } from "@/lib/facturas-cliente";
+import { BANCOS } from "@/lib/bancos";
 import { ColumnaFiltro } from "./columna-filtro";
+import { EditarFormaPagoPopover } from "./editar-forma-pago-popover";
 import { DetalleFacturaDialog } from "./detalle-factura-dialog";
+import { useEsAdmin } from "@/hooks/use-es-admin";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
 import { AlquilerDetalleDialog } from "../equipos/alquiler-detalle-dialog";
 import { DetalleVentaDialog } from "../ventas/detalle-venta-dialog";
@@ -61,8 +64,6 @@ import type { Equipo } from "@/lib/equipos";
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
-
-const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
 
 // Misma carpeta que usa el backend para guardar TODOS los PDF generados
 // aquí (facturas Serie 1/3 y tickets Serie 4) — FACTURA_CARPETA_DRIVE_ID
@@ -380,6 +381,7 @@ function VerBoton({
 
 export default function FacturasClientesPage() {
   const confirmar = useConfirm();
+  const esAdmin = useEsAdmin();
 
   const [facturas, setFacturas] = useState<FacturaCliente[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -852,7 +854,24 @@ export default function FacturasClientesPage() {
                           <TableCell>
                             <TipoBadge f={f} />
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{formaPagoLabel(f)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {esAdmin ? (
+                              <EditarFormaPagoPopover
+                                f={f}
+                                onActualizado={(nuevaFormaPago, nuevoBanco) => {
+                                  setFacturas((prev) =>
+                                    prev.map((x) =>
+                                      x.resguardo === f.resguardo && x.numero === f.numero && x.tipo === f.tipo
+                                        ? { ...x, formaPago: nuevaFormaPago, banco: nuevoBanco }
+                                        : x
+                                    )
+                                  );
+                                }}
+                              />
+                            ) : (
+                              formaPagoLabel(f)
+                            )}
+                          </TableCell>
                           <TableCell className="text-nowrap">
                             <VerBoton f={f} onVer={setResguardoDetalle} onVerAlquiler={abrirAlquilerEquipo} onVerVenta={setVentaVerId} cargandoAlquiler={cargandoAlquilerEquipo} />
                             {!f.historica && (
