@@ -14,6 +14,7 @@ import { DocumentUpload, MagicStar, Refresh2, SearchNormal1, TickCircle, Box1, P
 import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import type { LineaPedidoProveedorLeida } from "@/app/api/compras/pedido-proveedor/ocr/route";
 import type { Empleado } from "@/app/api/empleados/route";
+import type { LineaRegistroPedidoProveedor } from "@/app/api/compras/pedido-proveedor/registro/route";
 
 const CATEGORIAS_SUGERIDAS = ["CARGADOR", "DYSON", "THERMOMIX", "OTRO"];
 
@@ -159,6 +160,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [leyendoOcr, setLeyendoOcr] = useState(false);
   const [lineas, setLineas] = useState<LineaPedidoEditable[]>([]);
   const [proveedorIdSugerido, setProveedorIdSugerido] = useState<string | null>(null);
+  const [numeroPedidoGlobal, setNumeroPedidoGlobal] = useState<string | null>(null);
   const [proveedorCreado, setProveedorCreado] = useState(false);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [compradoPor, setCompradoPor] = useState("");
@@ -174,6 +176,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     if (!open) {
       setLineas([]);
       setProveedorIdSugerido(null);
+      setNumeroPedidoGlobal(null);
       setProveedorCreado(false);
       setCompradoPor("");
       if (inputOcr.current) inputOcr.current.value = "";
@@ -211,6 +214,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         return;
       }
       setLineas((data.lineas as LineaPedidoProveedorLeida[]).map((l) => lineaDesdeOcr(l, data.numeroPedidoGlobal)));
+      setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
       setProveedorIdSugerido(data.proveedorIdSugerido);
       setProveedorCreado(!!data.proveedorCreado);
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
@@ -246,6 +250,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   async function registrar() {
     setRegistrando(true);
     let okStock = 0, okResguardo = 0, fallos = 0;
+    const resumen: LineaRegistroPedidoProveedor[] = [];
     try {
       // --- Líneas "tienda": crear pieza si hace falta, luego pedido pendiente ---
       for (const l of lineas) {
@@ -279,8 +284,10 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const dataPedido = await resPedido.json();
           if (!dataPedido.ok) throw new Error(dataPedido.error || "No se pudo crear el pedido de stock");
           okStock++;
+          resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "tienda", destinoDetalle: referencia, ok: true });
         } catch (e) {
           fallos++;
+          resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "tienda", destinoDetalle: "", ok: false });
           toast.error(`"${l.nombre}": ${e instanceof Error ? e.message : "error desconocido"}`);
         }
       }
@@ -309,13 +316,26 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const data = await res.json();
           if (!data.ok) throw new Error(data.error || "No se pudo registrar el pedido");
           okResguardo += grupo.length;
+          for (const l of grupo) {
+            resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "cliente", destinoDetalle: `${resguardo} · ${l.clienteElegido || resguardo}`, ok: true });
+          }
         } catch (e) {
           fallos += grupo.length;
+          for (const l of grupo) {
+            resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "cliente", destinoDetalle: `${resguardo} · ${l.clienteElegido || resguardo}`, ok: false });
+          }
           toast.error(`Resguardo ${resguardo}: ${e instanceof Error ? e.message : "error desconocido"}`);
         }
       }
 
       toast.success(`${okStock} pedido(s) de stock, ${okResguardo} pedido(s) de resguardo registrados${fallos ? ` — ${fallos} con error` : ""}`);
+      if (resumen.length > 0) {
+        fetch("/api/compras/pedido-proveedor/registro", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ proveedorNombre, numeroPedidoGlobal, pedidosStock: okStock, pedidosResguardo: okResguardo, lineasFallidas: fallos, resumen }),
+        }).catch(() => {});
+      }
       if (fallos === 0) {
         onRegistrado();
         onOpenChange(false);

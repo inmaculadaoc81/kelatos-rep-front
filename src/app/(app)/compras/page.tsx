@@ -9,6 +9,7 @@ import {
   ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, DocumentUpload,
 } from "@/lib/icons";
 import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
+import { HistorialPedidoProveedorDialog } from "./historial-pedido-proveedor-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,6 +72,7 @@ export default function ComprasPage() {
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState<string | null>(null);
   const [pedidoProveedorAbierto, setPedidoProveedorAbierto] = useState(false);
+  const [historialPedidoProveedorAbierto, setHistorialPedidoProveedorAbierto] = useState(false);
   const consulta = useRef(0);
 
   useEffect(() => {
@@ -198,6 +200,9 @@ export default function ComprasPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setPedidoProveedorAbierto(true)}>
             <DocumentUpload className="size-4" /> Pedido por pantallazo
+          </Button>
+          <Button variant="outline" size="icon" className="size-8" onClick={() => setHistorialPedidoProveedorAbierto(true)} title="Historial de Pedido por pantallazo">
+            <Clock className="size-4" />
           </Button>
           <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
@@ -497,6 +502,11 @@ export default function ComprasPage() {
         open={pedidoProveedorAbierto}
         onOpenChange={setPedidoProveedorAbierto}
         onRegistrado={cargar}
+      />
+
+      <HistorialPedidoProveedorDialog
+        open={historialPedidoProveedorAbierto}
+        onOpenChange={setHistorialPedidoProveedorAbierto}
       />
     </div>
   );

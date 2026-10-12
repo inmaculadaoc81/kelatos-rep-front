@@ -100,7 +100,7 @@ export default function TpvPage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-lg font-semibold">
-            <CardPos className="size-5 text-purple-600" /> TPV
+            <CardPos className="size-5 text-purple-600" /> Facturación del día
           </h1>
           <p className="text-sm text-muted-foreground">
             Cobros por tarjeta, Bizum, transferencia o efectivo — entra en un día para ver el desglose y confirmar lo que dice el banco.
