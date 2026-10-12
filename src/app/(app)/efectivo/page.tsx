@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, MoneySend, MoneyRecive, ArrowRotateLeft, Coin1, CloseCircle, Verify } from "@/lib/icons";
+import { Refresh2, SearchNormal1, MoneySend, MoneyRecive, ArrowRotateLeft, Coin1, CloseCircle, Verify, Warning2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { EFECTIVO_INICIO_CONTEO, MovimientoConSaldo, MovimientoEfectivo, TipoMovimientoEfectivo, conSaldoAcumulado, resumir } from "@/lib/efectivo";
 import { RetirarEfectivoDialog } from "./retirar-efectivo-dialog";
 import { ContarEfectivoDialog } from "./contar-efectivo-dialog";
+import { RegistrarFaltanteDialog } from "./registrar-faltante-dialog";
 import { AnularRetiradaDialog } from "./anular-retirada-dialog";
 
 const TIMEZONE = "Europe/Madrid";
@@ -23,6 +24,7 @@ const ESTILO_TIPO: Record<TipoMovimientoEfectivo, { etiqueta: string; clase: str
   cobro: { etiqueta: "Cobro", clase: "bg-green-500/10 text-green-600" },
   devolucion: { etiqueta: "Devolución", clase: "bg-red-500/10 text-red-600" },
   retirada: { etiqueta: "Retirada", clase: "bg-amber-500/10 text-amber-600" },
+  faltante: { etiqueta: "Faltante", clase: "bg-red-500/10 text-red-600" },
   conteo: { etiqueta: "Conteo", clase: "bg-blue-500/10 text-blue-600" },
 };
 
@@ -97,6 +99,7 @@ export default function EfectivoPage() {
   const [hasta, setHasta] = useState("");
   const [retirarAbierto, setRetirarAbierto] = useState(false);
   const [contarAbierto, setContarAbierto] = useState(false);
+  const [faltanteAbierto, setFaltanteAbierto] = useState(false);
   const [anulando, setAnulando] = useState<MovimientoEfectivo | null>(null);
 
   async function cargar() {
@@ -278,6 +281,11 @@ export default function EfectivoPage() {
               <MoneySend className="size-4" /> Retirar efectivo
             </Button>
           )}
+          {puedeRetirar && (
+            <Button size="sm" variant="outline" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setFaltanteAbierto(true)}>
+              <Warning2 className="size-4" /> Dinero faltante
+            </Button>
+          )}
         </div>
       </div>
 
@@ -362,6 +370,7 @@ export default function EfectivoPage() {
             <SelectItem value="cobro">Cobros</SelectItem>
             <SelectItem value="devolucion">Devoluciones</SelectItem>
             <SelectItem value="retirada">Retiradas</SelectItem>
+            <SelectItem value="faltante">Faltantes</SelectItem>
             <SelectItem value="conteo">Conteos</SelectItem>
           </SelectContent>
         </Select>
@@ -524,6 +533,7 @@ export default function EfectivoPage() {
 
       {puedeRetirar && <RetirarEfectivoDialog open={retirarAbierto} onOpenChange={setRetirarAbierto} saldo={saldoActual} onRegistrada={cargar} />}
       {puedeRetirar && <ContarEfectivoDialog open={contarAbierto} onOpenChange={setContarAbierto} saldo={saldoActual} onRegistrado={cargar} />}
+      {puedeRetirar && <RegistrarFaltanteDialog open={faltanteAbierto} onOpenChange={setFaltanteAbierto} saldo={saldoActual} onRegistrado={cargar} />}
       {puedeRetirar && <AnularRetiradaDialog retirada={anulando} onOpenChange={(o) => !o && setAnulando(null)} onAnulada={cargar} />}
     </div>
   );

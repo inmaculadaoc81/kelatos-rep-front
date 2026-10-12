@@ -10,9 +10,11 @@ export async function POST(req: Request) {
   if (!esSuperadmin(email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   try {
-    const body = (await req.json()) as { importe?: unknown; motivo?: unknown; fechaHora?: unknown };
+    const body = (await req.json()) as { importe?: unknown; motivo?: unknown; fechaHora?: unknown; tipo?: unknown };
+    const tipo = body.tipo === "faltante" ? "faltante" : body.tipo === "ingreso" ? "ingreso" : "retirada";
     const data = await kelatosApiPost<{ ok: boolean; retirada: unknown }>("/v1/efectivo/retiradas", {
       usuario: email,
+      tipo,
       importe: body.importe,
       motivo: body.motivo,
       fechaHora: body.fechaHora,

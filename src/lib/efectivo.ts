@@ -15,7 +15,7 @@ import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConI
     "Todo el historial" en la vista. Petición del usuario, 2026-09-21. */
 export const EFECTIVO_INICIO_CONTEO = "2026-09-21";
 
-export type TipoMovimientoEfectivo = "cobro" | "devolucion" | "retirada" | "conteo";
+export type TipoMovimientoEfectivo = "cobro" | "devolucion" | "retirada" | "faltante" | "conteo";
 
 export interface MovimientoEfectivo {
   id: string;
@@ -53,8 +53,10 @@ export interface RetiradaEfectivoApi {
   fecha_hora: string;
   importe: number;
   /** "ingreso" = efectivo que ya había en caja y se registró a mano (migración
-      102): en la vista cuenta como un cobro más. Ausente/"retirada" = salida. */
-  tipo?: "retirada" | "ingreso";
+      102): en la vista cuenta como un cobro más. "faltante" = diferencia de
+      caja al contar (resta, igual que una retirada, pero con su propia
+      etiqueta). Ausente/"retirada" = salida. */
+  tipo?: "retirada" | "ingreso" | "faltante";
   motivo: string | null;
   usuario: string;
   anulada_en: string | null;
@@ -155,14 +157,17 @@ export function movimientosDeFacturas(facturas: FacturaCliente[]): MovimientoEfe
 export function movimientosDeRetiradas(retiradas: RetiradaEfectivoApi[]): MovimientoEfectivo[] {
   return retiradas.map((r) => {
     // Un ingreso manual (p. ej. el efectivo que ya había en el local) es un
-    // cobro normal: suma en "Cobrado" y en la caja, sin tipo propio.
+    // cobro normal: suma en "Cobrado" y en la caja, sin tipo propio. Un
+    // faltante resta como una retirada, pero con su propio tipo (no se
+    // mezcla con las salidas intencionadas en los informes).
     const esCobro = r.tipo === "ingreso";
+    const esFaltante = r.tipo === "faltante";
     return {
       id: `ret:${r.id}`,
       fecha: r.fecha_hora,
-      tipo: (esCobro ? "cobro" : "retirada") as TipoMovimientoEfectivo,
+      tipo: (esCobro ? "cobro" : esFaltante ? "faltante" : "retirada") as TipoMovimientoEfectivo,
       origen: "",
-      concepto: (r.motivo || "").trim() || (esCobro ? "Efectivo en caja" : "Retirada de efectivo"),
+      concepto: (r.motivo || "").trim() || (esCobro ? "Efectivo en caja" : esFaltante ? "Dinero faltante" : "Retirada de efectivo"),
       referencia: "",
       numero: "",
       cliente: "",
