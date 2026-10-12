@@ -331,6 +331,7 @@ interface FilaReparacionFacturadaSql {
   estado_ticket_mensajeria: string | null;
   forma_pago_ticket_mensajeria: string | null;
   forma_pago_ticket_mensajeria_desglose: { forma: string; monto: number; banco: string | null }[] | null;
+  banco_ticket_mensajeria: string | null;
 
   numero_factura_anticipo: string | null;
   url_factura_anticipo: string | null;
@@ -339,6 +340,7 @@ interface FilaReparacionFacturadaSql {
   fecha_factura_anticipo: string | null;
   forma_pago_anticipo: string | null;
   forma_pago_anticipo_desglose: { forma: string; monto: number; banco: string | null }[] | null;
+  banco_anticipo: string | null;
   cliente_factura_anticipo: ClienteFacturaJson | string | null;
 
   numero_ticket_anticipo: string | null;
@@ -348,6 +350,7 @@ interface FilaReparacionFacturadaSql {
   estado_ticket_anticipo: string | null;
   forma_pago_ticket_anticipo: string | null;
   forma_pago_ticket_anticipo_desglose: { forma: string; monto: number; banco: string | null }[] | null;
+  banco_ticket_anticipo: string | null;
 
   numero_factura_rectificativa: string | null;
   url_factura_rectificativa: string | null;
@@ -457,6 +460,7 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "estado_ticket_mensajeria",
   "forma_pago_ticket_mensajeria",
   "forma_pago_ticket_mensajeria_desglose",
+  "banco_ticket_mensajeria",
   "numero_factura_anticipo",
   "url_factura_anticipo",
   "anticipo_importe",
@@ -464,6 +468,7 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "fecha_factura_anticipo",
   "forma_pago_anticipo",
   "forma_pago_anticipo_desglose",
+  "banco_anticipo",
   "cliente_factura_anticipo",
   "numero_ticket_anticipo",
   "url_ticket_anticipo",
@@ -472,6 +477,7 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "estado_ticket_anticipo",
   "forma_pago_ticket_anticipo",
   "forma_pago_ticket_anticipo_desglose",
+  "banco_ticket_anticipo",
   "numero_factura_rectificativa",
   "url_factura_rectificativa",
   "total_factura_rectificativa",
@@ -611,7 +617,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       // (bug real: factura generada con PDF real, pero "desaparecida").
       fecha: row.fecha_factura_mensajeria || row.fecha_factura || null,
       formaPago: texto(row.forma_pago),
-      banco: "",
+      banco: texto(row.banco),
       estadoFactura: "",
       tipo: "mensajeria",
     });
@@ -633,7 +639,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       total: num(row.total_ticket_mensajeria),
       fecha: row.fecha_ticket_mensajeria || row.fecha_factura || null,
       formaPago: texto(row.forma_pago_ticket_mensajeria),
-      banco: "",
+      banco: texto(row.banco_ticket_mensajeria),
       formaPagoDesglose: Array.isArray(row.forma_pago_ticket_mensajeria_desglose)
         ? row.forma_pago_ticket_mensajeria_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
         : null,
@@ -659,7 +665,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       // fila salía sin fecha ni forma de pago (bug real detectado).
       fecha: row.fecha_factura_anticipo || row.fecha_factura || null,
       formaPago: texto(row.forma_pago_anticipo) || texto(row.forma_pago),
-      banco: "",
+      banco: texto(row.banco_anticipo) || texto(row.banco),
       formaPagoDesglose: Array.isArray(row.forma_pago_anticipo_desglose)
         ? row.forma_pago_anticipo_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
         : null,
@@ -682,7 +688,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       total: num(row.total_ticket_anticipo) || num(row.anticipo_importe),
       fecha: row.fecha_ticket_anticipo || row.fecha_factura || null,
       formaPago: texto(row.forma_pago_ticket_anticipo),
-      banco: "",
+      banco: texto(row.banco_ticket_anticipo),
       formaPagoDesglose: Array.isArray(row.forma_pago_ticket_anticipo_desglose)
         ? row.forma_pago_ticket_anticipo_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
         : null,
@@ -712,7 +718,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       total,
       fecha: row.fecha_factura_rectificativa,
       formaPago: texto(row.forma_pago),
-      banco: "",
+      banco: texto(row.banco),
       estadoFactura: texto(row.estado_factura_rectificativa),
       tipo: "rectificativa",
       tipoOriginal: "reparacion",
@@ -733,7 +739,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       total,
       fecha: row.fecha_factura_rectificativa_revision,
       formaPago: texto(row.forma_pago_revision),
-      banco: "",
+      banco: texto(row.banco_revision),
       estadoFactura: texto(row.estado_factura_rectificativa),
       tipo: "rectificativa",
       tipoOriginal: "revision",
@@ -753,7 +759,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       total: num(row.total_factura_corregida_revision),
       fecha: row.fecha_factura_corregida_revision,
       formaPago: texto(row.forma_pago_revision),
-      banco: "",
+      banco: texto(row.banco_revision),
       estadoFactura: "",
       tipo: "corregida",
       tipoOriginal: "revision",
@@ -769,7 +775,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       total: num(row.total_factura_corregida),
       fecha: row.fecha_factura_corregida,
       formaPago: texto(row.forma_pago),
-      banco: "",
+      banco: texto(row.banco),
       estadoFactura: "",
       tipo: "corregida",
       tipoOriginal: "reparacion",
@@ -980,6 +986,7 @@ interface FilaAlquilerSql {
   fianza_cobrada: string | number | null;
   envio_activado: string | null;
   metodo_pago: string | null;
+  banco: string | null;
   /** Forma de pago propia de la devolución (rectificativa) — independiente
       de metodo_pago, que es el de la factura original. null en
       rectificativas generadas antes de esta columna (2026-10-06): se cae
@@ -1075,7 +1082,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         url: urlValida(url),
         total: totalFacturaPrincipalAlquiler({ cobrado, previsto, fianzaBase: fianza, envio }),
         formaPago: texto(row.metodo_pago),
-        banco: "",
+        banco: texto(row.banco),
         estadoFactura: texto(row.estado_factura),
         tipo: "alquiler",
       });
@@ -1094,7 +1101,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         url: urlValida(url),
         total: totalRectificativaAlquiler({ guardado: totalRect, previsto, fianzaBase: fianza }),
         formaPago: texto(row.forma_pago_rectificativa) || texto(row.metodo_pago),
-        banco: texto(row.banco_rectificativa) || "",
+        banco: texto(row.banco_rectificativa) || texto(row.banco),
         formaPagoDesglose: Array.isArray(row.forma_pago_rectificativa_desglose)
           ? row.forma_pago_rectificativa_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
           : null,
@@ -1114,7 +1121,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
       url: urlValida(texto(row.url_factura_corregida)),
       total: num(row.total_factura_corregida),
       formaPago: texto(row.metodo_pago),
-      banco: "",
+      banco: texto(row.banco),
       estadoFactura: texto(row.estado_factura),
       tipo: "alquiler",
     });
@@ -1131,7 +1138,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
       url: urlValida(texto(row.url_factura_anterior)),
       total: num(row.total_factura_anterior),
       formaPago: texto(row.metodo_pago),
-      banco: "",
+      banco: texto(row.banco),
       estadoFactura: texto(row.estado_factura),
       tipo: "alquiler",
     });
@@ -1150,7 +1157,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
       url: urlValida(texto(row.url_factura_rectificativa_anterior)),
       total: totalRectificativaAlquiler({ guardado: num(row.total_factura_rectificativa_anterior), previsto, fianzaBase: fianza }),
       formaPago: texto(row.metodo_pago),
-      banco: "",
+      banco: texto(row.banco),
       estadoFactura: "",
       tipo: "rectificativa",
     });
@@ -1166,7 +1173,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
       url: urlValida(texto(row.url_factura_recogida)),
       total: PRECIO_RECOGIDA_CON_IVA,
       formaPago: texto(row.metodo_pago),
-      banco: "",
+      banco: texto(row.banco),
       estadoFactura: texto(row.estado_factura_recogida),
       tipo: "recogida",
     });
@@ -1185,7 +1192,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         url: urlValida(url),
         total: totalInicial > 0 ? totalInicial : totalFacturaPrincipalAlquiler({ cobrado: 0, previsto, fianzaBase: fianza, envio }),
         formaPago: texto(row.metodo_pago),
-        banco: "",
+        banco: texto(row.banco),
         estadoFactura: "",
         tipo: "alquiler",
       });
