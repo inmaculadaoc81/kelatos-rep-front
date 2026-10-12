@@ -106,6 +106,11 @@ export function DiaDetalleVista({
   const inputFotoRef = useRef<HTMLInputElement | null>(null);
   const [metodoListado, setMetodoListado] = useState<(typeof METODOS_TPV)[number] | null>(null);
   const [eliminandoFoto, setEliminandoFoto] = useState<number | string | null>(null);
+  // Quitar una fila de la vista — no borra ni cambia ningún dato, solo
+  // deja de mostrarse en este repaso (no se recuerda al salir y volver
+  // a entrar). Petición del usuario, 2026-10-12: "opción de eliminar
+  // fila que solo quitará de la parte visual".
+  const [filasOcultas, setFilasOcultas] = useState<Set<string>>(new Set());
   const confirmar = useConfirm();
 
   const importePorMetodo = new Map(importesDia.map((i) => [i.metodo, i]));
@@ -196,12 +201,12 @@ export function DiaDetalleVista({
     }
   }
 
-  const metodosRelevantes = METODOS_TPV.filter(
-    (m) => Math.abs(segunSistemaDia[m.value] || 0) > 0.009 || importePorMetodo.has(m.value)
-  );
   const vendido = METODOS_TPV.reduce((acc, m) => acc + (segunSistemaDia[m.value] || 0), 0);
 
-  const filas = metodosRelevantes.reduce<{ metodo: (typeof METODOS_TPV)[number]; sistema: number; confirmado: number; totalAcumulado: number }[]>(
+  // Todos los tipos, siempre — una fila en 0 € es información tan válida
+  // como una con movimiento. Petición del usuario, 2026-10-12: "que
+  // salgan todos los tipos de pago... si no se cobró nada que salga 0".
+  const filas = METODOS_TPV.reduce<{ metodo: (typeof METODOS_TPV)[number]; sistema: number; confirmado: number; totalAcumulado: number }[]>(
     (acc, m) => {
       const sistema = segunSistemaDia[m.value] || 0;
       const v = valorDeclarado(m.value);
@@ -213,6 +218,7 @@ export function DiaDetalleVista({
   );
   const confirmadoTotal = filas.length ? filas[filas.length - 1].totalAcumulado : 0;
   const diferencia = Math.round((vendido - confirmadoTotal) * 100) / 100;
+  const filasVisibles = filas.filter((f) => !filasOcultas.has(f.metodo.value));
 
   return (
     <div className="space-y-4">
@@ -238,8 +244,14 @@ export function DiaDetalleVista({
         </div>
       </div>
 
-      {filas.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">Sin movimientos este día.</p>
+      {filasOcultas.size > 0 && (
+        <button type="button" className="text-xs text-primary hover:underline" onClick={() => setFilasOcultas(new Set())}>
+          {filasOcultas.size} fila(s) oculta(s) · Mostrar todas
+        </button>
+      )}
+
+      {filasVisibles.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Sin filas que mostrar.</p>
       ) : (
         <div className="overflow-hidden rounded-lg border bg-card">
           <Table>
@@ -249,10 +261,11 @@ export function DiaDetalleVista({
                 <TableHead className="text-right">Sistema</TableHead>
                 <TableHead>Confirmado</TableHead>
                 <TableHead className="text-right">Total</TableHead>
+                <TableHead className="w-8" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filas.map(({ metodo, sistema, confirmado, totalAcumulado }) => {
+              {filasVisibles.map(({ metodo, sistema, confirmado, totalAcumulado }) => {
                 const dirty = esDirty(metodo.value);
                 const v = valorDeclarado(metodo.value);
                 return (
@@ -294,12 +307,23 @@ export function DiaDetalleVista({
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right text-sm font-medium tabular-nums">{euros(totalAcumulado)}</TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        title="Quitar de la vista (no borra nada)"
+                        onClick={() => setFilasOcultas((prev) => new Set(prev).add(metodo.value))}
+                      >
+                        <CloseCircle className="size-4" />
+                      </button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
               <TableRow className="bg-muted/50 font-semibold">
                 <TableCell colSpan={3} className="text-right text-sm">Total</TableCell>
                 <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">{euros(confirmadoTotal)}</TableCell>
+                <TableCell />
               </TableRow>
             </TableBody>
           </Table>
