@@ -91,6 +91,8 @@ export default function StockPiezasPage() {
         (p) =>
           p.referencia.toLowerCase().includes(q) ||
           p.nombre.toLowerCase().includes(q) ||
+          p.nombreInternoProveedor.toLowerCase().includes(q) ||
+          p.codigoProveedor.toLowerCase().includes(q) ||
           p.descripcion.toLowerCase().includes(q) ||
           p.proveedor.toLowerCase().includes(q)
       );
@@ -222,7 +224,13 @@ export default function StockPiezasPage() {
                     <Badge variant="outline" className="font-mono">{p.referencia}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{p.nombre}</div>
+                    {p.nombre ? (
+                      <div className="font-medium">{p.nombre}</div>
+                    ) : (
+                      <div className="font-medium text-amber-600 dark:text-amber-400" title="Sin nombre comercial todavía — se muestra el nombre interno de proveedor">
+                        {p.nombreInternoProveedor || "(sin nombre)"}
+                      </div>
+                    )}
                     {p.descripcion && <div className="text-xs text-muted-foreground">{p.descripcion}</div>}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.categoria || "-"}</TableCell>

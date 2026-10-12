@@ -15,13 +15,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ refere
   const { referencia } = await params;
   const datos = (await req.json()) as DatosStockPiezaForm;
   const nombre = datos.nombre?.trim();
-  if (!nombre) return NextResponse.json({ ok: false, error: "El nombre es obligatorio" }, { status: 400 });
+  const nombreInternoProveedor = datos.nombreInternoProveedor?.trim();
+  if (!nombre && !nombreInternoProveedor) {
+    return NextResponse.json({ ok: false, error: "El nombre (comercial o interno de proveedor) es obligatorio" }, { status: 400 });
+  }
 
   try {
     const resultado = await kelatosApiPost<{ ok: boolean; row: Parameters<typeof mapearStockPieza>[0] }>(
       `/v1/stock_piezas/${encodeURIComponent(referencia)}`,
       {
-        nombre,
+        nombre: nombre || "",
+        nombre_interno_proveedor: nombreInternoProveedor || "",
+        codigo_proveedor: (datos.codigoProveedor || "").trim(),
         descripcion: (datos.descripcion || "").trim(),
         categoria: (datos.categoria || "").trim(),
         coste_interno: datos.costeInterno || 0,

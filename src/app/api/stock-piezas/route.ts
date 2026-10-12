@@ -18,9 +18,13 @@ export async function GET() {
   }
 }
 
-/** Reproduce crearStockPieza() (backend/StockPiezas.js): referencia + nombre
-    obligatorios, referencia en mayúsculas — el duplicado lo rechaza la
-    propia clave primaria en Postgres (409). */
+/** Reproduce crearStockPieza() (backend/StockPiezas.js): referencia
+    obligatoria, referencia en mayúsculas — el duplicado lo rechaza la
+    propia clave primaria en Postgres (409). El nombre comercial es
+    obligatorio SALVO que se dé un nombre interno de proveedor (pieza
+    creada automáticamente desde un pantallazo, cuyo nombre comercial lo
+    pone alguien a mano más tarde — ver "Editar pieza"). Petición del
+    usuario, 2026-10-12. */
 export async function POST(req: Request) {
   const session = await auth();
   const usuario = session?.user?.email;
@@ -29,13 +33,18 @@ export async function POST(req: Request) {
   const datos = (await req.json()) as DatosStockPiezaForm;
   const referencia = datos.referencia?.trim().toUpperCase();
   const nombre = datos.nombre?.trim();
+  const nombreInternoProveedor = datos.nombreInternoProveedor?.trim();
   if (!referencia) return NextResponse.json({ ok: false, error: "La referencia es obligatoria" }, { status: 400 });
-  if (!nombre) return NextResponse.json({ ok: false, error: "El nombre es obligatorio" }, { status: 400 });
+  if (!nombre && !nombreInternoProveedor) {
+    return NextResponse.json({ ok: false, error: "El nombre (comercial o interno de proveedor) es obligatorio" }, { status: 400 });
+  }
 
   try {
     const resultado = await kelatosApiPost<{ ok: boolean; row: Parameters<typeof mapearStockPieza>[0] }>("/v1/stock_piezas", {
       referencia,
-      nombre,
+      nombre: nombre || "",
+      nombre_interno_proveedor: nombreInternoProveedor || "",
+      codigo_proveedor: (datos.codigoProveedor || "").trim(),
       descripcion: (datos.descripcion || "").trim(),
       categoria: (datos.categoria || "").trim(),
       coste_interno: datos.costeInterno || 0,

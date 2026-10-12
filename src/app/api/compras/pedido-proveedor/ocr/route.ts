@@ -8,6 +8,10 @@ import { kelatosApiPost } from "@/lib/kelatos-api";
     Piezas — igual que ArticuloFacturaEmparejado en facturas-recibidas/ocr. */
 export interface LineaPedidoProveedorLeida {
   nombre: string;
+  /** Código/ID del artículo visto junto al nombre en el pantallazo (si lo
+      hay) — se usa para reconocer una pieza ya existente con más
+      fiabilidad que comparando solo nombres. */
+  codigoProveedor: string | null;
   cantidad: number;
   precioUnitario: number | null;
   /** Texto crudo leído bajo "Texto del pedido" — se muestra en la revisión

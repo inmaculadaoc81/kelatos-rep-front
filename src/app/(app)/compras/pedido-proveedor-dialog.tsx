@@ -26,6 +26,7 @@ interface CandidatoResguardo {
 
 interface LineaPedidoEditable {
   nombre: string;
+  codigoProveedor: string;
   cantidad: number;
   textoPedido: string;
   aplicar: boolean;
@@ -33,6 +34,12 @@ interface LineaPedidoEditable {
   // tienda
   referencia: string;
   nombrePiezaSugerida: string | null;
+  /** Solo para pieza nueva (referencia vacía): nombre EXACTO del proveedor
+      (obligatorio, lo usará luego la IA para reconocerla) y nombre
+      comercial (opcional, lo pone alguien a mano más tarde si se deja en
+      blanco). Petición del usuario, 2026-10-12. */
+  nombreInternoProveedor: string;
+  nombreComercial: string;
   categoria: string;
   costeInterno: number;
   precioCliente: number;
@@ -49,12 +56,15 @@ interface LineaPedidoEditable {
 function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string | null): LineaPedidoEditable {
   return {
     nombre: l.nombre,
+    codigoProveedor: l.codigoProveedor || "",
     cantidad: l.cantidad,
     textoPedido: l.textoPedido,
     aplicar: true,
     destino: l.destino,
     referencia: l.referenciaSugerida || "",
     nombrePiezaSugerida: l.nombrePiezaSugerida,
+    nombreInternoProveedor: l.nombre,
+    nombreComercial: "",
     categoria: l.categoriaSugerida || "CARGADOR",
     costeInterno: 0,
     precioCliente: l.precioClienteSugerido ?? l.precioUnitario ?? 0,
@@ -216,7 +226,12 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
   function lineaListaParaRegistrar(l: LineaPedidoEditable): boolean {
     if (!l.aplicar) return true; // no bloquea el registro de las demás
-    if (l.destino === "tienda") return true; // todo tiene valor por defecto
+    if (l.destino === "tienda") {
+      // Pieza nueva (sin referencia existente): el nombre interno de
+      // proveedor es obligatorio — es lo único con lo que la IA podrá
+      // reconocerla la próxima vez.
+      return l.referencia.trim() !== "" || l.nombreInternoProveedor.trim() !== "";
+    }
     if (!l.resguardo) return false;
     if (!l.enlace.trim() || !l.numeroPedido.trim() || !l.fechaEstimada || !(l.costo > 0)) return false;
     if (numeroPedidoEsEnlace(l.numeroPedido)) return false;
@@ -240,8 +255,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                referencia: `${l.nombre.slice(0, 20).replace(/[^a-zA-Z0-9]+/g, "-")}-${Math.random().toString(16).slice(2, 6)}`.toUpperCase(),
-                nombre: l.nombre, descripcion: l.textoPedido ? `Detectado en pedido ${proveedorNombre} — ref. original: ${l.textoPedido}` : "",
+                referencia: `${l.nombreInternoProveedor.slice(0, 20).replace(/[^a-zA-Z0-9]+/g, "-")}-${Math.random().toString(16).slice(2, 6)}`.toUpperCase(),
+                nombre: l.nombreComercial.trim(),
+                nombreInternoProveedor: l.nombreInternoProveedor.trim(),
+                codigoProveedor: l.codigoProveedor.trim(),
+                descripcion: l.textoPedido ? `Detectado en pedido ${proveedorNombre} — ref. original: ${l.textoPedido}` : "",
                 categoria: l.categoria, costeInterno: l.costeInterno, precioCliente: l.precioCliente, manoObra: 0,
                 proveedor: proveedorNombre, stockDisponible: 0, stockMinimo: 0,
               }),
@@ -385,6 +403,26 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                                   <TickCircle className="size-3" /> {l.nombrePiezaSugerida}
                                 </span>
+                              )}
+                              {!l.referencia && (
+                                <div className="space-y-2 rounded-md bg-muted/50 p-2">
+                                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                    <div className="col-span-2 space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Nombre interno (proveedor) *</Label>
+                                      <Input className="h-8" placeholder="Nombre exacto del proveedor" value={l.nombreInternoProveedor}
+                                        onChange={(e) => actualizar(i, { nombreInternoProveedor: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Código proveedor</Label>
+                                      <Input className="h-8" value={l.codigoProveedor} onChange={(e) => actualizar(i, { codigoProveedor: e.target.value })} />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Nombre comercial (opcional — se puede poner después)</Label>
+                                    <Input className="h-8" placeholder="Se lo pondrá alguien a mano si se deja vacío" value={l.nombreComercial}
+                                      onChange={(e) => actualizar(i, { nombreComercial: e.target.value })} />
+                                  </div>
+                                </div>
                               )}
                               {!l.referencia && (
                                 <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/50 p-2 sm:grid-cols-4">

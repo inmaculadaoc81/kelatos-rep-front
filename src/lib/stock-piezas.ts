@@ -7,6 +7,14 @@
 interface FilaStockPiezaSql {
   referencia: string;
   nombre: string | null;
+  /** Nombre EXACTO tal cual lo pone el proveedor en su catálogo — usado
+      por la IA de "Pedido por pantallazo" para reconocer si un producto
+      leído ya existe, mucho más fiable que comparar contra el nombre
+      comercial. Petición del usuario, 2026-10-12. */
+  nombre_interno_proveedor: string | null;
+  /** Código/ID del artículo en el catálogo del proveedor (si se conoce) —
+      otra forma de identificarlo, aparte del nombre. */
+  codigo_proveedor: string | null;
   descripcion: string | null;
   coste_interno: string | number | null;
   precio_cliente: string | number | null;
@@ -20,7 +28,12 @@ interface FilaStockPiezaSql {
 
 export interface StockPieza {
   referencia: string;
+  /** Nombre comercial — el que ve el cliente. Puede estar vacío en una
+      pieza recién creada automáticamente desde un pantallazo, hasta que
+      alguien le ponga uno a mano (ver nombreInternoProveedor). */
   nombre: string;
+  nombreInternoProveedor: string;
+  codigoProveedor: string;
   descripcion: string;
   costeInterno: number;
   precioCliente: number;
@@ -38,6 +51,8 @@ export interface StockPieza {
 export interface DatosStockPiezaForm {
   referencia: string;
   nombre: string;
+  nombreInternoProveedor: string;
+  codigoProveedor: string;
   descripcion: string;
   categoria: string;
   costeInterno: number;
@@ -141,6 +156,8 @@ export function mapearStockPieza(row: FilaStockPiezaSql): StockPieza {
   return {
     referencia: row.referencia,
     nombre: row.nombre || "",
+    nombreInternoProveedor: row.nombre_interno_proveedor || "",
+    codigoProveedor: row.codigo_proveedor || "",
     descripcion: row.descripcion || "",
     costeInterno: numero(row.coste_interno),
     precioCliente,

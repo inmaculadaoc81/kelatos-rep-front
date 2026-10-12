@@ -17,13 +17,15 @@ import { toast } from "sonner";
 import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock, mapearEnlaceCompra, mapearPedidoStock } from "@/lib/stock-piezas";
 
 function vacio(): DatosStockPiezaForm {
-  return { referencia: "", nombre: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
+  return { referencia: "", nombre: "", nombreInternoProveedor: "", codigoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
 }
 
 function desdeExistente(p: StockPieza): DatosStockPiezaForm {
   return {
     referencia: p.referencia,
     nombre: p.nombre,
+    nombreInternoProveedor: p.nombreInternoProveedor,
+    codigoProveedor: p.codigoProveedor,
     descripcion: p.descripcion,
     categoria: p.categoria,
     costeInterno: p.costeInterno,
@@ -133,7 +135,9 @@ export function PiezaStockFormDialog({
 
   async function guardar() {
     if (!datos.referencia.trim()) return toast.error("La referencia es obligatoria");
-    if (!datos.nombre.trim()) return toast.error("El nombre es obligatorio");
+    if (!datos.nombre.trim() && !datos.nombreInternoProveedor.trim()) {
+      return toast.error("Pon al menos el nombre comercial o el nombre interno de proveedor");
+    }
 
     setEnviando(true);
     try {
@@ -284,8 +288,26 @@ export function PiezaStockFormDialog({
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="spNombre">Nombre *</Label>
+              <Label htmlFor="spNombre">Nombre comercial</Label>
               <Input id="spNombre" placeholder="Ej: Cuchilla Thermomix" value={datos.nombre} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("nombre", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="spNombreInterno">Nombre interno (proveedor)</Label>
+              <Input
+                id="spNombreInterno"
+                placeholder="Nombre exacto tal cual lo pone el proveedor"
+                value={datos.nombreInternoProveedor}
+                disabled={soloLecturaCatalogo}
+                onChange={(e) => actualizar("nombreInternoProveedor", e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">Lo usa la IA de &quot;Pedido por pantallazo&quot; para reconocer esta pieza — obligatorio si no hay nombre comercial.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="spCodigoProveedor">Código de proveedor</Label>
+              <Input id="spCodigoProveedor" value={datos.codigoProveedor} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("codigoProveedor", e.target.value)} />
             </div>
           </div>
 
