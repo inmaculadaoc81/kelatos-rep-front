@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -324,12 +324,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-2xl lg:max-w-3xl">
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-3 pr-12">
           <DialogTitle className="flex items-center gap-1.5"><DocumentUpload className="size-5" /> Pedido por pantallazo</DialogTitle>
-        </DialogHeader>
+        </div>
 
-        <div className="space-y-3">
+        <div className="flex min-h-0 flex-1">
+        <ScrollArea className="min-h-0 min-w-0 flex-1">
+        <div className="space-y-3 p-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Proveedor</Label>
@@ -364,8 +366,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 </Select>
               </div>
 
-              <ScrollArea className="max-h-[50vh] pr-2">
-                <div className="space-y-2.5">
+              <div className="space-y-2.5">
                   {lineas.map((l, i) => (
                     <div key={i} className="space-y-2 rounded-md border bg-card p-2.5">
                       <div className="flex items-start gap-2">
@@ -387,13 +388,13 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
                           {l.destino === "tienda" ? (
                             <>
-                              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                <div className="space-y-1">
+                              <div className="flex flex-wrap items-end gap-2">
+                                <div className="w-20 space-y-1">
                                   <Label className="text-xs text-muted-foreground">Cantidad</Label>
                                   <Input type="number" min={1} className="h-8" value={l.cantidad}
                                     onChange={(e) => actualizar(i, { cantidad: Math.max(1, Number(e.target.value) || 1) })} />
                                 </div>
-                                <div className="col-span-2 space-y-1 sm:col-span-2">
+                                <div className="min-w-40 flex-1 space-y-1">
                                   <Label className="text-xs text-muted-foreground">Referencia de Stock (vacío = pieza nueva)</Label>
                                   <Input className="h-8" placeholder="Vacío = crear pieza nueva" value={l.referencia}
                                     onChange={(e) => actualizar(i, { referencia: e.target.value, nombrePiezaSugerida: null })} />
@@ -405,31 +406,25 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                 </span>
                               )}
                               {!l.referencia && (
-                                <div className="space-y-2 rounded-md bg-muted/50 p-2">
-                                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                    <div className="col-span-2 space-y-1">
-                                      <Label className="text-xs text-muted-foreground">Nombre interno (proveedor) *</Label>
-                                      <Input className="h-8" placeholder="Nombre exacto del proveedor" value={l.nombreInternoProveedor}
-                                        onChange={(e) => actualizar(i, { nombreInternoProveedor: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs text-muted-foreground">Código proveedor</Label>
-                                      <Input className="h-8" value={l.codigoProveedor} onChange={(e) => actualizar(i, { codigoProveedor: e.target.value })} />
-                                    </div>
+                                <div className="grid grid-cols-1 gap-2 rounded-md bg-muted/50 p-2 sm:grid-cols-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Nombre interno (proveedor) *</Label>
+                                    <Input className="h-8" placeholder="Nombre exacto del proveedor" value={l.nombreInternoProveedor}
+                                      onChange={(e) => actualizar(i, { nombreInternoProveedor: e.target.value })} />
                                   </div>
                                   <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Nombre comercial (opcional — se puede poner después)</Label>
-                                    <Input className="h-8" placeholder="Se lo pondrá alguien a mano si se deja vacío" value={l.nombreComercial}
+                                    <Label className="text-xs text-muted-foreground">Código proveedor</Label>
+                                    <Input className="h-8" value={l.codigoProveedor} onChange={(e) => actualizar(i, { codigoProveedor: e.target.value })} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Nombre comercial (opcional)</Label>
+                                    <Input className="h-8" placeholder="Se puede poner después" value={l.nombreComercial}
                                       onChange={(e) => actualizar(i, { nombreComercial: e.target.value })} />
                                   </div>
-                                </div>
-                              )}
-                              {!l.referencia && (
-                                <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/50 p-2 sm:grid-cols-4">
-                                  <div className="col-span-2 space-y-1 sm:col-span-1">
+                                  <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground">Categoría</Label>
                                     <Select value={l.categoria} onValueChange={(v) => v && actualizar(i, { categoria: v })}>
-                                      <SelectTrigger className="h-8"><SelectValue>{(v: string) => v}</SelectValue></SelectTrigger>
+                                      <SelectTrigger className="h-8 w-full"><SelectValue>{(v: string) => v}</SelectValue></SelectTrigger>
                                       <SelectContent>
                                         {CATEGORIAS_SUGERIDAS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                                       </SelectContent>
@@ -437,11 +432,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   </div>
                                   <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground">Coste interno (€)</Label>
-                                    <DecimalInput className="h-8" value={l.costeInterno} onChange={(n) => actualizar(i, { costeInterno: n })} />
+                                    <DecimalInput className="h-8 w-full" value={l.costeInterno} onChange={(n) => actualizar(i, { costeInterno: n })} />
                                   </div>
                                   <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground">Precio cliente (€)</Label>
-                                    <DecimalInput className="h-8" value={l.precioCliente} onChange={(n) => actualizar(i, { precioCliente: n })} />
+                                    <DecimalInput className="h-8 w-full" value={l.precioCliente} onChange={(n) => actualizar(i, { precioCliente: n })} />
                                   </div>
                                 </div>
                               )}
@@ -463,8 +458,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                       Cambiar
                                     </Button>
                                   </div>
-                                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                    <div className="col-span-2 space-y-1 sm:col-span-2">
+                                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <div className="space-y-1 sm:col-span-2">
                                       <Label className="text-xs text-muted-foreground">Enlace (del pedido en {proveedorNombre || "el proveedor"})</Label>
                                       <Input className="h-8" placeholder="https://…" value={l.enlace} onChange={(e) => actualizar(i, { enlace: e.target.value })} />
                                     </div>
@@ -479,7 +474,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     </div>
                                     <div className="space-y-1">
                                       <Label className="text-xs text-muted-foreground">Precio de compra (€)</Label>
-                                      <DecimalInput className="h-8" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
+                                      <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
                                     </div>
                                   </div>
                                 </>
@@ -490,8 +485,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                       </div>
                     </div>
                   ))}
-                </div>
-              </ScrollArea>
+              </div>
             </>
           )}
 
@@ -501,14 +495,16 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
             </p>
           )}
         </div>
+        </ScrollArea>
+        </div>
 
-        <DialogFooter>
+        <div className="flex flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
           <Button type="button" disabled={!hayAlgoAplicado || !todoListo || registrando} onClick={registrar}>
             {registrando ? <Refresh2 className="size-4 animate-spin" /> : null}
             Registrar pedidos
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
