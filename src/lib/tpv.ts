@@ -1,11 +1,15 @@
 /**
  * Vista "TPV" (Facturación): parte diario de lo facturado por cada método
- * de pago NO efectivo (tarjeta, tarjeta virtual, bizum, transferencia),
+ * de pago (tarjeta, tarjeta virtual, bizum, transferencia, efectivo),
  * para que el personal de tienda lo cuadre contra lo que calcula el
- * sistema a partir de facturas/tickets. Hermana de "Efectivo"
- * (lib/efectivo.ts), pero aquí no se lista un libro de movimientos: se
- * agrega directamente un total por día+método a comparar. Petición del
- * usuario, 2026-10-09.
+ * sistema a partir de facturas/tickets. Aquí no se lista un libro de
+ * movimientos: se agrega directamente un total por día+método a
+ * comparar. "efectivo" se añadió el 2026-10-12 (fusión con lo que antes
+ * era "Tarjetas") para que el desglose de un día muestre TODOS los tipos
+ * de pago juntos — no sustituye ni toca la vista "Efectivo"
+ * (lib/efectivo.ts), que sigue siendo el libro de movimientos/retiradas
+ * de caja; esto es solo una fila más de reconciliación aquí. Petición del
+ * usuario, 2026-10-09/12.
  */
 import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConIva } from "@/lib/facturas-cliente";
 
@@ -14,6 +18,7 @@ export const METODOS_TPV = [
   { value: "tarjeta_virtual", label: "Tarjeta virtual" },
   { value: "bizum", label: "Bizum" },
   { value: "transferencia", label: "Transferencia bancaria" },
+  { value: "efectivo", label: "Efectivo" },
 ] as const;
 
 export type MetodoTpv = (typeof METODOS_TPV)[number]["value"];

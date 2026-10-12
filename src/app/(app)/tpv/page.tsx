@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CardPos, Refresh2, MoneyRecive, Bank } from "@/lib/icons";
 import { METODOS_TPV, TpvFotoApi, TpvImporteApi } from "@/lib/tpv";
 import { CalendarioTpv } from "./calendario-tpv";
-import { DiaDetalleDialog } from "./dia-detalle-dialog";
+import { DiaDetalleVista } from "./dia-detalle-vista";
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { style: "currency", currency: "EUR" });
@@ -22,8 +22,10 @@ function clavesMes(mes: Date): string {
  * TPV (antes separado de "Tarjetas", fusionados de vuelta en una sola
  * vista — petición del usuario, 2026-10-12: "son lo mismo, me equivoqué").
  * Calendario mensual primero (mismo patrón que Recogidas): cada día
- * muestra un resumen, y al entrar se ve el desglose completo por método
- * con el total confirmado acumulado — ver dia-detalle-dialog.tsx.
+ * muestra un resumen, y al entrar se sustituye el calendario por el
+ * desglose completo de ese día (vista normal, no modal — petición del
+ * usuario, 2026-10-12) con el total confirmado acumulado — ver
+ * dia-detalle-vista.tsx.
  */
 export default function TpvPage() {
   const [segunSistema, setSegunSistema] = useState<Record<string, Record<string, number>>>({});
@@ -75,9 +77,20 @@ export default function TpvPage() {
     return { vendido, confirmado, diferencia: Math.round((vendido - confirmado) * 100) / 100 };
   }, [segunSistema, importes, mesActual]);
 
-  const segunSistemaDia = diaSeleccionado ? segunSistema[diaSeleccionado] || {} : {};
-  const importesDia = diaSeleccionado ? importes.filter((i) => i.fecha === diaSeleccionado) : [];
-  const fotosDia = diaSeleccionado ? fotos.filter((f) => f.fecha === diaSeleccionado) : [];
+  if (diaSeleccionado) {
+    return (
+      <div className="p-6">
+        <DiaDetalleVista
+          dia={diaSeleccionado}
+          segunSistemaDia={segunSistema[diaSeleccionado] || {}}
+          importesDia={importes.filter((i) => i.fecha === diaSeleccionado)}
+          fotosDia={fotos.filter((f) => f.fecha === diaSeleccionado)}
+          onVolver={() => setDiaSeleccionado(null)}
+          onCambiado={cargar}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -87,7 +100,7 @@ export default function TpvPage() {
             <CardPos className="size-5 text-purple-600" /> TPV
           </h1>
           <p className="text-sm text-muted-foreground">
-            Cobros por tarjeta, Bizum o transferencia — entra en un día para ver el desglose y confirmar lo que dice el banco.
+            Cobros por tarjeta, Bizum, transferencia o efectivo — entra en un día para ver el desglose y confirmar lo que dice el banco.
           </p>
         </div>
         <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
@@ -142,15 +155,6 @@ export default function TpvPage() {
           onSeleccionarDia={setDiaSeleccionado}
         />
       )}
-
-      <DiaDetalleDialog
-        dia={diaSeleccionado}
-        segunSistemaDia={segunSistemaDia}
-        importesDia={importesDia}
-        fotosDia={fotosDia}
-        onOpenChange={(o) => !o && setDiaSeleccionado(null)}
-        onCambiado={cargar}
-      />
     </div>
   );
 }
