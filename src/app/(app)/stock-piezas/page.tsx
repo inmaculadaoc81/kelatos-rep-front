@@ -233,6 +233,11 @@ export default function StockPiezasPage() {
                       </div>
                     )}
                     {p.descripcion && <div className="text-xs text-muted-foreground">{p.descripcion}</div>}
+                    {p.nombre && p.nombreInternoProveedor && (
+                      <div className="text-xs text-sky-600 dark:text-sky-400" title="Nombre interno (proveedor)">
+                        {p.nombreInternoProveedor}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{p.categoria || "-"}</TableCell>
                   <TableCell className="text-right text-sm tabular-nums">{euros(p.costeInterno)}</TableCell>
