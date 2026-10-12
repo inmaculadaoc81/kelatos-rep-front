@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  ETIQUETA_RESPUESTA, ETIQUETA_VEREDICTO, FilaResena, ReporteResenas, ReporteValoraciones, RespuestaEncuesta, Valoracion, VeredictoEncuesta,
+  ETIQUETA_RESPUESTA, ETIQUETA_VEREDICTO, FilaResena, ReporteResenas, ReporteValoraciones, RespuestaEncuesta, TEXTO_PREGUNTA_ENCUESTA, Valoracion, VeredictoEncuesta,
 } from "@/lib/resenas";
 import { PestanaProximosEnvios } from "./proximos-envios";
 import { toast } from "sonner";
@@ -197,6 +198,7 @@ export default function ReporteResenasPage() {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [pestana, setPestana] = useState<Pestana>("respuestas");
+  const [preguntaAbierta, setPreguntaAbierta] = useState<1 | 2 | null>(null);
   const [recargaProximos, setRecargaProximos] = useState(0);
   const [veredicto, setVeredicto] = useState<"" | VeredictoEncuesta>("");
   const [servicio, setServicio] = useState("");
@@ -248,6 +250,10 @@ export default function ReporteResenasPage() {
   const total = datos?.totalLista ?? 0;
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
   const pctPositivas = datos && datos.total > 0 ? Math.round((datos.positivas / datos.total) * 100) : 0;
+  const pctPregunta = (positivas: number, negativas: number) => {
+    const respondidas = positivas + negativas;
+    return respondidas > 0 ? Math.round((positivas / respondidas) * 100) : 0;
+  };
   const hayFiltros = !!(veredicto || servicio || desde || hasta || busquedaAplicada);
 
   const kpi = (titulo: string, valor: string, sub: string, icono: React.ReactNode, color: string, activo?: boolean, onClick?: () => void) => (
@@ -287,6 +293,28 @@ export default function ReporteResenasPage() {
         {kpi("Positivas", String(datos?.positivas ?? 0), `${pctPositivas}% del total`, <Like1 className="size-4" />, "bg-green-500/10 text-green-600 dark:text-green-400", pestana === "respuestas" && veredicto === "positiva", () => { setPestana("respuestas"); setVeredicto(veredicto === "positiva" ? "" : "positiva"); })}
         {kpi("Reseñas malas", String(datos?.negativas ?? 0), "alguna respuesta mala o muy mala", <Dislike className="size-4" />, "bg-red-500/10 text-red-600 dark:text-red-400", pestana === "malas", () => { setPestana("malas"); setVeredicto(""); })}
         {kpi("Sin terminar", String(datos?.incompletas ?? 0), "falta alguna respuesta", <Warning2 className="size-4" />, "bg-amber-500/10 text-amber-600 dark:text-amber-400", pestana === "respuestas" && veredicto === "incompleta", () => { setPestana("respuestas"); setVeredicto(veredicto === "incompleta" ? "" : "incompleta"); })}
+      </div>
+
+      {/* Desglose por pregunta — P1 y P2 son preguntas distintas (atención
+          recibida / resultado del servicio), así que además del veredicto
+          combinado de arriba interesa ver cuánta gente está conforme con
+          CADA una por separado. Solo informativas (no filtran la tabla).
+          Petición del usuario, 2026-10-12. */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {kpi(
+          "Pregunta 1 — " + TEXTO_PREGUNTA_ENCUESTA[1],
+          `${pctPregunta(datos?.p1Positivas ?? 0, datos?.p1Negativas ?? 0)}% positiva`,
+          `${datos?.p1Positivas ?? 0} buena/muy buena · ${datos?.p1Negativas ?? 0} mala/muy mala`,
+          <Like1 className="size-4" />,
+          "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+        )}
+        {kpi(
+          "Pregunta 2 — " + TEXTO_PREGUNTA_ENCUESTA[2],
+          `${pctPregunta(datos?.p2Positivas ?? 0, datos?.p2Negativas ?? 0)}% positiva`,
+          `${datos?.p2Positivas ?? 0} buena/muy buena · ${datos?.p2Negativas ?? 0} mala/muy mala`,
+          <Like1 className="size-4" />,
+          "bg-violet-500/10 text-violet-600 dark:text-violet-400"
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1 border-b" role="tablist">
@@ -342,8 +370,16 @@ export default function ReporteResenasPage() {
                   <TableHead>Teléfono</TableHead>
                   <TableHead>Servicio</TableHead>
                   <TableHead>Resguardo</TableHead>
-                  <TableHead>Pregunta 1</TableHead>
-                  <TableHead>Pregunta 2</TableHead>
+                  <TableHead>
+                    <button type="button" className="underline-offset-2 hover:underline" title="Ver el texto de la pregunta" onClick={() => setPreguntaAbierta(1)}>
+                      Pregunta 1
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button type="button" className="underline-offset-2 hover:underline" title="Ver el texto de la pregunta" onClick={() => setPreguntaAbierta(2)}>
+                      Pregunta 2
+                    </button>
+                  </TableHead>
                   <TableHead>Resultado</TableHead>
                   <TableHead>Destino</TableHead>
                   <TableHead>Formulario</TableHead>
@@ -381,6 +417,15 @@ export default function ReporteResenasPage() {
 
       {pestana === "proximos" && <PestanaProximosEnvios recargar={recargaProximos} />}
       {pestana === "formulario" && <PestanaFormulario />}
+
+      <Dialog open={preguntaAbierta !== null} onOpenChange={(o) => !o && setPreguntaAbierta(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Pregunta {preguntaAbierta}</DialogTitle>
+          <DialogDescription className="text-base text-foreground">
+            {preguntaAbierta ? TEXTO_PREGUNTA_ENCUESTA[preguntaAbierta] : ""}
+          </DialogDescription>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
