@@ -56,24 +56,14 @@ export async function POST(req: Request) {
   if (archivos.some((a) => !TIPOS_PEDIDO_VALIDOS.has(a.mimeType))) return NextResponse.json({ ok: false, error: "Solo se admiten imágenes (JPG, PNG, WEBP) o PDF" }, { status: 400 });
 
   try {
-    const data = await kelatosApiPost<{
-      ok: boolean;
-      numeroPedidoGlobal: string | null;
-      lineas: LineaPedidoProveedorLeida[];
-      proveedorIdSugerido: string | null;
-      proveedorCreado?: boolean;
-      textoOcr: string;
-    }>("/v1/compras/pedido-proveedor/ocr", {
+    // La IA es lenta y el proxy corta a los 60 s: el análisis corre en segundo plano en el servidor y
+    // aquí solo se devuelve el identificador; el resultado se consulta en GET /ocr/[jobId].
+    const data = await kelatosApiPost<{ ok: boolean; jobId: string }>("/v1/compras/pedido-proveedor/ocr", {
       archivos,
       nombreProveedor: body.nombreProveedor || undefined,
+      async: true,
     });
-    return NextResponse.json({
-      ok: true,
-      numeroPedidoGlobal: data.numeroPedidoGlobal,
-      lineas: data.lineas || [],
-      proveedorIdSugerido: data.proveedorIdSugerido,
-      proveedorCreado: !!data.proveedorCreado,
-    });
+    return NextResponse.json({ ok: true, jobId: data.jobId });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "No se pudo leer el pedido" }, { status: 502 });
   }

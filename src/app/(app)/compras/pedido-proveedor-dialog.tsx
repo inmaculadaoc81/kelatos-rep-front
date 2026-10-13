@@ -183,6 +183,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const inputOcr = useRef<HTMLInputElement>(null);
   const [archivos, setArchivos] = useState<ArchivoPedido[]>([]);
   const [preparando, setPreparando] = useState(false);
+  const [segundosAnalisis, setSegundosAnalisis] = useState(0);
+  /** true cuando se cierra el diálogo: corta la consulta periódica del análisis. */
+  const cancelarAnalisis = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -190,6 +193,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   }, [open]);
 
   useEffect(() => {
+    cancelarAnalisis.current = !open;
     if (!open) {
       setLineas([]);
       setProveedorIdSugerido(null);
@@ -286,7 +290,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   async function analizar() {
     if (archivos.length === 0) return;
     setLeyendoOcr(true);
+    setSegundosAnalisis(0);
+    const inicio = Date.now();
     try {
+      // 1) Se envían los archivos y el servidor responde al instante con un identificador
+      //    (la IA es lenta y el proxy corta a los 60 s, por eso el análisis corre en segundo plano).
       const res = await fetch("/api/compras/pedido-proveedor/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -295,15 +303,32 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           nombreProveedor: proveedorNombre,
         }),
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      const envio = await res.json();
+      if (!envio.ok || !envio.jobId) throw new Error(envio.error || "No se pudo iniciar el análisis");
+
+      // 2) Se consulta el resultado cada pocos segundos (máx. 4 minutos).
+      let data: {
+        estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
+        proveedorIdSugerido?: string | null; proveedorCreado?: boolean;
+      } | null = null;
+      while (Date.now() - inicio < 240_000) {
+        await new Promise((r) => setTimeout(r, 2500));
+        if (cancelarAnalisis.current) return;
+        setSegundosAnalisis(Math.round((Date.now() - inicio) / 1000));
+        const r = await fetch(`/api/compras/pedido-proveedor/ocr/${encodeURIComponent(envio.jobId)}`);
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || "No se pudo consultar el análisis");
+        if (d.estado === "error") throw new Error(d.error || "No se pudo leer el pedido");
+        if (d.estado === "listo") { data = d; break; }
+      }
+      if (!data) throw new Error("El análisis está tardando demasiado. Inténtalo de nuevo con menos archivos.");
       if (!data.lineas?.length) {
         toast.warning("No se leyó ninguna línea de pedido en los archivos");
         return;
       }
-      setLineas((data.lineas as LineaPedidoProveedorLeida[]).map((l) => lineaDesdeOcr(l, data.numeroPedidoGlobal)));
+      setLineas(data.lineas.map((l) => lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null)));
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
-      setProveedorIdSugerido(data.proveedorIdSugerido);
+      setProveedorIdSugerido(data.proveedorIdSugerido ?? null);
       setProveedorCreado(!!data.proveedorCreado);
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
     } catch (e) {
@@ -461,7 +486,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               disabled={leyendoOcr || preparando || archivos.length === 0} onClick={analizar}
             >
               {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
-              {leyendoOcr ? "Analizando…" : lineas.length > 0 ? "Volver a analizar con IA" : "Analizar con IA"}
+              {leyendoOcr ? `Analizando… ${segundosAnalisis}s` : lineas.length > 0 ? "Volver a analizar con IA" : "Analizar con IA"}
             </Button>
             {proveedorIdSugerido && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
