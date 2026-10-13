@@ -10,13 +10,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { DocumentUpload, MagicStar, Refresh2, SearchNormal1, TickCircle, Box1, Profile2User } from "@/lib/icons";
+import { DocumentUpload, MagicStar, Refresh2, SearchNormal1, TickCircle, Box1, Profile2User, Add, CloseCircle, DocumentText, Gallery } from "@/lib/icons";
 import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import type { LineaPedidoProveedorLeida } from "@/app/api/compras/pedido-proveedor/ocr/route";
 import type { Empleado } from "@/app/api/empleados/route";
 import type { LineaRegistroPedidoProveedor } from "@/app/api/compras/pedido-proveedor/registro/route";
 
 const CATEGORIAS_SUGERIDAS = ["CARGADOR", "DYSON", "THERMOMIX", "OTRO"];
+
+/** Hasta 4 archivos (pantallazos y/o PDF) por análisis. */
+const MAX_ARCHIVOS = 4;
+/** Las imágenes grandes se reducen a este lado máximo antes de enviarse. */
+const LADO_MAX_IMAGEN = 2200;
+/** Tope del conjunto en base64 (el servidor admite 20 MB por petición). */
+const MAX_TOTAL_BASE64 = 15 * 1024 * 1024;
+
+interface ArchivoPedido {
+  id: string;
+  nombre: string;
+  esPdf: boolean;
+  base64: string;
+  mimeType: string;
+}
 
 interface CandidatoResguardo {
   resguardo: string;
@@ -166,6 +181,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [compradoPor, setCompradoPor] = useState("");
   const [registrando, setRegistrando] = useState(false);
   const inputOcr = useRef<HTMLInputElement>(null);
+  const [archivos, setArchivos] = useState<ArchivoPedido[]>([]);
+  const [preparando, setPreparando] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -179,38 +196,109 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setNumeroPedidoGlobal(null);
       setProveedorCreado(false);
       setCompradoPor("");
+      setArchivos([]);
       if (inputOcr.current) inputOcr.current.value = "";
     }
   }, [open]);
 
-  function leerBase64(archivo: File): Promise<string> {
+  function leerBase64(archivo: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const r = new FileReader();
-      r.onerror = () => reject(new Error(`No se pudo leer "${archivo.name}"`));
+      r.onerror = () => reject(new Error("No se pudo leer el archivo"));
       r.onload = () => resolve(String(r.result).split(",")[1] || "");
       r.readAsDataURL(archivo);
     });
   }
 
-  async function leerConIA(archivo: File | undefined) {
-    if (!archivo) return;
-    if (archivo.size > 8 * 1024 * 1024) {
-      toast.error("El archivo no puede superar 8 MB");
-      if (inputOcr.current) inputOcr.current.value = "";
+  /** Reduce una imagen grande a un JPEG de como máximo LADO_MAX_IMAGEN px: el
+      OCR del servidor tarda mucho menos y el envío pesa menos. Si la imagen
+      ya es pequeña se manda tal cual. */
+  async function prepararImagen(archivo: File): Promise<{ base64: string; mimeType: string }> {
+    const original = { base64: await leerBase64(archivo), mimeType: archivo.type || "image/jpeg" };
+    if (archivo.size <= 1_500_000) return original;
+    try {
+      const url = URL.createObjectURL(archivo);
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error("imagen no válida"));
+        i.src = url;
+      });
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, LADO_MAX_IMAGEN / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return original;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      const base64 = dataUrl.split(",")[1] || "";
+      return base64 && base64.length < original.base64.length ? { base64, mimeType: "image/jpeg" } : original;
+    } catch {
+      return original;
+    }
+  }
+
+  async function anadirArchivos(lista: FileList | null) {
+    if (!lista || lista.length === 0) return;
+    const nuevos = Array.from(lista);
+    if (inputOcr.current) inputOcr.current.value = "";
+    if (archivos.length + nuevos.length > MAX_ARCHIVOS) {
+      toast.error(`Máximo ${MAX_ARCHIVOS} archivos por análisis (ya tienes ${archivos.length})`);
       return;
     }
+    setPreparando(true);
+    try {
+      const listos: ArchivoPedido[] = [];
+      for (const f of nuevos) {
+        const esPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+        const esImagen = f.type.startsWith("image/");
+        if (!esPdf && !esImagen) {
+          toast.error(`"${f.name}": solo se admiten imágenes o PDF`);
+          continue;
+        }
+        if (f.size > 8 * 1024 * 1024) {
+          toast.error(`"${f.name}" supera los 8 MB`);
+          continue;
+        }
+        const preparado = esPdf ? { base64: await leerBase64(f), mimeType: "application/pdf" } : await prepararImagen(f);
+        listos.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`, nombre: f.name, esPdf, base64: preparado.base64, mimeType: preparado.mimeType });
+      }
+      if (listos.length === 0) return;
+      const total = [...archivos, ...listos].reduce((n, a) => n + a.base64.length, 0);
+      if (total > MAX_TOTAL_BASE64) {
+        toast.error("Los archivos pesan demasiado en conjunto. Quita alguno o usa capturas más pequeñas.");
+        return;
+      }
+      setArchivos((prev) => [...prev, ...listos]);
+    } finally {
+      setPreparando(false);
+    }
+  }
+
+  function quitarArchivo(id: string) {
+    setArchivos((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  /** Analiza TODOS los archivos juntos, solo cuando se pulsa el botón (así no
+      se empieza a leer la primera captura antes de adjuntar las demás). */
+  async function analizar() {
+    if (archivos.length === 0) return;
     setLeyendoOcr(true);
     try {
-      const base64 = await leerBase64(archivo);
       const res = await fetch("/api/compras/pedido-proveedor/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64, mimeType: archivo.type || "application/octet-stream", nombreProveedor: proveedorNombre }),
+        body: JSON.stringify({
+          archivos: archivos.map((a) => ({ base64: a.base64, mimeType: a.mimeType })),
+          nombreProveedor: proveedorNombre,
+        }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (!data.lineas?.length) {
-        toast.warning("No se leyó ninguna línea de pedido en la imagen");
+        toast.warning("No se leyó ninguna línea de pedido en los archivos");
         return;
       }
       setLineas((data.lineas as LineaPedidoProveedorLeida[]).map((l) => lineaDesdeOcr(l, data.numeroPedidoGlobal)));
@@ -219,10 +307,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setProveedorCreado(!!data.proveedorCreado);
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo leer el pantallazo");
+      toast.error(e instanceof Error ? e.message : "No se pudo leer el pedido");
     } finally {
       setLeyendoOcr(false);
-      if (inputOcr.current) inputOcr.current.value = "";
     }
   }
 
@@ -360,14 +447,21 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               <Label className="text-xs text-muted-foreground">Proveedor</Label>
               <Input className="h-8 w-40" value={proveedorNombre} onChange={(e) => setProveedorNombre(e.target.value)} placeholder="ASWO" />
             </div>
-            <input ref={inputOcr} type="file" accept="image/*" className="hidden" onChange={(e) => leerConIA(e.target.files?.[0])} />
+            <input ref={inputOcr} type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={(e) => anadirArchivos(e.target.files)} />
+            <Button
+              type="button" variant="outline" size="sm" className="gap-1.5"
+              disabled={leyendoOcr || preparando || archivos.length >= MAX_ARCHIVOS} onClick={() => inputOcr.current?.click()}
+            >
+              {preparando ? <Refresh2 className="size-4 animate-spin" /> : <Add className="size-4" />}
+              {preparando ? "Preparando…" : `Añadir archivos (${archivos.length}/${MAX_ARCHIVOS})`}
+            </Button>
             <Button
               type="button" variant="outline" size="sm"
               className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40"
-              disabled={leyendoOcr} onClick={() => inputOcr.current?.click()}
+              disabled={leyendoOcr || preparando || archivos.length === 0} onClick={analizar}
             >
               {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
-              {leyendoOcr ? "Leyendo…" : "Subir pantallazo y leer con IA"}
+              {leyendoOcr ? "Analizando…" : lineas.length > 0 ? "Volver a analizar con IA" : "Analizar con IA"}
             </Button>
             {proveedorIdSugerido && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -376,6 +470,23 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               </span>
             )}
           </div>
+
+          {archivos.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {archivos.map((a) => (
+                <span key={a.id} className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-1 text-xs">
+                  {a.esPdf ? <DocumentText className="size-3.5 shrink-0" /> : <Gallery className="size-3.5 shrink-0" />}
+                  <span className="max-w-48 truncate">{a.nombre}</span>
+                  <button
+                    type="button" title="Quitar este archivo" disabled={leyendoOcr}
+                    className="text-muted-foreground hover:text-destructive disabled:opacity-50" onClick={() => quitarArchivo(a.id)}
+                  >
+                    <CloseCircle className="size-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           {lineas.length > 0 && (
             <>
@@ -518,7 +629,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
           {lineas.length === 0 && (
             <p className="flex items-center gap-1.5 py-6 text-center text-sm text-muted-foreground">
-              <Box1 className="size-4" /> Sube un pantallazo del pedido para que la IA lo lea.
+              <Box1 className="size-4" /> Añade de 1 a 4 archivos del pedido (pantallazos o PDF) y pulsa «Analizar con IA».
             </p>
           )}
         </div>

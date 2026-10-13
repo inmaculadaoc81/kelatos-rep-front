@@ -31,6 +31,9 @@ export interface LineaPedidoProveedorLeida {
   precioClienteSugerido: number | null;
 }
 
+const MAX_ARCHIVOS_PEDIDO = 4;
+const TIPOS_PEDIDO_VALIDOS = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"]);
+
 /** Proxy de POST /v1/compras/pedido-proveedor/ocr — lectura automática de
     un pantallazo de pedido hecho en la web de un proveedor. No persiste
     nada, solo devuelve las líneas leídas para que el empleado las revise y
@@ -38,8 +41,19 @@ export interface LineaPedidoProveedorLeida {
 export async function POST(req: Request) {
   const session = await auth();
   if (esCuentaEmpleadosRestringida(session?.user?.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
-  const body = (await req.json().catch(() => ({}))) as { base64?: string; mimeType?: string; nombreProveedor?: string };
-  if (!body.base64 || !body.mimeType) return NextResponse.json({ ok: false, error: "Faltan datos del archivo" }, { status: 400 });
+  const body = (await req.json().catch(() => ({}))) as {
+    base64?: string;
+    mimeType?: string;
+    nombreProveedor?: string;
+    /** Formato nuevo: de 1 a 4 archivos (imágenes y/o PDF) en un solo análisis. */
+    archivos?: { base64?: string; mimeType?: string }[];
+  };
+  // Compatibilidad: un solo archivo con el formato antiguo se trata como lista de 1.
+  const archivos = (Array.isArray(body.archivos) ? body.archivos : body.base64 ? [{ base64: body.base64, mimeType: body.mimeType }] : [])
+    .filter((a): a is { base64: string; mimeType: string } => !!a && typeof a.base64 === "string" && !!a.base64 && typeof a.mimeType === "string" && !!a.mimeType);
+  if (archivos.length === 0) return NextResponse.json({ ok: false, error: "Faltan datos del archivo" }, { status: 400 });
+  if (archivos.length > MAX_ARCHIVOS_PEDIDO) return NextResponse.json({ ok: false, error: `Máximo ${MAX_ARCHIVOS_PEDIDO} archivos por análisis` }, { status: 400 });
+  if (archivos.some((a) => !TIPOS_PEDIDO_VALIDOS.has(a.mimeType))) return NextResponse.json({ ok: false, error: "Solo se admiten imágenes (JPG, PNG, WEBP) o PDF" }, { status: 400 });
 
   try {
     const data = await kelatosApiPost<{
@@ -50,8 +64,7 @@ export async function POST(req: Request) {
       proveedorCreado?: boolean;
       textoOcr: string;
     }>("/v1/compras/pedido-proveedor/ocr", {
-      base64: body.base64,
-      mimeType: body.mimeType,
+      archivos,
       nombreProveedor: body.nombreProveedor || undefined,
     });
     return NextResponse.json({
