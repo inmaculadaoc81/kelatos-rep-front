@@ -413,7 +413,10 @@ export function FacturaRecibidaFormDialog({
                   : {
                       nombre: a.nombre,
                       cantidad: a.cantidad,
-                      nuevaPieza: { nombre: a.nombre, categoria: a.categoria, costeInterno: a.costeInterno, precioCliente: a.precioCliente, manoObra: 0 },
+                      nuevaPieza: {
+                        nombre: a.nombre, categoria: a.categoria, costeInterno: a.costeInterno, precioCliente: a.precioCliente, manoObra: 0,
+                        nombreInternoProveedor: a.nombre, codigoProveedor: a.codigoProveedor.trim(), idPedidoProveedor: a.idPedidoProveedor.trim(),
+                      },
                     }
               )
           : undefined,

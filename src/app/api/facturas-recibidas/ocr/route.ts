@@ -28,6 +28,11 @@ export interface FacturaOcrExtraido {
 export interface ArticuloFacturaEmparejado {
   nombre: string;
   cantidad: number;
+  /** Señas de identidad del artículo leídas en la factura (opcionales) —
+      el servidor las usa para emparejar con Stock de Piezas y se guardan al
+      dar de alta una pieza nueva. */
+  codigoProveedor?: string | null;
+  idPedidoProveedor?: string | null;
   referenciaSugerida: string | null;
   nombrePiezaSugerida: string | null;
   categoriaSugerida: string | null;

@@ -20,6 +20,10 @@ export interface ArticuloStockEditable {
   categoria: string;
   costeInterno: number;
   precioCliente: number;
+  /** Señas del proveedor (como en "Subir pedido con IA"): se guardan en la
+      pieza nueva para reconocerla en próximas facturas/pedidos. */
+  codigoProveedor: string;
+  idPedidoProveedor: string;
 }
 
 const CATEGORIAS_SUGERIDAS = ["CARGADOR", "DYSON", "THERMOMIX", "OTRO"];
@@ -34,6 +38,8 @@ export function articulosEmparejadosAEditables(articulos: ArticuloFacturaEmparej
     categoria: a.categoriaSugerida || "CARGADOR",
     costeInterno: 0,
     precioCliente: a.precioClienteSugerido || 0,
+    codigoProveedor: a.codigoProveedor || "",
+    idPedidoProveedor: a.idPedidoProveedor || "",
   }));
 }
 
@@ -124,6 +130,14 @@ export function ArticulosStockRevision({
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Precio cliente (€)</Label>
                       <DecimalInput className="h-8" value={a.precioCliente} onChange={(n) => actualizar(i, { precioCliente: n })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Código proveedor</Label>
+                      <Input className="h-8" value={a.codigoProveedor} onChange={(e) => actualizar(i, { codigoProveedor: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">ID de pedido</Label>
+                      <Input className="h-8" value={a.idPedidoProveedor} onChange={(e) => actualizar(i, { idPedidoProveedor: e.target.value })} />
                     </div>
                   </div>
                 )}
