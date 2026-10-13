@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearProducto, DatosProductoForm } from "@/lib/productos";
+import { esCuentaEmpleadosRestringida } from "@/lib/superadmin";
 
 interface RespuestaLecturaProductos {
   ok: boolean;
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  if (esCuentaEmpleadosRestringida(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const datos = (await req.json()) as DatosProductoForm;
   if (!datos.nombre?.trim()) return NextResponse.json({ ok: false, error: "El nombre es obligatorio" }, { status: 400 });

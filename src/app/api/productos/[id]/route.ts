@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearProducto, DatosProductoForm } from "@/lib/productos";
+import { esCuentaEmpleadosRestringida } from "@/lib/superadmin";
 
 export async function PATCH(
   req: Request,
@@ -11,6 +12,7 @@ export async function PATCH(
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  if (esCuentaEmpleadosRestringida(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { id } = await params;
   const datos = (await req.json()) as DatosProductoForm;

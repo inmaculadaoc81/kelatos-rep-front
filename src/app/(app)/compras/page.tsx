@@ -11,6 +11,7 @@ import {
 } from "@/lib/icons";
 import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
 import { HistorialPedidoProveedorDialog } from "./historial-pedido-proveedor-dialog";
+import { useCuentaRestringida } from "@/lib/use-cuenta-restringida";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,6 +52,8 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
 }
 
 export default function ComprasPage() {
+  const { restringida: cuentaRestringida, cargada: sesionCargada } = useCuentaRestringida();
+  const puedeSubirPedidoIA = sesionCargada && !cuentaRestringida;
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [ventaDetalleId, setVentaDetalleId] = useState<string | null>(null);
   const [borradorFactura, setBorradorFactura] = useState<CompraFila | null>(null);
@@ -200,9 +203,11 @@ export default function ComprasPage() {
           <p className="text-sm text-muted-foreground">Pedidos de piezas registrados desde Reparaciones — proveedor, enlace de compra y estado de cada uno</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setPedidoProveedorAbierto(true)}>
-            <DocumentUpload className="size-4" /> Subir pedido con IA
-          </Button>
+          {puedeSubirPedidoIA && (
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setPedidoProveedorAbierto(true)}>
+              <DocumentUpload className="size-4" /> Subir pedido con IA
+            </Button>
+          )}
           <Button variant="outline" size="icon" className="size-8" onClick={() => setHistorialPedidoProveedorAbierto(true)} title="Historial de Subir pedido con IA">
             <Clock className="size-4" />
           </Button>

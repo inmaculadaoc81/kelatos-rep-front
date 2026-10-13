@@ -17,8 +17,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Producto, MovimientoInventario } from "@/lib/productos";
 import { ProductoFormDialog } from "./producto-form-dialog";
 import { MovimientoDialog } from "./movimiento-dialog";
+import { useCuentaRestringida } from "@/lib/use-cuenta-restringida";
 
 export default function ProductosPage() {
+  const { restringida, cargada: sesionCargada } = useCuentaRestringida();
+  const puedeEditar = sesionCargada && !restringida;
   const [productos, setProductos] = useState<Producto[]>([]);
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -69,16 +72,18 @@ export default function ProductosPage() {
           <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => {
-              setProductoEditando(null);
-              setFormAbierto(true);
-            }}
-          >
-            <Add className="size-4" /> Nuevo Producto
-          </Button>
+          {puedeEditar && (
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                setProductoEditando(null);
+                setFormAbierto(true);
+              }}
+            >
+              <Add className="size-4" /> Nuevo Producto
+            </Button>
+          )}
         </div>
       </div>
 
@@ -161,17 +166,19 @@ export default function ProductosPage() {
                           <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => setMovimientoAbierto(p)}>
                             <ArrowSwapHorizontal className="size-3.5" /> Mov.
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 gap-1"
-                            onClick={() => {
-                              setProductoEditando(p);
-                              setFormAbierto(true);
-                            }}
-                          >
-                            <Edit2 className="size-3.5" /> Editar
-                          </Button>
+                          {puedeEditar && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 gap-1"
+                              onClick={() => {
+                                setProductoEditando(p);
+                                setFormAbierto(true);
+                              }}
+                            >
+                              <Edit2 className="size-3.5" /> Editar
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

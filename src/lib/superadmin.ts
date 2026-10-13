@@ -37,3 +37,15 @@ const EFECTIVO_SOLO_LECTURA_EMAILS_EXTRA = new Set(["soporte@kelatos.com"]);
 export function puedeVerEfectivoSoloLectura(email: string | null | undefined): boolean {
   return !!email && EFECTIVO_SOLO_LECTURA_EMAILS_EXTRA.has(email.toLowerCase());
 }
+
+/**
+ * Cuenta compartida de empleados (soporte@kelatos.com): puede consultar
+ * Control de Stock pero NO crear/editar productos, y no puede usar "Subir
+ * pedido con IA" en Compras. Petición del usuario, 2026-10-13. Se comprueba
+ * en la UI (oculta los botones) y en las rutas /api que escriben (403).
+ */
+const CUENTAS_EMPLEADOS_RESTRINGIDAS = new Set(["soporte@kelatos.com"]);
+
+export function esCuentaEmpleadosRestringida(email: string | null | undefined): boolean {
+  return !!email && CUENTAS_EMPLEADOS_RESTRINGIDAS.has(email.toLowerCase());
+}

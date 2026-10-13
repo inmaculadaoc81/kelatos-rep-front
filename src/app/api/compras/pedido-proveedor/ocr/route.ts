@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
+import { esCuentaEmpleadosRestringida } from "@/lib/superadmin";
 
 /** Una línea de pedido leída del pantallazo (p. ej. plataforma de ASWO),
     ya clasificada en "tienda" (pieza para Stock de Piezas) o "cliente"
@@ -34,6 +36,8 @@ export interface LineaPedidoProveedorLeida {
     nada, solo devuelve las líneas leídas para que el empleado las revise y
     confirme antes de registrar ningún pedido de verdad. */
 export async function POST(req: Request) {
+  const session = await auth();
+  if (esCuentaEmpleadosRestringida(session?.user?.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const body = (await req.json().catch(() => ({}))) as { base64?: string; mimeType?: string; nombreProveedor?: string };
   if (!body.base64 || !body.mimeType) return NextResponse.json({ ok: false, error: "Faltan datos del archivo" }, { status: 400 });
 
