@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Streamdown } from "streamdown";
-import { Send2, CloseCircle, Refresh2, Copy, TickCircle } from "@/lib/icons";
+import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1 } from "@/lib/icons";
 import { contextoPantallaActual } from "@/lib/asistente/contexto";
 
 interface Mensaje {
@@ -13,12 +13,59 @@ interface Mensaje {
 }
 
 const CLAVE_STORAGE = "kelatos-asistente-chat";
-const SUGERENCIAS = [
-  "¿Para qué sirve esta pantalla?",
-  "¿Cómo se calcula el efectivo en caja?",
-  "¿Dónde se registra una factura recibida?",
-  "¿Cómo se alquila un equipo?",
-];
+interface Sugerencia {
+  pregunta: string;
+  /** "guia" = explica cómo funciona algo; "datos" = consulta datos reales. */
+  tipo: "guia" | "datos";
+}
+
+/** Sugerencias de la pantalla de bienvenida, según dónde está el usuario y qué tiene abierto. */
+function sugerenciasPara(ruta: string, abierto: { tipo: string; id: string } | null): Sugerencia[] {
+  if (abierto?.tipo === "resguardo") {
+    return [
+      { tipo: "datos", pregunta: "¿Cuándo se generó este resguardo y en qué estado está?" },
+      { tipo: "datos", pregunta: "¿Qué correos se le han enviado a este cliente?" },
+      { tipo: "guia", pregunta: "¿Qué toca hacer en el estado actual de esta reparación?" },
+    ];
+  }
+  const porPantalla: [string, Sugerencia[]][] = [
+    ["/reparaciones/cobros", [{ tipo: "guia", pregunta: "¿Cuándo se considera cobrada una transferencia?" }]],
+    ["/reparaciones", [
+      { tipo: "guia", pregunta: "¿Qué significa cada estado de una reparación?" },
+      { tipo: "datos", pregunta: "¿Cuántas reparaciones se recibieron hoy?" },
+      { tipo: "guia", pregunta: "¿Cómo se entrega una reparación y se factura?" },
+    ]],
+    ["/efectivo", [
+      { tipo: "guia", pregunta: "¿Cómo se calcula el saldo de caja?" },
+      { tipo: "guia", pregunta: "¿Quién puede retirar efectivo y cómo se hace?" },
+    ]],
+    ["/compras", [
+      { tipo: "guia", pregunta: "¿Cómo funciona Subir pedido con IA?" },
+      { tipo: "guia", pregunta: "¿Qué significan los estados de un pedido?" },
+    ]],
+    ["/equipos", [
+      { tipo: "guia", pregunta: "¿Cómo se alquila un equipo paso a paso?" },
+      { tipo: "datos", pregunta: "¿Cuántos equipos hay disponibles ahora?" },
+    ]],
+    ["/facturas-clientes", [
+      { tipo: "guia", pregunta: "¿Qué series de facturación hay y para qué sirve cada una?" },
+      { tipo: "guia", pregunta: "¿Cómo se hace una rectificativa?" },
+    ]],
+    ["/stock-piezas", [
+      { tipo: "guia", pregunta: "¿Para qué sirve el nombre interno del proveedor?" },
+      { tipo: "datos", pregunta: "¿Qué piezas están por debajo del stock mínimo?" },
+    ]],
+    ["/ventas", [{ tipo: "guia", pregunta: "¿Cómo se registra una venta de piezas?" }]],
+    ["/tpv", [{ tipo: "guia", pregunta: "¿Para qué sirve Facturación del día?" }]],
+  ];
+  const propias = porPantalla.find(([prefijo]) => ruta === prefijo || ruta.startsWith(prefijo + "/"))?.[1] ?? [];
+  const generales: Sugerencia[] = [
+    { tipo: "guia", pregunta: "¿Para qué sirve esta pantalla?" },
+    { tipo: "guia", pregunta: "Explícame el proceso de una reparación de principio a fin" },
+    { tipo: "datos", pregunta: "¿Cuántas reparaciones hay en cada estado?" },
+  ];
+  return [...propias, ...generales].filter((s, i, todas) => todas.findIndex((x) => x.pregunta === s.pregunta) === i).slice(0, 4);
+}
 
 /** Destellos (icono "sparkles"): el mismo dibujo que el botón del asistente de referencia. */
 function IconoDestellos({ className }: { className?: string }) {
@@ -225,42 +272,57 @@ export function AsistenteFlotante() {
         <div
           role="dialog"
           aria-label="Asistente de ayuda de Kelatos"
-          className="flex h-[min(40rem,calc(100dvh-8rem))] w-[min(28rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+          className="flex h-[min(42rem,calc(100dvh-8rem))] w-[min(28rem,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden rounded-3xl border border-blue-500/10 bg-card shadow-[0_24px_60px_-12px_rgba(37,99,235,0.35),0_8px_24px_-8px_rgba(0,0,0,0.25)] animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-200"
         >
-          <div className="flex items-center gap-3 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 px-4 py-3 text-white">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20">
-              <IconoDestellos className="size-5" />
+          <div className="relative flex items-center gap-3 overflow-hidden bg-linear-to-br from-blue-500 via-blue-600 to-indigo-700 px-5 py-4 text-white">
+            {/* Brillos decorativos de la cabecera */}
+            <span aria-hidden className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-white/15 blur-2xl" />
+            <span aria-hidden className="pointer-events-none absolute -bottom-12 left-1/3 size-28 rounded-full bg-sky-300/20 blur-2xl" />
+            <span className="relative flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 shadow-inner ring-1 ring-white/30 backdrop-blur-sm">
+              <IconoDestellos className="size-6" />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold leading-tight">Asistente de Kelatos</p>
-              <p className="flex items-center gap-1.5 text-[11px] leading-tight text-white/80">
-                <span className={`size-1.5 rounded-full ${respondiendo ? "animate-pulse bg-amber-300" : "bg-emerald-300"}`} />
-                {respondiendo ? "Escribiendo…" : "Pregúntame cómo funciona el sistema"}
+            <div className="relative min-w-0 flex-1">
+              <p className="text-[15px] font-semibold leading-tight tracking-tight">Asistente de Kelatos</p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs leading-tight text-white/85">
+                <span className={`size-2 rounded-full ring-2 ring-white/30 ${respondiendo ? "animate-pulse bg-amber-300" : "bg-emerald-300"}`} />
+                {respondiendo ? "Escribiendo…" : "En línea · te ayudo con el sistema"}
               </p>
             </div>
-            <button type="button" onClick={nuevaConversacion} disabled={respondiendo || mensajes.length === 0} className="rounded-md p-1.5 text-white/80 hover:bg-white/15 hover:text-white disabled:opacity-30" title="Nueva conversación">
-              <Refresh2 className="size-4" />
+            <button type="button" onClick={nuevaConversacion} disabled={respondiendo || mensajes.length === 0} className="relative rounded-xl p-2 text-white/85 transition-colors hover:bg-white/15 hover:text-white disabled:opacity-30" title="Nueva conversación">
+              <Refresh2 className="size-4.5" />
             </button>
-            <button type="button" onClick={() => setAbierto(false)} className="rounded-md p-1.5 text-white/80 hover:bg-white/15 hover:text-white" title="Cerrar">
-              <CloseCircle className="size-4" />
+            <button type="button" onClick={() => setAbierto(false)} className="relative rounded-xl p-2 text-white/85 transition-colors hover:bg-white/15 hover:text-white" title="Cerrar">
+              <CloseCircle className="size-4.5" />
             </button>
           </div>
 
-          <div ref={desplazableRef} className="flex-1 space-y-4 overflow-y-auto bg-muted/30 px-4 py-4 text-sm">
+          <div ref={desplazableRef} className="flex-1 space-y-4 overflow-y-auto bg-linear-to-b from-blue-50/60 via-muted/20 to-background px-4 py-5 text-sm dark:from-blue-950/20">
             {mensajes.length === 0 && (
-              <div className="space-y-4">
-                <div className="flex gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                    <IconoDestellos className="size-4" />
+              <div className="flex min-h-full flex-col justify-center space-y-5 py-2">
+                <div className="flex flex-col items-center text-center">
+                  <span className="relative mb-3 flex size-16 items-center justify-center rounded-3xl bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
+                    <span aria-hidden className="absolute inset-0 animate-ping rounded-3xl bg-blue-500/20 [animation-duration:2.5s]" />
+                    <IconoDestellos className="relative size-8" />
                   </span>
-                  <div className="rounded-2xl rounded-tl-sm bg-card px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-sm">
-                    Hola 👋 Puedo explicarte dónde está una función, cómo se hace algo o cómo se calcula una cifra. No veo datos reales de clientes ni importes: te explico cómo funciona el sistema.
-                  </div>
+                  <h3 className="text-lg font-semibold tracking-tight">¿En qué te ayudo?</h3>
+                  <p className="mt-1 max-w-76 text-[13px] leading-relaxed text-muted-foreground">
+                    Te explico cómo funciona cada pantalla y proceso, y consulto los datos que tu cuenta puede ver.
+                  </p>
                 </div>
-                <div className="flex flex-col gap-2 pl-10">
-                  {SUGERENCIAS.map((s) => (
-                    <button key={s} type="button" onClick={() => enviar(s)} className="rounded-xl border border-blue-200 bg-card px-3 py-2 text-left text-xs font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950">
-                      {s}
+                <div className="space-y-2">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Prueba a preguntar</p>
+                  {sugerenciasPara(ruta, contextoPantallaActual()).map((s) => (
+                    <button
+                      key={s.pregunta}
+                      type="button"
+                      onClick={() => enviar(s.pregunta)}
+                      className="group flex w-full items-center gap-3 rounded-2xl border bg-card px-3.5 py-2.5 text-left shadow-sm transition-all hover:-translate-y-px hover:border-blue-300 hover:shadow-md dark:hover:border-blue-700"
+                    >
+                      <span className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${s.tipo === "datos" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-blue-500/10 text-blue-600 dark:text-blue-400"}`}>
+                        {s.tipo === "datos" ? <SearchNormal1 className="size-4" /> : <Book1 className="size-4" />}
+                      </span>
+                      <span className="flex-1 text-[13px] font-medium leading-snug">{s.pregunta}</span>
+                      <span aria-hidden className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600">→</span>
                     </button>
                   ))}
                 </div>
@@ -269,7 +331,7 @@ export function AsistenteFlotante() {
             {mensajes.map((m, i) =>
               m.rol === "usuario" ? (
                 <div key={i} className="flex justify-end">
-                  <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-gradient-to-br from-blue-500 to-blue-700 px-3.5 py-2 text-[13.5px] leading-relaxed text-white shadow-sm">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-linear-to-br from-blue-500 to-blue-700 px-3.5 py-2 text-[13.5px] leading-relaxed text-white shadow-sm">
                     {m.texto}
                   </div>
                 </div>
@@ -300,38 +362,41 @@ export function AsistenteFlotante() {
             )}
           </div>
 
-          <form
-            className="flex items-end gap-2 border-t bg-card p-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (respondiendo) detener();
-              else enviar(entrada);
-            }}
-          >
-            <textarea
-              rows={1}
-              value={entrada}
-              maxLength={1200}
-              disabled={respondiendo}
-              placeholder={respondiendo ? "Respondiendo…" : "Escribe tu pregunta…"}
-              onChange={(e) => setEntrada(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (!respondiendo) enviar(entrada);
-                }
+          <div className="border-t bg-card px-3.5 pb-2.5 pt-3">
+            <form
+              className="flex items-end gap-2 rounded-2xl border bg-background p-1.5 pl-3.5 shadow-sm transition-shadow focus-within:border-blue-400 focus-within:shadow-md focus-within:ring-2 focus-within:ring-blue-500/20"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (respondiendo) detener();
+                else enviar(entrada);
               }}
-              className="max-h-28 min-h-10 flex-1 resize-none rounded-xl border bg-background px-3.5 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              disabled={!respondiendo && !entrada.trim()}
-              title={respondiendo ? "Detener" : "Enviar"}
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
             >
-              {respondiendo ? <span className="size-3.5 rounded-sm bg-white" /> : <Send2 className="size-[18px]" />}
-            </button>
-          </form>
+              <textarea
+                rows={1}
+                value={entrada}
+                maxLength={1200}
+                disabled={respondiendo}
+                placeholder={respondiendo ? "Respondiendo…" : "Escribe tu pregunta…"}
+                onChange={(e) => setEntrada(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!respondiendo) enviar(entrada);
+                  }
+                }}
+                className="max-h-28 min-h-9 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70 disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={!respondiendo && !entrada.trim()}
+                title={respondiendo ? "Detener" : "Enviar"}
+                className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-sm transition-all hover:shadow-md hover:brightness-110 disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
+              >
+                {respondiendo ? <span className="size-3 rounded-[3px] bg-white" /> : <Send2 className="size-[17px]" />}
+              </button>
+            </form>
+            <p className="mt-2 text-center text-[10.5px] text-muted-foreground">Las respuestas pueden contener errores: contrasta los datos importantes.</p>
+          </div>
         </div>
       )}
 
