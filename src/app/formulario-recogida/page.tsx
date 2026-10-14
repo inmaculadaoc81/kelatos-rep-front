@@ -24,6 +24,9 @@ function FormularioRecogidaInterno() {
   const [nombre, setNombre] = useState("");
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // Bloqueo inmediato contra doble clic: el estado `enviando` tarda en reflejarse y dos clics seguidos
+  // entraban antes de que el botón se desactivara (se subían dos veces la firma y las fotos).
+  const enviandoRef = useRef(false);
   const [yaEstabaEntregado, setYaEstabaEntregado] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -152,8 +155,10 @@ function FormularioRecogidaInterno() {
   }
 
   async function enviarFirma() {
+    if (enviandoRef.current) return;
     if (!nombre.trim()) return setError("Por favor, indique su nombre.");
     if (!hayFirmaRef.current) return setError("Por favor, realice su firma en el recuadro.");
+    enviandoRef.current = true;
     setError("");
     setEnviando(true);
     try {
@@ -169,6 +174,8 @@ function FormularioRecogidaInterno() {
       setYaEstabaEntregado(!!data.yaEntregado);
       setSeccion("exito");
     } catch (e) {
+      // Solo si falla se vuelve a permitir enviar; tras un envío correcto el bloqueo se mantiene.
+      enviandoRef.current = false;
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);
