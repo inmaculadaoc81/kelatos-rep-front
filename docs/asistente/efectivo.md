@@ -21,7 +21,8 @@ El saldo es **acumulado**, no por día. La caja cuenta desde el **21/09/2026**; 
 - "Actualizar" recarga la lista.
 
 ## Quién puede qué
-- **Solo los superadmins** pueden registrar retiradas, faltantes y conteos, y anular movimientos. El servidor también lo exige.
+- **Solo los superadmins** pueden registrar retiradas, faltantes y conteos, y anular movimientos. El servidor también lo exige. **Un administrador normal (rol admin) tampoco puede**: ver la vista no implica poder registrar.
+- La **clasificación de cada retirada por destino contable** (por ejemplo "ingreso en banco") **no se hace en esta vista**: está en Contabilidad > Efectivo y caja (solo administradores).
 - Otras cuentas con acceso a la vista (por ejemplo la cuenta de empleados) **solo pueden consultarla**: no ven los botones de registrar ni de anular.
 
 ## Columnas
