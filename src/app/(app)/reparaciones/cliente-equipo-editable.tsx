@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Edit2, Lock, Personalcard, Call, Sms, Location, TickCircle, CloseCircle, Copy, Box1 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -255,6 +255,104 @@ export function EquipoEditable({
       <p className="text-sm"><span className="text-muted-foreground">Fecha recepción:</span> {formatearFecha(detalle.fechaRecepcion)}</p>
       {bloqueado && (
         <p className="text-xs text-muted-foreground italic">Reparación entregada y facturada: no se pueden editar los datos del equipo.</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Casillero (ubicación física del equipo en el local) editable en línea, pensado para la franja de datos del
+ * resguardo (junto a "Recepción en local" y "Etiqueta"). Usa el mismo endpoint que el bloque "Equipo"
+ * (PATCH /equipo): el servidor exige el modelo, así que se reenvían tal cual el modelo y el síntoma actuales
+ * y solo cambia el casillero. Enter guarda, Escape cancela.
+ */
+export function CasilleroInline({
+  detalle,
+  onActualizado,
+  bloqueado = false,
+}: {
+  detalle: ReparacionDetalle;
+  onActualizado: () => void;
+  /** Reparación ya entregada y facturada: no se edita. */
+  bloqueado?: boolean;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const guardandoRef = useRef(false);
+
+  function empezar() {
+    setValor(detalle.equipo.casillero);
+    setEditando(true);
+  }
+
+  async function guardar() {
+    if (guardandoRef.current) return;
+    guardandoRef.current = true;
+    setGuardando(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/equipo`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelo: detalle.equipo.modelo, sintoma: detalle.equipo.sintoma, casillero: valor.trim() }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success(valor.trim() ? `Casillero guardado: ${valor.trim()}` : "Casillero quitado");
+      setEditando(false);
+      onActualizado();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      guardandoRef.current = false;
+      setGuardando(false);
+    }
+  }
+
+  if (editando) {
+    return (
+      <div className="flex items-center gap-1 text-sm">
+        <span className="text-muted-foreground">Casillero:</span>
+        <Input
+          autoFocus
+          className="h-7 w-24 px-2 text-sm"
+          placeholder="p. ej. A3"
+          maxLength={100}
+          value={valor}
+          disabled={guardando}
+          onChange={(e) => setValor(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") guardar();
+            if (e.key === "Escape") setEditando(false);
+          }}
+        />
+        <Button size="icon" className="size-7 bg-emerald-600 text-white hover:bg-emerald-700" onClick={guardar} disabled={guardando} title="Guardar casillero">
+          <TickCircle className="size-3.5" />
+        </Button>
+        <Button size="icon" variant="secondary" className="size-7" onClick={() => setEditando(false)} disabled={guardando} title="Cancelar">
+          <CloseCircle className="size-3.5" />
+        </Button>
+      </div>
+    );
+  }
+
+  const actual = detalle.equipo.casillero;
+  return (
+    <div className="flex items-center gap-1.5 text-sm">
+      <span className="text-muted-foreground">Casillero:</span>
+      {actual ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400" title="Casillero: dónde está guardado el equipo en el local">
+          <Box1 className="size-3" /> {actual}
+        </span>
+      ) : (
+        <span>-</span>
+      )}
+      {bloqueado ? (
+        <span title="Reparación entregada y facturada: no se puede editar"><Lock className="size-3 text-muted-foreground" /></span>
+      ) : (
+        <button type="button" className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground" onClick={empezar} title={actual ? "Cambiar casillero" : "Asignar casillero"}>
+          <Edit2 className="size-3" /> {actual ? "" : "Asignar"}
+        </button>
       )}
     </div>
   );
