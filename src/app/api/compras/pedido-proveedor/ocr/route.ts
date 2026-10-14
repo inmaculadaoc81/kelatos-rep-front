@@ -29,6 +29,8 @@ export interface LineaPedidoProveedorLeida {
   nombrePiezaSugerida: string | null;
   categoriaSugerida: string | null;
   precioClienteSugerido: number | null;
+  /** Lo que realmente se paga por unidad, cuando el documento (factura o albarán) trae PVP y precio unitario en columnas separadas. */
+  precioPagado?: number | null;
   /** Nota o texto del empleado: la mercancía ya llegó ("recibido", "llegó"). */
   recibido?: boolean;
   /** Nº de pedido del proveedor que dice el texto. */

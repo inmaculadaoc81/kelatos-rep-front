@@ -125,6 +125,16 @@ interface LineaPedidoEditable {
   costo: number;
 }
 
+/** Categoría inicial de una pieza nueva según su nombre (el empleado puede cambiarla). Sin pista clara, "OTRO": antes
+    todas salían como CARGADOR aunque fueran piezas de otro aparato. */
+function categoriaPorNombre(nombre: string): string {
+  const n = nombre.toLowerCase();
+  if (/thermomix|vorwerk/.test(n)) return "THERMOMIX";
+  if (/dyson/.test(n)) return "DYSON";
+  if (/cargador|adaptador|alimentaci[oó]n|fuente/.test(n)) return "CARGADOR";
+  return "OTRO";
+}
+
 function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string | null): LineaPedidoEditable {
   return {
     nombre: l.nombre,
@@ -139,8 +149,9 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     nombrePiezaSugerida: l.nombrePiezaSugerida,
     nombreInternoProveedor: l.nombre,
     nombreComercial: "",
-    categoria: l.categoriaSugerida || "CARGADOR",
-    costeInterno: 0,
+    categoria: l.categoriaSugerida || categoriaPorNombre(l.nombre),
+    // Si el documento trae el precio realmente pagado (facturas con PVP y precio unitario), ese es el coste.
+    costeInterno: l.precioPagado ?? 0,
     precioCliente: l.precioClienteSugerido ?? l.precioUnitario ?? 0,
     origenCliente: "reparacion",
     resguardo: l.resguardo || "",
@@ -154,7 +165,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     enlace: "",
     numeroPedido: l.numeroPedido || numeroPedidoGlobal || "No informado",
     fechaEstimada: "",
-    costo: l.precioUnitario || 0,
+    costo: l.precioPagado ?? l.precioUnitario ?? 0,
     recibido: !!l.recibido,
     soloRecepcion: !!l.soloRecepcion,
     proveedorTexto: l.proveedorTexto || "",
