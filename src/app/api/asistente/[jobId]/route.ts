@@ -15,10 +15,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
   if (!/^[A-Za-z0-9-]{8,64}$/.test(jobId)) return NextResponse.json({ ok: false, error: "Identificador no válido" }, { status: 400 });
 
   try {
-    const d = await kelatosApiGet<{ ok: boolean; estado: "procesando" | "listo" | "error"; texto: string; error: string | null }>(
+    const d = await kelatosApiGet<{ ok: boolean; estado: "procesando" | "listo" | "error"; texto: string; fase?: string; error: string | null }>(
       `/v1/asistente/chat/${encodeURIComponent(jobId)}`
     );
-    return NextResponse.json({ ok: true, estado: d.estado, texto: d.texto ?? "", error: d.error });
+    return NextResponse.json({ ok: true, estado: d.estado, texto: d.texto ?? "", fase: d.fase ?? "", error: d.error });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "No se pudo consultar la respuesta" }, { status: 502 });
   }

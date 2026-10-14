@@ -20,10 +20,13 @@ export async function POST(req: Request) {
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
   if (!esSuperadmin(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
-  const body = (await req.json().catch(() => ({}))) as { pregunta?: unknown; historial?: unknown; ruta?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { pregunta?: unknown; historial?: unknown; ruta?: unknown; contextoPantalla?: unknown };
   const pregunta = typeof body.pregunta === "string" ? body.pregunta.trim().slice(0, 1200) : "";
   if (!pregunta) return NextResponse.json({ ok: false, error: "Escribe una pregunta." }, { status: 400 });
   const ruta = typeof body.ruta === "string" ? body.ruta.slice(0, 120) : "";
+  // Elemento que el usuario tiene abierto (p. ej. { tipo: "resguardo", id: "18453" }); el servidor lo valida de nuevo.
+  const cp = body.contextoPantalla as { tipo?: unknown; id?: unknown } | null | undefined;
+  const contextoPantalla = cp && typeof cp.tipo === "string" && typeof cp.id === "string" ? { tipo: cp.tipo.slice(0, 30), id: cp.id.slice(0, 60) } : null;
   const historial: MensajeHistorial[] = Array.isArray(body.historial)
     ? (body.historial as MensajeHistorial[])
         .filter((m) => m && (m.rol === "usuario" || m.rol === "asistente") && typeof m.texto === "string")
@@ -41,6 +44,7 @@ export async function POST(req: Request) {
       historial,
       ruta,
       contextoFront,
+      contextoPantalla,
     });
     return NextResponse.json({ ok: true, jobId: r.jobId });
   } catch (error) {

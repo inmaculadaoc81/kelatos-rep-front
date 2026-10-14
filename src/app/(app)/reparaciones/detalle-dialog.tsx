@@ -61,6 +61,7 @@ import { ReportarProblemaPiezaDialog } from "./reportar-problema-pieza-dialog";
 import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 import { CasilleroBoton } from "./casillero-boton";
+import { useContextoAsistente } from "@/lib/asistente/contexto";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
 import { imprimirEtiquetaResguardoConFeedback } from "@/lib/imprimir-etiqueta";
 
@@ -360,6 +361,8 @@ export function DetalleReparacionDialog({
   onActualizado?: () => void;
 }) {
   const [detalle, setDetalle] = useState<ReparacionDetalle | null>(null);
+  // El asistente de ayuda sabe qué resguardo está abierto ("¿cuándo se generó este resguardo?").
+  useContextoAsistente(detalle ? { tipo: "resguardo", id: String(detalle.resguardo) } : null);
   const [error, setError] = useState<string | null>(null);
   const [nuevaObservacion, setNuevaObservacion] = useState("");
   const [enviandoObservacion, setEnviandoObservacion] = useState(false);

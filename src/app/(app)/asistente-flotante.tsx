@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Streamdown } from "streamdown";
 import { Send2, CloseCircle, Refresh2, Copy, TickCircle } from "@/lib/icons";
+import { contextoPantallaActual } from "@/lib/asistente/contexto";
 
 interface Mensaje {
   rol: "usuario" | "asistente";
@@ -122,6 +123,7 @@ export function AsistenteFlotante() {
   });
   const [entrada, setEntrada] = useState("");
   const [respondiendo, setRespondiendo] = useState(false);
+  const [fase, setFase] = useState("");
   const desplazableRef = useRef<HTMLDivElement>(null);
   const enviandoRef = useRef(false);
   const cancelarRef = useRef(false);
@@ -166,6 +168,7 @@ export function AsistenteFlotante() {
     if (!pregunta || enviandoRef.current) return;
     enviandoRef.current = true;
     cancelarRef.current = false;
+    setFase("");
     setRespondiendo(true);
     setEntrada("");
     const historial = mensajes.filter((m) => !m.error && m.texto).slice(-6).map((m) => ({ rol: m.rol, texto: m.texto }));
@@ -174,7 +177,7 @@ export function AsistenteFlotante() {
       const res = await fetch("/api/asistente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pregunta, historial, ruta }),
+        body: JSON.stringify({ pregunta, historial, ruta, contextoPantalla: contextoPantallaActual() }),
         signal: AbortSignal.timeout(30_000),
       });
       const data = await res.json();
@@ -187,6 +190,7 @@ export function AsistenteFlotante() {
         const r = await fetch(`/api/asistente/${data.jobId}`, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
         const d = await r.json();
         if (!d.ok) throw new Error(d.error || "No se pudo leer la respuesta");
+        if (typeof d.fase === "string") setFase(d.fase);
         if (d.texto) ponerRespuesta(d.texto);
         if (d.estado === "error") throw new Error(d.error || "No se pudo responder");
         if (d.estado === "listo") break;
@@ -285,7 +289,7 @@ export function AsistenteFlotante() {
                           <span className="size-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.3s]" />
                           <span className="size-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.15s]" />
                           <span className="size-1.5 animate-bounce rounded-full bg-blue-500" />
-                          <span className="ml-1 text-xs">Buscando en el sistema…</span>
+                          <span className="ml-1 text-xs">{fase || "Buscando en el sistema…"}</span>
                         </span>
                       )}
                     </div>
