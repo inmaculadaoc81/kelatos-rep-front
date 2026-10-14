@@ -292,6 +292,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   onRegistrado: () => void;
 }) {
   const [proveedorNombre, setProveedorNombre] = useState("ASWO");
+  /** El documento (factura/albarán) indica que la mercancía ya llegó: todas las líneas se marcan recibidas al registrar. */
+  const [todoRecibido, setTodoRecibido] = useState(false);
   /** Textos sin imagen (p. ej. un aviso de "recibido" por mensaje). */
   const [textosSueltos, setTextosSueltos] = useState<TextoSuelto[]>([]);
   const [leyendoOcr, setLeyendoOcr] = useState(false);
@@ -323,6 +325,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setProveedorCreado(false);
       setCompradoPor("");
       setTextosSueltos([]);
+      setTodoRecibido(false);
       setArchivos([]);
       if (inputOcr.current) inputOcr.current.value = "";
     }
@@ -508,7 +511,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada pocos segundos (máx. 4 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[];
+        proveedorIdSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -529,6 +532,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       const lineasNuevas = data.lineas.map((l) => ({ ...lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null), fuente: l.elemento != null ? fuentes[l.elemento] || "" : "" }));
       if (data.avisos?.length) toast.warning(data.avisos.join(" · "));
       setLineas(lineasNuevas);
+      setTodoRecibido(!!data.documentoEsFactura);
+      if (data.documentoEsFactura) toast.info("Es una factura/albarán: se propone marcar la mercancía como ya recibida en el local");
       void buscarRecepciones(lineasNuevas);
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
       setProveedorIdSugerido(data.proveedorIdSugerido ?? null);
@@ -539,6 +544,28 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     } finally {
       setLeyendoOcr(false);
     }
+  }
+
+  /** Marca o desmarca TODAS las líneas como "ya llegó al local" (p. ej. porque lo que se sube es la factura del proveedor). */
+  function cambiarTodoRecibido(valor: boolean) {
+    setTodoRecibido(valor);
+    const actualizadas = lineas.map((l) => ({
+      ...l,
+      recibido: valor,
+      buscandoRecepcion: valor,
+      accion: valor ? l.accion : l.soloRecepcion ? l.accion : ("registrar" as const),
+    }));
+    setLineas(actualizadas);
+    if (valor) void buscarRecepciones(actualizadas);
+  }
+
+  /** Una línea que ya llegó no tiene enlace de compra ni fecha estimada (viene de una factura o un aviso): se usan
+      valores por defecto en vez de bloquear el registro. */
+  function enlaceEfectivo(l: LineaPedidoEditable): string {
+    return l.enlace.trim() || (l.recibido ? `Recibido (factura ${proveedorNombre || "proveedor"})` : "");
+  }
+  function fechaEstimadaEfectiva(l: LineaPedidoEditable): string {
+    return l.fechaEstimada || (l.recibido ? new Date().toISOString().slice(0, 10) : "");
   }
 
   function actualizar(i: number, cambios: Partial<LineaPedidoEditable>) {
@@ -562,7 +589,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     // estimada solo hacen falta para piezas aún sin recibir o nuevas.
     const soloVincular = l.origenCliente === "venta" && !l.nuevaPieza && l.itemIds.every((id) => l.ventaItems.find((it) => it.itemId === id)?.estadoPedido === "Pieza Recibida");
     if (!l.numeroPedido.trim()) return false;
-    if (!soloVincular && (!l.enlace.trim() || !l.fechaEstimada)) return false;
+    // Si ya llegó (factura/albarán o aviso de recibido) no hay enlace ni fecha estimada que exigir: se rellenan solos.
+    if (!soloVincular && !l.recibido && (!l.enlace.trim() || !l.fechaEstimada)) return false;
     // El coste de las piezas de una venta ya está en la propia venta; el de una reparación se guarda con el pedido.
     if (l.origenCliente !== "venta" && !(l.costo > 0)) return false;
     if (numeroPedidoEsEnlace(l.numeroPedido)) return false;
@@ -666,8 +694,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         try {
           const piezas = grupo.flatMap((l) =>
             Array.from({ length: l.cantidad }, () => ({
-              descripcion: l.nombre, proveedor: proveedorIdSugerido || "", enlace: l.enlace.trim(),
-              numeroPedido: l.numeroPedido.trim(), fechaEstimada: l.fechaEstimada, costo: l.costo,
+              descripcion: l.nombre, proveedor: proveedorIdSugerido || "", enlace: enlaceEfectivo(l),
+              numeroPedido: l.numeroPedido.trim(), fechaEstimada: fechaEstimadaEfectiva(l), costo: l.costo,
             }))
           );
           const res = await fetch(`/api/reparaciones/${encodeURIComponent(resguardo)}/pedidos`, {
@@ -678,6 +706,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const data = await res.json();
           if (!data.ok) throw new Error(data.error || "No se pudo registrar el pedido");
           okResguardo += grupo.length;
+          // La mercancía ya llegó (factura/albarán o aviso): los pedidos recién creados se marcan Recibidos en el acto.
+          if (grupo.some((l) => l.recibido) && Array.isArray(data.pedidoIds) && data.pedidoIds.length > 0) {
+            const resRec = await fetch("/api/pedidos/cambiar-estado", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pedidos: data.pedidoIds, estado: "Recibido", recibidoPor: compradoPor || undefined }),
+            });
+            const dataRec = await resRec.json();
+            if (!dataRec.ok) toast.error(`Resguardo ${resguardo}: se registró el pedido pero no se pudo marcar recibido: ${dataRec.error || "error"}`);
+          }
           for (const l of grupo) {
             resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "cliente", destinoDetalle: `${resguardo} · ${l.clienteElegido || resguardo}`, ok: true });
           }
@@ -707,7 +744,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               const resNueva = await fetch(`/api/ventas/${encodeURIComponent(l.ventaId)}/items`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ descripcion: l.nombre, costo: l.costo, precio: l.precioNuevaPieza, proveedorId: proveedorIdSugerido || "", proveedorOtro: "", enlace: l.enlace.trim() }),
+                body: JSON.stringify({ descripcion: l.nombre, costo: l.costo, precio: l.precioNuevaPieza, proveedorId: proveedorIdSugerido || "", proveedorOtro: "", enlace: enlaceEfectivo(l) }),
               });
               const dataNueva = await resNueva.json();
               if (!dataNueva.ok || !dataNueva.item?.itemId) throw new Error(dataNueva.error || "No se pudo añadir la pieza a la venta");
@@ -727,11 +764,17 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               body: JSON.stringify(
                 yaRecibida
                   ? { proveedorId: proveedorIdSugerido || "", numeroPedido: l.numeroPedido.trim(), enlace: l.enlace.trim() }
-                  : { proveedorId: proveedorIdSugerido || "", proveedorOtro: "", numeroPedido: l.numeroPedido.trim(), fechaEstimada: l.fechaEstimada, enlace: l.enlace.trim() }
+                  : { proveedorId: proveedorIdSugerido || "", proveedorOtro: "", numeroPedido: l.numeroPedido.trim(), fechaEstimada: fechaEstimadaEfectiva(l), enlace: enlaceEfectivo(l) }
               ),
             });
             const data = await res.json();
             if (!data.ok) throw new Error(data.error || "No se pudo registrar el pedido");
+            // Pieza nueva o aún sin recibir, y la mercancía ya llegó: se marca recibida (las ya recibidas solo se vinculan).
+            if (!yaRecibida && l.recibido) {
+              const resRec = await fetch(`/api/items-venta/${encodeURIComponent(itemId)}/recibir`, { method: "POST" });
+              const dataRec = await resRec.json();
+              if (!dataRec.ok) throw new Error(`pedido registrado pero no se pudo marcar recibido: ${dataRec.error || "error"}`);
+            }
             okLinea++;
           } catch (e) {
             errorLinea = e instanceof Error ? e.message : "error desconocido";
@@ -851,6 +894,16 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
           {lineas.length > 0 && (
             <>
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs">
+                <Checkbox checked={todoRecibido} onCheckedChange={(v) => cambiarTodoRecibido(v === true)} className="mt-0.5" />
+                <span>
+                  <span className="font-medium text-emerald-700 dark:text-emerald-400">La mercancía ya llegó al local</span>
+                  <span className="block text-muted-foreground">
+                    Marca todas las líneas como recibidas al registrar (p. ej. porque lo que subes es la factura o el albarán del proveedor): los pedidos de reparación y de venta pasan a Recibido y el stock de tienda sube.
+                  </span>
+                </span>
+              </label>
+
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Comprado por (necesario para los pedidos de reparación)</Label>
                 <Select value={compradoPor} onValueChange={(v) => setCompradoPor(v || "")}>
@@ -926,7 +979,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     ? "No encuentro ningún pedido registrado con esa referencia, así que no hay nada que marcar como recibido (la línea queda desmarcada)."
                                     : l.destino === "tienda"
                                       ? "No hay un pedido pendiente que coincida: se registrará el pedido y se marcará como recibido (el stock sube)."
-                                      : "No hay un pedido pendiente que coincida: se registrará como pedido nuevo."}
+                                      : "No hay un pedido pendiente que coincida: se registrará como pedido nuevo y se marcará como recibido."}
                                 </p>
                               )}
                             </div>
