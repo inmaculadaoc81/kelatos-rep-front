@@ -114,6 +114,10 @@ function CalculoCambio({ importe, disabled }: { importe: number; disabled?: bool
   const hayImporte = Number.isFinite(dado) && dado > 0;
   const cambio = hayImporte ? redondear(dado - aCobrar) : 0;
   const atajos = [10, 20, 50, 100].filter((n) => n >= aCobrar);
+  // Sin importe todavía (aún no hay líneas): se muestra el aviso en vez de esconder el cálculo.
+  if (!(aCobrar > 0)) {
+    return <p className="mt-1.5 rounded-md border border-dashed bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">Efectivo: añade conceptos con importe para calcular el cambio.</p>;
+  }
   return (
     <div className="mt-1.5 space-y-1.5 rounded-md border border-dashed bg-muted/30 p-2">
       <Label className="text-[11px] text-muted-foreground">Importe que entrega el cliente (€) — para calcular el cambio</Label>
@@ -256,7 +260,7 @@ export function SelectorFormaPago({
               </Select>
             </div>
           )}
-          {value.metodo === "efectivo" && total !== undefined && total > 0 && <CalculoCambio importe={total} disabled={disabled} />}
+          {value.metodo === "efectivo" && total !== undefined && <CalculoCambio importe={total} disabled={disabled} />}
           {value.metodo === "transferencia" && (
             <div className="mt-1.5 space-y-1">
               <Label className="text-xs text-muted-foreground">Referencia / justificante *</Label>
