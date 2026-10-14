@@ -292,8 +292,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   onRegistrado: () => void;
 }) {
   const [proveedorNombre, setProveedorNombre] = useState("ASWO");
-  /** El documento (factura/albarán) indica que la mercancía ya llegó: todas las líneas se marcan recibidas al registrar. */
-  const [todoRecibido, setTodoRecibido] = useState(false);
+  /** Antes de analizar: ¿la mercancía de lo que se sube ya llegó al local o aún no? Cada línea se puede cambiar después. */
+  const [llegada, setLlegada] = useState<"aun_no" | "llego">("aun_no");
   /** Textos sin imagen (p. ej. un aviso de "recibido" por mensaje). */
   const [textosSueltos, setTextosSueltos] = useState<TextoSuelto[]>([]);
   const [leyendoOcr, setLeyendoOcr] = useState(false);
@@ -325,7 +325,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setProveedorCreado(false);
       setCompradoPor("");
       setTextosSueltos([]);
-      setTodoRecibido(false);
+      setLlegada("aun_no");
       setArchivos([]);
       if (inputOcr.current) inputOcr.current.value = "";
     }
@@ -422,10 +422,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   /** Para cada línea marcada como recibida, busca los pedidos YA registrados a los que se refiere: por nº de pedido y por
       resguardo en Compras (reparaciones y ventas) y, en líneas de tienda, pedidos de stock pendientes del mismo proveedor
       y cantidad. Si hay coincidencias, la línea propone "marcar como recibido" en vez de crear otro pedido. */
-  async function buscarRecepciones(nuevas: LineaPedidoEditable[]) {
+  async function buscarRecepciones(nuevas: LineaPedidoEditable[], soloIndice?: number) {
     const ESTADOS_FINALES = ["Recibido", "Cancelado", "recibido", "cancelado"];
     await Promise.all(
       nuevas.map(async (l, i) => {
+        if (soloIndice !== undefined && i !== soloIndice) return;
         if (!l.recibido) return;
         const candidatos = new Map<string, CandidatoRecepcion>();
         try {
@@ -529,11 +530,17 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         toast.warning("No se leyó ninguna línea de pedido en los archivos o el texto");
         return;
       }
-      const lineasNuevas = data.lineas.map((l) => ({ ...lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null), fuente: l.elemento != null ? fuentes[l.elemento] || "" : "" }));
+      const lineasNuevas = data.lineas.map((l) => {
+        const base = lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null);
+        // "Ya llegó" si lo eligió el empleado antes de analizar o lo dice el texto de esa línea ("recibido", "llegó").
+        const recibido = base.recibido || llegada === "llego";
+        return { ...base, recibido, buscandoRecepcion: recibido, fuente: l.elemento != null ? fuentes[l.elemento] || "" : "" };
+      });
       if (data.avisos?.length) toast.warning(data.avisos.join(" · "));
       setLineas(lineasNuevas);
-      setTodoRecibido(!!data.documentoEsFactura);
-      if (data.documentoEsFactura) toast.info("Es una factura/albarán: se propone marcar la mercancía como ya recibida en el local");
+      if (data.documentoEsFactura && llegada === "aun_no") {
+        toast.info("Parece una factura o albarán. Si la mercancía ya llegó al local, marca «Ya llegó» en las líneas (o en la casilla de arriba).");
+      }
       void buscarRecepciones(lineasNuevas);
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
       setProveedorIdSugerido(data.proveedorIdSugerido ?? null);
@@ -548,7 +555,6 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
   /** Marca o desmarca TODAS las líneas como "ya llegó al local" (p. ej. porque lo que se sube es la factura del proveedor). */
   function cambiarTodoRecibido(valor: boolean) {
-    setTodoRecibido(valor);
     const actualizadas = lineas.map((l) => ({
       ...l,
       recibido: valor,
@@ -566,6 +572,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   }
   function fechaEstimadaEfectiva(l: LineaPedidoEditable): string {
     return l.fechaEstimada || (l.recibido ? new Date().toISOString().slice(0, 10) : "");
+  }
+
+  /** Una línea concreta: ya llegó (se buscan los pedidos a los que corresponde) o aún no (vuelve a ser un pedido nuevo). */
+  function cambiarRecibidoLinea(i: number, valor: boolean) {
+    const actualizadas = lineas.map((l, idx) =>
+      idx !== i ? l : { ...l, recibido: valor, buscandoRecepcion: valor, accion: valor ? l.accion : l.soloRecepcion ? l.accion : ("registrar" as const) }
+    );
+    setLineas(actualizadas);
+    if (valor) void buscarRecepciones(actualizadas, i);
   }
 
   function actualizar(i: number, cambios: Partial<LineaPedidoEditable>) {
@@ -599,6 +614,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
   const itemsVentaUsados = lineas.filter((l) => l.aplicar && l.accion !== "recibir" && l.destino === "cliente" && l.origenCliente === "venta").flatMap((l) => l.itemIds);
   const hayItemRepetido = new Set(itemsVentaUsados).size !== itemsVentaUsados.length;
+  const todoRecibido = lineas.length > 0 && lineas.every((l) => l.recibido);
   const hayAlgoAplicado = lineas.some((l) => l.aplicar);
   const todoListo = lineas.every(lineaListaParaRegistrar) && !hayItemRepetido && (!lineas.some((l) => l.aplicar && l.accion !== "recibir" && l.destino === "cliente" && l.origenCliente !== "venta") || !!compradoPor.trim());
 
@@ -846,6 +862,19 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
             )}
           </div>
 
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">¿La mercancía ya llegó al local?</span>
+            <div className="inline-flex rounded-lg border bg-card p-0.5">
+              <Button type="button" size="sm" variant={llegada === "aun_no" ? "default" : "ghost"} className="h-7 px-2.5 text-xs" disabled={leyendoOcr} onClick={() => setLlegada("aun_no")}>
+                Aún no ha llegado
+              </Button>
+              <Button type="button" size="sm" variant={llegada === "llego" ? "default" : "ghost"} className="h-7 px-2.5 text-xs" disabled={leyendoOcr} onClick={() => setLlegada("llego")}>
+                Ya llegó
+              </Button>
+            </div>
+            <span className="text-[11px] text-muted-foreground">Después podrás cambiarlo en cada línea.</span>
+          </div>
+
           {(archivos.length > 0 || textosSueltos.length > 0) && (
             <div className="space-y-2">
               {archivos.map((a) => (
@@ -897,9 +926,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               <label className="flex cursor-pointer items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs">
                 <Checkbox checked={todoRecibido} onCheckedChange={(v) => cambiarTodoRecibido(v === true)} className="mt-0.5" />
                 <span>
-                  <span className="font-medium text-emerald-700 dark:text-emerald-400">La mercancía ya llegó al local</span>
+                  <span className="font-medium text-emerald-700 dark:text-emerald-400">Todas las líneas ya llegaron al local</span>
                   <span className="block text-muted-foreground">
-                    Marca todas las líneas como recibidas al registrar (p. ej. porque lo que subes es la factura o el albarán del proveedor): los pedidos de reparación y de venta pasan a Recibido y el stock de tienda sube.
+                    Marca o quita «Ya llegó» en todas a la vez; también puedes decidirlo línea por línea. Lo que ya llegó se registra como Recibido (los pedidos de reparación y de venta pasan a Recibido y el stock de tienda sube); lo que no, queda como pedido en camino.
                   </span>
                 </span>
               </label>
@@ -924,6 +953,10 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                             <span className="text-sm font-medium">{l.nombre}</span>
                             <span className="text-xs text-muted-foreground">cant. {l.cantidad}{l.textoPedido ? ` · "${l.textoPedido}"` : ""}</span>
                             {l.fuente && <span className="max-w-40 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={l.fuente}>de: {l.fuente}</span>}
+                            <label className="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs" title="Marca si esta mercancía ya llegó al local; desmárcala si aún está en camino">
+                              <Checkbox checked={l.recibido} onCheckedChange={(v) => cambiarRecibidoLinea(i, v === true)} />
+                              Ya llegó
+                            </label>
                             <Select value={l.destino} onValueChange={(v) => v && actualizar(i, { destino: v as "tienda" | "cliente" })}>
                               <SelectTrigger className="h-6 w-28 text-xs">
                                 <SelectValue>{(v: string) => (v === "tienda" ? "Tienda" : "Cliente")}</SelectValue>
