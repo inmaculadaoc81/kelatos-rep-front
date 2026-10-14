@@ -56,6 +56,7 @@ export async function POST(req: Request) {
       observaciones: datos.observaciones.trim(),
       enlaceRepuesto: datos.enlaceRepuesto.trim(),
       imagenUrl: datos.imagenUrl.trim(),
+      precioVenta: Math.max(0, Number(String(datos.precioVenta ?? "").replace(",", ".")) || 0),
       origenResguardo: datos.origenResguardo?.trim() || undefined,
     });
 

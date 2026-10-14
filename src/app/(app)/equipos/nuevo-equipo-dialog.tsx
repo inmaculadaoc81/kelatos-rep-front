@@ -29,6 +29,7 @@ const VACIO: DatosNuevoEquipo = {
   observaciones: "",
   enlaceRepuesto: "",
   imagenUrl: "",
+  precioVenta: "",
 };
 
 /** Reproduce el botón de tipo de #modalNuevoEquipo (_neqActualizarTarifa) — activo cambia de contorno a color sólido. */
@@ -95,6 +96,8 @@ export function NuevoEquipoDialog({
     if (!esUrlValida(datos.imagenUrl)) return toast.error("La Imagen URL debe ser una URL válida (debe empezar por https://)");
     if (!esUrlValida(datos.enlaceRepuesto)) return toast.error("El enlace del repuesto debe ser una URL válida (debe empezar por https://)");
     if (!datos.caracteristicas.trim()) return toast.error("Las características son obligatorias");
+    const pv = Number(String(datos.precioVenta ?? "").replace(",", "."));
+    if (String(datos.precioVenta ?? "").trim() && (!Number.isFinite(pv) || pv < 0)) return toast.error("El precio de venta debe ser un número de 0 o más");
 
     setEnviando(true);
     try {
@@ -191,6 +194,10 @@ export function NuevoEquipoDialog({
             <div className="space-y-1.5">
               <Label htmlFor="sistemaOperativo">Sistema Operativo *</Label>
               <Input id="sistemaOperativo" placeholder="Windows 11 Home, Ubuntu 22.04…" value={datos.sistemaOperativo} onChange={(e) => actualizar("sistemaOperativo", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="precioVenta">Precio de venta (€)</Label>
+              <Input id="precioVenta" inputMode="decimal" placeholder="Opcional, por si se quiere vender" value={datos.precioVenta ?? ""} onChange={(e) => actualizar("precioVenta", e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="enlaceRepuesto">Enlace repuesto</Label>

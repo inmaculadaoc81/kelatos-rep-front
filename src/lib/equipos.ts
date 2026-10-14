@@ -88,6 +88,8 @@ export interface DatosNuevoEquipo {
   observaciones: string;
   enlaceRepuesto: string;
   imagenUrl: string;
+  /** Precio de venta opcional (texto del formulario; vacío = sin precio de venta). */
+  precioVenta?: string;
   /** Resguardo de origen cuando el equipo procede de un reciclaje de Punto Limpio marcado "reparable". */
   origenResguardo?: string;
 }
