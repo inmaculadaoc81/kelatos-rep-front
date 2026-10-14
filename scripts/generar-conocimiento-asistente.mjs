@@ -141,7 +141,7 @@ function textosDe(fragmentoJsx) {
 }
 
 function fichaDeArchivo(contenido) {
-  const sec = { botones: new Set(), ventanas: new Set(), columnas: new Set(), campos: new Set(), filtros: new Set(), avisos: new Set(), titulos: new Set() };
+  const sec = { explicacion: new Set(), botones: new Set(), ventanas: new Set(), columnas: new Set(), campos: new Set(), filtros: new Set(), avisos: new Set(), titulos: new Set() };
   const toma = (re, destino, max = 120) => {
     for (const m of contenido.matchAll(re)) for (const t of textosDe(m[1])) if (t.length <= max) destino.add(t);
   };
@@ -155,6 +155,9 @@ function fichaDeArchivo(contenido) {
   toma(etiqueta("Label|FormLabel", 200), sec.campos);
   toma(etiqueta("SelectItem", 100), sec.filtros);
   toma(etiqueta("h1|h2|h3", 160), sec.titulos);
+  // Cajas de explicación que la propia pantalla muestra al usuario (p. ej. InfoVista en Contabilidad).
+  toma(etiqueta("InfoVista|Alert|AlertDescription", 900), sec.explicacion, 700);
+  for (const m of contenido.matchAll(/descripcion=(?:"([^"\n]{10,300})"|\{([^}\n]{10,500})\})/g)) for (const t of textosDe(m[1] ?? m[2])) if (t.length >= 10 && t.length <= 300) sec.explicacion.add(t);
   for (const m of contenido.matchAll(/(?:placeholder|title|aria-label)="([^"\n]{3,140})"/g)) (m[0].startsWith("placeholder") ? sec.campos : sec.botones).add(m[1].trim());
   for (const m of contenido.matchAll(/toast\.(?:success|error|info|warning)\(\s*[`"']([^`"'$\n]{4,160})/g)) sec.avisos.add(m[1].trim());
 
@@ -171,6 +174,7 @@ function fichaDeArchivo(contenido) {
 }
 
 const FICHA_ROTULOS = [
+  ["explicacion", "Explicación que la propia pantalla muestra al usuario"],
   ["titulos", "Títulos y secciones"],
   ["botones", "Botones, acciones y ayudas (textos visibles)"],
   ["ventanas", "Ventanas/diálogos (título y explicación)"],

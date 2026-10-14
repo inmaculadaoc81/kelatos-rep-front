@@ -57,6 +57,9 @@ export function puedeLeerCodigo(ruta: string, areas: string[]): boolean {
   if (areas.includes("todo")) return true;
   if (ruta === "menu-admin") return false;
   if (/^docs\/asistente\/admin-/.test(ruta)) return false;
+  // Guías de un área concreta (area-tareas-*.md, area-transferencias-*.md): solo para cuentas con esa área.
+  const guiaDeArea = ruta.match(/^docs\/asistente\/area-([a-z]+)-/);
+  if (guiaDeArea && !areas.includes(guiaDeArea[1])) return false;
   if (CODIGO_SOLO_ADMIN.some((r) => r.test(ruta))) return false;
   if (!areas.includes("tareas") && CODIGO_TAREAS.test(ruta)) return false;
   if (!areas.includes("transferencias") && CODIGO_TRANSFERENCIAS.test(ruta)) return false;

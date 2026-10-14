@@ -23,7 +23,8 @@ interface Indexado {
 const PARADAS = new Set(
   ("el la los las un una unos unas de del al a en y o u que se es son por para con sin como mas muy ya no si " +
     "lo le les me mi tu su sus este esta esto estos estas eso esa ese hay ser esta estan donde cual cuales quien cuando " +
-    "hacer hace puedo puede pueden tiene tienen sobre entre desde hasta pero porque").split(" ")
+    "hacer hace puedo puede pueden tiene tienen sobre entre desde hasta pero porque " +
+    "funciona funcionan explicame explica explicar dime quiero saber vista pantalla botones boton opciones tiene tengo hay sirve").split(" ")
 );
 
 function normalizar(t: string): string {
