@@ -41,23 +41,28 @@ function enmascarar(texto) {
 /** Mapa del menú lateral: grupo -> pantallas (nombre + ruta). */
 function mapaMenu() {
   const nav = fs.readFileSync(path.join(src, "app", "(app)", "navegacion.tsx"), "utf8");
+  // Contabilidad y Admin solo las ven administradores: van en un fragmento aparte (id "menu-admin") para que el
+  // asistente no se lo enseñe a quien no tiene esas pantallas.
   const lineas = [];
+  const lineasAdmin = [];
   const rutas = new Map();
   let grupo = "";
+  let destino = lineas;
   for (const l of nav.split(/\r?\n/)) {
     const g = l.match(/^\s*titulo:\s*"([^"]+)"/);
     if (g) {
       grupo = g[1];
-      lineas.push(`\nGrupo del menú «${grupo}»:`);
+      destino = grupo === "Contabilidad" || grupo === "Admin" ? lineasAdmin : lineas;
+      destino.push(`\nGrupo del menú «${grupo}»:`);
       continue;
     }
     const it = l.match(/label:\s*"([^"]+)",\s*href:\s*(?:"([^"]+)"|null)/);
     if (it) {
-      lineas.push(`- «${it[1]}»${it[2] ? ` (ruta ${it[2]})` : " (aún no disponible)"}`);
+      destino.push(`- «${it[1]}»${it[2] ? ` (ruta ${it[2]})` : " (aún no disponible)"}`);
       if (it[2]) rutas.set(it[2], `${grupo} > ${it[1]}`);
     }
   }
-  return { texto: lineas.join("\n"), rutas };
+  return { texto: lineas.join("\n"), textoAdmin: lineasAdmin.join("\n"), rutas };
 }
 
 function rutaUrl(rel) {
@@ -75,7 +80,14 @@ fragmentos.push({
   titulo: "Mapa del menú lateral del sistema",
   modulo: "General",
   texto:
-    "MAPA DEL MENÚ: estas son todas las pantallas (vistas) del dashboard de Kelatos, agrupadas como en el menú lateral." + menu.texto,
+    "MAPA DEL MENÚ: estas son las pantallas (vistas) del dashboard de Kelatos, agrupadas como en el menú lateral." + menu.texto,
+});
+fragmentos.push({
+  id: "menu-admin",
+  ruta: "src/app/(app)/navegacion.tsx",
+  titulo: "Mapa del menú: pantallas solo para administradores (Contabilidad y Admin)",
+  modulo: "General",
+  texto: "MAPA DEL MENÚ (solo administradores): pantallas de Contabilidad y Admin." + menu.textoAdmin,
 });
 
 for (const abs of listar(src)) {

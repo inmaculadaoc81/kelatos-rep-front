@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { buscarFragmentos } from "@/lib/asistente/buscar";
-import { esSuperadmin } from "@/lib/superadmin";
+import { areasAsistente, puedeUsarAsistente } from "@/lib/asistente/permisos";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,10 @@ export async function POST(req: Request) {
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  if (!esSuperadmin(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeUsarAsistente(session.user)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  // Lo que la cuenta puede ver: acota tanto el código que se le explica como las tablas que se consultan.
+  const areas = areasAsistente(session.user);
+  if (!areas.length) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as { pregunta?: unknown; historial?: unknown; ruta?: unknown; contextoPantalla?: unknown };
   const pregunta = typeof body.pregunta === "string" ? body.pregunta.trim().slice(0, 1200) : "";
@@ -37,7 +40,7 @@ export async function POST(req: Request) {
   try {
     // La búsqueda incluye la última pregunta anterior: "¿y eso cómo se calcula?" solo se entiende con ella.
     const ultimaPregunta = [...historial].reverse().find((m) => m.rol === "usuario")?.texto ?? "";
-    const contextoFront = await buscarFragmentos(`${ultimaPregunta} ${pregunta}`, ruta, 6);
+    const contextoFront = await buscarFragmentos(`${ultimaPregunta} ${pregunta}`, ruta, 6, areas);
     const r = await kelatosApiPost<{ ok: boolean; jobId: string }>("/v1/asistente/chat", {
       usuario,
       pregunta,
@@ -45,6 +48,7 @@ export async function POST(req: Request) {
       ruta,
       contextoFront,
       contextoPantalla,
+      areas,
     });
     return NextResponse.json({ ok: true, jobId: r.jobId });
   } catch (error) {

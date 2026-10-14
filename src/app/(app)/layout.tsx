@@ -6,6 +6,7 @@ import { BuscadorGlobal } from "./buscador-global";
 import { NavbarCodigoAcceso } from "./navbar-codigo-acceso";
 import { NotificacionesBell } from "./notificaciones-bell";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { puedeUsarAsistente } from "@/lib/asistente/permisos";
 import { CodigoAccesoProvider } from "./codigo-acceso-context";
 import { EscanerCodigoBarras } from "./escaner-codigo-barras";
 import { AsistenteFlotante } from "./asistente-flotante";
@@ -40,8 +41,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* El gris del fondo ya lo pone `body` (ver globals.css); este
               contenedor no necesita el suyo propio. */}
           <main className="flex-1">{children}</main>
-          {/* Por ahora solo para superadministradores (las rutas /api/asistente también lo exigen). */}
-          {esSuperadmin(session?.user?.email) && <AsistenteFlotante />}
+          {/* Quién lo ve: ver puedeUsarAsistente (hoy solo superadmins); las rutas /api/asistente lo exigen también. */}
+          {puedeUsarAsistente(session?.user) && <AsistenteFlotante />}
         </SidebarInset>
       </SidebarProvider>
     </CodigoAccesoProvider>

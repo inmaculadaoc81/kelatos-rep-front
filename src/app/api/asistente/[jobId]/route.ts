@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet } from "@/lib/kelatos-api";
-import { esSuperadmin } from "@/lib/superadmin";
+import { areasAsistente, puedeUsarAsistente } from "@/lib/asistente/permisos";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ jobId: string }> }) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  if (!esSuperadmin(session.user.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeUsarAsistente(session.user) || !areasAsistente(session.user).length) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { jobId } = await params;
   if (!/^[A-Za-z0-9-]{8,64}$/.test(jobId)) return NextResponse.json({ ok: false, error: "Identificador no válido" }, { status: 400 });

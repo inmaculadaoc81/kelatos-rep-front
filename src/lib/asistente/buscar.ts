@@ -4,6 +4,8 @@
  * scripts/generar-conocimiento-asistente.mjs. Solo se usa en el servidor (rutas de API).
  */
 
+import { puedeLeerCodigo } from "./permisos";
+
 interface Fragmento {
   id: string;
   ruta: string;
@@ -62,7 +64,7 @@ export interface FragmentoContexto {
  * (p. ej. "/contabilidad/efectivo"): los fragmentos de esa pantalla puntúan más alto, porque lo normal es que
  * pregunte por lo que tiene delante.
  */
-export async function buscarFragmentos(consulta: string, ruta: string, n = 6): Promise<FragmentoContexto[]> {
+export async function buscarFragmentos(consulta: string, ruta: string, n = 6, areas: string[] = []): Promise<FragmentoContexto[]> {
   const { docs, df, avgLen } = await indice();
   const q = [...new Set(tokenizar(consulta))];
   if (!q.length) return [];
@@ -71,6 +73,8 @@ export async function buscarFragmentos(consulta: string, ruta: string, n = 6): P
 
   const puntuados = docs.map((d) => {
     let s = 0;
+    // Solo se puede explicar lo que la cuenta tiene permiso para ver (ver permisos.ts).
+    if (!puedeLeerCodigo(d.f.id === "menu-admin" ? "menu-admin" : d.f.ruta, areas)) return { d, s };
     for (const t of q) {
       const f = d.tf.get(t);
       if (!f) continue;
