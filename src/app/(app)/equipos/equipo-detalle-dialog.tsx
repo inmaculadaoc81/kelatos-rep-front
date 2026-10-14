@@ -31,6 +31,7 @@ interface Formulario {
   precioDia: string;
   precioSemana: string;
   precioMes: string;
+  precioVenta: string;
   fianza: string;
 }
 
@@ -48,6 +49,7 @@ function desdeEquipo(e: Equipo): Formulario {
     precioDia: String(e.precioDia),
     precioSemana: String(e.precioSemana),
     precioMes: String(e.precioMes),
+    precioVenta: String(e.precioVenta ?? 0),
     fianza: String(e.fianza),
   };
 }
@@ -95,7 +97,7 @@ export function EquipoDetalleDialog({
   if (!equipo || !f || !origen) return null;
 
   const cambios = (Object.keys(f) as (keyof Formulario)[]).filter((k) => f[k] !== origen[k]);
-  const CAMPOS_TARIFA = ["precioDia", "precioSemana", "precioMes", "fianza"];
+  const CAMPOS_TARIFA = ["precioDia", "precioSemana", "precioMes", "precioVenta", "fianza"];
   const poner = (campo: keyof Formulario, valor: string) => setF((p) => (p ? { ...p, [campo]: valor } : p));
 
   async function guardar() {
@@ -104,7 +106,7 @@ export function EquipoDetalleDialog({
     if (!f.modelo.trim()) return toast.error("El modelo es obligatorio");
     if (!esUrlValida(f.imagenUrl)) return toast.error("La imagen debe ser una URL válida (https://…)");
     if (!esUrlValida(f.enlaceRepuesto)) return toast.error("El enlace del repuesto debe ser una URL válida (https://…)");
-    for (const k of ["precioDia", "precioSemana", "precioMes", "fianza"] as const) {
+    for (const k of ["precioDia", "precioSemana", "precioMes", "precioVenta", "fianza"] as const) {
       const n = Number(String(f[k]).replace(",", "."));
       if (!Number.isFinite(n) || n < 0) return toast.error("Las tarifas y la fianza deben ser números de 0 o más");
     }
@@ -221,13 +223,14 @@ export function EquipoDetalleDialog({
           )}
 
           <div className="space-y-1.5">
-            <Label>Tarifas y fianza (€)</Label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Label>Tarifas, precio de venta y fianza (€)</Label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {(
                 [
                   ["precioDia", "Día"],
                   ["precioSemana", "Semana"],
                   ["precioMes", "Mes"],
+                  ["precioVenta", "Venta"],
                   ["fianza", "Fianza"],
                 ] as const
               ).map(([campo, etiqueta]) => (
@@ -240,7 +243,7 @@ export function EquipoDetalleDialog({
             <p className="text-xs text-muted-foreground">
               {puedeEditarTarifas
                 ? "Los cambios de tarifa solo afectan a los alquileres nuevos; cada alquiler ya creado conserva sus precios."
-                : "Solo un administrador puede cambiar las tarifas y la fianza."}
+                : "Solo un administrador puede cambiar las tarifas, el precio de venta y la fianza."}
             </p>
           </div>
 

@@ -10,7 +10,7 @@ function hashCanonico(payload: unknown): string {
 
 /** Campos de la ficha del equipo que se pueden editar (el estado tiene su propia ruta). */
 const CAMPOS_TEXTO = ["marca", "modelo", "serie", "sistemaOperativo", "caracteristicas", "defectos", "observaciones", "enlaceRepuesto", "imagenUrl"] as const;
-const CAMPOS_NUMERO = ["fianza", "precioDia", "precioSemana", "precioMes"] as const;
+const CAMPOS_NUMERO = ["fianza", "precioDia", "precioSemana", "precioMes", "precioVenta"] as const;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -27,7 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!Object.keys(datos).length) return NextResponse.json({ ok: false, error: "No hay nada que guardar" }, { status: 400 });
   const esAdmin = session?.user?.role === "admin" || esSuperadmin(usuario);
   if (!esAdmin && CAMPOS_NUMERO.some((c) => c in datos)) {
-    return NextResponse.json({ ok: false, error: "Solo un administrador puede cambiar las tarifas y la fianza" }, { status: 403 });
+    return NextResponse.json({ ok: false, error: "Solo un administrador puede cambiar las tarifas, el precio de venta y la fianza" }, { status: 403 });
   }
 
   const requestId = crypto.randomUUID();

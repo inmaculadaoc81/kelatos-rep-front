@@ -279,6 +279,7 @@ export default function EquiposPage() {
               <TableHead>Cliente actual</TableHead>
               <TableHead>Hasta</TableHead>
               <TableHead>Tarifas</TableHead>
+              <TableHead>Venta</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -286,7 +287,7 @@ export default function EquiposPage() {
             {cargando &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 7 }).map((__, j) => (
+                  {Array.from({ length: 8 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -296,7 +297,7 @@ export default function EquiposPage() {
 
             {!cargando && filtrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                   No se encontraron equipos
                 </TableCell>
               </TableRow>
@@ -355,6 +356,9 @@ export default function EquiposPage() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground tabular-nums">
                     {e.precioDia}€/d · {e.precioSemana}€/s · {e.precioMes}€/m
+                  </TableCell>
+                  <TableCell className="text-sm font-medium tabular-nums">
+                    {e.precioVenta > 0 ? `${e.precioVenta.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : <span className="font-normal text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell onClick={(ev) => ev.stopPropagation()}>
                     <div className="flex flex-wrap items-center gap-1">

@@ -60,6 +60,8 @@ export interface Equipo {
   precioDia: number;
   precioSemana: number;
   precioMes: number;
+  /** Precio de venta del equipo (0 = sin precio de venta definido). */
+  precioVenta: number;
   estado: EstadoEquipo;
   fechaAlta: string | null;
   alquilerActualId: string | null;
