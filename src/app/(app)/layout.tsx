@@ -40,7 +40,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* El gris del fondo ya lo pone `body` (ver globals.css); este
               contenedor no necesita el suyo propio. */}
           <main className="flex-1">{children}</main>
-          <AsistenteFlotante />
+          {/* Por ahora solo para superadministradores (las rutas /api/asistente también lo exigen). */}
+          {esSuperadmin(session?.user?.email) && <AsistenteFlotante />}
         </SidebarInset>
       </SidebarProvider>
     </CodigoAccesoProvider>

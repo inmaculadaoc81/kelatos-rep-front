@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { buscarFragmentos } from "@/lib/asistente/buscar";
+import { esSuperadmin } from "@/lib/superadmin";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  if (!esSuperadmin(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as { pregunta?: unknown; historial?: unknown; ruta?: unknown };
   const pregunta = typeof body.pregunta === "string" ? body.pregunta.trim().slice(0, 1200) : "";
