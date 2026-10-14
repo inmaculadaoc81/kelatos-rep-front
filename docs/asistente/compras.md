@@ -21,7 +21,7 @@ Pedido, Cliente / Equipo, Proveedor, Descripción, Nº de pedido, Precio, Compra
 Búsqueda (pedido, resguardo, cliente, nº de pedido), proveedor, "comprado por", rango de fecha de pedido, y orden (más recientes, llegada más próxima, sin revisar). "Quitar filtros" los limpia.
 
 ## Subir pedido con IA
-Botón de la cabecera. Permite subir **hasta 4 archivos** (capturas de pantalla o PDF) de un pedido hecho en la web de un proveedor; la IA lee las líneas y, tras pulsar **Analizar con IA**, el empleado **revisa cada línea** y pulsa **Registrar pedidos**. Cada línea se clasifica como pedido de **Tienda** (stock) o de **Cliente** (pieza para una reparación, con su resguardo). Hay un botón de **historial** de lo registrado con esta función.
+Botón de la cabecera. Permite subir **hasta 4 archivos** (capturas de pantalla o PDF) de un pedido hecho en la web de un proveedor; la IA lee las líneas y, tras pulsar **Analizar con IA**, el empleado **revisa cada línea** y pulsa **Registrar pedidos**. Cada línea se clasifica como pedido de **Tienda** (stock) o de **Cliente**. Para un pedido de cliente, el buscador busca por el nombre tanto en las **reparaciones abiertas** (pieza para una reparación, con su resguardo) como en las **ventas de piezas con alguna pieza todavía sin pedir**; si es una venta, se marcan las piezas de esa venta a las que corresponde el pedido y se registra en cada una (pasa a En Tránsito). El coste de las piezas de una venta ya está en la propia venta. Hay un botón de **historial** de lo registrado con esta función.
 - **La cuenta compartida de empleados (soporte) no puede usar "Subir pedido con IA".**
 
 ## Cómo se crean los pedidos

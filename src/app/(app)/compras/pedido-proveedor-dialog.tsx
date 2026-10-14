@@ -33,11 +33,24 @@ interface ArchivoPedido {
   mimeType: string;
 }
 
-interface CandidatoResguardo {
+/** Una coincidencia al buscar al cliente de una línea: una reparación abierta o una venta de piezas con alguna
+    pieza todavía sin pedir (kelatos_app.ventas / items_venta). */
+interface CandidatoCliente {
+  tipo: "reparacion" | "venta";
+  clave: string;
   resguardo: string;
+  ventaId: string;
   clienteNombre: string;
-  equipoModelo: string;
+  /** Equipo (reparación) o resumen de las piezas por pedir (venta). */
+  detalle: string;
   estado: string;
+  /** Solo ventas: las piezas aún sin pedir. */
+  items: { itemId: string; descripcion: string }[];
+}
+
+interface ItemVentaPendiente {
+  itemId: string;
+  descripcion: string;
 }
 
 interface LineaPedidoEditable {
@@ -60,8 +73,12 @@ interface LineaPedidoEditable {
   categoria: string;
   costeInterno: number;
   precioCliente: number;
-  // cliente
+  // cliente: el pedido va a una reparación (resguardo) o a una venta de piezas (ventaId + sus piezas pendientes)
+  origenCliente: "reparacion" | "venta";
   resguardo: string;
+  ventaId: string;
+  ventaItems: ItemVentaPendiente[];
+  itemIds: string[];
   clienteElegido: string;
   equipoElegido: string;
   enlace: string;
@@ -86,7 +103,11 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     categoria: l.categoriaSugerida || "CARGADOR",
     costeInterno: 0,
     precioCliente: l.precioClienteSugerido ?? l.precioUnitario ?? 0,
+    origenCliente: "reparacion",
     resguardo: "",
+    ventaId: "",
+    ventaItems: [],
+    itemIds: [],
     clienteElegido: "",
     equipoElegido: "",
     enlace: "",
@@ -96,60 +117,99 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
   };
 }
 
-/** Buscador de resguardo por nombre de cliente — reusa /api/reparaciones?busqueda=
-    (misma búsqueda que ya usa la barra de /compras y /reparaciones), con
-    debounce igual que buscar-pedido-stock-dialog.tsx. Se precarga con el
-    nombre que la IA detectó en "Texto del pedido". */
-function BuscadorResguardoLinea({ textoInicial, onElegir }: { textoInicial: string; onElegir: (c: CandidatoResguardo) => void }) {
+/** Normaliza para comparar nombres de pieza (sin acentos ni mayúsculas). */
+function palabrasDe(t: string): Set<string> {
+  return new Set(t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter((w) => w.length > 2));
+}
+
+/** Piezas de una venta que mejor encajan con la línea leída (por palabras en común). Si ninguna encaja, no se
+    elige ninguna y el empleado las marca a mano. Se eligen tantas como indique la cantidad. */
+function itemsQueEncajan(nombreLinea: string, items: ItemVentaPendiente[], cantidad: number): string[] {
+  const buscadas = palabrasDe(nombreLinea);
+  const puntuadas = items
+    .map((it) => ({ it, puntos: [...palabrasDe(it.descripcion)].filter((w) => buscadas.has(w)).length }))
+    .filter((x) => x.puntos > 0)
+    .sort((a, b) => b.puntos - a.puntos);
+  if (puntuadas.length > 0) return puntuadas.slice(0, Math.max(1, cantidad)).map((x) => x.it.itemId);
+  return items.length === 1 ? [items[0].itemId] : [];
+}
+
+/** Buscador del cliente de una línea por su nombre: busca a la vez en las reparaciones abiertas
+    (/api/reparaciones?busqueda=) y en las ventas de piezas con alguna pieza todavía sin pedir (/api/ventas?busqueda=),
+    con debounce. Se precarga con el nombre que la IA detectó en "Texto del pedido". */
+function BuscadorClienteLinea({ textoInicial, onElegir }: { textoInicial: string; onElegir: (c: CandidatoCliente) => void }) {
   const [q, setQ] = useState(textoInicial);
-  const [candidatos, setCandidatos] = useState<CandidatoResguardo[]>([]);
+  const [candidatos, setCandidatos] = useState<CandidatoCliente[]>([]);
   const [buscando, setBuscando] = useState(false);
 
   useEffect(() => {
     if (!q.trim()) { setCandidatos([]); return; }
     setBuscando(true);
-    const t = setTimeout(() => {
-      fetch(`/api/reparaciones?busqueda=${encodeURIComponent(q.trim())}&porPagina=20&pagina=1`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.ok) {
-            setCandidatos((d.resultados || []).map((r: { resguardo: string; cliente: { nombre: string }; equipo: { modelo: string }; estado: string }) => ({
-              resguardo: r.resguardo, clienteNombre: r.cliente.nombre, equipoModelo: r.equipo.modelo, estado: r.estado,
-            })));
-          }
-        })
-        .catch(() => {})
-        .finally(() => setBuscando(false));
+    const t = setTimeout(async () => {
+      try {
+        const [rReps, rVentas] = await Promise.all([
+          fetch(`/api/reparaciones?busqueda=${encodeURIComponent(q.trim())}&porPagina=20&pagina=1`).then((r) => r.json()).catch(() => null),
+          fetch(`/api/ventas?busqueda=${encodeURIComponent(q.trim())}`).then((r) => r.json()).catch(() => null),
+        ]);
+        const reparaciones: CandidatoCliente[] = rReps?.ok
+          ? (rReps.resultados || []).map((r: { resguardo: string; cliente: { nombre: string }; equipo: { modelo: string }; estado: string }) => ({
+              tipo: "reparacion" as const, clave: `R-${r.resguardo}`, resguardo: r.resguardo, ventaId: "", clienteNombre: r.cliente.nombre,
+              detalle: r.equipo.modelo, estado: r.estado, items: [],
+            }))
+          : [];
+        const ventas: CandidatoCliente[] = rVentas?.ok
+          ? (rVentas.ventas || [])
+              .map((v: { ventaId: string; clienteNombre: string; estado: string; items: { itemId: string; descripcion: string; estadoPedido: string }[] }) => {
+                const pendientes = (v.items || []).filter((it) => it.estadoPedido === "Pieza Pendiente").map((it) => ({ itemId: it.itemId, descripcion: it.descripcion }));
+                return { v, pendientes };
+              })
+              .filter(({ v, pendientes }: { v: { estado: string }; pendientes: ItemVentaPendiente[] }) => pendientes.length > 0 && v.estado !== "Cancelado" && v.estado !== "Entregado")
+              .map(({ v, pendientes }: { v: { ventaId: string; clienteNombre: string; estado: string }; pendientes: ItemVentaPendiente[] }) => ({
+                tipo: "venta" as const, clave: `V-${v.ventaId}`, resguardo: "", ventaId: v.ventaId, clienteNombre: v.clienteNombre,
+                detalle: pendientes.map((p) => p.descripcion).join(", "), estado: v.estado, items: pendientes,
+              }))
+          : [];
+        setCandidatos([...reparaciones, ...ventas]);
+      } finally {
+        setBuscando(false);
+      }
     }, 300);
     return () => clearTimeout(t);
   }, [q]);
+
+  const reps = candidatos.filter((c) => c.tipo === "reparacion");
+  const ventas = candidatos.filter((c) => c.tipo === "venta");
+  const fila = (c: CandidatoCliente) => (
+    <button
+      key={c.clave}
+      type="button"
+      onClick={() => onElegir(c)}
+      className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-xs hover:bg-muted/60"
+    >
+      <span className="min-w-0 truncate">
+        <span className="font-medium">{c.clienteNombre || c.resguardo || c.ventaId}</span>
+        <span className="text-muted-foreground"> · {c.tipo === "venta" ? `Venta ${c.ventaId}` : c.resguardo}{c.detalle ? ` · ${c.detalle}` : ""}</span>
+      </span>
+      <span className="shrink-0 text-muted-foreground">{c.estado}</span>
+    </button>
+  );
 
   return (
     <div className="space-y-1.5">
       <div className="relative">
         <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar resguardo por nombre de cliente…" className="h-8 pl-7" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input placeholder="Buscar al cliente (reparación o venta de piezas)…" className="h-8 pl-7" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       {buscando && <p className="text-xs text-muted-foreground">Buscando…</p>}
       {!buscando && q.trim() && candidatos.length === 0 && (
-        <p className="text-xs text-muted-foreground">Ninguna reparación abierta coincide — añade este pedido a mano desde Reparaciones.</p>
+        <p className="text-xs text-muted-foreground">Ninguna reparación abierta ni venta de piezas pendiente de pedir coincide — añade este pedido a mano desde Reparaciones o Ventas.</p>
       )}
       {candidatos.length > 0 && (
-        <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border bg-card p-1">
-          {candidatos.map((c) => (
-            <button
-              key={c.resguardo}
-              type="button"
-              onClick={() => onElegir(c)}
-              className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-xs hover:bg-muted/60"
-            >
-              <span className="min-w-0 truncate">
-                <span className="font-medium">{c.clienteNombre || c.resguardo}</span>
-                <span className="text-muted-foreground"> · {c.resguardo}{c.equipoModelo ? ` · ${c.equipoModelo}` : ""}</span>
-              </span>
-              <span className="shrink-0 text-muted-foreground">{c.estado}</span>
-            </button>
-          ))}
+        <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border bg-card p-1">
+          {reps.length > 0 && <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Reparaciones abiertas</p>}
+          {reps.map(fila)}
+          {ventas.length > 0 && <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ventas de piezas (pieza sin pedir)</p>}
+          {ventas.map(fila)}
         </div>
       )}
     </div>
@@ -350,14 +410,18 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // reconocerla la próxima vez.
       return l.referencia.trim() !== "" || l.nombreInternoProveedor.trim() !== "";
     }
-    if (!l.resguardo) return false;
-    if (!l.enlace.trim() || !l.numeroPedido.trim() || !l.fechaEstimada || !(l.costo > 0)) return false;
+    if (l.origenCliente === "venta") {
+      if (!l.ventaId || l.itemIds.length === 0 || !proveedorIdSugerido) return false;
+    } else if (!l.resguardo) return false;
+    if (!l.enlace.trim() || !l.numeroPedido.trim() || !l.fechaEstimada) return false;
+    // El coste de las piezas de una venta ya está en la propia venta; el de una reparación se guarda con el pedido.
+    if (l.origenCliente !== "venta" && !(l.costo > 0)) return false;
     if (numeroPedidoEsEnlace(l.numeroPedido)) return false;
     return true;
   }
 
   const hayAlgoAplicado = lineas.some((l) => l.aplicar);
-  const todoListo = lineas.every(lineaListaParaRegistrar) && (!lineas.some((l) => l.aplicar && l.destino === "cliente") || !!compradoPor.trim());
+  const todoListo = lineas.every(lineaListaParaRegistrar) && (!lineas.some((l) => l.aplicar && l.destino === "cliente" && l.origenCliente !== "venta") || !!compradoPor.trim());
 
   async function registrar() {
     setRegistrando(true);
@@ -407,7 +471,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // --- Líneas "cliente": agrupadas por resguardo, una llamada por grupo ---
       const porResguardo = new Map<string, LineaPedidoEditable[]>();
       for (const l of lineas) {
-        if (!l.aplicar || l.destino !== "cliente" || !l.resguardo) continue;
+        if (!l.aplicar || l.destino !== "cliente" || l.origenCliente === "venta" || !l.resguardo) continue;
         const arr = porResguardo.get(l.resguardo) || [];
         arr.push(l);
         porResguardo.set(l.resguardo, arr);
@@ -440,7 +504,35 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         }
       }
 
-      toast.success(`${okStock} pedido(s) de stock, ${okResguardo} pedido(s) de resguardo registrados${fallos ? ` — ${fallos} con error` : ""}`);
+      // --- Líneas "cliente" de una VENTA de piezas: el pedido se registra en cada pieza elegida de la venta
+      // (POST /api/items-venta/:itemId/registrar-pedido, el mismo que usa "Registrar pedido" en Ventas), que pasa a
+      // "En Tránsito". Cuentan junto a los pedidos de resguardo en el historial (el detalle indica "Venta V-…").
+      for (const l of lineas) {
+        if (!l.aplicar || l.destino !== "cliente" || l.origenCliente !== "venta" || !l.ventaId) continue;
+        let okLinea = 0;
+        let errorLinea = "";
+        for (const itemId of l.itemIds) {
+          try {
+            const res = await fetch(`/api/items-venta/${encodeURIComponent(itemId)}/registrar-pedido`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ proveedorId: proveedorIdSugerido || "", proveedorOtro: "", numeroPedido: l.numeroPedido.trim(), fechaEstimada: l.fechaEstimada, enlace: l.enlace.trim() }),
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || "No se pudo registrar el pedido");
+            okLinea++;
+          } catch (e) {
+            errorLinea = e instanceof Error ? e.message : "error desconocido";
+          }
+        }
+        const detalle = `Venta ${l.ventaId} · ${l.clienteElegido || l.ventaId}`;
+        okResguardo += okLinea;
+        fallos += l.itemIds.length - okLinea;
+        resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "cliente", destinoDetalle: detalle, ok: okLinea === l.itemIds.length });
+        if (errorLinea) toast.error(`Venta ${l.ventaId}: ${errorLinea}`);
+      }
+
+      toast.success(`${okStock} pedido(s) de stock, ${okResguardo} pedido(s) de cliente (reparación o venta) registrados${fallos ? ` — ${fallos} con error` : ""}`);
       if (resumen.length > 0) {
         fetch("/api/compras/pedido-proveedor/registro", {
           method: "POST",
@@ -516,7 +608,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           {lineas.length > 0 && (
             <>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Comprado por (necesario para los pedidos de resguardo)</Label>
+                <Label className="text-xs text-muted-foreground">Comprado por (necesario para los pedidos de reparación)</Label>
                 <Select value={compradoPor} onValueChange={(v) => setCompradoPor(v || "")}>
                   <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Elige quién compró" /></SelectTrigger>
                   <SelectContent>
@@ -606,21 +698,41 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                             </>
                           ) : (
                             <div className="space-y-2 rounded-md bg-muted/50 p-2">
-                              {!l.resguardo ? (
-                                <BuscadorResguardoLinea
+                              {!(l.resguardo || l.ventaId) ? (
+                                <BuscadorClienteLinea
                                   textoInicial={l.textoPedido}
-                                  onElegir={(c) => actualizar(i, { resguardo: c.resguardo, clienteElegido: c.clienteNombre, equipoElegido: c.equipoModelo })}
+                                  onElegir={(c) =>
+                                    c.tipo === "venta"
+                                      ? actualizar(i, { origenCliente: "venta", ventaId: c.ventaId, resguardo: "", ventaItems: c.items, itemIds: itemsQueEncajan(l.nombre, c.items, l.cantidad), clienteElegido: c.clienteNombre, equipoElegido: "" })
+                                      : actualizar(i, { origenCliente: "reparacion", resguardo: c.resguardo, ventaId: "", ventaItems: [], itemIds: [], clienteElegido: c.clienteNombre, equipoElegido: c.detalle })
+                                  }
                                 />
                               ) : (
                                 <>
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                                      <Profile2User className="size-3.5" /> {l.clienteElegido || l.resguardo} · {l.resguardo}{l.equipoElegido ? ` · ${l.equipoElegido}` : ""}
+                                      <Profile2User className="size-3.5" /> {l.clienteElegido || l.resguardo || l.ventaId} · {l.origenCliente === "venta" ? `Venta ${l.ventaId}` : l.resguardo}{l.equipoElegido ? ` · ${l.equipoElegido}` : ""}
                                     </span>
-                                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => actualizar(i, { resguardo: "", clienteElegido: "", equipoElegido: "" })}>
+                                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => actualizar(i, { origenCliente: "reparacion", resguardo: "", ventaId: "", ventaItems: [], itemIds: [], clienteElegido: "", equipoElegido: "" })}>
                                       Cambiar
                                     </Button>
                                   </div>
+                                  {l.origenCliente === "venta" && (
+                                    <div className="space-y-1 rounded-md border bg-card p-2">
+                                      <p className="text-xs font-medium">Pieza(s) de la venta a la(s) que corresponde este pedido</p>
+                                      {l.ventaItems.map((it) => (
+                                        <label key={it.itemId} className="flex cursor-pointer items-center gap-2 text-xs">
+                                          <Checkbox
+                                            checked={l.itemIds.includes(it.itemId)}
+                                            onCheckedChange={(v) => actualizar(i, { itemIds: v === true ? [...l.itemIds, it.itemId] : l.itemIds.filter((x) => x !== it.itemId) })}
+                                          />
+                                          {it.descripcion}
+                                        </label>
+                                      ))}
+                                      {l.itemIds.length === 0 && <p className="text-[11px] text-amber-700 dark:text-amber-400">Marca al menos una pieza.</p>}
+                                      {!proveedorIdSugerido && <p className="text-[11px] text-destructive">Hace falta un proveedor reconocido para registrar el pedido en una venta.</p>}
+                                    </div>
+                                  )}
                                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                     <div className="space-y-1 sm:col-span-2">
                                       <Label className="text-xs text-muted-foreground">Enlace (del pedido en {proveedorNombre || "el proveedor"})</Label>
@@ -635,10 +747,12 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                       <Label className="text-xs text-muted-foreground">Fecha estimada</Label>
                                       <Input type="date" className="h-8" value={l.fechaEstimada} onChange={(e) => actualizar(i, { fechaEstimada: e.target.value })} />
                                     </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs text-muted-foreground">Precio de compra (€)</Label>
-                                      <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
-                                    </div>
+                                    {l.origenCliente !== "venta" && (
+                                      <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Precio de compra (€)</Label>
+                                        <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
+                                      </div>
+                                    )}
                                   </div>
                                 </>
                               )}
