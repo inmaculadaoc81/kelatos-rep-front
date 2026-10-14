@@ -39,6 +39,8 @@ export interface LineaPedidoProveedorLeida {
   proveedorTexto?: string | null;
   /** La línea no describe una pieza, solo una referencia: sirve únicamente para marcar un pedido ya registrado como recibido. */
   soloRecepcion?: boolean;
+  /** Índice del elemento (imagen o texto) de la que sale la línea; null/ausente si salió de varias capturas juntas. */
+  elemento?: number | null;
 }
 
 const MAX_ARCHIVOS_PEDIDO = 4;
@@ -59,12 +61,20 @@ export async function POST(req: Request) {
     archivos?: { base64?: string; mimeType?: string }[];
     /** Texto opcional que acompaña a las imágenes (o texto solo, sin imágenes). */
     texto?: string;
+    /** Cada imagen con su texto propio (opcional), o solo texto: [{ base64?, mimeType?, texto? }]. */
+    elementos?: { base64?: string; mimeType?: string; texto?: string }[];
   };
   // Compatibilidad: un solo archivo con el formato antiguo se trata como lista de 1.
   const archivos = (Array.isArray(body.archivos) ? body.archivos : body.base64 ? [{ base64: body.base64, mimeType: body.mimeType }] : [])
     .filter((a): a is { base64: string; mimeType: string } => !!a && typeof a.base64 === "string" && !!a.base64 && typeof a.mimeType === "string" && !!a.mimeType);
   const texto = typeof body.texto === "string" ? body.texto.trim().slice(0, 3000) : "";
-  if (archivos.length === 0 && !texto) return NextResponse.json({ ok: false, error: "Sube un archivo o escribe un texto" }, { status: 400 });
+  const elementos = (Array.isArray(body.elementos) ? body.elementos : [])
+    .map((e) => ({ base64: typeof e?.base64 === "string" ? e.base64 : "", mimeType: typeof e?.mimeType === "string" ? e.mimeType : "", texto: typeof e?.texto === "string" ? e.texto.trim().slice(0, 3000) : "" }))
+    .filter((e) => e.base64 || e.texto);
+  const conArchivo = elementos.filter((e) => e.base64);
+  if (conArchivo.length > MAX_ARCHIVOS_PEDIDO) return NextResponse.json({ ok: false, error: `Máximo ${MAX_ARCHIVOS_PEDIDO} archivos por análisis` }, { status: 400 });
+  if (conArchivo.some((e) => !TIPOS_PEDIDO_VALIDOS.has(e.mimeType))) return NextResponse.json({ ok: false, error: "Solo se admiten imágenes (JPG, PNG, WEBP) o PDF" }, { status: 400 });
+  if (archivos.length === 0 && !texto && elementos.length === 0) return NextResponse.json({ ok: false, error: "Sube un archivo o escribe un texto" }, { status: 400 });
   if (archivos.length > MAX_ARCHIVOS_PEDIDO) return NextResponse.json({ ok: false, error: `Máximo ${MAX_ARCHIVOS_PEDIDO} archivos por análisis` }, { status: 400 });
   if (archivos.some((a) => !TIPOS_PEDIDO_VALIDOS.has(a.mimeType))) return NextResponse.json({ ok: false, error: "Solo se admiten imágenes (JPG, PNG, WEBP) o PDF" }, { status: 400 });
 
@@ -74,6 +84,7 @@ export async function POST(req: Request) {
     const data = await kelatosApiPost<{ ok: boolean; jobId: string }>("/v1/compras/pedido-proveedor/ocr", {
       archivos,
       texto: texto || undefined,
+      elementos: elementos.length > 0 ? elementos : undefined,
       nombreProveedor: body.nombreProveedor || undefined,
       async: true,
     });

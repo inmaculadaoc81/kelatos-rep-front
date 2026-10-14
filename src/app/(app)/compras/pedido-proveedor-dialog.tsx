@@ -32,6 +32,14 @@ interface ArchivoPedido {
   esPdf: boolean;
   base64: string;
   mimeType: string;
+  /** Texto opcional de ESTA imagen (resguardo, cliente, "recibida"...): solo se aplica a ella. */
+  texto: string;
+}
+
+/** Mensaje de texto sin imagen ("Asus 1184556 6 cargadores recibido"). */
+interface TextoSuelto {
+  id: string;
+  texto: string;
 }
 
 /** Una coincidencia al buscar al cliente de una línea: una reparación abierta o una venta de piezas con alguna
@@ -104,6 +112,8 @@ interface LineaPedidoEditable {
   proveedorTexto: string;
   numeroPedidoLinea: string;
   accion: "registrar" | "recibir";
+  /** Imagen o texto de la que sale la línea (vacío si salió de varias capturas juntas). */
+  fuente: string;
   buscandoRecepcion: boolean;
   candidatosRecepcion: CandidatoRecepcion[];
   recibirIds: string[];
@@ -150,6 +160,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     proveedorTexto: l.proveedorTexto || "",
     numeroPedidoLinea: l.numeroPedido || "",
     accion: l.soloRecepcion ? "recibir" : "registrar",
+    fuente: "",
     buscandoRecepcion: !!l.recibido,
     candidatosRecepcion: [],
     recibirIds: [],
@@ -270,8 +281,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   onRegistrado: () => void;
 }) {
   const [proveedorNombre, setProveedorNombre] = useState("ASWO");
-  /** Texto opcional que acompaña a las imágenes (o texto solo): la IA lo interpreta junto con ellas, como un solo bloque. */
-  const [textoNota, setTextoNota] = useState("");
+  /** Textos sin imagen (p. ej. un aviso de "recibido" por mensaje). */
+  const [textosSueltos, setTextosSueltos] = useState<TextoSuelto[]>([]);
   const [leyendoOcr, setLeyendoOcr] = useState(false);
   const [lineas, setLineas] = useState<LineaPedidoEditable[]>([]);
   const [proveedorIdSugerido, setProveedorIdSugerido] = useState<string | null>(null);
@@ -300,7 +311,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setNumeroPedidoGlobal(null);
       setProveedorCreado(false);
       setCompradoPor("");
-      setTextoNota("");
+      setTextosSueltos([]);
       setArchivos([]);
       if (inputOcr.current) inputOcr.current.value = "";
     }
@@ -368,7 +379,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           continue;
         }
         const preparado = esPdf ? { base64: await leerBase64(f), mimeType: "application/pdf" } : await prepararImagen(f);
-        listos.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`, nombre: f.name, esPdf, base64: preparado.base64, mimeType: preparado.mimeType });
+        listos.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`, nombre: f.name, esPdf, base64: preparado.base64, mimeType: preparado.mimeType, texto: "" });
       }
       if (listos.length === 0) return;
       const total = [...archivos, ...listos].reduce((n, a) => n + a.base64.length, 0);
@@ -380,6 +391,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     } finally {
       setPreparando(false);
     }
+  }
+
+  function ponerTextoArchivo(id: string, texto: string) {
+    setArchivos((prev) => prev.map((a) => (a.id === id ? { ...a, texto } : a)));
+  }
+
+  function anadirTextoSuelto() {
+    setTextosSueltos((prev) => [...prev, { id: `t-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`, texto: "" }]);
   }
 
   function quitarArchivo(id: string) {
@@ -449,7 +468,10 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   /** Analiza TODOS los archivos juntos, solo cuando se pulsa el botón (así no
       se empieza a leer la primera captura antes de adjuntar las demás). */
   async function analizar() {
-    if (archivos.length === 0 && !textoNota.trim()) return;
+    const sueltos = textosSueltos.filter((t) => t.texto.trim());
+    if (archivos.length === 0 && sueltos.length === 0) return;
+    // Nombres para indicar de qué imagen o texto sale cada línea (mismo orden que los elementos enviados).
+    const fuentes = [...archivos.map((a) => a.nombre), ...sueltos.map((_, k) => `Texto ${k + 1}`)];
     setLeyendoOcr(true);
     setSegundosAnalisis(0);
     const inicio = Date.now();
@@ -460,8 +482,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          archivos: archivos.map((a) => ({ base64: a.base64, mimeType: a.mimeType })),
-          texto: textoNota.trim() || undefined,
+          // Cada imagen con su texto, y los textos sueltos (sin imagen): el texto de una imagen solo vale para ella.
+          elementos: [
+            ...archivos.map((a) => ({ base64: a.base64, mimeType: a.mimeType, texto: a.texto.trim() || undefined })),
+            ...sueltos.map((t) => ({ texto: t.texto.trim() })),
+          ],
           // Sin imágenes, el proveedor lo dice el propio texto ("Asus 1184556 …"), no el campo del diálogo.
           nombreProveedor: archivos.length > 0 ? proveedorNombre : "",
         }),
@@ -472,9 +497,10 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada pocos segundos (máx. 4 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorCreado?: boolean;
+        proveedorIdSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[];
       } | null = null;
-      while (Date.now() - inicio < 240_000) {
+      // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
+      while (Date.now() - inicio < 420_000) {
         await new Promise((r) => setTimeout(r, 2500));
         if (cancelarAnalisis.current) return;
         setSegundosAnalisis(Math.round((Date.now() - inicio) / 1000));
@@ -489,7 +515,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         toast.warning("No se leyó ninguna línea de pedido en los archivos o el texto");
         return;
       }
-      const lineasNuevas = data.lineas.map((l) => lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null));
+      const lineasNuevas = data.lineas.map((l) => ({ ...lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null), fuente: l.elemento != null ? fuentes[l.elemento] || "" : "" }));
+      if (data.avisos?.length) toast.warning(data.avisos.join(" · "));
       setLineas(lineasNuevas);
       void buscarRecepciones(lineasNuevas);
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
@@ -746,10 +773,13 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               {preparando ? <Refresh2 className="size-4 animate-spin" /> : <Add className="size-4" />}
               {preparando ? "Preparando…" : `Añadir archivos (${archivos.length}/${MAX_ARCHIVOS})`}
             </Button>
+            <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={leyendoOcr || textosSueltos.length >= 6} onClick={anadirTextoSuelto} title="Para avisos como «Asus 1184556 6 cargadores recibido», sin imagen">
+              <Add className="size-4" /> Solo texto
+            </Button>
             <Button
               type="button" variant="outline" size="sm"
               className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40"
-              disabled={leyendoOcr || preparando || (archivos.length === 0 && !textoNota.trim())} onClick={analizar}
+              disabled={leyendoOcr || preparando || (archivos.length === 0 && !textosSueltos.some((t) => t.texto.trim()))} onClick={analizar}
             >
               {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
               {leyendoOcr ? `Analizando… ${segundosAnalisis}s` : lineas.length > 0 ? "Volver a analizar con IA" : "Analizar con IA"}
@@ -762,32 +792,49 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
             )}
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Texto (opcional) — se analiza junto con las imágenes, como un solo bloque; o solo, sin imágenes</Label>
-            <Textarea
-              className="min-h-16 text-sm"
-              disabled={leyendoOcr}
-              placeholder={"Ej.: 19304 recibida\nAsus 1184556 6 cargadores recibido\naliexpress 3076642294525134 llegó"}
-              value={textoNota}
-              onChange={(e) => setTextoNota(e.target.value)}
-            />
-            <p className="text-[11px] text-muted-foreground">Un número de 5 dígitos es un resguardo; uno de 6 o más, un nº de pedido. Con «recibido» o «llegó» se marcan como recibidos los pedidos ya registrados.</p>
-          </div>
-
-          {archivos.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+          {(archivos.length > 0 || textosSueltos.length > 0) && (
+            <div className="space-y-2">
               {archivos.map((a) => (
-                <span key={a.id} className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-1 text-xs">
-                  {a.esPdf ? <DocumentText className="size-3.5 shrink-0" /> : <Gallery className="size-3.5 shrink-0" />}
-                  <span className="max-w-48 truncate">{a.nombre}</span>
-                  <button
-                    type="button" title="Quitar este archivo" disabled={leyendoOcr}
-                    className="text-muted-foreground hover:text-destructive disabled:opacity-50" onClick={() => quitarArchivo(a.id)}
-                  >
-                    <CloseCircle className="size-3.5" />
-                  </button>
-                </span>
+                <div key={a.id} className="space-y-1.5 rounded-md border bg-muted/30 p-2">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {a.esPdf ? <DocumentText className="size-3.5 shrink-0" /> : <Gallery className="size-3.5 shrink-0" />}
+                    <span className="min-w-0 flex-1 truncate font-medium">{a.nombre}</span>
+                    <button
+                      type="button" title="Quitar este archivo" disabled={leyendoOcr}
+                      className="text-muted-foreground hover:text-destructive disabled:opacity-50" onClick={() => quitarArchivo(a.id)}
+                    >
+                      <CloseCircle className="size-3.5" />
+                    </button>
+                  </div>
+                  <Input
+                    className="h-8 bg-background text-sm" disabled={leyendoOcr} value={a.texto}
+                    placeholder="Texto de esta imagen (opcional): resguardo, cliente, «recibida»… Ej.: 19304 recibida"
+                    onChange={(e) => ponerTextoArchivo(a.id, e.target.value)}
+                  />
+                </div>
               ))}
+              {textosSueltos.map((t, k) => (
+                <div key={t.id} className="space-y-1.5 rounded-md border border-dashed bg-muted/30 p-2">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <DocumentText className="size-3.5 shrink-0" />
+                    <span className="min-w-0 flex-1 font-medium">Texto {k + 1} (sin imagen)</span>
+                    <button
+                      type="button" title="Quitar este texto" disabled={leyendoOcr}
+                      className="text-muted-foreground hover:text-destructive disabled:opacity-50" onClick={() => setTextosSueltos((prev) => prev.filter((x) => x.id !== t.id))}
+                    >
+                      <CloseCircle className="size-3.5" />
+                    </button>
+                  </div>
+                  <Textarea
+                    className="min-h-12 bg-background text-sm" disabled={leyendoOcr} value={t.texto}
+                    placeholder={"Ej.: Asus 1184556 6 cargadores recibido\naliexpress 3076642294525134 llegó"}
+                    onChange={(e) => setTextosSueltos((prev) => prev.map((x) => (x.id === t.id ? { ...x, texto: e.target.value } : x)))}
+                  />
+                </div>
+              ))}
+              <p className="text-[11px] text-muted-foreground">
+                El texto de una imagen solo se aplica a esa imagen. Un número de 5 dígitos es un resguardo; uno de 6 o más, un nº de pedido. Con «recibido» o «llegó» se marcan como recibidos los pedidos ya registrados.
+              </p>
             </div>
           )}
 
@@ -812,6 +859,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-medium">{l.nombre}</span>
                             <span className="text-xs text-muted-foreground">cant. {l.cantidad}{l.textoPedido ? ` · "${l.textoPedido}"` : ""}</span>
+                            {l.fuente && <span className="max-w-40 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={l.fuente}>de: {l.fuente}</span>}
                             <Select value={l.destino} onValueChange={(v) => v && actualizar(i, { destino: v as "tienda" | "cliente" })}>
                               <SelectTrigger className="h-6 w-28 text-xs">
                                 <SelectValue>{(v: string) => (v === "tienda" ? "Tienda" : "Cliente")}</SelectValue>
