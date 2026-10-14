@@ -60,7 +60,8 @@ import { RegistrarPedidoDialog } from "./registrar-pedido-dialog";
 import { ReportarProblemaPiezaDialog } from "./reportar-problema-pieza-dialog";
 import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
-import { CasilleroInline, ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
+import { CasilleroBoton } from "./casillero-boton";
+import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
 import { imprimirEtiquetaResguardoConFeedback } from "@/lib/imprimir-etiqueta";
 
 function EstadoBadge({ estado }: { estado: string }) {
@@ -729,6 +730,7 @@ export function DetalleReparacionDialog({
                   <FacturaRevisionBoton detalle={detalle} onActualizado={actualizarTodo} />
                   <EstadosEspecialesPanel detalle={detalle} onActualizado={actualizarTodo} />
                   <ComprobanteTransferenciaBoton detalle={detalle} onActualizado={actualizarTodo} />
+                  <CasilleroBoton detalle={detalle} onActualizado={actualizarTodo} bloqueado={clienteEquipoBloqueado} />
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t pt-3 sm:grid-cols-4">
@@ -737,7 +739,6 @@ export function DetalleReparacionDialog({
                   <Dato label="Nº factura" valor={detalle.numeroFactura} />
                   <Dato label="Recepción en local" valor={detalle.equipoEnLocal} />
                   <Dato label="Etiqueta" valor={detalle.etiquetaImpresaEn ? `✓ Impresa ${formatearFechaHora(detalle.etiquetaImpresaEn)}` : "No impresa"} />
-                  <CasilleroInline detalle={detalle} onActualizado={actualizarTodo} bloqueado={clienteEquipoBloqueado} />
                 </div>
               </m.section>
 
