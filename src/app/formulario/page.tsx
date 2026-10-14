@@ -526,6 +526,9 @@ export default function FormularioClientePage() {
     setEnviando(true);
     setErrorEnvio("");
     setCodigoInvalido(false);
+    // Tiempo máximo de espera (con margen: lleva fotos y firma): si la red o el servidor no responden, no se queda "Enviando…" indefinidamente.
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 90_000);
     try {
       // Red de seguridad además del onBlur del campo — por si el email
       // llega aquí sin pasar por ese blur (autocompletado del navegador,
@@ -534,6 +537,7 @@ export default function FormularioClientePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...datos, email: corregirTypoDominioEmail(datos.email), codigoAcceso: codigoAUsar }),
+        signal: controlador.signal,
       });
       // Un cuerpo de petición demasiado grande (fotos sin comprimir) lo
       // puede rechazar la propia plataforma antes de llegar al código de la
@@ -562,8 +566,13 @@ export default function FormularioClientePage() {
     } catch (e) {
       // Solo si falla se vuelve a permitir enviar; tras un envío correcto el bloqueo se mantiene.
       enviandoRef.current = false;
-      setErrorEnvio(e instanceof Error ? e.message : "Error desconocido");
+      setErrorEnvio(
+        e instanceof Error && e.name === "AbortError"
+        ? "Está tardando más de lo normal. Comprueba tu conexión y vuelve a intentarlo (si ya recibió el correo con su resguardo, la solicitud está registrada y no la repita)."
+        : e instanceof Error ? e.message : "Error desconocido"
+      );
     } finally {
+      clearTimeout(temporizador);
       setEnviando(false);
     }
   }

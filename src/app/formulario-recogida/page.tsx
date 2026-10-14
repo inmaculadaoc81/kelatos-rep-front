@@ -161,6 +161,9 @@ function FormularioRecogidaInterno() {
     enviandoRef.current = true;
     setError("");
     setEnviando(true);
+    // Tiempo máximo de espera: si la red o el servidor no responden, no se queda "Enviando…" indefinidamente.
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 60_000);
     try {
       const dataUrl = canvasRef.current?.toDataURL("image/png") || "";
       const firmaBase64 = dataUrl.split(",")[1] || "";
@@ -168,6 +171,7 @@ function FormularioRecogidaInterno() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resguardo, token, nombre, firmaBase64, fotos }),
+        signal: controlador.signal,
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo registrar la recogida.");
@@ -176,8 +180,13 @@ function FormularioRecogidaInterno() {
     } catch (e) {
       // Solo si falla se vuelve a permitir enviar; tras un envío correcto el bloqueo se mantiene.
       enviandoRef.current = false;
-      setError(e instanceof Error ? e.message : "Error desconocido");
+      setError(
+        e instanceof Error && e.name === "AbortError"
+        ? "Está tardando más de lo normal. Comprueba tu conexión y vuelve a intentarlo (si ya recibió el correo de confirmación, la recogida está registrada)."
+        : e instanceof Error ? e.message : "Error desconocido"
+      );
     } finally {
+      clearTimeout(temporizador);
       setEnviando(false);
     }
   }
