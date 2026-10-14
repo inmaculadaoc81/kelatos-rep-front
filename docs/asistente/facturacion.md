@@ -12,6 +12,9 @@ Lista única de **todas las facturas y tickets emitidos**. Reúne tres orígenes
 - **Eliminar** una factura de alquiler o manual: solo **superadmin**.
 - La numeración fiscal es irreversible: un número consumido no se reutiliza.
 
+## Cobro en efectivo: cálculo del cambio
+Al crear una factura o un ticket (facturas manuales, tickets rápidos y manuales, facturas de reparación, anticipos, alquileres y ventas) y elegir la forma de pago **Efectivo**, aparece el campo **"Importe que entrega el cliente"** con atajos (**Exacto, 10, 20, 50, 100 €**). Al escribirlo se muestra al instante el **cambio a devolver** (o cuánto falta por cobrar). En una **Multiforma** el cálculo aparece en la parte pagada en efectivo, sobre el importe de esa parte. Es una ayuda de mostrador: **no se guarda ni cambia el documento**, y no aparece en las devoluciones.
+
 ## Seguimiento de Facturas (Facturación > Seguimiento de Facturas)
 **No es facturación a clientes**: es el control de las **facturas de compra a plataformas y proveedores** (eBay, AliExpress, etc.) para saber si ya se tiene la factura de cada pedido.
 - Columnas: Fecha, Plataforma, Proveedor, Nº Pedido, Modelo, Importe, Nº Factura, Estado y Acciones.

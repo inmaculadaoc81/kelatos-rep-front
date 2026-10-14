@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -99,6 +101,50 @@ export function formaPagoParaPayload(valor: ValorFormaPago) {
   };
 }
 
+/**
+ * Cobro en efectivo: el empleado escribe cuánto entrega el cliente y ve al momento el cambio que hay que devolverle (o
+ * lo que falta). Es solo una ayuda de mostrador para el cálculo: no se guarda ni cambia el documento. Aparece con
+ * "Efectivo" (por el total) y en la parte en efectivo de una Multiforma (por el importe de esa parte). Petición del
+ * usuario, 2026-10-14.
+ */
+function CalculoCambio({ importe, disabled }: { importe: number; disabled?: boolean }) {
+  const [entregado, setEntregado] = useState("");
+  const aCobrar = redondear(importe);
+  const dado = parseFloat(entregado.replace(",", "."));
+  const hayImporte = Number.isFinite(dado) && dado > 0;
+  const cambio = hayImporte ? redondear(dado - aCobrar) : 0;
+  const atajos = [10, 20, 50, 100].filter((n) => n >= aCobrar);
+  return (
+    <div className="mt-1.5 space-y-1.5 rounded-md border border-dashed bg-muted/30 p-2">
+      <Label className="text-[11px] text-muted-foreground">Importe que entrega el cliente (€) — para calcular el cambio</Label>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Input
+          type="number" min={0} step="0.01" inputMode="decimal" placeholder="0,00" className="h-8 w-28"
+          value={entregado} onChange={(e) => setEntregado(e.target.value)} disabled={disabled}
+        />
+        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={disabled} onClick={() => setEntregado(aCobrar.toFixed(2))}>
+          Exacto
+        </Button>
+        {atajos.slice(0, 3).map((n) => (
+          <Button key={n} type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={disabled} onClick={() => setEntregado(String(n))}>
+            {n} €
+          </Button>
+        ))}
+      </div>
+      {hayImporte && (
+        <p className={`text-sm font-semibold tabular-nums ${cambio >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+          {cambio > 0.004
+            ? `Cambio a devolver: ${cambio.toFixed(2)} €`
+            : cambio >= -0.004
+              ? "Importe exacto: no hay cambio"
+              : `Faltan ${(-cambio).toFixed(2)} € por cobrar`}
+        </p>
+      )}
+      <p className="text-[11px] text-muted-foreground">A cobrar: {aCobrar.toFixed(2)} €</p>
+    </div>
+  );
+}
+
 function actualizarDesglose(valor: ValorFormaPago, idx: 0 | 1, cambios: Partial<DesgloseFormaPago>): ValorFormaPago {
   const desglose: [DesgloseFormaPago, DesgloseFormaPago] = [...valor.desglose] as [DesgloseFormaPago, DesgloseFormaPago];
   desglose[idx] = { ...desglose[idx], ...cambios };
@@ -154,6 +200,7 @@ function SubFormaPago({
           className={!(entrada.monto > 0) ? "border-amber-400" : ""}
         />
       </div>
+      {entrada.forma === "efectivo" && entrada.monto > 0 && <CalculoCambio importe={entrada.monto} disabled={disabled} />}
     </div>
   );
 }
@@ -209,6 +256,7 @@ export function SelectorFormaPago({
               </Select>
             </div>
           )}
+          {value.metodo === "efectivo" && total !== undefined && total > 0 && <CalculoCambio importe={total} disabled={disabled} />}
           {value.metodo === "transferencia" && (
             <div className="mt-1.5 space-y-1">
               <Label className="text-xs text-muted-foreground">Referencia / justificante *</Label>
