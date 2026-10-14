@@ -306,6 +306,9 @@ export default function FormularioClientePage() {
   const [datos, setDatos] = useState<DatosFormularioCliente>(datosVacios());
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
+  // Bloqueo inmediato contra doble clic: el estado `enviando` tarda en reflejarse y dos clics seguidos
+  // entraban antes de que el botón se desactivara.
+  const enviandoRef = useRef(false);
   const [resultado, setResultado] = useState<{ resguardo: string } | null>(null);
   const [errorEnvio, setErrorEnvio] = useState("");
   // El código de acceso puede caducar/usarse mientras el cliente rellena
@@ -516,8 +519,10 @@ export default function FormularioClientePage() {
   }
 
   async function enviar(codigoOverride?: string) {
+    if (enviandoRef.current) return;
     if (!validarPasoActual()) return;
     const codigoAUsar = codigoOverride ?? codigoAcceso;
+    enviandoRef.current = true;
     setEnviando(true);
     setErrorEnvio("");
     setCodigoInvalido(false);
@@ -555,6 +560,8 @@ export default function FormularioClientePage() {
       borrarBorrador();
       setResultado({ resguardo: data.resguardo });
     } catch (e) {
+      // Solo si falla se vuelve a permitir enviar; tras un envío correcto el bloqueo se mantiene.
+      enviandoRef.current = false;
       setErrorEnvio(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);

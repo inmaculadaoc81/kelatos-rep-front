@@ -21,6 +21,9 @@ function FormularioEntregaVentaInterno() {
   const [dni, setDni] = useState("");
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // Bloqueo inmediato contra doble clic: el estado `enviando` tarda en reflejarse y dos clics seguidos
+  // entraban antes de que el botón se desactivara.
+  const enviandoRef = useRef(false);
   const [yaEstabaEntregado, setYaEstabaEntregado] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -113,8 +116,10 @@ function FormularioEntregaVentaInterno() {
   }
 
   async function enviarFirma() {
+    if (enviandoRef.current) return;
     if (!dni.trim()) return setError("Por favor, indique su DNI, NIE o Pasaporte.");
     if (!hayFirmaRef.current) return setError("Por favor, realice su firma en el recuadro.");
+    enviandoRef.current = true;
     setError("");
     setEnviando(true);
     try {
@@ -130,6 +135,8 @@ function FormularioEntregaVentaInterno() {
       setYaEstabaEntregado(!!data.yaEntregado);
       setSeccion("exito");
     } catch (e) {
+      // Solo si falla se vuelve a permitir enviar; tras un envío correcto el bloqueo se mantiene.
+      enviandoRef.current = false;
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);
