@@ -29,6 +29,16 @@ export interface LineaPedidoProveedorLeida {
   nombrePiezaSugerida: string | null;
   categoriaSugerida: string | null;
   precioClienteSugerido: number | null;
+  /** Nota o texto del empleado: la mercancía ya llegó ("recibido", "llegó"). */
+  recibido?: boolean;
+  /** Nº de pedido del proveedor que dice el texto. */
+  numeroPedido?: string | null;
+  /** Resguardo (5 dígitos) que dice el texto o el "texto del pedido". */
+  resguardo?: string | null;
+  /** Proveedor que dice el texto ("Asus", "aliexpress"). */
+  proveedorTexto?: string | null;
+  /** La línea no describe una pieza, solo una referencia: sirve únicamente para marcar un pedido ya registrado como recibido. */
+  soloRecepcion?: boolean;
 }
 
 const MAX_ARCHIVOS_PEDIDO = 4;
@@ -47,11 +57,14 @@ export async function POST(req: Request) {
     nombreProveedor?: string;
     /** Formato nuevo: de 1 a 4 archivos (imágenes y/o PDF) en un solo análisis. */
     archivos?: { base64?: string; mimeType?: string }[];
+    /** Texto opcional que acompaña a las imágenes (o texto solo, sin imágenes). */
+    texto?: string;
   };
   // Compatibilidad: un solo archivo con el formato antiguo se trata como lista de 1.
   const archivos = (Array.isArray(body.archivos) ? body.archivos : body.base64 ? [{ base64: body.base64, mimeType: body.mimeType }] : [])
     .filter((a): a is { base64: string; mimeType: string } => !!a && typeof a.base64 === "string" && !!a.base64 && typeof a.mimeType === "string" && !!a.mimeType);
-  if (archivos.length === 0) return NextResponse.json({ ok: false, error: "Faltan datos del archivo" }, { status: 400 });
+  const texto = typeof body.texto === "string" ? body.texto.trim().slice(0, 3000) : "";
+  if (archivos.length === 0 && !texto) return NextResponse.json({ ok: false, error: "Sube un archivo o escribe un texto" }, { status: 400 });
   if (archivos.length > MAX_ARCHIVOS_PEDIDO) return NextResponse.json({ ok: false, error: `Máximo ${MAX_ARCHIVOS_PEDIDO} archivos por análisis` }, { status: 400 });
   if (archivos.some((a) => !TIPOS_PEDIDO_VALIDOS.has(a.mimeType))) return NextResponse.json({ ok: false, error: "Solo se admiten imágenes (JPG, PNG, WEBP) o PDF" }, { status: 400 });
 
@@ -60,6 +73,7 @@ export async function POST(req: Request) {
     // aquí solo se devuelve el identificador; el resultado se consulta en GET /ocr/[jobId].
     const data = await kelatosApiPost<{ ok: boolean; jobId: string }>("/v1/compras/pedido-proveedor/ocr", {
       archivos,
+      texto: texto || undefined,
       nombreProveedor: body.nombreProveedor || undefined,
       async: true,
     });

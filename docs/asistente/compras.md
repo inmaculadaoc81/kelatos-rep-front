@@ -22,6 +22,12 @@ Búsqueda (pedido, resguardo, cliente, nº de pedido), proveedor, "comprado por"
 
 ## Subir pedido con IA
 Botón de la cabecera. Permite subir **hasta 4 archivos** (capturas de pantalla o PDF) de un pedido hecho en la web de un proveedor; la IA lee las líneas y, tras pulsar **Analizar con IA**, el empleado **revisa cada línea** y pulsa **Registrar pedidos**. Cada línea se clasifica como pedido de **Tienda** (stock) o de **Cliente**. Para un pedido de cliente, el buscador busca por el nombre tanto en las **reparaciones abiertas** (pieza para una reparación, con su resguardo) como en las **ventas de piezas**, **aunque la venta esté cerrada y pagada**; si es una venta, se marcan las piezas de esa venta a las que corresponde el pedido (cada una muestra su estado) y se registra en cada una: si la pieza **ya estaba recibida y vendida**, el pedido solo se **vincula** a ella (nº de pedido, proveedor y enlace si se indica) sin cambiar su estado, coste ni precio; si aún no estaba recibida, pasa a En Tránsito. Si la pieza no existe en la venta, se puede **añadir como pieza nueva** indicando el precio de compra y el precio al cliente (cambia el total y la ganancia de la venta, no la factura ya emitida). Hay un botón de **historial** de lo registrado con esta función.
+
+### Texto junto a las imágenes, o solo texto
+Además de los archivos se puede escribir un **texto opcional**: se analiza **junto con las imágenes, como un solo bloque** (por ejemplo, una factura de Lenovo sin referencia más el texto con el resguardo o el cliente), o **solo, sin imágenes**. Reglas: un número de **5 dígitos es un resguardo**; uno de **6 o más dígitos es un nº de pedido**; la palabra antes del número es el proveedor; "6 cargadores" es cantidad y pieza; y **"recibido", "recibida" o "llegó"** indican que la mercancía ya llegó. Ejemplos: `Asus 1184556 6 cargadores recibido`, `aliexpress 3076642294525134 llegó`, o una imagen con `19304 recibida`.
+- **Si dice recibido y existe el pedido** (se busca por nº de pedido y por resguardo en reparaciones, ventas y stock), la línea propone **marcar ese pedido como recibido** (se pueden marcar varios), sin crear nada nuevo, tras la confirmación del empleado.
+- **Si dice recibido y es una línea de tienda sin pedido pendiente**, se registra el pedido y se marca recibido en el acto (el stock sube).
+- **Si solo trae una referencia y no hay ningún pedido con ella**, no hay nada que marcar y la línea queda desmarcada.
 - **La cuenta compartida de empleados (soporte) no puede usar "Subir pedido con IA".**
 
 ## Cómo se crean los pedidos

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,6 +49,17 @@ interface CandidatoCliente {
   items: ItemVentaPendiente[];
 }
 
+/** Un pedido ya registrado que podría ser al que se refiere un mensaje de "recibido" (reparación, venta o stock). */
+interface CandidatoRecepcion {
+  clave: string;
+  origen: "reparacion" | "venta" | "stock";
+  /** pedidoId (reparación), itemId (venta) o id del pedido de stock. */
+  id: string;
+  titulo: string;
+  detalle: string;
+  estado: string;
+}
+
 interface ItemVentaPendiente {
   itemId: string;
   descripcion: string;
@@ -84,6 +96,17 @@ interface LineaPedidoEditable {
   /** Venta: el pedido no corresponde a ninguna pieza existente y hay que añadirlo como pieza nueva de la venta. */
   nuevaPieza: boolean;
   precioNuevaPieza: number;
+  // Recepción: el texto o la nota decían que ya llegó ("recibido", "llegó")
+  /** La mercancía ya llegó (lo dice la nota). En líneas de tienda, al registrar el pedido se marca recibido y sube el stock. */
+  recibido: boolean;
+  /** Solo hay una referencia (nº de pedido o resguardo) y ninguna pieza: sirve únicamente para marcar un pedido existente como recibido. */
+  soloRecepcion: boolean;
+  proveedorTexto: string;
+  numeroPedidoLinea: string;
+  accion: "registrar" | "recibir";
+  buscandoRecepcion: boolean;
+  candidatosRecepcion: CandidatoRecepcion[];
+  recibirIds: string[];
   clienteElegido: string;
   equipoElegido: string;
   enlace: string;
@@ -99,7 +122,8 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     idPedidoProveedor: l.idPedidoProveedor || "",
     cantidad: l.cantidad,
     textoPedido: l.textoPedido,
-    aplicar: true,
+    // Una línea que solo sirve para marcar un pedido como recibido empieza desmarcada hasta encontrar ese pedido.
+    aplicar: !l.soloRecepcion,
     destino: l.destino,
     referencia: l.referenciaSugerida || "",
     nombrePiezaSugerida: l.nombrePiezaSugerida,
@@ -109,7 +133,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     costeInterno: 0,
     precioCliente: l.precioClienteSugerido ?? l.precioUnitario ?? 0,
     origenCliente: "reparacion",
-    resguardo: "",
+    resguardo: l.resguardo || "",
     ventaId: "",
     ventaItems: [],
     itemIds: [],
@@ -118,9 +142,17 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     clienteElegido: "",
     equipoElegido: "",
     enlace: "",
-    numeroPedido: numeroPedidoGlobal || "No informado",
+    numeroPedido: l.numeroPedido || numeroPedidoGlobal || "No informado",
     fechaEstimada: "",
     costo: l.precioUnitario || 0,
+    recibido: !!l.recibido,
+    soloRecepcion: !!l.soloRecepcion,
+    proveedorTexto: l.proveedorTexto || "",
+    numeroPedidoLinea: l.numeroPedido || "",
+    accion: l.soloRecepcion ? "recibir" : "registrar",
+    buscandoRecepcion: !!l.recibido,
+    candidatosRecepcion: [],
+    recibirIds: [],
   };
 }
 
@@ -238,6 +270,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   onRegistrado: () => void;
 }) {
   const [proveedorNombre, setProveedorNombre] = useState("ASWO");
+  /** Texto opcional que acompaña a las imágenes (o texto solo): la IA lo interpreta junto con ellas, como un solo bloque. */
+  const [textoNota, setTextoNota] = useState("");
   const [leyendoOcr, setLeyendoOcr] = useState(false);
   const [lineas, setLineas] = useState<LineaPedidoEditable[]>([]);
   const [proveedorIdSugerido, setProveedorIdSugerido] = useState<string | null>(null);
@@ -266,6 +300,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setNumeroPedidoGlobal(null);
       setProveedorCreado(false);
       setCompradoPor("");
+      setTextoNota("");
       setArchivos([]);
       if (inputOcr.current) inputOcr.current.value = "";
     }
@@ -351,10 +386,70 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     setArchivos((prev) => prev.filter((a) => a.id !== id));
   }
 
+  /** Para cada línea marcada como recibida, busca los pedidos YA registrados a los que se refiere: por nº de pedido y por
+      resguardo en Compras (reparaciones y ventas) y, en líneas de tienda, pedidos de stock pendientes del mismo proveedor
+      y cantidad. Si hay coincidencias, la línea propone "marcar como recibido" en vez de crear otro pedido. */
+  async function buscarRecepciones(nuevas: LineaPedidoEditable[]) {
+    const ESTADOS_FINALES = ["Recibido", "Cancelado", "recibido", "cancelado"];
+    await Promise.all(
+      nuevas.map(async (l, i) => {
+        if (!l.recibido) return;
+        const candidatos = new Map<string, CandidatoRecepcion>();
+        try {
+          const consultas = [l.numeroPedidoLinea, l.resguardo].filter(Boolean);
+          for (const q of consultas) {
+            const r = await fetch(`/api/compras?busqueda=${encodeURIComponent(q)}&porPagina=50`).then((x) => x.json()).catch(() => null);
+            for (const c of (r?.ok ? r.compras : []) as { origen: "reparacion" | "venta"; pedidoId: string; resguardo: string; clienteNombre: string; numeroPedido: string; descripcion: string; estado: string }[]) {
+              const porNumero = !!l.numeroPedidoLinea && c.numeroPedido.trim().toLowerCase() === l.numeroPedidoLinea.toLowerCase();
+              const porResguardo = !!l.resguardo && c.origen === "reparacion" && c.resguardo === l.resguardo;
+              if (!porNumero && !porResguardo) continue;
+              const clave = `${c.origen}-${c.pedidoId}`;
+              candidatos.set(clave, {
+                clave, origen: c.origen, id: c.pedidoId, titulo: c.descripcion || "Pieza",
+                detalle: `${c.origen === "venta" ? `Venta ${c.resguardo}` : `Resguardo ${c.resguardo}`} · ${c.clienteNombre || "—"} · pedido ${c.numeroPedido || "—"}`, estado: c.estado,
+              });
+            }
+          }
+          // Línea de tienda: pedidos de stock pendientes del mismo proveedor y la misma cantidad.
+          if (l.destino === "tienda" && l.proveedorTexto) {
+            const r = await fetch(`/api/stock-piezas/pedidos/buscar?q=${encodeURIComponent(l.proveedorTexto)}`).then((x) => x.json()).catch(() => null);
+            for (const p of (r?.ok ? r.pedidos : []) as { id: number; referencia: string; proveedor: string | null; cantidad: number; estado: string }[]) {
+              if (String(p.estado).toLowerCase() !== "pendiente" || p.cantidad !== l.cantidad) continue;
+              const clave = `stock-${p.id}`;
+              candidatos.set(clave, { clave, origen: "stock", id: String(p.id), titulo: p.referencia, detalle: `Stock · ${p.proveedor || "—"} · ${p.cantidad} uds`, estado: p.estado });
+            }
+          }
+        } catch {
+          /* sin coincidencias: la línea sigue su camino normal */
+        }
+        const lista = [...candidatos.values()];
+        const pendientes = lista.filter((c) => !ESTADOS_FINALES.includes(c.estado));
+        // Por nombre de pieza si coincide alguno; si no, todos los pendientes de esa referencia.
+        const buscadas = palabrasDe(l.nombre);
+        const porNombre = pendientes.filter((c) => [...palabrasDe(c.titulo)].some((w) => buscadas.has(w)));
+        const elegidos = (porNombre.length > 0 ? porNombre : pendientes).map((c) => c.clave);
+        setLineas((prev) =>
+          prev.map((x, idx) =>
+            idx !== i
+              ? x
+              : {
+                  ...x,
+                  buscandoRecepcion: false,
+                  candidatosRecepcion: lista,
+                  recibirIds: elegidos,
+                  accion: elegidos.length > 0 ? "recibir" : x.soloRecepcion ? "recibir" : "registrar",
+                  aplicar: elegidos.length > 0 ? true : x.soloRecepcion ? false : x.aplicar,
+                }
+          )
+        );
+      })
+    );
+  }
+
   /** Analiza TODOS los archivos juntos, solo cuando se pulsa el botón (así no
       se empieza a leer la primera captura antes de adjuntar las demás). */
   async function analizar() {
-    if (archivos.length === 0) return;
+    if (archivos.length === 0 && !textoNota.trim()) return;
     setLeyendoOcr(true);
     setSegundosAnalisis(0);
     const inicio = Date.now();
@@ -366,7 +461,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           archivos: archivos.map((a) => ({ base64: a.base64, mimeType: a.mimeType })),
-          nombreProveedor: proveedorNombre,
+          texto: textoNota.trim() || undefined,
+          // Sin imágenes, el proveedor lo dice el propio texto ("Asus 1184556 …"), no el campo del diálogo.
+          nombreProveedor: archivos.length > 0 ? proveedorNombre : "",
         }),
       });
       const envio = await res.json();
@@ -389,10 +486,12 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       }
       if (!data) throw new Error("El análisis está tardando demasiado. Inténtalo de nuevo con menos archivos.");
       if (!data.lineas?.length) {
-        toast.warning("No se leyó ninguna línea de pedido en los archivos");
+        toast.warning("No se leyó ninguna línea de pedido en los archivos o el texto");
         return;
       }
-      setLineas(data.lineas.map((l) => lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null)));
+      const lineasNuevas = data.lineas.map((l) => lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null));
+      setLineas(lineasNuevas);
+      void buscarRecepciones(lineasNuevas);
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
       setProveedorIdSugerido(data.proveedorIdSugerido ?? null);
       setProveedorCreado(!!data.proveedorCreado);
@@ -410,6 +509,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
   function lineaListaParaRegistrar(l: LineaPedidoEditable): boolean {
     if (!l.aplicar) return true; // no bloquea el registro de las demás
+    if (l.accion === "recibir") return l.recibirIds.length > 0;
     if (l.destino === "tienda") {
       // Pieza nueva (sin referencia existente): el nombre interno de
       // proveedor es obligatorio — es lo único con lo que la IA podrá
@@ -431,19 +531,46 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     return true;
   }
 
-  const itemsVentaUsados = lineas.filter((l) => l.aplicar && l.destino === "cliente" && l.origenCliente === "venta").flatMap((l) => l.itemIds);
+  const itemsVentaUsados = lineas.filter((l) => l.aplicar && l.accion !== "recibir" && l.destino === "cliente" && l.origenCliente === "venta").flatMap((l) => l.itemIds);
   const hayItemRepetido = new Set(itemsVentaUsados).size !== itemsVentaUsados.length;
   const hayAlgoAplicado = lineas.some((l) => l.aplicar);
-  const todoListo = lineas.every(lineaListaParaRegistrar) && !hayItemRepetido && (!lineas.some((l) => l.aplicar && l.destino === "cliente" && l.origenCliente !== "venta") || !!compradoPor.trim());
+  const todoListo = lineas.every(lineaListaParaRegistrar) && !hayItemRepetido && (!lineas.some((l) => l.aplicar && l.accion !== "recibir" && l.destino === "cliente" && l.origenCliente !== "venta") || !!compradoPor.trim());
 
   async function registrar() {
     setRegistrando(true);
-    let okStock = 0, okResguardo = 0, fallos = 0;
+    let okStock = 0, okResguardo = 0, okRecibidos = 0, fallos = 0;
     const resumen: LineaRegistroPedidoProveedor[] = [];
     try {
+      // --- Líneas "recibir": marcan como RECIBIDOS pedidos que ya estaban registrados (sin crear nada nuevo) ---
+      const yaMarcados = new Set<string>();
+      for (const l of lineas) {
+        if (!l.aplicar || l.accion !== "recibir") continue;
+        const elegidos = l.candidatosRecepcion.filter((c) => l.recibirIds.includes(c.clave) && !yaMarcados.has(c.clave));
+        let okLinea = 0;
+        for (const c of elegidos) {
+          yaMarcados.add(c.clave);
+          try {
+            const res =
+              c.origen === "reparacion"
+                ? await fetch("/api/pedidos/cambiar-estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedidos: [c.id], estado: "Recibido", recibidoPor: compradoPor || undefined }) })
+                : c.origen === "venta"
+                  ? await fetch(`/api/items-venta/${encodeURIComponent(c.id)}/recibir`, { method: "POST" })
+                  : await fetch(`/api/stock-piezas/pedidos/${encodeURIComponent(c.id)}/recibido`, { method: "POST" });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || "No se pudo marcar como recibido");
+            okLinea++;
+          } catch (e) {
+            fallos++;
+            toast.error(`"${c.titulo}": ${e instanceof Error ? e.message : "error desconocido"}`);
+          }
+        }
+        okRecibidos += okLinea;
+        resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: l.destino, destinoDetalle: `Recibido: ${elegidos.map((c) => c.detalle).join(" | ")}`, ok: okLinea === elegidos.length && okLinea > 0 });
+      }
+
       // --- Líneas "tienda": crear pieza si hace falta, luego pedido pendiente ---
       for (const l of lineas) {
-        if (!l.aplicar || l.destino !== "tienda") continue;
+        if (!l.aplicar || l.accion === "recibir" || l.destino !== "tienda") continue;
         try {
           let referencia = l.referencia.trim().toUpperCase();
           if (!referencia) {
@@ -458,7 +585,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 idPedidoProveedor: l.idPedidoProveedor.trim(),
                 descripcion: l.textoPedido ? `Detectado en pedido ${proveedorNombre} — ref. original: ${l.textoPedido}` : "",
                 categoria: l.categoria, costeInterno: l.costeInterno, precioCliente: l.precioCliente, manoObra: 0,
-                proveedor: proveedorNombre, stockDisponible: 0, stockMinimo: 0,
+                proveedor: l.proveedorTexto || proveedorNombre, stockDisponible: 0, stockMinimo: 0,
               }),
             });
             const dataPieza = await resPieza.json();
@@ -473,7 +600,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const dataPedido = await resPedido.json();
           if (!dataPedido.ok) throw new Error(dataPedido.error || "No se pudo crear el pedido de stock");
           okStock++;
-          resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "tienda", destinoDetalle: referencia, ok: true });
+          // El mensaje decía que ya llegó: el pedido de stock se marca recibido en el acto (y el stock sube).
+          let detalleRecibido = referencia;
+          if (l.recibido && dataPedido.pedido?.id != null) {
+            const resRec = await fetch(`/api/stock-piezas/pedidos/${encodeURIComponent(String(dataPedido.pedido.id))}/recibido`, { method: "POST" });
+            const dataRec = await resRec.json();
+            if (dataRec.ok) detalleRecibido = `${referencia} (recibido)`;
+            else toast.error(`"${l.nombre}": se registró el pedido pero no se pudo marcar recibido: ${dataRec.error || "error"}`);
+          }
+          resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "tienda", destinoDetalle: detalleRecibido, ok: true });
         } catch (e) {
           fallos++;
           resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "tienda", destinoDetalle: "", ok: false });
@@ -484,7 +619,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // --- Líneas "cliente": agrupadas por resguardo, una llamada por grupo ---
       const porResguardo = new Map<string, LineaPedidoEditable[]>();
       for (const l of lineas) {
-        if (!l.aplicar || l.destino !== "cliente" || l.origenCliente === "venta" || !l.resguardo) continue;
+        if (!l.aplicar || l.accion === "recibir" || l.destino !== "cliente" || l.origenCliente === "venta" || !l.resguardo) continue;
         const arr = porResguardo.get(l.resguardo) || [];
         arr.push(l);
         porResguardo.set(l.resguardo, arr);
@@ -521,7 +656,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // (POST /api/items-venta/:itemId/registrar-pedido, el mismo que usa "Registrar pedido" en Ventas), que pasa a
       // "En Tránsito". Cuentan junto a los pedidos de resguardo en el historial (el detalle indica "Venta V-…").
       for (const l of lineas) {
-        if (!l.aplicar || l.destino !== "cliente" || l.origenCliente !== "venta" || !l.ventaId) continue;
+        if (!l.aplicar || l.accion === "recibir" || l.destino !== "cliente" || l.origenCliente !== "venta" || !l.ventaId) continue;
         let okLinea = 0;
         let errorLinea = "";
         const idsPedir = [...l.itemIds];
@@ -571,7 +706,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         if (errorLinea) toast.error(`Venta ${l.ventaId}: ${errorLinea}`);
       }
 
-      toast.success(`${okStock} pedido(s) de stock, ${okResguardo} pedido(s) de cliente (reparación o venta) registrados${fallos ? ` — ${fallos} con error` : ""}`);
+      toast.success(`${okStock} pedido(s) de stock, ${okResguardo} pedido(s) de cliente (reparación o venta) registrados${okRecibidos ? `, ${okRecibidos} marcado(s) como recibido(s)` : ""}${fallos ? ` — ${fallos} con error` : ""}`);
       if (resumen.length > 0) {
         fetch("/api/compras/pedido-proveedor/registro", {
           method: "POST",
@@ -614,7 +749,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
             <Button
               type="button" variant="outline" size="sm"
               className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40"
-              disabled={leyendoOcr || preparando || archivos.length === 0} onClick={analizar}
+              disabled={leyendoOcr || preparando || (archivos.length === 0 && !textoNota.trim())} onClick={analizar}
             >
               {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
               {leyendoOcr ? `Analizando… ${segundosAnalisis}s` : lineas.length > 0 ? "Volver a analizar con IA" : "Analizar con IA"}
@@ -625,6 +760,18 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 {proveedorCreado ? "Proveedor creado automáticamente" : "Proveedor encontrado"}
               </span>
             )}
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Texto (opcional) — se analiza junto con las imágenes, como un solo bloque; o solo, sin imágenes</Label>
+            <Textarea
+              className="min-h-16 text-sm"
+              disabled={leyendoOcr}
+              placeholder={"Ej.: 19304 recibida\nAsus 1184556 6 cargadores recibido\naliexpress 3076642294525134 llegó"}
+              value={textoNota}
+              onChange={(e) => setTextoNota(e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">Un número de 5 dígitos es un resguardo; uno de 6 o más, un nº de pedido. Con «recibido» o «llegó» se marcan como recibidos los pedidos ya registrados.</p>
           </div>
 
           {archivos.length > 0 && (
@@ -676,6 +823,57 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                             </Select>
                           </div>
 
+                          {(l.recibido || l.soloRecepcion) && (
+                            <div className="space-y-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2">
+                              <p className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                <TickCircle className="size-3.5" /> Indicado como recibido
+                                {l.numeroPedidoLinea ? ` · pedido ${l.numeroPedidoLinea}` : ""}
+                                {l.resguardo && l.destino === "cliente" ? ` · resguardo ${l.resguardo}` : ""}
+                                {l.proveedorTexto ? ` · ${l.proveedorTexto}` : ""}
+                              </p>
+                              {l.buscandoRecepcion ? (
+                                <p className="text-xs text-muted-foreground">Buscando pedidos ya registrados…</p>
+                              ) : l.candidatosRecepcion.length > 0 ? (
+                                <>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <Button type="button" size="sm" variant={l.accion === "recibir" ? "default" : "outline"} className="h-7 text-xs" onClick={() => actualizar(i, { accion: "recibir" })}>
+                                      Marcar pedido existente como recibido
+                                    </Button>
+                                    {!l.soloRecepcion && (
+                                      <Button type="button" size="sm" variant={l.accion === "registrar" ? "default" : "outline"} className="h-7 text-xs" onClick={() => actualizar(i, { accion: "registrar" })}>
+                                        Registrar como pedido nuevo
+                                      </Button>
+                                    )}
+                                  </div>
+                                  {l.accion === "recibir" && (
+                                    <div className="space-y-1 rounded-md border bg-card p-2">
+                                      {l.candidatosRecepcion.map((c) => (
+                                        <label key={c.clave} className="flex cursor-pointer items-center gap-2 text-xs">
+                                          <Checkbox
+                                            checked={l.recibirIds.includes(c.clave)}
+                                            onCheckedChange={(v) => actualizar(i, { recibirIds: v === true ? [...l.recibirIds, c.clave] : l.recibirIds.filter((x) => x !== c.clave) })}
+                                          />
+                                          <span className="min-w-0 flex-1 truncate"><span className="font-medium">{c.titulo}</span> <span className="text-muted-foreground">· {c.detalle}</span></span>
+                                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{c.estado}</span>
+                                        </label>
+                                      ))}
+                                      {l.recibirIds.length === 0 && <p className="text-[11px] text-amber-700 dark:text-amber-400">Marca al menos un pedido.</p>}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <p className="text-[11px] text-muted-foreground">
+                                  {l.soloRecepcion
+                                    ? "No encuentro ningún pedido registrado con esa referencia, así que no hay nada que marcar como recibido (la línea queda desmarcada)."
+                                    : l.destino === "tienda"
+                                      ? "No hay un pedido pendiente que coincida: se registrará el pedido y se marcará como recibido (el stock sube)."
+                                      : "No hay un pedido pendiente que coincida: se registrará como pedido nuevo."}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className={l.accion === "recibir" ? "hidden" : "space-y-2"}>
                           {l.destino === "tienda" ? (
                             <>
                               <div className="flex flex-wrap items-end gap-2">
@@ -821,6 +1019,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                               )}
                             </div>
                           )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -831,7 +1030,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
           {lineas.length === 0 && (
             <p className="flex items-center gap-1.5 py-6 text-center text-sm text-muted-foreground">
-              <Box1 className="size-4" /> Añade de 1 a 4 archivos del pedido (pantallazos o PDF) y pulsa «Analizar con IA».
+              <Box1 className="size-4" /> Añade de 1 a 4 archivos del pedido (pantallazos o PDF) y/o escribe un texto, y pulsa «Analizar con IA».
             </p>
           )}
         </div>
