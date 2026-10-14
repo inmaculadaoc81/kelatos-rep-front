@@ -56,6 +56,7 @@ const CODIGO_TRANSFERENCIAS = /^src\/(app\/(transferencias|api\/transferencias)\
 export function puedeLeerCodigo(ruta: string, areas: string[]): boolean {
   if (areas.includes("todo")) return true;
   if (ruta === "menu-admin") return false;
+  if (/^docs\/asistente\/admin-/.test(ruta)) return false;
   if (CODIGO_SOLO_ADMIN.some((r) => r.test(ruta))) return false;
   if (!areas.includes("tareas") && CODIGO_TAREAS.test(ruta)) return false;
   if (!areas.includes("transferencias") && CODIGO_TRANSFERENCIAS.test(ruta)) return false;

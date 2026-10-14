@@ -84,6 +84,9 @@ export async function buscarFragmentos(consulta: string, ruta: string, n = 6, ar
     }
     if (s > 0 && carpetaPantalla && d.f.ruta.startsWith(carpetaPantalla)) s *= 1.6;
     if (d.f.id === "menu") s += 1; // el mapa del menú casi siempre ayuda a situarse
+    // Las guías escritas y verificadas y las fichas de interfaz extraídas del código mandan sobre el código en bruto.
+    if (s > 0 && d.f.id.startsWith("guia:")) s *= 2.2;
+    else if (s > 0 && d.f.id.startsWith("ficha:")) s *= 1.35;
     return { d, s };
   });
 
