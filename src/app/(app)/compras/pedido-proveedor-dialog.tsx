@@ -420,15 +420,21 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       if (!l.ventaId || (l.itemIds.length === 0 && !l.nuevaPieza) || !proveedorIdSugerido) return false;
       if (l.nuevaPieza && (!(l.costo > 0) || !(l.precioNuevaPieza > 0))) return false;
     } else if (!l.resguardo) return false;
-    if (!l.enlace.trim() || !l.numeroPedido.trim() || !l.fechaEstimada) return false;
+    // Piezas de una venta que ya se recibieron: solo se vincula el pedido (nº de pedido); el enlace y la fecha
+    // estimada solo hacen falta para piezas aún sin recibir o nuevas.
+    const soloVincular = l.origenCliente === "venta" && !l.nuevaPieza && l.itemIds.every((id) => l.ventaItems.find((it) => it.itemId === id)?.estadoPedido === "Pieza Recibida");
+    if (!l.numeroPedido.trim()) return false;
+    if (!soloVincular && (!l.enlace.trim() || !l.fechaEstimada)) return false;
     // El coste de las piezas de una venta ya está en la propia venta; el de una reparación se guarda con el pedido.
     if (l.origenCliente !== "venta" && !(l.costo > 0)) return false;
     if (numeroPedidoEsEnlace(l.numeroPedido)) return false;
     return true;
   }
 
+  const itemsVentaUsados = lineas.filter((l) => l.aplicar && l.destino === "cliente" && l.origenCliente === "venta").flatMap((l) => l.itemIds);
+  const hayItemRepetido = new Set(itemsVentaUsados).size !== itemsVentaUsados.length;
   const hayAlgoAplicado = lineas.some((l) => l.aplicar);
-  const todoListo = lineas.every(lineaListaParaRegistrar) && (!lineas.some((l) => l.aplicar && l.destino === "cliente" && l.origenCliente !== "venta") || !!compradoPor.trim());
+  const todoListo = lineas.every(lineaListaParaRegistrar) && !hayItemRepetido && (!lineas.some((l) => l.aplicar && l.destino === "cliente" && l.origenCliente !== "venta") || !!compradoPor.trim());
 
   async function registrar() {
     setRegistrando(true);
@@ -540,10 +546,16 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         }
         for (const itemId of idsPedir) {
           try {
-            const res = await fetch(`/api/items-venta/${encodeURIComponent(itemId)}/registrar-pedido`, {
+            // Pieza ya recibida y vendida: solo se vincula el pedido real (no cambia su estado). Resto: pedido nuevo.
+            const yaRecibida = l.ventaItems.find((it) => it.itemId === itemId)?.estadoPedido === "Pieza Recibida";
+            const res = await fetch(`/api/items-venta/${encodeURIComponent(itemId)}/${yaRecibida ? "vincular-pedido" : "registrar-pedido"}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ proveedorId: proveedorIdSugerido || "", proveedorOtro: "", numeroPedido: l.numeroPedido.trim(), fechaEstimada: l.fechaEstimada, enlace: l.enlace.trim() }),
+              body: JSON.stringify(
+                yaRecibida
+                  ? { proveedorId: proveedorIdSugerido || "", numeroPedido: l.numeroPedido.trim(), enlace: l.enlace.trim() }
+                  : { proveedorId: proveedorIdSugerido || "", proveedorOtro: "", numeroPedido: l.numeroPedido.trim(), fechaEstimada: l.fechaEstimada, enlace: l.enlace.trim() }
+              ),
             });
             const data = await res.json();
             if (!data.ok) throw new Error(data.error || "No se pudo registrar el pedido");
@@ -775,7 +787,10 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                         </div>
                                       )}
                                       {l.itemIds.some((id) => l.ventaItems.find((it) => it.itemId === id)?.estadoPedido === "Pieza Recibida") && (
-                                        <p className="text-[11px] text-amber-700 dark:text-amber-400">Alguna pieza marcada ya figura como recibida: al registrar este pedido pasará a En Tránsito.</p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Las piezas ya recibidas solo se <strong>vinculan</strong> a este pedido (nº de pedido, proveedor y enlace si lo indicas): su estado, coste y precio no cambian.
+                                          El enlace y la fecha estimada solo hacen falta para piezas sin recibir o nuevas.
+                                        </p>
                                       )}
                                       {l.itemIds.length === 0 && !l.nuevaPieza && <p className="text-[11px] text-amber-700 dark:text-amber-400">Marca al menos una pieza o añádela como nueva.</p>}
                                       {!proveedorIdSugerido && <p className="text-[11px] text-destructive">Hace falta un proveedor reconocido para registrar el pedido en una venta.</p>}
@@ -824,6 +839,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:flex-row sm:justify-end">
+          {hayItemRepetido && <p className="text-xs text-destructive sm:mr-auto sm:self-center">Dos líneas tienen marcada la misma pieza de una venta: asigna cada pieza a una sola línea.</p>}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
           <Button type="button" disabled={!hayAlgoAplicado || !todoListo || registrando} onClick={registrar}>
             {registrando ? <Refresh2 className="size-4 animate-spin" /> : null}
