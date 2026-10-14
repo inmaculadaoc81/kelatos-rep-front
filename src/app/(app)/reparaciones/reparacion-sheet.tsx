@@ -355,7 +355,8 @@ export function ReparacionSheet({
             elaboradoPor: "",
             descripcion: `Digitalización de ${calculoCintas.total} cintas - ${calculoCintas.precioPorCinta}€/cinta${bobinaTexto}`,
             notas: "",
-            manoObra: Math.round(calculoCintas.totalConIva * 100) / 100,
+            // Base SIN IVA: el backend, el PDF y el correo del presupuesto suman el 21 % una sola vez (con totalConIva se cobraba el IVA dos veces).
+            manoObra: Math.round(calculoCintas.totalSinIva * 100) / 100,
             diasEntrega: 1,
             tipoPieza: "no",
             piezas: [],

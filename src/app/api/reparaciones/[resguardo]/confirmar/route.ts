@@ -36,7 +36,8 @@ function construirPresupuestoInmediato(datos: DatosReparacionSheet) {
     return {
       elaboradoPor: inm.elaboradoPor,
       descripcion: inm.descripcion.trim() ? `${descAuto} — ${inm.descripcion.trim()}` : descAuto,
-      manoObra: Math.round(calculo.totalConIva * 100) / 100,
+      // Base SIN IVA: el backend, el PDF y el correo del presupuesto suman el 21 % una sola vez (con totalConIva se cobraba el IVA dos veces).
+      manoObra: Math.round(calculo.totalSinIva * 100) / 100,
       tipoPieza: "no",
       notas: inm.notas.trim(),
       diasEntrega: 1,
