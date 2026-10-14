@@ -7,6 +7,7 @@ import { NavbarCodigoAcceso } from "./navbar-codigo-acceso";
 import { NotificacionesBell } from "./notificaciones-bell";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { puedeUsarAsistente } from "@/lib/asistente/permisos";
+import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { CodigoAccesoProvider } from "./codigo-acceso-context";
 import { EscanerCodigoBarras } from "./escaner-codigo-barras";
 import { AsistenteFlotante } from "./asistente-flotante";
@@ -31,6 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <BuscadorGlobal
                 esAdmin={session?.user?.role === "admin" || esSuperadmin(session?.user?.email)}
                 efectivoSoloLectura={puedeVerEfectivoSoloLectura(session?.user?.email)}
+                equiposEntregados={puedeVerEquiposEntregados(session?.user)}
               />
             </div>
             <div className="flex items-center gap-2">

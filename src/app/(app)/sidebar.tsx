@@ -17,13 +17,14 @@ import type { Session } from "next-auth";
 import { gruposVisibles } from "./navegacion";
 import { NavUser } from "./nav-user";
 import { esSuperadmin, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
+import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 
 export function AppSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
   const superadmin = esSuperadmin(session?.user?.email);
   const esAdmin = session?.user?.role === "admin" || superadmin;
   const efectivoSoloLectura = puedeVerEfectivoSoloLectura(session?.user?.email);
-  const grupos = gruposVisibles({ esAdmin, superadmin, efectivoSoloLectura });
+  const grupos = gruposVisibles({ esAdmin, superadmin, efectivoSoloLectura, equiposEntregados: puedeVerEquiposEntregados(session?.user) });
 
   return (
     <Sidebar collapsible="icon">

@@ -1,6 +1,7 @@
 import {
   Setting2,
   ClipboardTick,
+  BoxTick,
   DocumentText,
   Profile2User,
   Box1,
@@ -177,10 +178,20 @@ const GRUPO_EFECTIVO_SOLO_LECTURA: GrupoNavegacion = {
 /** Menú según el rol: Contabilidad (tras Facturación) y Reporte de reseñas
     (en Informes) solo para admins; el grupo Admin solo para superadmins;
     Efectivo y caja en solitario para puedeVerEfectivoSoloLectura. */
+/** Entrada "Equipos entregados" de Reparaciones: solo administradores y la cuenta de empleados (ver puedeVerEquiposEntregados). */
+const ITEM_EQUIPOS_ENTREGADOS: ItemNavegacion = { label: "Equipos entregados", href: "/equipos-entregados", icon: BoxTick };
+
 export function gruposVisibles({
-  esAdmin, superadmin, efectivoSoloLectura = false,
-}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean }): GrupoNavegacion[] {
+  esAdmin, superadmin, efectivoSoloLectura = false, equiposEntregados = false,
+}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean }): GrupoNavegacion[] {
   const base = GRUPOS.flatMap((g) => {
+    if (equiposEntregados && g.titulo === "Reparaciones") {
+      // Va justo después de "Recogidas" (antes de "Punto Limpio").
+      const i = g.items.findIndex((it) => it.href === "/recogidas");
+      const items = [...g.items];
+      items.splice(i >= 0 ? i + 1 : items.length, 0, ITEM_EQUIPOS_ENTREGADOS);
+      return [{ ...g, items }];
+    }
     if (esAdmin && g.titulo === "Facturación") return [g, GRUPO_CONTABILIDAD];
     if (!esAdmin && efectivoSoloLectura && g.titulo === "Facturación") return [g, GRUPO_EFECTIVO_SOLO_LECTURA];
     if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS] }];

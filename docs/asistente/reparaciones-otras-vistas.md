@@ -5,6 +5,13 @@
 - Buscador (resguardo, cliente, equipo...) y filtros por estado de entrega y por factura (con / sin).
 - Pulsar una fila abre el detalle de la reparación.
 
+## Equipos entregados (Reparaciones > Equipos entregados)
+Vista de los **equipos que ya salieron del taller**, por **fecha de entrega** (no de recepción): los **entregados en local** y los **enviados por mensajería** (los de reciclaje no cuentan). La ven **administradores, superadmins y la cuenta de empleados (soporte)**; el resto de cuentas no la tienen.
+- **Calendario mensual** (como Facturación del día): cada día muestra cuántos equipos salieron (y cuántos en local y por mensajería); al pulsar un día se ve el detalle de ese día. Navegación por mes y año y botón Hoy.
+- **Lista por fechas**: rango Desde/Hasta con atajos (**Hoy, Ayer, 7 días, Este mes, Todo**), filtro por tipo de entrega (En local / Mensajería) y buscador (resguardo, cliente, equipo, técnico, factura).
+- **Indicadores (KPIs)**: Entregados, En local, Por mensajería y **Reparados sin factura/ticket** (solo reparaciones en estado Reparado que no son de garantía y no tienen factura ni ticket). Resumen del mes del calendario, o del rango filtrado en la lista.
+- Cada fila muestra fecha y hora de entrega, resguardo, cliente, equipo, técnico, tipo, estado, factura o ticket; al pulsarla se abre el detalle de la reparación.
+
 ## Transferencias (Reparaciones > Transferencias)
 Vista de **cobros de las reparaciones**: lista día a día de cada factura o ticket con su **forma de pago y estado** (Pendiente o Cobrado).
 - **Regla del estado**: cualquier forma de pago que **no** sea transferencia (efectivo, tarjeta, Bizum...) se considera **Cobrado** en el acto. Una **transferencia** solo está **Cobrado** si hay un comprobante **conciliado** con el banco para ese resguardo; si no, **Pendiente**. Hay una fila por cada documento de cobro generado (factura o ticket general, de revisión, de anticipo o de mensajería); las rectificativas y corregidas no cuentan como cobros nuevos.

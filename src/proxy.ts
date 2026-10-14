@@ -1,6 +1,7 @@
 import { auth, esDominioKelatos } from "@/auth";
 import { NextResponse } from "next/server";
 import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
+import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -35,6 +36,15 @@ export default auth((req) => {
     )
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+  // Equipos entregados (Reparaciones) — solo administradores, superadmins y la cuenta de empleados (soporte).
+  if (
+    (req.nextUrl.pathname.startsWith("/equipos-entregados") || req.nextUrl.pathname.startsWith("/api/equipos-entregados")) &&
+    !puedeVerEquiposEntregados(req.auth?.user)
+  ) {
+    return req.nextUrl.pathname.startsWith("/api/")
+      ? NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
+      : NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Dashboard de Transferencias — vista aparte. Superadmins entran por
   // serlo; puedeVerTransferencias además admite cuentas con acceso SOLO a
