@@ -44,13 +44,15 @@ interface CandidatoCliente {
   /** Equipo (reparación) o resumen de las piezas por pedir (venta). */
   detalle: string;
   estado: string;
-  /** Solo ventas: las piezas aún sin pedir. */
-  items: { itemId: string; descripcion: string }[];
+  /** Solo ventas: todas sus piezas (aunque la venta esté cerrada y pagada), con su estado. */
+  items: ItemVentaPendiente[];
 }
 
 interface ItemVentaPendiente {
   itemId: string;
   descripcion: string;
+  /** Estado de la pieza en la venta: Pieza Pendiente, En Tránsito, Pieza Recibida... */
+  estadoPedido: string;
 }
 
 interface LineaPedidoEditable {
@@ -79,6 +81,9 @@ interface LineaPedidoEditable {
   ventaId: string;
   ventaItems: ItemVentaPendiente[];
   itemIds: string[];
+  /** Venta: el pedido no corresponde a ninguna pieza existente y hay que añadirlo como pieza nueva de la venta. */
+  nuevaPieza: boolean;
+  precioNuevaPieza: number;
   clienteElegido: string;
   equipoElegido: string;
   enlace: string;
@@ -108,6 +113,8 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     ventaId: "",
     ventaItems: [],
     itemIds: [],
+    nuevaPieza: false,
+    precioNuevaPieza: 0,
     clienteElegido: "",
     equipoElegido: "",
     enlace: "",
@@ -127,11 +134,11 @@ function palabrasDe(t: string): Set<string> {
 function itemsQueEncajan(nombreLinea: string, items: ItemVentaPendiente[], cantidad: number): string[] {
   const buscadas = palabrasDe(nombreLinea);
   const puntuadas = items
-    .map((it) => ({ it, puntos: [...palabrasDe(it.descripcion)].filter((w) => buscadas.has(w)).length }))
+    .map((it) => ({ it, puntos: [...palabrasDe(it.descripcion)].filter((w) => buscadas.has(w)).length, pendiente: it.estadoPedido === "Pieza Pendiente" ? 1 : 0 }))
     .filter((x) => x.puntos > 0)
-    .sort((a, b) => b.puntos - a.puntos);
+    .sort((a, b) => b.puntos - a.puntos || b.pendiente - a.pendiente);
   if (puntuadas.length > 0) return puntuadas.slice(0, Math.max(1, cantidad)).map((x) => x.it.itemId);
-  return items.length === 1 ? [items[0].itemId] : [];
+  return items.length === 1 && items[0].estadoPedido === "Pieza Pendiente" ? [items[0].itemId] : [];
 }
 
 /** Buscador del cliente de una línea por su nombre: busca a la vez en las reparaciones abiertas
@@ -159,15 +166,14 @@ function BuscadorClienteLinea({ textoInicial, onElegir }: { textoInicial: string
           : [];
         const ventas: CandidatoCliente[] = rVentas?.ok
           ? (rVentas.ventas || [])
-              .map((v: { ventaId: string; clienteNombre: string; estado: string; items: { itemId: string; descripcion: string; estadoPedido: string }[] }) => {
-                const pendientes = (v.items || []).filter((it) => it.estadoPedido === "Pieza Pendiente").map((it) => ({ itemId: it.itemId, descripcion: it.descripcion }));
-                return { v, pendientes };
+              .filter((v: { estado: string }) => v.estado !== "Cancelado")
+              .map((v: { ventaId: string; clienteNombre: string; estado: string; estadoPago: string; items: { itemId: string; descripcion: string; estadoPedido: string }[] }) => {
+                const piezas: ItemVentaPendiente[] = (v.items || []).map((it) => ({ itemId: it.itemId, descripcion: it.descripcion, estadoPedido: it.estadoPedido }));
+                return {
+                  tipo: "venta" as const, clave: `V-${v.ventaId}`, resguardo: "", ventaId: v.ventaId, clienteNombre: v.clienteNombre,
+                  detalle: piezas.map((p) => p.descripcion).join(", "), estado: `${v.estado}${v.estadoPago ? ` · ${v.estadoPago}` : ""}`, items: piezas,
+                };
               })
-              .filter(({ v, pendientes }: { v: { estado: string }; pendientes: ItemVentaPendiente[] }) => pendientes.length > 0 && v.estado !== "Cancelado" && v.estado !== "Entregado")
-              .map(({ v, pendientes }: { v: { ventaId: string; clienteNombre: string; estado: string }; pendientes: ItemVentaPendiente[] }) => ({
-                tipo: "venta" as const, clave: `V-${v.ventaId}`, resguardo: "", ventaId: v.ventaId, clienteNombre: v.clienteNombre,
-                detalle: pendientes.map((p) => p.descripcion).join(", "), estado: v.estado, items: pendientes,
-              }))
           : [];
         setCandidatos([...reparaciones, ...ventas]);
       } finally {
@@ -202,13 +208,13 @@ function BuscadorClienteLinea({ textoInicial, onElegir }: { textoInicial: string
       </div>
       {buscando && <p className="text-xs text-muted-foreground">Buscando…</p>}
       {!buscando && q.trim() && candidatos.length === 0 && (
-        <p className="text-xs text-muted-foreground">Ninguna reparación abierta ni venta de piezas pendiente de pedir coincide — añade este pedido a mano desde Reparaciones o Ventas.</p>
+        <p className="text-xs text-muted-foreground">Ninguna reparación abierta ni venta de piezas coincide — añade este pedido a mano desde Reparaciones o Ventas.</p>
       )}
       {candidatos.length > 0 && (
         <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border bg-card p-1">
           {reps.length > 0 && <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Reparaciones abiertas</p>}
           {reps.map(fila)}
-          {ventas.length > 0 && <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ventas de piezas (pieza sin pedir)</p>}
+          {ventas.length > 0 && <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ventas de piezas (aunque estén cerradas y pagadas)</p>}
           {ventas.map(fila)}
         </div>
       )}
@@ -411,7 +417,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       return l.referencia.trim() !== "" || l.nombreInternoProveedor.trim() !== "";
     }
     if (l.origenCliente === "venta") {
-      if (!l.ventaId || l.itemIds.length === 0 || !proveedorIdSugerido) return false;
+      if (!l.ventaId || (l.itemIds.length === 0 && !l.nuevaPieza) || !proveedorIdSugerido) return false;
+      if (l.nuevaPieza && (!(l.costo > 0) || !(l.precioNuevaPieza > 0))) return false;
     } else if (!l.resguardo) return false;
     if (!l.enlace.trim() || !l.numeroPedido.trim() || !l.fechaEstimada) return false;
     // El coste de las piezas de una venta ya está en la propia venta; el de una reparación se guarda con el pedido.
@@ -511,7 +518,27 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         if (!l.aplicar || l.destino !== "cliente" || l.origenCliente !== "venta" || !l.ventaId) continue;
         let okLinea = 0;
         let errorLinea = "";
-        for (const itemId of l.itemIds) {
+        const idsPedir = [...l.itemIds];
+        // Pieza que no existe en la venta: se añade primero como pieza nueva (POST /api/ventas/:id/items, el mismo
+        // que "Agregar Pieza" en Ventas) y luego se le registra el pedido como a las demás.
+        if (l.nuevaPieza) {
+          const nuevas = Math.max(1, l.cantidad - l.itemIds.length);
+          for (let n = 0; n < nuevas; n++) {
+            try {
+              const resNueva = await fetch(`/api/ventas/${encodeURIComponent(l.ventaId)}/items`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ descripcion: l.nombre, costo: l.costo, precio: l.precioNuevaPieza, proveedorId: proveedorIdSugerido || "", proveedorOtro: "", enlace: l.enlace.trim() }),
+              });
+              const dataNueva = await resNueva.json();
+              if (!dataNueva.ok || !dataNueva.item?.itemId) throw new Error(dataNueva.error || "No se pudo añadir la pieza a la venta");
+              idsPedir.push(String(dataNueva.item.itemId));
+            } catch (e) {
+              errorLinea = e instanceof Error ? e.message : "error desconocido";
+            }
+          }
+        }
+        for (const itemId of idsPedir) {
           try {
             const res = await fetch(`/api/items-venta/${encodeURIComponent(itemId)}/registrar-pedido`, {
               method: "POST",
@@ -527,8 +554,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         }
         const detalle = `Venta ${l.ventaId} · ${l.clienteElegido || l.ventaId}`;
         okResguardo += okLinea;
-        fallos += l.itemIds.length - okLinea;
-        resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "cliente", destinoDetalle: detalle, ok: okLinea === l.itemIds.length });
+        fallos += idsPedir.length - okLinea;
+        resumen.push({ nombre: l.nombre, cantidad: l.cantidad, destino: "cliente", destinoDetalle: detalle, ok: okLinea === idsPedir.length && okLinea > 0 });
         if (errorLinea) toast.error(`Venta ${l.ventaId}: ${errorLinea}`);
       }
 
@@ -703,8 +730,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   textoInicial={l.textoPedido}
                                   onElegir={(c) =>
                                     c.tipo === "venta"
-                                      ? actualizar(i, { origenCliente: "venta", ventaId: c.ventaId, resguardo: "", ventaItems: c.items, itemIds: itemsQueEncajan(l.nombre, c.items, l.cantidad), clienteElegido: c.clienteNombre, equipoElegido: "" })
-                                      : actualizar(i, { origenCliente: "reparacion", resguardo: c.resguardo, ventaId: "", ventaItems: [], itemIds: [], clienteElegido: c.clienteNombre, equipoElegido: c.detalle })
+                                      ? actualizar(i, { origenCliente: "venta", ventaId: c.ventaId, resguardo: "", ventaItems: c.items, itemIds: itemsQueEncajan(l.nombre, c.items, l.cantidad), nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: c.clienteNombre, equipoElegido: "" })
+                                      : actualizar(i, { origenCliente: "reparacion", resguardo: c.resguardo, ventaId: "", ventaItems: [], itemIds: [], nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: c.clienteNombre, equipoElegido: c.detalle })
                                   }
                                 />
                               ) : (
@@ -713,7 +740,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     <span className="inline-flex items-center gap-1.5 text-xs font-medium">
                                       <Profile2User className="size-3.5" /> {l.clienteElegido || l.resguardo || l.ventaId} · {l.origenCliente === "venta" ? `Venta ${l.ventaId}` : l.resguardo}{l.equipoElegido ? ` · ${l.equipoElegido}` : ""}
                                     </span>
-                                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => actualizar(i, { origenCliente: "reparacion", resguardo: "", ventaId: "", ventaItems: [], itemIds: [], clienteElegido: "", equipoElegido: "" })}>
+                                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => actualizar(i, { origenCliente: "reparacion", resguardo: "", ventaId: "", ventaItems: [], itemIds: [], nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: "", equipoElegido: "" })}>
                                       Cambiar
                                     </Button>
                                   </div>
@@ -726,10 +753,31 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                             checked={l.itemIds.includes(it.itemId)}
                                             onCheckedChange={(v) => actualizar(i, { itemIds: v === true ? [...l.itemIds, it.itemId] : l.itemIds.filter((x) => x !== it.itemId) })}
                                           />
-                                          {it.descripcion}
+                                          <span className="min-w-0 flex-1 truncate">{it.descripcion}</span>
+                                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{it.estadoPedido}</span>
                                         </label>
                                       ))}
-                                      {l.itemIds.length === 0 && <p className="text-[11px] text-amber-700 dark:text-amber-400">Marca al menos una pieza.</p>}
+                                      <label className="flex cursor-pointer items-center gap-2 border-t pt-1.5 text-xs font-medium">
+                                        <Checkbox checked={l.nuevaPieza} onCheckedChange={(v) => actualizar(i, { nuevaPieza: v === true })} />
+                                        No está en la lista: añadirla como pieza nueva de esta venta
+                                      </label>
+                                      {l.nuevaPieza && (
+                                        <div className="grid grid-cols-1 gap-2 rounded-md bg-muted/50 p-2 sm:grid-cols-2">
+                                          <div className="space-y-1">
+                                            <Label className="text-xs text-muted-foreground">Precio de compra (€)</Label>
+                                            <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
+                                          </div>
+                                          <div className="space-y-1">
+                                            <Label className="text-xs text-muted-foreground">Precio al cliente (€)</Label>
+                                            <DecimalInput className="h-8 w-full" value={l.precioNuevaPieza} onChange={(n) => actualizar(i, { precioNuevaPieza: n })} />
+                                          </div>
+                                          <p className="text-[11px] text-muted-foreground sm:col-span-2">Se añade a la venta y cambia su total y su ganancia; la factura ya emitida no se modifica.</p>
+                                        </div>
+                                      )}
+                                      {l.itemIds.some((id) => l.ventaItems.find((it) => it.itemId === id)?.estadoPedido === "Pieza Recibida") && (
+                                        <p className="text-[11px] text-amber-700 dark:text-amber-400">Alguna pieza marcada ya figura como recibida: al registrar este pedido pasará a En Tránsito.</p>
+                                      )}
+                                      {l.itemIds.length === 0 && !l.nuevaPieza && <p className="text-[11px] text-amber-700 dark:text-amber-400">Marca al menos una pieza o añádela como nueva.</p>}
                                       {!proveedorIdSugerido && <p className="text-[11px] text-destructive">Hace falta un proveedor reconocido para registrar el pedido en una venta.</p>}
                                     </div>
                                   )}
