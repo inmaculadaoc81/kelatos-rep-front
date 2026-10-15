@@ -57,7 +57,7 @@ export function limitacionesAsistente(u: UsuarioAsistente | null | undefined): s
   }
   const areas = areasAsistente(u);
   if (!areas.includes("todo") && !areas.includes("tareas")) {
-    lista.push("No tiene acceso al módulo Tareas ni a sus datos: no digas dónde verlo.");
+    lista.push("Solo el módulo «Tareas» (tareas asignadas a empleados) no está disponible para esta cuenta: si preguntan por él, di que no tiene acceso y no digas dónde verlo. Tareas NO tiene relación con las reparaciones: reparaciones, resguardos, presupuestos, entregas, clientes, facturas y compras SÍ se pueden consultar con normalidad.");
   }
   if (!areasAsistente(u).includes("todo")) {
     lista.push("No es administradora: no puede borrar registros, restaurar copias de seguridad ni cambiar permisos o configuración.");
