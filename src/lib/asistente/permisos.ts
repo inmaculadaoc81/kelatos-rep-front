@@ -1,4 +1,4 @@
-import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerTransferencias, esCuentaEmpleadosRestringida, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
 
 /**
@@ -33,11 +33,36 @@ export function areasAsistente(u: UsuarioAsistente | null | undefined): string[]
 }
 
 /**
- * Quién puede usar el asistente ahora mismo. Por ahora solo superadministradores; para abrirlo al resto basta con
- * cambiar esta función (por ejemplo a `areasAsistente(u).length > 0`): lo que cada cuenta ve ya está acotado.
+ * Quién puede usar el asistente ahora mismo: superadministradores y la cuenta compartida de empleados (soporte),
+ * que solo consulta y explica lo que su cuenta puede ver. Para abrirlo a más cuentas basta con ampliar esta función
+ * (por ejemplo a `areasAsistente(u).length > 0`): lo que cada cuenta ve ya está acotado por áreas.
  */
 export function puedeUsarAsistente(u: UsuarioAsistente | null | undefined): boolean {
-  return esSuperadmin(u?.email);
+  return esSuperadmin(u?.email) || esCuentaEmpleadosRestringida(u?.email);
+}
+
+/**
+ * Cosas que el menú o las rutas le impiden hacer a ESTA cuenta aunque la pantalla se pueda ver. Se envían a la IA
+ * para que no explique cómo hacerlas como si pudiera. Si cambian esas restricciones (superadmin.ts), actualizar aquí.
+ */
+export function limitacionesAsistente(u: UsuarioAsistente | null | undefined): string[] {
+  const email = u?.email;
+  const lista: string[] = [];
+  if (esCuentaEmpleadosRestringida(email)) {
+    lista.push("No puede crear ni editar productos en Control de Stock (solo consultarlos).");
+    lista.push("No puede usar «Subir pedido con IA» en Compras.");
+  }
+  if (puedeVerEfectivoSoloLectura(email)) {
+    lista.push("De Contabilidad solo puede ver «Efectivo y caja», en solo lectura: no puede clasificar movimientos ni ver ninguna otra sección de Contabilidad.");
+  }
+  const areas = areasAsistente(u);
+  if (!areas.includes("todo") && !areas.includes("tareas")) {
+    lista.push("No tiene acceso al módulo Tareas ni a sus datos: no digas dónde verlo.");
+  }
+  if (!areasAsistente(u).includes("todo")) {
+    lista.push("No es administradora: no puede borrar registros, restaurar copias de seguridad ni cambiar permisos o configuración.");
+  }
+  return lista;
 }
 
 // Código de pantallas y lógica que solo pertenece a vistas de administrador. Un empleado sin ese acceso no debe

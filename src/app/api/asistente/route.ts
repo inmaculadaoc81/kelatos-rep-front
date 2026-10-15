@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { buscarFragmentos } from "@/lib/asistente/buscar";
-import { areasAsistente, puedeUsarAsistente } from "@/lib/asistente/permisos";
+import { areasAsistente, limitacionesAsistente, puedeUsarAsistente } from "@/lib/asistente/permisos";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       contextoFront,
       contextoPantalla,
       areas,
+      limitaciones: limitacionesAsistente(session.user),
     });
     return NextResponse.json({ ok: true, jobId: r.jobId });
   } catch (error) {

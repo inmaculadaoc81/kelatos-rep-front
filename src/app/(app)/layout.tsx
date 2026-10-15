@@ -43,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* El gris del fondo ya lo pone `body` (ver globals.css); este
               contenedor no necesita el suyo propio. */}
           <main className="flex-1">{children}</main>
-          {/* Quién lo ve: ver puedeUsarAsistente (hoy solo superadmins); las rutas /api/asistente lo exigen también. */}
+          {/* Quién lo ve: ver puedeUsarAsistente (superadmins y la cuenta soporte); las rutas /api/asistente lo exigen también. */}
           {puedeUsarAsistente(session?.user) && <AsistenteFlotante />}
         </SidebarInset>
       </SidebarProvider>
