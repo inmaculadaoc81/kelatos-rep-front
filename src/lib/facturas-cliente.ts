@@ -283,7 +283,9 @@ export function formaPagoLabel(f: Pick<FacturaCliente, "formaPago" | "banco" | "
 
   const label = FORMA_PAGO_LABEL[raw] || f.formaPago || "—";
   const banco = (f.banco || "").trim();
-  return raw === "tarjeta" && banco ? `${label}: ${banco}` : label;
+  // Los alquileres guardan el texto "Tarjeta bancaria" (metodo_pago) en vez del código "tarjeta".
+  const esTarjeta = raw === "tarjeta" || raw === "tarjeta bancaria";
+  return esTarjeta && banco ? `${label}: ${banco}` : label;
 }
 
 // ── Reparaciones (pasadas 1-6 del original) ─────────────────────────────
