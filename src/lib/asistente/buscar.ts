@@ -68,6 +68,11 @@ export interface FragmentoContexto {
 export async function buscarFragmentos(consulta: string, ruta: string, n = 6, areas: string[] = []): Promise<FragmentoContexto[]> {
   const { docs, df, avgLen } = await indice();
   const q = [...new Set(tokenizar(consulta))];
+  // "¿Qué hace esta pantalla?" no tiene palabras útiles (todas son de relleno): se busca por el nombre de la pantalla
+  // en la que está el usuario. Lo mismo si la pregunta es tan corta que no basta para localizar nada.
+  if (q.length < 2 && ruta && ruta !== "/") {
+    for (const t of tokenizar(ruta.replace(/[/\-_]+/g, " "))) if (!q.includes(t)) q.push(t);
+  }
   if (!q.length) return [];
   const N = docs.length;
   const carpetaPantalla = ruta && ruta !== "/" ? `src/app/(app)${ruta}/` : null;
