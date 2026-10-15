@@ -6,7 +6,30 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+/** Recoge {value, label} de los SelectItem que hay dentro del JSX, para que el botón muestre la etiqueta y no el valor crudo. */
+function recogerItems(nodo: React.ReactNode, salida: { value: unknown; label: React.ReactNode }[]) {
+  React.Children.forEach(nodo, (hijo) => {
+    if (!React.isValidElement(hijo)) return
+    const props = hijo.props as { value?: unknown; children?: React.ReactNode }
+    if (hijo.type === SelectItem && props.value !== undefined) {
+      salida.push({ value: props.value, label: props.children })
+    } else if (props.children) {
+      recogerItems(props.children, salida)
+    }
+  })
+}
+
+// Base UI muestra el valor crudo ("tarjeta_virtual") salvo que se le den los items: se deducen de los SelectItem.
+function Select<Value, Multiple extends boolean | undefined = false>(props: SelectPrimitive.Root.Props<Value, Multiple>) {
+  const { items, children } = props
+  const deducidos = React.useMemo(() => {
+    if (items) return undefined
+    const salida: { value: unknown; label: React.ReactNode }[] = []
+    recogerItems(children, salida)
+    return salida.length ? salida : undefined
+  }, [items, children])
+  return <SelectPrimitive.Root<Value, Multiple> {...props} items={items ?? (deducidos as never)} />
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
