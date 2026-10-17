@@ -89,7 +89,14 @@ export function EscanerCodigoBarras() {
         buferRef.current = "";
         if (!codigo) return;
 
-        const cargador = cargadoresRef.current.get(codigo);
+        let cargador = cargadoresRef.current.get(codigo);
+        // Etiquetas de pieza con referencia corta: el código de barras lleva "7" + la referencia con ceros hasta 8
+        // dígitos (p. ej. la referencia 22 se imprime como 700000022), porque muchos lectores descartan los códigos
+        // cortos. Un resguardo tiene entre 3 y 8 dígitos, así que nunca se confunde con uno de 9.
+        if (!cargador) {
+          const codificado = /^7(\d{8})$/.exec(codigo);
+          if (codificado) cargador = cargadoresRef.current.get(String(Number(codificado[1])));
+        }
         if (cargador) {
           e.preventDefault();
           setCargadorEscaneado(cargador);
