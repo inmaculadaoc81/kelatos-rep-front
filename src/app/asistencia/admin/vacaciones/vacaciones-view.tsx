@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ColumnaFiltro } from "@/app/(app)/facturas-clientes/columna-filtro";
 import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { EstadoPill } from "../../pills";
+import { TIPO_AUSENCIA_ESTILO, TIPO_AUSENCIA_LABEL, type TipoAusencia } from "@/lib/ausencias-calendario";
 import { useEmpleadosRemotosIds } from "../../use-empleados-remotos";
 
 interface Vacacion {
@@ -19,6 +20,7 @@ interface Vacacion {
   fecha_fin: string;
   dias_totales: number;
   motivo: string;
+  tipo?: TipoAusencia;
   state: string;
 }
 
@@ -129,6 +131,7 @@ export function VacacionesView({ soloRemotos = false }: { soloRemotos?: boolean 
                   <ColumnaFiltro opciones={opcionesColumna("empleado")} seleccion={filtrosColumna.empleado ?? null} onAplicar={(s) => aplicarFiltroColumna("empleado", s)} />
                 </span>
               </TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Desde</TableHead>
               <TableHead>Hasta</TableHead>
               <TableHead>Días</TableHead>
@@ -144,9 +147,9 @@ export function VacacionesView({ soloRemotos = false }: { soloRemotos?: boolean 
           </TableHeader>
           <TableBody>
             {cargando && Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 7 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              <TableRow key={i}>{Array.from({ length: 8 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
-            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
+            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
             {!cargando && listaFiltrada.map((v) => (
               <TableRow key={v.id}>
                 <TableCell className="font-medium">
@@ -155,6 +158,11 @@ export function VacacionesView({ soloRemotos = false }: { soloRemotos?: boolean 
                       <AvatarFallback className={colorAvatar(v.empleado)}>{iniciales(v.empleado)}</AvatarFallback>
                     </Avatar>
                     {v.empleado}
+                  </span>
+                </TableCell>
+                <TableCell className="text-sm">
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: TIPO_AUSENCIA_ESTILO[v.tipo ?? "vacaciones"].bg, color: TIPO_AUSENCIA_ESTILO[v.tipo ?? "vacaciones"].color }}>
+                    {TIPO_AUSENCIA_LABEL[v.tipo ?? "vacaciones"]}
                   </span>
                 </TableCell>
                 <TableCell className="text-sm">{fecha(v.fecha_inicio)}</TableCell>

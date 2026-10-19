@@ -15,6 +15,7 @@ import { DatePicker } from "../date-picker";
 import { TimePicker } from "../time-picker";
 import { ArrowDown2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { TIPO_AUSENCIA_LABEL, type TipoAusencia } from "@/lib/ausencias-calendario";
 
 interface Fichaje { id: number; check_in: string; check_out: string; tipo_fichaje: string; }
 
@@ -47,6 +48,7 @@ export default function SolicitudesPage() {
   const [vacFechaInicio, setVacFechaInicio] = useState("");
   const [vacFechaFin, setVacFechaFin] = useState("");
   const [vacMotivo, setVacMotivo] = useState("");
+  const [vacTipo, setVacTipo] = useState<TipoAusencia>("vacaciones");
   const [misVacaciones, setMisVacaciones] = useState<Solicitud[]>([]);
 
   // Corrección
@@ -121,6 +123,15 @@ export default function SolicitudesPage() {
         <TabsContent value="vacaciones">
           <Card>
             <CardContent className="space-y-3 pt-4">
+              <div className="space-y-1">
+                <Label>Tipo</Label>
+                <Select value={vacTipo} onValueChange={(v) => setVacTipo((v ?? "vacaciones") as TipoAusencia)}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(TIPO_AUSENCIA_LABEL) as TipoAusencia[]).map((t) => <SelectItem key={t} value={t}>{TIPO_AUSENCIA_LABEL[t]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1"><Label>Desde</Label><DatePicker value={vacFechaInicio} onChange={setVacFechaInicio} /></div>
                 <div className="space-y-1"><Label>Hasta</Label><DatePicker value={vacFechaFin} onChange={setVacFechaFin} /></div>
@@ -130,17 +141,19 @@ export default function SolicitudesPage() {
                 className="w-full"
                 disabled={enviando || !vacFechaInicio || !vacFechaFin}
                 onClick={() =>
-                  enviar("/api/asistencia/kiosk/vacaciones", { fechaInicio: vacFechaInicio, fechaFin: vacFechaFin, motivo: vacMotivo }, () => {
-                    setVacFechaInicio(""); setVacFechaFin(""); setVacMotivo("");
+                  enviar("/api/asistencia/kiosk/vacaciones", { fechaInicio: vacFechaInicio, fechaFin: vacFechaFin, motivo: vacMotivo, tipo: vacTipo }, () => {
+                    setVacFechaInicio(""); setVacFechaFin(""); setVacMotivo(""); setVacTipo("vacaciones");
                   })
                 }
               >
-                Solicitar vacaciones
+                {vacTipo === "vacaciones" ? "Solicitar vacaciones" : vacTipo === "dia_libre" ? "Solicitar día libre" : "Registrar descanso médico"}
               </Button>
               <div className="space-y-1.5 border-t pt-3">
                 {misVacaciones.map((s) => (
                   <div key={s.id} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{String(s.fecha_inicio).slice(0, 10)} – {String(s.fecha_fin).slice(0, 10)}</span>
+                    <span className="text-muted-foreground">
+                      {TIPO_AUSENCIA_LABEL[(s.tipo as TipoAusencia) ?? "vacaciones"] ?? "Vacaciones"} · {String(s.fecha_inicio).slice(0, 10)} – {String(s.fecha_fin).slice(0, 10)}
+                    </span>
                     <EstadoTexto label={s.state_label} />
                   </div>
                 ))}
