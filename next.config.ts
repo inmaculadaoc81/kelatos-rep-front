@@ -43,6 +43,10 @@ const nextConfig: NextConfig = {
   // Lanzar `next build` contra el `.next` de un `next dev` activo deja al
   // servidor sirviendo 500 hasta que se borra el directorio y se reinicia.
   distDir: process.env.NEXT_BUILD_DIR || ".next",
+  // El servidor de compilación de Hostinger expone ~64 CPU pero limita los hilos del proceso: con un worker por CPU
+  // la compilación falló con "OS can't spawn worker thread" (build del 2026-10-19, tras compilar y pasar TypeScript).
+  // Se limita el número de workers de "Collecting page data" y de generación de páginas.
+  experimental: { cpus: 4 },
 };
 
 export default nextConfig;
