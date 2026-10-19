@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
-import { mapearProveedor, type ProveedorFormData } from "@/lib/proveedores";
+import { mapearProveedor, normalizarMarcas, type ProveedorFormData } from "@/lib/proveedores";
 
 interface FilaProveedorSql {
   proveedor_id: string;
@@ -13,6 +13,7 @@ interface FilaProveedorSql {
   email: string | null;
   codigo_interno: string | null;
   notas: string | null;
+  marcas: string | null;
   activo: boolean | null;
 }
 
@@ -33,6 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (datos.email !== undefined) cambios.email = datos.email.trim() || null;
   if (datos.codigoInterno !== undefined) cambios.codigo_interno = datos.codigoInterno.trim() || null;
   if (datos.notas !== undefined) cambios.notas = datos.notas.trim() || null;
+  if (datos.marcas !== undefined) cambios.marcas = normalizarMarcas(datos.marcas).join(", ");
   if (datos.activo !== undefined) cambios.activo = datos.activo;
 
   try {

@@ -17,6 +17,8 @@ export interface Proveedor {
   email: string;
   codigoInterno: string;
   notas: string;
+  /** Marcas de equipos (HP, Dell, Lenovo...) de las que el proveedor vende piezas o servicio. */
+  marcas: string[];
   activo: boolean;
 }
 
@@ -29,6 +31,8 @@ export interface ProveedorFormData {
   email: string;
   codigoInterno: string;
   notas: string;
+  /** Texto separado por comas, tal como se escribe en el formulario. */
+  marcas: string;
 }
 
 interface FilaProveedorSql {
@@ -41,7 +45,21 @@ interface FilaProveedorSql {
   email: string | null;
   codigo_interno: string | null;
   notas: string | null;
+  marcas?: string | null;
   activo: boolean | null;
+}
+
+/** "HP, dell ;Lenovo, hp" -> ["HP", "dell", "Lenovo"]: separa por coma o punto y coma, quita espacios y repetidas (sin distinguir mayúsculas). */
+export function normalizarMarcas(texto: string | null | undefined): string[] {
+  const vistas = new Set<string>();
+  const resultado: string[] = [];
+  for (const parte of String(texto || "").split(/[,;]/)) {
+    const marca = parte.trim().replace(/\s+/g, " ");
+    if (!marca || vistas.has(marca.toLowerCase())) continue;
+    vistas.add(marca.toLowerCase());
+    resultado.push(marca);
+  }
+  return resultado;
 }
 
 export function mapearProveedor(row: FilaProveedorSql): Proveedor {
@@ -55,6 +73,7 @@ export function mapearProveedor(row: FilaProveedorSql): Proveedor {
     email: row.email || "",
     codigoInterno: row.codigo_interno || "",
     notas: row.notas || "",
+    marcas: normalizarMarcas(row.marcas),
     activo: row.activo !== false,
   };
 }

@@ -8,17 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Proveedor, ProveedorFormData } from "@/lib/proveedores";
+import { Proveedor, ProveedorFormData, normalizarMarcas } from "@/lib/proveedores";
 import { esEmailValido } from "@/lib/validacion";
 
 function vacio(): ProveedorFormData {
-  return { nombre: "", dniCif: "", direccionFiscal: "", pais: "", telefono: "", email: "", codigoInterno: "", notas: "" };
+  return { nombre: "", dniCif: "", direccionFiscal: "", pais: "", telefono: "", email: "", codigoInterno: "", notas: "", marcas: "" };
 }
 
 function desdeExistente(p: Proveedor): ProveedorFormData {
   return {
     nombre: p.nombre, dniCif: p.dniCif, direccionFiscal: p.direccionFiscal, pais: p.pais,
-    telefono: p.telefono, email: p.email, codigoInterno: p.codigoInterno, notas: p.notas,
+    telefono: p.telefono, email: p.email, codigoInterno: p.codigoInterno, notas: p.notas, marcas: p.marcas.join(", "),
   };
 }
 
@@ -27,7 +27,10 @@ export function ProveedorFormDialog({
   open,
   onOpenChange,
   onGuardado,
+  marcasSugeridas = [],
 }: {
+  /** Marcas que ya usan otros proveedores y las habituales, para añadirlas con un clic. */
+  marcasSugeridas?: string[];
   proveedorExistente: Proveedor | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +46,14 @@ export function ProveedorFormDialog({
 
   function actualizar<K extends keyof ProveedorFormData>(campo: K, valor: string) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
+  }
+
+  const marcasActuales = normalizarMarcas(datos.marcas);
+
+  function alternarMarca(marca: string) {
+    const existe = marcasActuales.some((m) => m.toLowerCase() === marca.toLowerCase());
+    const nuevas = existe ? marcasActuales.filter((m) => m.toLowerCase() !== marca.toLowerCase()) : [...marcasActuales, marca];
+    setDatos((prev) => ({ ...prev, marcas: nuevas.join(", ") }));
   }
 
   async function guardar() {
@@ -118,6 +129,29 @@ export function ProveedorFormDialog({
               <Label htmlFor="pvPais">País</Label>
               <Input id="pvPais" value={datos.pais} onChange={(e) => actualizar("pais", e.target.value)} />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="pvMarcas">Marcas de equipos</Label>
+            <Input id="pvMarcas" placeholder="HP, Dell, Lenovo…" value={datos.marcas} onChange={(e) => actualizar("marcas", e.target.value)} />
+            <p className="text-xs text-muted-foreground">Las marcas de portátiles o aparatos de las que este proveedor vende piezas o servicio, separadas por comas.</p>
+            {marcasSugeridas.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {marcasSugeridas.map((m) => {
+                  const activa = marcasActuales.some((x) => x.toLowerCase() === m.toLowerCase());
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => alternarMarca(m)}
+                      className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${activa ? "border-primary bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

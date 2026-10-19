@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
-import { mapearProveedor, generarProveedorId, type ProveedorFormData } from "@/lib/proveedores";
+import { mapearProveedor, generarProveedorId, normalizarMarcas, type ProveedorFormData } from "@/lib/proveedores";
 
 // Reexportado para no romper los imports existentes ("@/app/api/proveedores/route")
 // en compras/page.tsx, ventas/detalle-venta-dialog.tsx, presupuesto-*-dialog.tsx,
@@ -20,6 +20,7 @@ interface FilaProveedorSql {
   email: string | null;
   codigo_interno: string | null;
   notas: string | null;
+  marcas: string | null;
   activo: boolean | null;
 }
 
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
       email: datos.email?.trim() || null,
       codigo_interno: datos.codigoInterno?.trim() || null,
       notas: datos.notas?.trim() || null,
+      marcas: normalizarMarcas(datos.marcas).join(", "),
       activo: true,
     });
     return NextResponse.json({ ok: true, proveedor: mapearProveedor(resultado.row) });
