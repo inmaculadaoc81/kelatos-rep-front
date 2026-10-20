@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { esSuperadmin } from "@/lib/superadmin";
 import { origenPropio } from "@/lib/publico-seguridad";
+import { esProgramadorContenido, rutaPermitidaProgramador } from "@/lib/programador-contenido";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +19,18 @@ const RECURSOS = new Set(["overview", "departments", "approvals", "runs", "calen
 async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> }) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase();
-  if (!email || (session?.user?.role !== "admin" && !esSuperadmin(email))) {
+  const esAdmin = session?.user?.role === "admin" || esSuperadmin(email);
+  // La community manager no es administradora: solo puede usar lo imprescindible para «Programar contenido».
+  const esProgramador = !esAdmin && esProgramadorContenido(session?.user);
+  if (!email || (!esAdmin && !esProgramador)) {
     return NextResponse.json({ ok: false, error: "Solo los administradores pueden acceder a Agentes V2" }, { status: 403 });
   }
   if (!BASE_URL || !TOKEN) return NextResponse.json({ ok: false, error: "API no configurada" }, { status: 500 });
 
   const { ruta } = await ctx.params;
+  if (esProgramador && !rutaPermitidaProgramador(req.method.toUpperCase(), ruta)) {
+    return NextResponse.json({ ok: false, error: "No tienes acceso a esta función" }, { status: 403 });
+  }
   if (!ruta.length || ruta.length > (ruta[0] === "social" ? 6 : 4) || !ruta.every((s) => /^[A-Za-z0-9_-]{1,60}$/.test(s)) || !RECURSOS.has(ruta[0])) {
     return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });
   }

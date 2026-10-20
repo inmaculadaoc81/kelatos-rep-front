@@ -27,6 +27,7 @@ export const GRUPOS_DESPUES: GrupoNav[] = [
     titulo: "Trabajo",
     items: [
       { label: "Calendario", href: "/agentes-v2/calendario", icon: Calendar },
+      { label: "Programar contenido", href: "/agentes-v2/programar", icon: Clock },
       { label: "En vivo", href: "/agentes-v2/en-vivo", icon: Cpu },
       { label: "Ejecuciones", href: "/agentes-v2/ejecuciones", icon: Clock },
     ],
@@ -71,6 +72,7 @@ export const TITULO_SECCION: Record<string, string> = {
   campanas: "Campañas",
   aprobaciones: "Aprobaciones",
   calendario: "Calendario",
+  programar: "Programar contenido",
   "en-vivo": "En vivo",
   ejecuciones: "Ejecuciones",
   analitica: "Analítica",

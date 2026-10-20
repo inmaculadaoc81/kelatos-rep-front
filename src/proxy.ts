@@ -2,6 +2,7 @@ import { auth, esDominioKelatos } from "@/auth";
 import { NextResponse } from "next/server";
 import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
+import { esProgramadorContenido } from "@/lib/programador-contenido";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -65,10 +66,15 @@ export default auth((req) => {
   // Dashboard de Agentes IA — vista aparte, solo administradores (mismo
   // criterio que Webs Kelatos — defensa en profundidad, ver también
   // agentes/layout.tsx).
+  // Excepción: la community manager (empleada 23) entra SOLO a /agentes-v2/programar (Programar contenido); su
+  // layout reducido y el proxy /api/agentes-v2 (allowlist) acotan lo demás.
+  const enProgramarContenido = req.nextUrl.pathname === "/agentes-v2/programar" || req.nextUrl.pathname.startsWith("/agentes-v2/programar/");
+  const programadorPermitido = esProgramadorContenido(req.auth?.user) && enProgramarContenido;
   if (
     req.nextUrl.pathname.startsWith("/agentes") &&
     req.auth?.user?.role !== "admin" &&
-    !esSuperadmin(req.auth?.user?.email)
+    !esSuperadmin(req.auth?.user?.email) &&
+    !programadorPermitido
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
@@ -131,7 +137,7 @@ export default auth((req) => {
   const esSoloAsistencia = req.auth?.user?.asistenciaEmpleadoId != null &&
     !req.auth?.user?.accesoCompleto &&
     (req.auth?.user?.viaCredentials || !esDominioKelatos(req.auth?.user?.email || ""));
-  if (esSoloAsistencia && !enAsistencia) {
+  if (esSoloAsistencia && !enAsistencia && !(esProgramadorContenido(req.auth?.user) && (enProgramarContenido || req.nextUrl.pathname.startsWith("/api/agentes-v2/")))) {
     return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));
   }
   if (enAsistenciaAdmin && req.auth?.user?.role !== "admin" && !esSuperadmin(req.auth?.user?.email)) {

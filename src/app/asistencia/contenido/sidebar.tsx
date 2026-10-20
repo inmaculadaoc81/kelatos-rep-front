@@ -31,6 +31,11 @@ const GRUPOS: GrupoNavegacionBase[] = [
       { label: "Recursos", href: "/asistencia/contenido/recursos", icon: Folder2 },
     ],
   },
+  {
+    titulo: "Redes sociales",
+    icon: Video,
+    items: [{ label: "Programar carruseles", href: "/agentes-v2/programar", icon: Calendar }],
+  },
 ];
 
 /** Sidebar del panel de contenido — mismo esquema que el de Gestión MAILS
