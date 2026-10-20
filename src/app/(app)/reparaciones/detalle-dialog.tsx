@@ -1000,7 +1000,7 @@ export function DetalleReparacionDialog({
             </Button>
           )}
           {detalle && (ENTREGA_CERRADA.includes(detalle.estadoEntrega) || detalle.estado === "Reparado") && (
-            <Button variant="outline" className="gap-1.5" onClick={() => setGarantiaNuevaAbierta(true)} title="El equipo vuelve mal reparado: abre un resguardo nuevo en garantía con los datos ya cargados">
+            <Button className="gap-1.5 border border-black bg-black text-white hover:bg-zinc-800 hover:text-white dark:border-zinc-600 dark:hover:bg-zinc-800" onClick={() => setGarantiaNuevaAbierta(true)} title="El equipo vuelve mal reparado: abre un resguardo nuevo en garantía con los datos ya cargados">
               <ShieldTick className="size-4" /> Nuevo resguardo en garantía
             </Button>
           )}
