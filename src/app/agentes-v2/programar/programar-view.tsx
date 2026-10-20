@@ -23,6 +23,8 @@ interface Programado {
   notes: string | null;
   slide_count: number | null;
   slides_custom: SlidePersonal[] | null;
+  caption_custom: string | null;
+  hashtags_custom: string[] | null;
   visual_style: Diseno | null;
   colors: Partial<Record<ClaveColor, string>> | null;
   status: EstadoProgramado;
@@ -285,6 +287,8 @@ function DialogoProgramar({
   const [guardando, setGuardando] = useState(false);
   const { organizacionId } = useOrganizacion();
   const [porSlide, setPorSlide] = useState(false);
+  const [descripcion, setDescripcion] = useState("");
+  const [hashtags, setHashtags] = useState("");
   const [lista, setLista] = useState<SlidePersonal[]>(() => Array.from({ length: 6 }, vacia));
   const [eligiendo, setEligiendo] = useState<number | null>(null);
 
@@ -297,6 +301,8 @@ function DialogoProgramar({
     setGuardando(true);
     try {
       const cuerpo: Record<string, unknown> = { topic: tema.trim(), fecha, hora, visualStyle: diseno || null };
+      if (descripcion.trim()) cuerpo.caption = descripcion.trim();
+      if (hashtags.trim()) cuerpo.hashtags = hashtags;
       if (porSlide) {
         cuerpo.slidesCustom = lista.map((s) => ({ headline: s.headline?.trim() || null, body: s.body?.trim() || null, assetId: s.assetId }));
       }
@@ -412,6 +418,12 @@ function DialogoProgramar({
             )}
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="pgDesc">Descripción de Instagram (opcional)</Label>
+            <Textarea id="pgDesc" rows={4} maxLength={1200} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="El texto que irá debajo del carrusel. Si lo dejas vacío, lo escribe la IA." />
+            <Input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="Hashtags (opcional): #portatil #reparacion — si lo dejas vacío, pone los de la IA" />
+          </div>
+
           <div className="rounded-lg border bg-muted/30 p-3">
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input type="checkbox" className="mt-1" checked={porSlide} onChange={(e) => setPorSlide(e.target.checked)} />
@@ -518,6 +530,7 @@ function DialogoDetalle({
           <div className="min-w-0 space-y-1.5 text-sm">
             <p className="font-medium">{item.topic}</p>
             <p className="text-xs text-muted-foreground">Diseño: {diseno} · Slides: {item.slide_count ?? "automático"}{item.slides_custom ? ` (personalizadas: ${item.slides_custom.filter((s) => s.headline || s.body || s.assetId).length} con contenido propio)` : ""}</p>
+            {item.caption_custom && <p className="line-clamp-3 text-xs text-muted-foreground">Descripción: {item.caption_custom}</p>}
             {item.notes && <p className="text-xs text-muted-foreground">Indicaciones: {item.notes}</p>}
             {item.status === "running" && <p className="text-xs text-amber-700">Se está generando; tarda unos minutos.</p>}
             {item.result_note && <p className="text-xs text-muted-foreground">{item.result_note}</p>}
