@@ -73,6 +73,7 @@ export const TITULO_SECCION: Record<string, string> = {
   aprobaciones: "Aprobaciones",
   calendario: "Calendario",
   programar: "Programar contenido",
+  carruseles: "Carruseles",
   "en-vivo": "En vivo",
   ejecuciones: "Ejecuciones",
   analitica: "Analítica",

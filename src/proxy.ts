@@ -68,7 +68,7 @@ export default auth((req) => {
   // agentes/layout.tsx).
   // Excepción: la community manager (empleada 23) entra SOLO a /agentes-v2/programar (Programar contenido); su
   // layout reducido y el proxy /api/agentes-v2 (allowlist) acotan lo demás.
-  const enProgramarContenido = req.nextUrl.pathname === "/agentes-v2/programar" || req.nextUrl.pathname.startsWith("/agentes-v2/programar/");
+  const enProgramarContenido = ["/agentes-v2/programar", "/agentes-v2/carruseles"].some((r) => req.nextUrl.pathname === r || req.nextUrl.pathname.startsWith(`${r}/`));
   const programadorPermitido = esProgramadorContenido(req.auth?.user) && enProgramarContenido;
   if (
     req.nextUrl.pathname.startsWith("/agentes") &&

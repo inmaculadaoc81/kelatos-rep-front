@@ -6,7 +6,7 @@ import { AgentesV2Sidebar } from "./sidebar";
 import { AgentesV2Header } from "./header";
 import { OrganizacionProvider } from "./organizacion-context";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
-import Link from "next/link";
+import { ProgramadorSidebar } from "./sidebar-programador";
 
 // AI Marketing System: vista aparte, fuera de (app)/ (mismo patrón que Agentes, Mails y Asistencia).
 // Acceso: administradores y superadmins. Se repite en src/proxy.ts (el prefijo /agentes ya lo cubre) y en
@@ -23,13 +23,13 @@ export default async function AgentesV2Layout({ children }: { children: React.Re
   if (soloProgramar) {
     return (
       <OrganizacionProvider>
-        <div className="min-h-svh bg-white">
-          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b bg-background px-4">
-            <span className="text-sm font-semibold">Kelatos · Programar contenido</span>
-            <Link href="/asistencia/contenido" className="text-sm text-muted-foreground hover:text-foreground">Volver a mi panel de Contenido</Link>
-          </header>
-          <main className="p-6">{children}</main>
-        </div>
+        <SidebarProvider>
+          <ProgramadorSidebar session={session} />
+          <SidebarInset>
+            <AgentesV2Header />
+            <main className="flex-1 bg-white p-6">{children}</main>
+          </SidebarInset>
+        </SidebarProvider>
       </OrganizacionProvider>
     );
   }

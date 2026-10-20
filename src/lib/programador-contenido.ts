@@ -28,6 +28,16 @@ export function rutaPermitidaProgramador(metodo: string, ruta: string[]): boolea
   }
   // Marca (para precargar los colores) y miniatura de la primera slide de un carrusel ya generado.
   if (sub === "brand") return metodo === "GET" && ruta.length === 2;
-  if (sub === "carousels") return metodo === "GET" && ruta.length === 6 && ruta[3] === "slides" && ruta[5] === "image" && /^\d+$/.test(id) && /^\d+$/.test(ruta[4]);
+  if (sub === "carousels") {
+    if (ruta.length === 2) return metodo === "GET" || metodo === "POST";
+    if (!/^\d+$/.test(id)) return false;
+    // Nunca borrar un carrusel entero, enviarlo a revisión ni publicarlo en Instagram a mano (eso lo hace la programación).
+    if (ruta.length === 3) return metodo === "GET" || metodo === "PATCH";
+    if (accion === "publish" || accion === "review" || accion === "approve") return false;
+    return ["GET", "PATCH", "POST", "PUT", "DELETE"].includes(metodo);
+  }
+  // Imágenes (logo y fotos de la marca) y descarga de exportaciones, solo lectura.
+  if (sub === "assets") return metodo === "GET" && (ruta.length === 2 || ruta.length === 3);
+  if (sub === "exports") return metodo === "GET" && ruta.length === 4 && ruta[3] === "download" && /^\d+$/.test(id);
   return false;
 }
