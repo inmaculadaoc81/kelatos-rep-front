@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ZONAS, MOTIVO_ETIQUETA, estaLleno, nombreZona, textoOcupacion, type Casillero, type MovimientoCasillero } from "@/lib/casilleros";
 
-type Filtro = "todos" | "con-equipos" | "libres" | "sin-limite";
+type Filtro = "todos" | "con-equipos" | "libres" | "sin-limite" | "desactivados";
 
 const fechaHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" }) : "—";
@@ -46,6 +46,7 @@ export default function CasillerosPage() {
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return (casilleros ?? []).filter((c) => {
+      if (filtro === "desactivados" ? c.activo : !c.activo) return false;
       if (zona !== "todas" && c.zona !== zona) return false;
       if (filtro === "con-equipos" && c.ocupados === 0) return false;
       if (filtro === "libres" && estaLleno(c)) return false;
@@ -64,7 +65,7 @@ export default function CasillerosPage() {
         <div>
           <h1 className="text-lg font-semibold">Casilleros</h1>
           <p className="text-sm text-muted-foreground">
-            Dónde está guardado cada equipo del local. {casilleros ? `${casilleros.length} casilleros · ${totalEquipos} equipos guardados · ${llenos} llenos.` : ""}
+            Dónde está guardado cada equipo del local. {casilleros ? `${casilleros.filter((c) => c.activo).length} casilleros · ${totalEquipos} equipos guardados · ${llenos} llenos.` : ""}
           </p>
         </div>
         <Button className="gap-1.5" onClick={() => setEditando("nuevo")}><Plus className="size-4" /> Nuevo casillero</Button>
@@ -84,6 +85,7 @@ export default function CasillerosPage() {
           <option value="con-equipos">Con equipos dentro</option>
           <option value="libres">Con hueco</option>
           <option value="sin-limite">Sin capacidad definida</option>
+          <option value="desactivados">Desactivados</option>
         </select>
       </div>
 
