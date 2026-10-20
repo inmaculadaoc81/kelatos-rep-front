@@ -36,8 +36,8 @@ export function rutaPermitidaProgramador(metodo: string, ruta: string[]): boolea
     if (accion === "publish" || accion === "review" || accion === "approve") return false;
     return ["GET", "PATCH", "POST", "PUT", "DELETE"].includes(metodo);
   }
-  // Imágenes (logo y fotos de la marca) y descarga de exportaciones, solo lectura.
-  if (sub === "assets") return metodo === "GET" && (ruta.length === 2 || ruta.length === 3);
+  // Imágenes de la marca: puede verlas y subir nuevas (para las slides), no borrarlas. Descarga de exportaciones, solo lectura.
+  if (sub === "assets") return (metodo === "GET" && (ruta.length === 2 || ruta.length === 3)) || (metodo === "POST" && ruta.length === 2);
   if (sub === "exports") return metodo === "GET" && ruta.length === 4 && ruta[3] === "download" && /^\d+$/.test(id);
   return false;
 }

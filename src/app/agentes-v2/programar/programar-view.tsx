@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImagePlus, Plus, Sparkles, X } from "lucide-react";
+import { BibliotecaImagenes, urlImagen } from "./biblioteca-imagenes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ interface Programado {
   topic: string;
   notes: string | null;
   slide_count: number | null;
+  slides_custom: SlidePersonal[] | null;
   visual_style: Diseno | null;
   colors: Partial<Record<ClaveColor, string>> | null;
   status: EstadoProgramado;
@@ -34,6 +36,9 @@ interface Programado {
   carousel_title: string | null;
   primera_slide_id: number | null;
 }
+
+/** Lo que ella fija a mano de una slide; lo que deja vacío lo decide la IA. */
+interface SlidePersonal { headline: string | null; body: string | null; assetId: number | null }
 
 type ClaveColor = "primary" | "secondary" | "accent" | "dark" | "light";
 type ColoresMarca = Record<ClaveColor, string>;
@@ -68,6 +73,8 @@ const DISENOS: { id: Diseno | ""; nombre: string; descripcion: string }[] = [
 
 const NOMBRE_COLOR: Record<ClaveColor, string> = { primary: "Principal", secondary: "Secundario", accent: "Acento", dark: "Fondo oscuro", light: "Fondo claro" };
 const COLORES_DEFECTO: ColoresMarca = { primary: "#2563eb", secondary: "#1e3a8a", accent: "#f59e0b", dark: "#0b1220", light: "#ffffff" };
+
+const vacia = (): SlidePersonal => ({ headline: null, body: null, assetId: null });
 
 /** AAAA-MM-DD de "hoy" en España (la hora de referencia de la empresa), no la del ordenador de quien mira. */
 function hoyMadrid(): string {
@@ -107,6 +114,7 @@ export function ProgramarView() {
 
   const [nuevo, setNuevo] = useState<{ fecha: string } | null>(null);
   const [detalle, setDetalle] = useState<Programado | null>(null);
+  const [biblioteca, setBiblioteca] = useState(false);
 
   const items = useMemo(() => datos?.items ?? [], [datos]);
   const hayEnCurso = items.some((i) => i.status === "running" || (i.status === "scheduled" && `${i.fecha}T${i.hora}` <= new Date().toISOString().slice(0, 16)));
@@ -152,7 +160,10 @@ export function ProgramarView() {
         <div className="min-w-56 text-center text-sm font-semibold">{titulo}</div>
         <Button variant="outline" size="icon" onClick={() => setLunes(sumarDias(lunes, 7))} aria-label="Semana siguiente"><ChevronRight className="size-4" /></Button>
         <Button variant="outline" size="sm" onClick={() => setLunes(lunesDe(hoy))}>Esta semana</Button>
-        <Button className="ml-auto gap-1.5" onClick={() => setNuevo({ fecha: dias.find((d) => d >= hoy) ?? dias[0] })} disabled={!organizacion}>
+        <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={() => setBiblioteca(true)} disabled={!organizacion}>
+          <ImagePlus className="size-4" /> Imágenes
+        </Button>
+        <Button className="gap-1.5" onClick={() => setNuevo({ fecha: dias.find((d) => d >= hoy) ?? dias[0] })} disabled={!organizacion}>
           <Plus className="size-4" /> Programar carrusel
         </Button>
       </div>
@@ -201,6 +212,7 @@ export function ProgramarView() {
           onGuardado={() => { setNuevo(null); recargar(); }}
         />
       )}
+      <BibliotecaImagenes abierto={biblioteca} onCerrar={() => setBiblioteca(false)} />
       {detalle && (
         <DialogoDetalle
           item={detalle}
@@ -271,6 +283,13 @@ function DialogoProgramar({
   const [coloresElegidos, setColoresElegidos] = useState<ColoresMarca>(paleta);
   const [indicaciones, setIndicaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const { organizacionId } = useOrganizacion();
+  const [porSlide, setPorSlide] = useState(false);
+  const [lista, setLista] = useState<SlidePersonal[]>(() => Array.from({ length: 6 }, vacia));
+  const [eligiendo, setEligiendo] = useState<number | null>(null);
+
+  const cambiarNumero = (n: number) => setLista((prev) => Array.from({ length: n }, (_, i) => prev[i] ?? vacia()));
+  const cambiarSlide = (i: number, cambio: Partial<SlidePersonal>) => setLista((prev) => prev.map((s, j) => (j === i ? { ...s, ...cambio } : s)));
 
   async function guardar() {
     if (tema.trim().length < 5) { toast.error("Escribe el tema del carrusel (mínimo 5 letras)"); return; }
@@ -278,7 +297,11 @@ function DialogoProgramar({
     setGuardando(true);
     try {
       const cuerpo: Record<string, unknown> = { topic: tema.trim(), fecha, hora, visualStyle: diseno || null };
+      if (porSlide) {
+        cuerpo.slidesCustom = lista.map((s) => ({ headline: s.headline?.trim() || null, body: s.body?.trim() || null, assetId: s.assetId }));
+      }
       if (personalizar) {
+        if (!porSlide)
         cuerpo.slideCount = slides === "auto" ? null : Number(slides);
         // Solo se mandan los colores que ella cambió respecto a la marca.
         const cambiados: Partial<ColoresMarca> = {};
@@ -388,7 +411,63 @@ function DialogoProgramar({
               </div>
             )}
           </div>
+
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-1" checked={porSlide} onChange={(e) => setPorSlide(e.target.checked)} />
+              <span>
+                <span className="font-medium">Personalizar cada slide</span>
+                <span className="block text-xs text-muted-foreground">
+                  {porSlide ? "Escribe el titular y el texto de cada slide y elige su imagen. Lo que dejes en blanco lo escribe la IA." : "Opcional: fija tú el titular, el texto y la imagen de cada slide."}
+                </span>
+              </span>
+            </label>
+
+            {porSlide && (
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label className="shrink-0">Número de slides</Label>
+                  <Select value={String(lista.length)} onValueChange={(v) => v && cambiarNumero(Number(v))}>
+                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => <SelectItem key={n} value={String(n)}>{n} slides</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {lista.map((s, i) => (
+                  <div key={i} className="flex gap-3 rounded-md border bg-background p-2.5">
+                    <div className="w-24 shrink-0 space-y-1.5">
+                      <p className="text-xs font-medium">Slide {i + 1}{i === 0 ? " · portada" : i === lista.length - 1 ? " · cierre" : ""}</p>
+                      {s.assetId ? (
+                        <div className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={urlImagen(s.assetId, organizacionId)} alt={`Imagen de la slide ${i + 1}`} className="aspect-[4/5] w-full rounded border object-cover" />
+                          <button type="button" aria-label="Quitar imagen" className="absolute -right-1.5 -top-1.5 rounded-full border bg-background p-0.5 shadow" onClick={() => cambiarSlide(i, { assetId: null })}>
+                            <X className="size-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setEligiendo(i)} className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-1 rounded border border-dashed text-[11px] text-muted-foreground hover:bg-muted">
+                          <ImagePlus className="size-4" /> Añadir imagen
+                        </button>
+                      )}
+                      {s.assetId && <button type="button" className="w-full text-[11px] text-muted-foreground underline" onClick={() => setEligiendo(i)}>Cambiar</button>}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <Input value={s.headline ?? ""} maxLength={70} placeholder="Titular (opcional)" onChange={(e) => cambiarSlide(i, { headline: e.target.value })} />
+                      <Textarea rows={3} value={s.body ?? ""} maxLength={180} placeholder="Texto de la slide (opcional)" onChange={(e) => cambiarSlide(i, { body: e.target.value })} />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  {diseno === "guia" ? "En el diseño Guía, una slide con imagen se dibuja con la foto de fondo; sin imagen, solo texto sobre color." : "La imagen elegida sustituye a la foto de fondo que pondría el sistema."}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
+
+        <BibliotecaImagenes abierto={eligiendo !== null} onCerrar={() => setEligiendo(null)} onElegir={(id) => { if (eligiendo !== null) cambiarSlide(eligiendo, { assetId: id }); }} />
 
         <DialogFooter>
           <Button variant="outline" disabled={guardando} onClick={onCerrar}>Cancelar</Button>
@@ -438,7 +517,7 @@ function DialogoDetalle({
           )}
           <div className="min-w-0 space-y-1.5 text-sm">
             <p className="font-medium">{item.topic}</p>
-            <p className="text-xs text-muted-foreground">Diseño: {diseno} · Slides: {item.slide_count ?? "automático"}</p>
+            <p className="text-xs text-muted-foreground">Diseño: {diseno} · Slides: {item.slide_count ?? "automático"}{item.slides_custom ? ` (personalizadas: ${item.slides_custom.filter((s) => s.headline || s.body || s.assetId).length} con contenido propio)` : ""}</p>
             {item.notes && <p className="text-xs text-muted-foreground">Indicaciones: {item.notes}</p>}
             {item.status === "running" && <p className="text-xs text-amber-700">Se está generando; tarda unos minutos.</p>}
             {item.result_note && <p className="text-xs text-muted-foreground">{item.result_note}</p>}
