@@ -59,7 +59,7 @@ export default function CasillerosPage() {
   const llenos = (casilleros ?? []).filter(estaLleno).length;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="space-y-5 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Casilleros</h1>
