@@ -59,12 +59,10 @@ const ESTADO_ESTILO: Record<EstadoProgramado, string> = {
   cancelled: "bg-zinc-100 text-zinc-500",
 };
 
+/** Por ahora hay UN formato de diseño: el que ya se usa en los carruseles (foto real de fondo con velo oscuro, chip de la
+ * marca, titular grande con palabras destacadas y puntos de progreso). Los demás formatos se irán añadiendo aquí. */
 const DISENOS: { id: Diseno | ""; nombre: string; descripcion: string }[] = [
-  { id: "", nombre: "El de la marca", descripcion: "Usa el diseño que ya tiene esta marca" },
-  { id: "photo", nombre: "Foto", descripcion: "Foto real de fondo con velo y texto encima" },
-  { id: "tech", nombre: "Tech", descripcion: "Limpio y moderno, formas geométricas" },
-  { id: "editorial", nombre: "Editorial", descripcion: "Titulares grandes, aire de revista" },
-  { id: "bold", nombre: "Bold", descripcion: "Colores fuertes y mucho contraste" },
+  { id: "photo", nombre: "Foto — diseño actual", descripcion: "Foto real de fondo con velo oscuro, titular grande con palabras destacadas y el nombre de la marca" },
 ];
 
 const NOMBRE_COLOR: Record<ClaveColor, string> = { primary: "Principal", secondary: "Secundario", accent: "Acento", dark: "Fondo oscuro", light: "Fondo claro" };
@@ -214,18 +212,21 @@ export function ProgramarView() {
   );
 }
 
-function MiniDiseno({ id, colores }: { id: Diseno | ""; colores: ColoresMarca }) {
-  const base = { backgroundColor: colores.dark, color: colores.light };
-  const fondo =
-    id === "photo" ? { background: `linear-gradient(160deg, ${colores.dark}cc, ${colores.secondary}99), repeating-linear-gradient(45deg, #6b7280 0 6px, #9ca3af 6px 12px)`, color: "#fff" }
-    : id === "editorial" ? { backgroundColor: colores.light, color: colores.dark }
-    : id === "bold" ? { backgroundColor: colores.primary, color: colores.light }
-    : id === "tech" ? { background: `linear-gradient(135deg, ${colores.dark}, ${colores.secondary})`, color: colores.light }
-    : base;
+function MiniDiseno({ colores }: { id: Diseno | ""; colores: ColoresMarca }) {
+  // Réplica en pequeño del diseño real: foto de fondo (aquí un patrón) bajo un velo oscuro, chip de la marca,
+  // titular blanco con una palabra destacada en cursiva de color de acento y puntos de progreso.
   return (
-    <div className="flex h-20 w-16 shrink-0 flex-col justify-end rounded-md p-1.5 text-[7px] font-bold leading-tight" style={fondo}>
-      <span className="mb-1 h-1 w-5 rounded-full" style={{ backgroundColor: colores.accent }} />
-      <span>{id === "editorial" ? "Titular grande" : id === "bold" ? "TITULAR" : "Titular del slide"}</span>
+    <div
+      className="relative flex h-28 w-[5.5rem] shrink-0 flex-col justify-end overflow-hidden rounded-md p-2 text-white"
+      style={{ background: `linear-gradient(180deg, ${colores.dark}66, ${colores.dark}f2), repeating-linear-gradient(35deg, #6b7280 0 7px, #4b5563 7px 14px)` }}
+    >
+      <span className="mb-1.5 inline-flex w-fit items-center gap-0.5 rounded-full border border-white/60 px-1 py-px text-[4px] tracking-widest">
+        <i className="inline-block h-px w-2" style={{ backgroundColor: colores.accent }} /> MARCA
+      </span>
+      <span className="text-[9px] font-bold leading-[1.05]">¿Tu tema<br /><em className="font-serif" style={{ color: colores.accent }}>aquí?</em></span>
+      <span className="mt-1.5 flex gap-0.5">
+        {[0, 1, 2, 3, 4].map((i) => <i key={i} className="h-0.5 rounded-full" style={{ width: i === 0 ? 8 : 3, backgroundColor: i === 0 ? colores.accent : "#ffffff77" }} />)}
+      </span>
     </div>
   );
 }
@@ -244,7 +245,7 @@ function DialogoProgramar({
   const [tema, setTema] = useState("");
   const [fecha, setFecha] = useState(fechaInicial);
   const [hora, setHora] = useState("14:00");
-  const [diseno, setDiseno] = useState<Diseno | "">("");
+  const [diseno, setDiseno] = useState<Diseno | "">("photo");
   const [personalizar, setPersonalizar] = useState(false);
   const [slides, setSlides] = useState("auto");
   const [coloresElegidos, setColoresElegidos] = useState<ColoresMarca>(paleta);
@@ -301,7 +302,7 @@ function DialogoProgramar({
           </div>
 
           <div className="space-y-2">
-            <Label>Diseño *</Label>
+            <Label>Diseño</Label>
             <div className="grid gap-2 sm:grid-cols-2">
               {DISENOS.map((d) => (
                 <button
@@ -318,6 +319,7 @@ function DialogoProgramar({
                 </button>
               ))}
             </div>
+            <p className="text-xs text-muted-foreground">Más formatos de diseño próximamente.</p>
           </div>
 
           <div className="rounded-lg border bg-muted/30 p-3">
@@ -398,7 +400,7 @@ function DialogoDetalle({
   const miniatura = item.carousel_id && item.primera_slide_id && organizacionId
     ? `/api/agentes-v2/social/carousels/${item.carousel_id}/slides/${item.primera_slide_id}/image?organization_id=${organizacionId}`
     : null;
-  const diseno = DISENOS.find((d) => d.id === (item.visual_style ?? ""))?.nombre ?? "El de la marca";
+  const diseno = DISENOS.find((d) => d.id === (item.visual_style ?? "photo"))?.nombre ?? "Foto — diseño actual";
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !trabajando) onCerrar(); }}>
