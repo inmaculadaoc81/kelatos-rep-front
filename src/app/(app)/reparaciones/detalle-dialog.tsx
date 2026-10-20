@@ -61,6 +61,7 @@ import { ReportarProblemaPiezaDialog } from "./reportar-problema-pieza-dialog";
 import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 import { CasilleroBoton } from "./casillero-boton";
+import { GarantiaNuevoResguardoDialog } from "./garantia-nuevo-resguardo-dialog";
 import { useContextoAsistente } from "@/lib/asistente/contexto";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
 import { imprimirEtiquetaResguardoConFeedback } from "@/lib/imprimir-etiqueta";
@@ -385,6 +386,7 @@ export function DetalleReparacionDialog({
   const [imprimiendoResguardo, setImprimiendoResguardo] = useState(false);
   const [imprimiendoEtiqueta, setImprimiendoEtiqueta] = useState(false);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const [garantiaNuevaAbierta, setGarantiaNuevaAbierta] = useState(false);
   const [clienteSeLoLlevoAbierto, setClienteSeLoLlevoAbierto] = useState(false);
   const [puntoLimpioAbierto, setPuntoLimpioAbierto] = useState(false);
   const esSuperadmin = useEsSuperadmin();
@@ -997,6 +999,11 @@ export function DetalleReparacionDialog({
               <Trash className="size-4" /> Eliminar
             </Button>
           )}
+          {detalle && (ENTREGA_CERRADA.includes(detalle.estadoEntrega) || detalle.estado === "Reparado") && (
+            <Button variant="outline" className="gap-1.5" onClick={() => setGarantiaNuevaAbierta(true)} title="El equipo vuelve mal reparado: abre un resguardo nuevo en garantía con los datos ya cargados">
+              <ShieldTick className="size-4" /> Nuevo resguardo en garantía
+            </Button>
+          )}
           <Button variant="outline" className="gap-1.5" disabled={imprimiendoResguardo} onClick={imprimirResguardo}>
             <Printer className="size-4" /> {imprimiendoResguardo ? "Generando..." : "Imprimir resguardo"}
           </Button>
@@ -1009,6 +1016,15 @@ export function DetalleReparacionDialog({
         </footer>
         </ProveedorAnimacion>
       </DialogContent>
+
+      {detalle && (
+        <GarantiaNuevoResguardoDialog
+          detalle={detalle}
+          open={garantiaNuevaAbierta}
+          onOpenChange={setGarantiaNuevaAbierta}
+          onCreado={() => { onOpenChange(false); onActualizado?.(); }}
+        />
+      )}
 
       {detalle && (
         <EliminarRegistroDialog
