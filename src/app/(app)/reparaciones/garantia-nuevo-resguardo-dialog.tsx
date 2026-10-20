@@ -166,9 +166,9 @@ function ContenidoGarantia({ detalle, open, onOpenChange, onCreado }: PropsGaran
               <Label htmlFor="gaDni">DNI / CIF</Label>
               <Input id="gaDni" value={datos.dniCif} onChange={(e) => actualizar("dniCif", e.target.value)} />
             </div>
-            <div className="space-y-1.5">
+            <div className="col-span-2 space-y-1.5">
               <Label htmlFor="gaDir">Dirección</Label>
-              <Input id="gaDir" value={datos.direccionEnvio} onChange={(e) => actualizar("direccionEnvio", e.target.value)} />
+              <Textarea id="gaDir" rows={2} value={datos.direccionEnvio} onChange={(e) => actualizar("direccionEnvio", e.target.value)} />
             </div>
           </div>
 
