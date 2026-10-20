@@ -137,7 +137,7 @@ export interface Marca {
   fonts: { heading: string; body: string };
   radius: "none" | "sm" | "md" | "lg" | "pill";
   spacing: "compact" | "normal" | "airy";
-  visualStyle: "minimal" | "bold" | "editorial" | "playful" | "tech";
+  visualStyle: "minimal" | "bold" | "editorial" | "playful" | "tech" | "photo" | "guia";
   tone: string;
 }
 

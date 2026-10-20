@@ -14,7 +14,7 @@ import { enviarV2, useV2 } from "@/components/agentes-v2/use-v2";
 import { useOrganizacion } from "../organizacion-context";
 
 type EstadoProgramado = "scheduled" | "running" | "published" | "approved" | "failed" | "cancelled";
-type Diseno = "tech" | "editorial" | "bold" | "photo";
+type Diseno = "tech" | "editorial" | "bold" | "photo" | "guia";
 
 interface Programado {
   id: number;
@@ -63,6 +63,7 @@ const ESTADO_ESTILO: Record<EstadoProgramado, string> = {
  * marca, titular grande con palabras destacadas y puntos de progreso). Los demás formatos se irán añadiendo aquí. */
 const DISENOS: { id: Diseno | ""; nombre: string; descripcion: string }[] = [
   { id: "photo", nombre: "Foto — diseño actual", descripcion: "Foto real de fondo con velo oscuro, titular grande con palabras destacadas y el nombre de la marca" },
+  { id: "guia", nombre: "Guía — portada con foto", descripcion: "Primera slide llamativa con foto y titular grande; el resto solo texto sobre color de fondo, con titulares en negro y una palabra en cursiva de color" },
 ];
 
 const NOMBRE_COLOR: Record<ClaveColor, string> = { primary: "Principal", secondary: "Secundario", accent: "Acento", dark: "Fondo oscuro", light: "Fondo claro" };
@@ -212,7 +213,26 @@ export function ProgramarView() {
   );
 }
 
-function MiniDiseno({ colores }: { id: Diseno | ""; colores: ColoresMarca }) {
+function MiniDiseno({ id, colores }: { id: Diseno | ""; colores: ColoresMarca }) {
+  if (id === "guia") {
+    // Portada con foto y, al lado, una slide de solo texto sobre fondo claro.
+    return (
+      <div className="flex shrink-0 gap-1">
+        <div
+          className="flex h-28 w-[3.2rem] flex-col justify-end overflow-hidden rounded-md p-1.5 text-white"
+          style={{ background: `linear-gradient(180deg, ${colores.dark}66, ${colores.dark}f2), repeating-linear-gradient(35deg, #6b7280 0 7px, #4b5563 7px 14px)` }}
+        >
+          <span className="text-[7px] font-bold leading-[1.05]">Tu tema <em className="font-serif" style={{ color: colores.accent }}>aquí</em></span>
+        </div>
+        <div className="flex h-28 w-[3.2rem] flex-col justify-start overflow-hidden rounded-md bg-zinc-200 p-1.5 text-zinc-900">
+          <span className="text-[7px] font-bold leading-[1.05]">Paso <em className="font-serif font-medium" style={{ color: colores.primary }}>uno</em></span>
+          <i className="mt-1 block h-0.5 w-6 bg-zinc-900" />
+          <i className="mt-1.5 block h-0.5 w-full bg-zinc-400" />
+          <i className="mt-1 block h-0.5 w-4/5 bg-zinc-400" />
+        </div>
+      </div>
+    );
+  }
   // Réplica en pequeño del diseño real: foto de fondo (aquí un patrón) bajo un velo oscuro, chip de la marca,
   // titular blanco con una palabra destacada en cursiva de color de acento y puntos de progreso.
   return (
