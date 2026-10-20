@@ -336,7 +336,8 @@ function DialogoProgramar({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="pgTema">Tema *</Label>
-            <Input id="pgTema" value={tema} maxLength={160} placeholder="Ej.: 5 señales de que tu portátil necesita limpieza interna" onChange={(e) => setTema(e.target.value)} />
+            <Textarea id="pgTema" rows={3} value={tema} maxLength={160} placeholder="Ej.: 5 señales de que tu portátil necesita limpieza interna" onChange={(e) => setTema(e.target.value)} />
+            <p className="text-right text-[11px] text-muted-foreground">{tema.length}/160</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
