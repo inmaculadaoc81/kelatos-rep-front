@@ -21,9 +21,9 @@ export function rutaPermitidaProgramador(metodo: string, ruta: string[]): boolea
   if (recurso === "organizations") return metodo === "GET" && ruta.length === 1;
   if (recurso !== "social") return false;
   if (sub === "schedule") {
-    if (ruta.length === 1) return metodo === "GET" || metodo === "POST";
-    if (ruta.length === 2) return metodo === "PATCH";
-    if (ruta.length === 3) return metodo === "POST" && (accion === "cancel" || accion === "retry");
+    if (ruta.length === 2) return metodo === "GET" || metodo === "POST";
+    if (ruta.length === 3) return metodo === "PATCH" && /^\d+$/.test(id);
+    if (ruta.length === 4) return metodo === "POST" && /^\d+$/.test(id) && (accion === "cancel" || accion === "retry");
     return false;
   }
   // Marca (para precargar los colores) y miniatura de la primera slide de un carrusel ya generado.
