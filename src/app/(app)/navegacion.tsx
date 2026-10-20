@@ -67,6 +67,7 @@ export const GRUPOS: GrupoNavegacion[] = [
       { label: "Presupuestos", href: "/presupuestos", icon: DocumentText },
       { label: "Recogidas", href: "/recogidas", icon: Truck },
       { label: "Punto Limpio", href: "/punto-limpio", icon: Trash },
+      { label: "Casilleros", href: "/casilleros", icon: Box1 },
     ],
   },
   {
