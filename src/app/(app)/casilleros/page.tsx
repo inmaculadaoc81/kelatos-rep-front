@@ -13,6 +13,17 @@ import { ZONAS, MOTIVO_ETIQUETA, estaLleno, nombreZona, textoOcupacion, type Cas
 
 type Filtro = "todos" | "con-equipos" | "libres" | "sin-limite" | "desactivados";
 
+/** Un color por zona del local, para reconocerlas de un vistazo (clases completas: Tailwind no genera nombres armados). */
+const COLOR_ZONA: Record<string, { borde: string; codigo: string; titulo: string; punto: string }> = {
+  armario_arriba: { borde: "border-l-sky-500", codigo: "text-sky-700 dark:text-sky-400", titulo: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300", punto: "bg-sky-500" },
+  cajones_arriba: { borde: "border-l-violet-500", codigo: "text-violet-700 dark:text-violet-400", titulo: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300", punto: "bg-violet-500" },
+  estanteria_abajo: { borde: "border-l-emerald-500", codigo: "text-emerald-700 dark:text-emerald-400", titulo: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", punto: "bg-emerald-500" },
+  cajones_abajo: { borde: "border-l-cyan-500", codigo: "text-cyan-700 dark:text-cyan-400", titulo: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300", punto: "bg-cyan-500" },
+  mesas: { borde: "border-l-rose-500", codigo: "text-rose-700 dark:text-rose-400", titulo: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300", punto: "bg-rose-500" },
+  estanteria_escaleras: { borde: "border-l-orange-500", codigo: "text-orange-700 dark:text-orange-400", titulo: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300", punto: "bg-orange-500" },
+};
+const COLOR_POR_DEFECTO = COLOR_ZONA.armario_arriba;
+
 const fechaHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" }) : "—";
 
@@ -64,9 +75,14 @@ export default function CasillerosPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Casilleros</h1>
-          <p className="text-sm text-muted-foreground">
-            Dónde está guardado cada equipo del local. {casilleros ? `${casilleros.filter((c) => c.activo).length} casilleros · ${totalEquipos} equipos guardados · ${llenos} llenos.` : ""}
-          </p>
+          <p className="text-sm text-muted-foreground">Dónde está guardado cada equipo del local.</p>
+          {casilleros && (
+            <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
+              <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-800">{casilleros.filter((c) => c.activo).length} casilleros</span>
+              <span className="rounded-full bg-amber-200 px-2.5 py-1 text-amber-900">{totalEquipos} equipos guardados</span>
+              <span className={`rounded-full px-2.5 py-1 ${llenos > 0 ? "bg-red-500 text-white" : "bg-emerald-100 text-emerald-800"}`}>{llenos} llenos</span>
+            </div>
+          )}
         </div>
         <Button className="gap-1.5" onClick={() => setEditando("nuevo")}><Plus className="size-4" /> Nuevo casillero</Button>
       </div>
@@ -99,7 +115,10 @@ export default function CasillerosPage() {
         if (!lista.length) return null;
         return (
           <section key={z.id} className="space-y-2">
-            <h2 className="text-sm font-semibold text-muted-foreground">{z.nombre} <span className="font-normal">({lista.length})</span></h2>
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <span className={`rounded-full px-3 py-1 ${(COLOR_ZONA[z.id] ?? COLOR_POR_DEFECTO).titulo}`}>{z.nombre}</span>
+              <span className="font-normal text-muted-foreground">{lista.length} casilleros · {lista.reduce((n, c) => n + c.ocupados, 0)} equipos</span>
+            </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {lista.map((c) => <TarjetaCasillero key={c.id} c={c} onEditar={() => setEditando(c)} onHistorial={() => setHistorial(c)} />)}
             </div>
@@ -116,15 +135,16 @@ export default function CasillerosPage() {
 
 function TarjetaCasillero({ c, onEditar, onHistorial }: { c: Casillero; onEditar: () => void; onHistorial: () => void }) {
   const lleno = estaLleno(c);
+  const color = COLOR_ZONA[c.zona] ?? COLOR_POR_DEFECTO;
   const pct = c.capacidad_max ? Math.min(100, Math.round((c.ocupados / c.capacidad_max) * 100)) : 0;
   return (
-    <div className={`flex flex-col rounded-lg border bg-card p-3 text-sm ${!c.activo ? "opacity-60" : ""}`}>
+    <div className={`flex flex-col rounded-lg border border-l-4 ${color.borde} p-3 text-sm shadow-sm transition-shadow hover:shadow-md ${lleno ? "bg-red-50 dark:bg-red-950/30" : c.ocupados > 0 ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-card"} ${!c.activo ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xl font-bold leading-none">{c.codigo}</p>
+          <p className={`text-2xl font-bold leading-none ${color.codigo}`}>{c.codigo}</p>
           <p className="mt-1 text-[11px] text-muted-foreground">{nombreZona(c.zona)}</p>
         </div>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${lleno ? "bg-red-100 text-red-800" : c.ocupados > 0 ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${lleno ? "bg-red-500 text-white" : c.ocupados > 0 ? "bg-amber-200 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>
           {lleno ? "Lleno " : ""}{textoOcupacion(c)}
         </span>
       </div>
