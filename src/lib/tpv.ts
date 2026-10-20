@@ -62,6 +62,27 @@ export function montoPorFormaDesglose(desglose: FacturaCliente["formaPagoDesglos
   return redondear(desglose.filter((d) => d.forma === metodo).reduce((acc, d) => acc + d.monto, 0));
 }
 
+/**
+ * Forma de pago de un documento → método TPV + banco. Los documentos de alquiler guardan el TEXTO "Tarjeta bancaria"
+ * (metodo_pago) en vez del código "tarjeta", y algunas facturas de reparación "BBVA · tarjeta bancaria": sin normalizar,
+ * el cálculo los descartaba y el "Sistema" salía por debajo (caso real, 2026-10-15: alquiler ALQ-0054, factura de 12,10 y
+ * rectificativa de -260,50 ignoradas). Los códigos ya normalizados salen igual que antes.
+ */
+const ALIAS_METODO_TPV: Record<string, string> = {
+  "tarjeta bancaria": "tarjeta",
+  "tarjeta virtual": "tarjeta_virtual",
+  "transferencia bancaria": "transferencia",
+};
+const FORMA_PAGO_COMBINADO_RE = /^(.+?)\s*·\s*tarjeta bancaria$/i;
+
+export function normalizarFormaTpv(formaPago: string | null | undefined, banco: string | null | undefined): { metodo: string; banco: string | null } {
+  const original = (formaPago || "").trim();
+  const combinado = FORMA_PAGO_COMBINADO_RE.exec(original);
+  if (combinado) return { metodo: "tarjeta", banco: combinado[1].trim() };
+  const raw = original.toLowerCase();
+  return { metodo: ALIAS_METODO_TPV[raw] ?? raw, banco: (banco || "").trim() || null };
+}
+
 const TIMEZONE = "Europe/Madrid";
 
 export function diaMadrid(iso: string | null): string {
@@ -110,7 +131,7 @@ export function segunSistemaPorDia(facturas: FacturaCliente[]): Record<string, R
       continue;
     }
 
-    const metodo = (f.formaPago || "").trim().toLowerCase();
+    const { metodo } = normalizarFormaTpv(f.formaPago, f.banco);
     if (!METODOS_TPV_VALORES.includes(metodo)) continue;
     const importe = redondear(Math.abs(montoConIva(f)));
     suma(dia, metodo, esRectificativa ? -importe : importe);
@@ -195,10 +216,10 @@ export function segunSistemaPorDiaDesglosado(facturas: FacturaCliente[]): Record
       continue;
     }
 
-    const metodo = (f.formaPago || "").trim().toLowerCase();
+    const { metodo, banco } = normalizarFormaTpv(f.formaPago, f.banco);
     if (!METODOS_TPV_VALORES.includes(metodo)) continue;
     const importe = redondear(Math.abs(montoConIva(f)));
-    suma(dia, claveDesgloseTpv(metodo, f.banco), esRectificativa ? -importe : importe);
+    suma(dia, claveDesgloseTpv(metodo, banco), esRectificativa ? -importe : importe);
   }
 
   return out;
@@ -280,7 +301,7 @@ export function movimientosDeTpv(facturas: FacturaCliente[]): MovimientoTpv[] {
       continue;
     }
 
-    const metodo = (f.formaPago || "").trim().toLowerCase();
+    const { metodo, banco } = normalizarFormaTpv(f.formaPago, f.banco);
     if (!METODOS_TPV_VALORES.includes(metodo)) continue;
     const importeAbs = redondear(Math.abs(montoConIva(f)));
     out.push({
@@ -288,7 +309,7 @@ export function movimientosDeTpv(facturas: FacturaCliente[]): MovimientoTpv[] {
       fecha: f.fecha,
       tipo: esRectificativa ? "devolucion" : "cobro",
       metodo: metodo as MetodoTpv,
-      banco: f.banco || null,
+      banco,
       origen: origenDe(f),
       concepto: conceptoDe(f),
       referencia: f.resguardo,

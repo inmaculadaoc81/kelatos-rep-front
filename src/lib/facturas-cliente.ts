@@ -993,6 +993,8 @@ interface FilaAlquilerSql {
       de metodo_pago, que es el de la factura original. null en
       rectificativas generadas antes de esta columna (2026-10-06): se cae
       a metodo_pago como antes, único dato que había entonces. */
+  /** Desglose de la factura principal cuando es "Multiforma". */
+  forma_pago_desglose?: { forma: string; monto: string | number; banco: string | null }[] | null;
   forma_pago_rectificativa: string | null;
   banco_rectificativa: string | null;
   forma_pago_rectificativa_desglose: { forma: string; monto: number; banco: string | null }[] | null;
@@ -1085,6 +1087,9 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
         total: totalFacturaPrincipalAlquiler({ cobrado, previsto, fianzaBase: fianza, envio }),
         formaPago: texto(row.metodo_pago),
         banco: texto(row.banco),
+        formaPagoDesglose: Array.isArray(row.forma_pago_desglose)
+          ? row.forma_pago_desglose.map((d) => ({ forma: d.forma, monto: num(d.monto), banco: d.banco }))
+          : null,
         estadoFactura: texto(row.estado_factura),
         tipo: "alquiler",
       });
