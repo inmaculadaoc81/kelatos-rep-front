@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Phone, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BANDEJAS, CATEGORIAS, ETAPAS, ORIGENES, accionVencida, chipCategoria, euros, haceCuanto, nombreCategoria, nombreOrigen, type Etapa, type Lead, type ResumenCrm } from "@/lib/crm";
+import { BANDEJAS, CATEGORIAS, ETAPAS, ORIGENES, accionVencida, chipCategoria, esReciente, euros, haceCuanto, nombreCategoria, nombreOrigen, type Etapa, type Lead, type ResumenCrm } from "@/lib/crm";
 import { useApi } from "./use-api";
 import { NuevoLeadDialog } from "./nuevo-lead-dialog";
 import { FichaLeadDialog } from "./ficha-lead-dialog";
@@ -40,6 +40,12 @@ export default function CrmTableroPage() {
   const { datos: resumen } = useApi<{ ok: boolean } & ResumenCrm>("/api/crm/resumen", recarga);
 
   const recargar = () => setRecarga((n) => n + 1);
+
+  // El tablero se actualiza solo cada 30 s (si la pestaña está a la vista y no hay una ficha abierta): los leads nuevos aparecen sin recargar.
+  useEffect(() => {
+    const t = setInterval(() => { if (document.visibilityState === "visible") setRecarga((n) => n + 1); }, 30_000);
+    return () => clearInterval(t);
+  }, []);
   const leads = useMemo(() => (datos?.leads ?? []).map((l) => (moviendo[l.id] ? { ...l, etapa: moviendo[l.id] } : l)), [datos, moviendo]);
 
   async function mover(id: number, etapa: Etapa) {
@@ -149,7 +155,7 @@ export default function CrmTableroPage() {
                         className={`rounded-md border bg-card px-2.5 py-2 text-left text-sm shadow-sm transition-shadow hover:shadow-md ${arrastrando === l.id ? "opacity-50" : ""}`}
                       >
                         <div className="flex items-baseline justify-between gap-2">
-                          <p className="min-w-0 truncate font-medium leading-tight">{l.nombre}</p>
+                          <p className="flex min-w-0 items-center gap-1.5 truncate font-medium leading-tight">{esReciente(l.creado_en) && <span className="size-2 shrink-0 rounded-full bg-sky-500" title="Llegó hace menos de 2 horas" />}<span className="truncate">{l.nombre}</span></p>
                           <span className="shrink-0 text-[10px] text-muted-foreground">{haceCuanto(l.ultimo_contacto ?? l.creado_en)}</span>
                         </div>
                         {l.telefono && <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="size-3" />{l.telefono}</p>}

@@ -150,6 +150,11 @@ export function haceCuanto(iso: string | null | undefined): string {
   return `hace ${Math.round(min / 1440)} d`;
 }
 
+/** ¿Llegó hace menos de 2 horas? (para marcar los leads recién entrados en el tablero) */
+export function esReciente(iso: string | null | undefined): boolean {
+  return !!iso && Date.now() - new Date(iso).getTime() < 2 * 3600 * 1000;
+}
+
 export const fechaHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" }) : "—";
 
