@@ -108,6 +108,7 @@ export interface MetricasCrm {
   valor_abierto: number;
   llegaron_contactado: number;
   llegaron_presupuesto: number;
+  atendidos_persona: number;
   conversion: number;
   mediana_primera_respuesta_horas: number | null;
   leads_con_respuesta: number;

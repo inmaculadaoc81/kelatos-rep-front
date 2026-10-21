@@ -40,10 +40,12 @@ export default function CrmMetricasPage() {
 
       {m && (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Kpi titulo="Leads nuevos" valor={String(m.creados)} detalle={`En los últimos ${m.dias} días`} color="text-sky-700" />
             <Kpi titulo="Conversión" valor={pct(m.conversion)} detalle={`${m.ganados} de ${m.creados} llegaron a Ganado`} color="text-emerald-700" />
-            <Kpi titulo="Primera respuesta" valor={horas(m.mediana_primera_respuesta_horas)} detalle={m.leads_con_respuesta > 0 ? `Mediana, sobre ${m.leads_con_respuesta} leads atendidos` : "Aún no hay leads atendidos"} color="text-violet-700" />
+            <Kpi titulo="Atendidos (bot o persona)" valor={m.creados ? pct(m.llegaron_contactado / m.creados) : "—"} detalle={`${m.llegaron_contactado} de ${m.creados} recibieron respuesta`} color="text-violet-700" />
+            <Kpi titulo="Atendidos por una persona" valor={m.creados ? pct(m.atendidos_persona / m.creados) : "—"} detalle={`${m.atendidos_persona} de ${m.creados} los atendió alguien del equipo`} color="text-fuchsia-700" />
+            <Kpi titulo="Primera respuesta" valor={horas(m.mediana_primera_respuesta_horas)} detalle={m.leads_con_respuesta > 0 ? `Mediana, incluye al bot (${m.leads_con_respuesta} leads)` : "Aún no hay leads atendidos"} color="text-violet-700" />
             <Kpi titulo="Tiempo hasta ganar" valor={m.mediana_dias_hasta_ganar === null ? "—" : `${m.mediana_dias_hasta_ganar.toFixed(1)} d`} detalle={m.leads_ganados_con_fecha > 0 ? `Mediana, sobre ${m.leads_ganados_con_fecha} ganados` : "Aún no hay ganados"} color="text-amber-700" />
             <Kpi titulo="Abiertos" valor={String(m.abiertos)} detalle={`${euros(m.valor_abierto)} en juego`} color="text-sky-700" />
             <Kpi titulo="Valor ganado" valor={euros(m.valor_ganado)} detalle="Suma del valor estimado de los ganados" color="text-emerald-700" />
