@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +12,26 @@ import { useApi } from "../use-api";
 import { NuevoLeadDialog } from "../nuevo-lead-dialog";
 import { FichaLeadDialog } from "../ficha-lead-dialog";
 
+const POR_PAGINA = 50;
+
 export default function CrmListaPage() {
+  // useSearchParams (para abrir la lista ya filtrada por etapa desde el Tablero) exige un Suspense.
+  return (
+    <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+      <ListaContenido />
+    </Suspense>
+  );
+}
+
+function ListaContenido() {
+  const inicial = useSearchParams().get("etapa") ?? "";
   const [recarga, setRecarga] = useState(0);
   const [busqueda, setBusqueda] = useState("");
-  const [etapa, setEtapa] = useState("");
+  const [etapa, setEtapa] = useState(ETAPAS.some((e) => e.id === inicial) ? inicial : "");
   const [origen, setOrigen] = useState("");
   const [bandeja, setBandeja] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [limite, setLimite] = useState(POR_PAGINA);
   const [nuevo, setNuevo] = useState(false);
   const [abierto, setAbierto] = useState<number | null>(null);
 
@@ -29,35 +43,38 @@ export default function CrmListaPage() {
   if (categoria) params.set("categoria", categoria);
   const { datos, error } = useApi<{ ok: boolean; leads: Lead[] }>(`/api/crm/leads?${params.toString()}`, recarga);
   const recargar = () => setRecarga((n) => n + 1);
+  // Al cambiar un filtro se vuelve a las primeras 50 filas.
+  const cambiar = (fn: () => void) => { fn(); setLimite(POR_PAGINA); };
+  const filas = datos?.leads ?? [];
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">CRM · Lista</h1>
-          <p className="text-sm text-muted-foreground">Todos los leads en una tabla, para buscar y filtrar. {datos ? `${datos.leads.length} resultados.` : ""}</p>
+          <p className="text-sm text-muted-foreground">Todos los leads en una tabla, para buscar y filtrar. {datos ? `${filas.length} resultado${filas.length === 1 ? "" : "s"}.` : ""}</p>
         </div>
         <Button className="gap-1.5" onClick={() => setNuevo(true)}><Plus className="size-4" /> Nuevo lead</Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full max-w-xs">
+        <div className="relative w-full max-w-sm">
           <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Buscar por nombre, teléfono o correo…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <Input className="pl-8" placeholder="Buscar por nombre, teléfono, correo o DNI…" value={busqueda} onChange={(e) => cambiar(() => setBusqueda(e.target.value))} />
         </div>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={etapa} onChange={(e) => setEtapa(e.target.value)} aria-label="Etapa">
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={etapa} onChange={(e) => cambiar(() => setEtapa(e.target.value))} aria-label="Etapa">
           <option value="">Todas las etapas</option>
           {ETAPAS.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
         </select>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={origen} onChange={(e) => setOrigen(e.target.value)} aria-label="Origen">
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={origen} onChange={(e) => cambiar(() => setOrigen(e.target.value))} aria-label="Origen">
           <option value="">Todos los orígenes</option>
           {ORIGENES.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
         </select>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={bandeja} onChange={(e) => setBandeja(e.target.value)} aria-label="WhatsApp">
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={bandeja} onChange={(e) => cambiar(() => setBandeja(e.target.value))} aria-label="WhatsApp">
           <option value="">Todos los WhatsApp</option>
           {BANDEJAS.map((b) => <option key={b.id} value={b.id}>{b.nombre} · {b.numero}</option>)}
         </select>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={categoria} onChange={(e) => setCategoria(e.target.value)} aria-label="Clasificación">
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={categoria} onChange={(e) => cambiar(() => setCategoria(e.target.value))} aria-label="Clasificación">
           <option value="">Todas las clasificaciones</option>
           {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
@@ -83,7 +100,7 @@ export default function CrmListaPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {datos.leads.map((l) => {
+              {filas.slice(0, limite).map((l) => {
                 const et = ETAPAS.find((e) => e.id === l.etapa);
                 return (
                   <TableRow key={l.id} className="cursor-pointer" onClick={() => setAbierto(l.id)}>
@@ -100,11 +117,16 @@ export default function CrmListaPage() {
                   </TableRow>
                 );
               })}
-              {datos.leads.length === 0 && (
+              {filas.length === 0 && (
                 <TableRow><TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">No hay leads con estos filtros.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
+          {filas.length > limite && (
+            <div className="border-t p-3 text-center">
+              <Button variant="outline" size="sm" onClick={() => setLimite((n) => n + POR_PAGINA)}>Mostrar {Math.min(POR_PAGINA, filas.length - limite)} más ({filas.length - limite} restantes)</Button>
+            </div>
+          )}
         </div>
       )}
 
