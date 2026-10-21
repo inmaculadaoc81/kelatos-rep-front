@@ -10,6 +10,15 @@ const CANALES: { nombre: string; que: string; estado: "listo" | "conectado" | "p
   { nombre: "Webs y formularios", que: "Cada formulario de contacto de las webs crea un lead con sus datos.", estado: "pendiente" },
 ];
 
+const AUTOMATICO: { cuando: string; que: string; auto: boolean }[] = [
+  { cuando: "Alguien escribe al WhatsApp y no es cliente", que: "se crea el lead en «Nuevo».", auto: true },
+  { cuando: "Responde una persona (no el bot) o anotas un contacto tuyo", que: "pasa de «Nuevo» a «Contactado».", auto: true },
+  { cuando: "Se crea un resguardo (o un alquiler) con su teléfono", que: "pasa a «Ganado» y se enlaza con su cliente, esté en la etapa que esté.", auto: true },
+  { cuando: "Un lead «Perdido» vuelve a escribir", que: "se reabre en «Nuevo» y se quita el motivo.", auto: true },
+  { cuando: "Le das un precio", que: "lo pasas a «Presupuesto» arrastrando la tarjeta.", auto: false },
+  { cuando: "No sigue adelante", que: "lo pasas a «Perdido» (y anotas el motivo si quieres).", auto: false },
+];
+
 const PREGUNTAS: { p: string; r: string }[] = [
   { p: "¿Qué es un lead y qué es un cliente?", r: "Un lead es alguien que ha contactado pero todavía no nos ha comprado nada. Cuando acepta un presupuesto o trae un equipo pasa a «Ganado» y ya es cliente (con su resguardo en Reparaciones)." },
   { p: "¿Y si la misma persona escribe por WhatsApp y luego llama?", r: "Se reconoce por el teléfono: sigue siendo una sola ficha y la llamada se añade a la misma línea de tiempo. Si intentas crear a mano un lead con un teléfono que ya existe, el sistema te avisa y te abre la ficha." },
@@ -41,6 +50,17 @@ export default function ComoFuncionaPage() {
             </li>
           ))}
         </ol>
+      </Seccion>
+
+      <Seccion titulo="Qué se mueve solo y qué se mueve a mano">
+        <div className="overflow-hidden rounded-lg border bg-card text-sm">
+          {AUTOMATICO.map((x) => (
+            <div key={x.cuando} className="flex flex-col gap-1 border-b p-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
+              <span className={`w-fit shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${x.auto ? "bg-emerald-100 text-emerald-800" : "bg-zinc-100 text-zinc-700"}`}>{x.auto ? "Automático" : "A mano"}</span>
+              <p className="min-w-0"><strong>{x.cuando}</strong> <span className="text-muted-foreground">→ {x.que}</span></p>
+            </div>
+          ))}
+        </div>
       </Seccion>
 
       <Seccion titulo="2. La ficha de cada lead">
