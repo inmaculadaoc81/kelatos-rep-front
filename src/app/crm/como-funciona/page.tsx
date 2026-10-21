@@ -3,9 +3,9 @@ import { ETAPAS } from "@/lib/crm";
 
 // Explicación del CRM para el equipo (petición del usuario, 2026-10-21). Página estática.
 
-const CANALES: { nombre: string; que: string; estado: "listo" | "pendiente" }[] = [
+const CANALES: { nombre: string; que: string; estado: "listo" | "conectado" | "pendiente" }[] = [
   { nombre: "Alta manual", que: "Botón «Nuevo lead» y anotar llamadas, mensajes y notas a mano en la ficha.", estado: "listo" },
-  { nombre: "WhatsApp (Chatwoot)", que: "Cada conversación nueva crea o actualiza el lead solo, con el mensaje en su línea de tiempo.", estado: "pendiente" },
+  { nombre: "WhatsApp (Chatwoot)", que: "Cada persona que escribe al WhatsApp de Kelatos (o Kelatos NL) crea su lead solo, o actualiza el que ya tiene. La conversación queda en su línea de tiempo, una entrada por día. Si ya es cliente, no se crea lead. Los mensajes del bot se anotan pero no cuentan como contacto: cuando responde una persona, pasa a «Contactado».", estado: "conectado" },
   { nombre: "Llamadas (Retell)", que: "Al terminar cada llamada de un agente de voz se guarda el resumen, la transcripción y la duración.", estado: "pendiente" },
   { nombre: "Webs y formularios", que: "Cada formulario de contacto de las webs crea un lead con sus datos.", estado: "pendiente" },
 ];
@@ -67,8 +67,8 @@ export default function ComoFuncionaPage() {
             <div key={c.nombre} className="rounded-lg border bg-card p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold">{c.nombre}</p>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.estado === "listo" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                  {c.estado === "listo" ? "Disponible" : "Pendiente de conectar"}
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.estado === "pendiente" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
+                  {c.estado === "listo" ? "Disponible" : c.estado === "conectado" ? "Conectado" : "Pendiente de conectar"}
                 </span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{c.que}</p>
@@ -76,7 +76,7 @@ export default function ComoFuncionaPage() {
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Hoy se trabaja con altas a mano. Cuando se conecten los demás canales, los leads aparecerán solos en el Tablero con su origen marcado.
+          Los leads de WhatsApp aparecen solos en el Tablero con su origen marcado; el resto de canales se irán conectando. Mientras tanto, las llamadas y los formularios se anotan a mano.
         </p>
       </Seccion>
 
