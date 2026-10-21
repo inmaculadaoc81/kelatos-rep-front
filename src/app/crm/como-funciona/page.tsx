@@ -13,7 +13,7 @@ const CANALES: { nombre: string; que: string; estado: "listo" | "conectado" | "p
 const AUTOMATICO: { cuando: string; que: string; auto: boolean }[] = [
   { cuando: "Alguien escribe al WhatsApp y no es cliente", que: "se crea el lead en «Nuevo».", auto: true },
   { cuando: "Responde el bot o una persona, o anotas un contacto tuyo", que: "pasa de «Nuevo» a «Contactado».", auto: true },
-  { cuando: "Se crea un resguardo (o un alquiler) con su teléfono", que: "pasa a «Ganado» y se enlaza con su cliente, esté en la etapa que esté.", auto: true },
+  { cuando: "Se crea un resguardo (o un alquiler) con su teléfono o con el correo que dio en el chat", que: "pasa a «Ganado» y se enlaza con su cliente, esté en la etapa que esté.", auto: true },
   { cuando: "Un lead «Perdido» vuelve a escribir", que: "se reabre en «Nuevo» y se quita el motivo.", auto: true },
   { cuando: "Le das un precio", que: "lo pasas a «Presupuesto» arrastrando la tarjeta.", auto: false },
   { cuando: "No sigue adelante", que: "lo pasas a «Perdido» (y anotas el motivo si quieres).", auto: false },
