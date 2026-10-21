@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -82,10 +82,12 @@ export function NavUser({ session }: { session: Session | null }) {
   const enAgentes = (pathname?.startsWith("/agentes") ?? false) && !enAgentesV2;
   const enMails = pathname?.startsWith("/mails") ?? false;
   const enTareas = pathname?.startsWith("/tareas") ?? false;
+  const enCrm = pathname?.startsWith("/crm") ?? false;
   const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas && !enCrm;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
+  const puedeVerCrm = esAdmin || esSuperadmin(email);
   // accesoCompleto ve Gestión MAILS, pero con una vista restringida a solo
   // "Centro de mails" y su propio buzón — ver GestionMailsSidebar.
   const puedeVerMails = esAdmin || esSuperadmin(email) || accesoCompleto;
@@ -202,6 +204,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/mails" />}>
                   <IconoDashboard icon={Sms} className="from-rose-500 to-pink-600" />
                   Gestión MAILS
+                </DropdownMenuItem>
+              )}
+              {puedeVerCrm && !enCrm && (
+                <DropdownMenuItem render={<Link href="/crm" />}>
+                  <IconoDashboard icon={Profile2User} className="from-orange-400 to-rose-600" />
+                  CRM
                 </DropdownMenuItem>
               )}
               {/* Panel de contenido de la community manager — antes solo
