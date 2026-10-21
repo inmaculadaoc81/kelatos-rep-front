@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -83,8 +83,9 @@ export function NavUser({ session }: { session: Session | null }) {
   const enMails = pathname?.startsWith("/mails") ?? false;
   const enTareas = pathname?.startsWith("/tareas") ?? false;
   const enCrm = pathname?.startsWith("/crm") ?? false;
+  const enProspeccion = pathname?.startsWith("/prospeccion") ?? false;
   const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas && !enCrm;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas && !enCrm && !enProspeccion;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerCrm = esAdmin || esSuperadmin(email);
@@ -210,6 +211,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/crm" />}>
                   <IconoDashboard icon={Profile2User} className="from-orange-400 to-rose-600" />
                   CRM
+                </DropdownMenuItem>
+              )}
+              {puedeVerCrm && !enProspeccion && (
+                <DropdownMenuItem render={<Link href="/prospeccion" />}>
+                  <IconoDashboard icon={Send2} className="from-sky-500 to-indigo-600" />
+                  Prospección
                 </DropdownMenuItem>
               )}
               {/* Panel de contenido de la community manager — antes solo
