@@ -85,8 +85,8 @@ export const CATEGORIAS: { id: Categoria; nombre: string; chip: string }[] = [
 
 /** WhatsApp (bandejas de Chatwoot) que alimentan el CRM. Debe coincidir con kelatos_app.crm_config.chatwoot_bandejas_info. */
 export const BANDEJAS: { id: number; nombre: string; numero: string }[] = [
-  { id: 1, nombre: "WhatsApp principal", numero: "+34 649 970 128" },
-  { id: 7, nombre: "Kelatos", numero: "+34 606 806 376" },
+  { id: 1, nombre: "Kelatos", numero: "+34 649 970 128" },
+  { id: 7, nombre: "Dyson", numero: "+34 606 806 376" },
   { id: 6, nombre: "Kelatos NL", numero: "+31 684 635 001" },
   { id: 3, nombre: "Automatizaciones n8n", numero: "+34 638 619 588" },
 ];
