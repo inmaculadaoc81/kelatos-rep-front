@@ -15,14 +15,14 @@ const AUTOMATICO: { cuando: string; que: string; auto: boolean }[] = [
   { cuando: "Responde el bot o una persona, o anotas un contacto tuyo", que: "pasa de «Nuevo» a «Contactado».", auto: true },
   { cuando: "Se crea un resguardo (o un alquiler) con su teléfono o con el correo que dio en el chat", que: "pasa a «Ganado» y se enlaza con su cliente, esté en la etapa que esté.", auto: true },
   { cuando: "Un lead «Perdido» vuelve a escribir", que: "se reabre en «Nuevo» y se quita el motivo.", auto: true },
-  { cuando: "Le das un precio", que: "lo pasas a «Presupuesto» arrastrando la tarjeta.", auto: false },
+  { cuando: "Le das un precio", que: "lo pasas a «Presupuesto» con un clic en la etapa de su ficha.", auto: false },
   { cuando: "No sigue adelante", que: "lo pasas a «Perdido» (y anotas el motivo si quieres).", auto: false },
 ];
 
 const PREGUNTAS: { p: string; r: string }[] = [
   { p: "¿Qué es un lead y qué es un cliente?", r: "Un lead es alguien que ha contactado pero todavía no nos ha comprado nada. Cuando acepta un presupuesto o trae un equipo pasa a «Ganado» y ya es cliente (con su resguardo en Reparaciones)." },
   { p: "¿Y si la misma persona escribe por WhatsApp y luego llama?", r: "Se reconoce por el teléfono: sigue siendo una sola ficha y la llamada se añade a la misma línea de tiempo. Si intentas crear a mano un lead con un teléfono que ya existe, el sistema te avisa y te abre la ficha." },
-  { p: "¿Cómo muevo un lead de etapa?", r: "Arrastrando su tarjeta a otra columna del Tablero, o cambiando la etapa dentro de su ficha. Cada cambio queda anotado en la línea de tiempo." },
+  { p: "¿Cómo muevo un lead de etapa?", r: "Abre su ficha en «Leads» y pulsa la etapa que toque: los cinco estados son botones y la actual aparece marcada. Cada cambio queda anotado en la línea de tiempo." },
   { p: "¿Para qué sirve la «próxima acción»?", r: "Es lo siguiente que hay que hacer con ese lead y para qué día (por ejemplo «llamarle el viernes»). Si el día pasa y no se hizo, la ficha se marca en rojo y suma a «Acciones vencidas»." },
   { p: "¿Qué hago con un lead que ya no responde?", r: "Muévelo a «Perdido» y, si quieres, anota el motivo. No se borra: se queda en la Lista por si vuelve a escribir." },
 ];
@@ -38,7 +38,7 @@ export default function ComoFuncionaPage() {
       </div>
 
       <Seccion titulo="1. El recorrido de un lead">
-        <p className="mb-3 text-sm text-muted-foreground">Cada persona avanza por estas etapas, que son las columnas del Tablero:</p>
+        <p className="mb-3 text-sm text-muted-foreground">Cada persona avanza por estas etapas (son las pestañas de «Leads»):</p>
         <ol className="space-y-2">
           {ETAPAS.map((e, i) => (
             <li key={e.id} className="flex items-start gap-3 rounded-lg border bg-card p-3">
@@ -77,11 +77,11 @@ export default function ComoFuncionaPage() {
 
       <Seccion titulo="3. Cómo usarlo cada día">
         <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
-          <li>Trabaja desde la <strong className="text-foreground">Bandeja</strong>: la lista de la izquierda va por lo más reciente y, al elegir un lead, ves su conversación a la derecha y cambias su etapa con un clic. El <strong className="text-foreground">Tablero</strong> muestra lo mismo en columnas y la <strong className="text-foreground">Lista</strong> en tabla.</li>
-          <li>Abre el <strong className="text-foreground">Tablero</strong> y mira las tarjetas de arriba: <em>Nuevos hoy</em>, <em>Sin respuesta</em> (más de 24 h en «Nuevo») y <em>Acciones vencidas</em>.</li>
-          <li>Responde primero a los de la columna <strong className="text-foreground">Nuevo</strong>. Anota lo que hablaste con «Anotar una actividad».</li>
+          <li>Trabaja desde <strong className="text-foreground">Leads</strong>: la lista de la izquierda va por lo más reciente y, al elegir un lead, ves su conversación a la derecha y cambias su etapa con un clic. La <strong className="text-foreground">Tabla</strong> muestra todos los datos juntos, para revisar y filtrar.</li>
+          <li>Mira primero lo urgente: en «Leads» marca «Solo con acción vencida» y revisa la pestaña «Nuevo». Las <strong className="text-foreground">Métricas</strong> te dicen cuántos están <em>sin respuesta</em> (más de 24 h en «Nuevo») y cuántas <em>acciones</em> están <em>vencidas</em>.</li>
+          <li>Responde primero a los de la pestaña <strong className="text-foreground">Nuevo</strong>. Anota lo que hablaste con «Anotar una actividad».</li>
           <li>Deja siempre una <strong className="text-foreground">próxima acción con fecha</strong>: así nadie se queda sin seguimiento.</li>
-          <li>Cuando acepte o rechace, arrastra la tarjeta a <strong className="text-foreground">Ganado</strong> o <strong className="text-foreground">Perdido</strong>.</li>
+          <li>Cuando acepte o rechace, cambia su etapa a <strong className="text-foreground">Ganado</strong> o <strong className="text-foreground">Perdido</strong>.</li>
         </ol>
       </Seccion>
 
@@ -100,7 +100,7 @@ export default function ComoFuncionaPage() {
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Los leads de WhatsApp aparecen solos en el Tablero con su origen marcado; el resto de canales se irán conectando. Mientras tanto, las llamadas y los formularios se anotan a mano.
+          Los leads de WhatsApp aparecen solos en «Leads» con su origen marcado; el resto de canales se irán conectando. Mientras tanto, las llamadas y los formularios se anotan a mano.
         </p>
       </Seccion>
 
@@ -116,7 +116,7 @@ export default function ComoFuncionaPage() {
       </Seccion>
 
       <p className="text-sm text-muted-foreground">
-        ¿Listo? Ve al <Link href="/crm" className="font-medium text-primary underline">Tablero</Link> o a la <Link href="/crm/lista" className="font-medium text-primary underline">Lista</Link>.
+        ¿Listo? Ve a <Link href="/crm" className="font-medium text-primary underline">Leads</Link> o a la <Link href="/crm/lista" className="font-medium text-primary underline">Tabla</Link>.
       </p>
     </div>
   );

@@ -15,7 +15,7 @@ import { FichaLeadDialog } from "../ficha-lead-dialog";
 const POR_PAGINA = 50;
 
 export default function CrmListaPage() {
-  // useSearchParams (para abrir la lista ya filtrada por etapa desde el Tablero) exige un Suspense.
+  // useSearchParams (para abrir la tabla ya filtrada por etapa desde un enlace) exige un Suspense.
   return (
     <Suspense fallback={<Skeleton className="h-48 w-full" />}>
       <ListaContenido />
@@ -51,8 +51,8 @@ function ListaContenido() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">CRM · Lista</h1>
-          <p className="text-sm text-muted-foreground">Todos los leads en una tabla, para buscar y filtrar. {datos ? `${filas.length} resultado${filas.length === 1 ? "" : "s"}.` : ""}</p>
+          <h1 className="text-lg font-semibold">CRM · Tabla</h1>
+          <p className="text-sm text-muted-foreground">Todos los leads en una tabla con todos sus datos, para revisar, comparar y filtrar. Para trabajar un lead y ver su conversación, usa «Leads». {datos ? `${filas.length} resultado${filas.length === 1 ? "" : "s"}.` : ""}</p>
         </div>
         <Button className="gap-1.5" onClick={() => setNuevo(true)}><Plus className="size-4" /> Nuevo lead</Button>
       </div>

@@ -20,9 +20,8 @@ import { ClipboardTick, ClipboardText, Chart } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const VISTAS = [
-  { href: "/crm", etiqueta: "Bandeja", icono: ClipboardTick },
-  { href: "/crm/tablero", etiqueta: "Tablero", icono: ClipboardTick },
-  { href: "/crm/lista", etiqueta: "Lista", icono: ClipboardText },
+  { href: "/crm", etiqueta: "Leads", icono: ClipboardTick },
+  { href: "/crm/lista", etiqueta: "Tabla", icono: ClipboardText },
   { href: "/crm/metricas", etiqueta: "Métricas", icono: Chart },
   { href: "/crm/como-funciona", etiqueta: "Cómo funciona", icono: BookOpen },
 ];

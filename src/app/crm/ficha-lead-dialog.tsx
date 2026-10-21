@@ -31,7 +31,7 @@ const COLOR_ICONO: Record<TipoActividad, string> = {
   alta: "bg-rose-100 text-rose-700",
 };
 
-/** Ficha en ventana (desde el Tablero y la Lista). */
+/** Ficha en ventana (desde la Tabla). */
 export function FichaLeadDialog({ id, onCerrar, onCambio }: { id: number; onCerrar: () => void; onCambio: () => void }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCerrar(); }}>
@@ -48,7 +48,7 @@ export function FichaLeadDialog({ id, onCerrar, onCambio }: { id: number; onCerr
 
 /**
  * Ficha de un lead: cabecera con la etapa (se cambia con un clic), la conversación y la línea de tiempo a la izquierda, y los
- * datos editables a la derecha. Se usa dentro de una ventana (Tablero/Lista) o como panel fijo (Bandeja). Se actualiza sola cada 30 s.
+ * datos editables a la derecha. Se usa dentro de una ventana (Tabla) o como panel fijo (Leads). Se actualiza sola cada 30 s.
  */
 export function FichaLead({ id, onCambio }: { id: number; onCambio: () => void }) {
   const [recarga, setRecarga] = useState(0);
