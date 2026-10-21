@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   if (!puedeVerCrm(session?.user)) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
   const sp = new URL(req.url).searchParams;
   const params: Record<string, string> = {};
-  for (const k of ["q", "etapa", "origen", "responsable", "vencidas", "inactivos"]) {
+  for (const k of ["q", "etapa", "origen", "responsable", "vencidas", "inactivos", "bandeja", "categoria"]) {
     const v = sp.get(k);
     if (v) params[k] = v;
   }

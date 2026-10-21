@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ETAPAS, ORIGENES, accionVencida, euros, haceCuanto, nombreEtapa, nombreOrigen, type Lead } from "@/lib/crm";
+import { BANDEJAS, CATEGORIAS, ETAPAS, ORIGENES, accionVencida, chipCategoria, euros, haceCuanto, nombreCategoria, nombreEtapa, nombreOrigen, type Lead } from "@/lib/crm";
 import { useApi } from "../use-api";
 import { NuevoLeadDialog } from "../nuevo-lead-dialog";
 import { FichaLeadDialog } from "../ficha-lead-dialog";
@@ -16,6 +16,8 @@ export default function CrmListaPage() {
   const [busqueda, setBusqueda] = useState("");
   const [etapa, setEtapa] = useState("");
   const [origen, setOrigen] = useState("");
+  const [bandeja, setBandeja] = useState("");
+  const [categoria, setCategoria] = useState("");
   const [nuevo, setNuevo] = useState(false);
   const [abierto, setAbierto] = useState<number | null>(null);
 
@@ -23,6 +25,8 @@ export default function CrmListaPage() {
   if (busqueda.trim()) params.set("q", busqueda.trim());
   if (etapa) params.set("etapa", etapa);
   if (origen) params.set("origen", origen);
+  if (bandeja) params.set("bandeja", bandeja);
+  if (categoria) params.set("categoria", categoria);
   const { datos, error } = useApi<{ ok: boolean; leads: Lead[] }>(`/api/crm/leads?${params.toString()}`, recarga);
   const recargar = () => setRecarga((n) => n + 1);
 
@@ -49,6 +53,14 @@ export default function CrmListaPage() {
           <option value="">Todos los orígenes</option>
           {ORIGENES.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
         </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={bandeja} onChange={(e) => setBandeja(e.target.value)} aria-label="WhatsApp">
+          <option value="">Todos los WhatsApp</option>
+          {BANDEJAS.map((b) => <option key={b.id} value={b.id}>{b.nombre} · {b.numero}</option>)}
+        </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={categoria} onChange={(e) => setCategoria(e.target.value)} aria-label="Clasificación">
+          <option value="">Todas las clasificaciones</option>
+          {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
       </div>
 
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">No se pudo cargar: {error}</div>}
@@ -61,6 +73,8 @@ export default function CrmListaPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Contacto</TableHead>
                 <TableHead>Origen</TableHead>
+                <TableHead>Escribió a</TableHead>
+                <TableHead>Clasificación</TableHead>
                 <TableHead>Etapa</TableHead>
                 <TableHead>Responsable</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
@@ -76,6 +90,8 @@ export default function CrmListaPage() {
                     <TableCell className="font-medium">{l.nombre}</TableCell>
                     <TableCell className="text-xs">{l.telefono ?? "—"}{l.email ? <span className="block text-muted-foreground">{l.email}</span> : null}</TableCell>
                     <TableCell>{nombreOrigen(l.origen)}</TableCell>
+                    <TableCell className="text-xs">{l.bandeja_nombre ?? "—"}{l.numero_destino ? <span className="block text-muted-foreground">{l.numero_destino}</span> : null}</TableCell>
+                    <TableCell><span className={`rounded-full px-2 py-0.5 text-xs ${chipCategoria(l.categoria)}`}>{nombreCategoria(l.categoria)}</span></TableCell>
                     <TableCell><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${et?.chip ?? ""}`}>{nombreEtapa(l.etapa)}</span></TableCell>
                     <TableCell className="text-xs">{l.responsable ?? "—"}</TableCell>
                     <TableCell className="text-right">{euros(l.valor_estimado)}</TableCell>
@@ -85,7 +101,7 @@ export default function CrmListaPage() {
                 );
               })}
               {datos.leads.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">No hay leads con estos filtros.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">No hay leads con estos filtros.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

@@ -69,6 +69,9 @@ export default function ComoFuncionaPage() {
           <li><strong className="text-foreground">Próxima acción:</strong> qué hay que hacer y para qué día.</li>
           <li><strong className="text-foreground">Línea de tiempo:</strong> cada llamada, mensaje, correo, nota y cambio de etapa, de más reciente a más antiguo. Es el historial completo de esa persona.</li>
           <li>Si anotas un contacto tuyo en un lead que estaba en «Nuevo», pasa solo a «Contactado».</li>
+          <li><strong className="text-foreground">Escribió a:</strong> el WhatsApp (y su número) al que escribió la primera vez. Sirve para saber qué línea genera más leads.</li>
+          <li><strong className="text-foreground">Clasificación:</strong> de qué consulta (Dyson, Thermomix, ordenador, alquiler…). Se deduce sola de lo que escribe la persona, por palabras clave, y se puede corregir en la ficha. Si el primer mensaje es solo «Buenas», se clasifica cuando diga de qué trata.</li>
+          <li>La vista <strong className="text-foreground">Métricas</strong> resume todo esto: leads por día, embudo, conversión, tiempo de primera respuesta, y desglose por WhatsApp, clasificación, origen y responsable.</li>
         </ul>
       </Seccion>
 

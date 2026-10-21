@@ -16,12 +16,13 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ClipboardTick, ClipboardText } from "@/lib/icons";
+import { ClipboardTick, ClipboardText, Chart } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const VISTAS = [
   { href: "/crm", etiqueta: "Tablero", icono: ClipboardTick },
   { href: "/crm/lista", etiqueta: "Lista", icono: ClipboardText },
+  { href: "/crm/metricas", etiqueta: "Métricas", icono: Chart },
   { href: "/crm/como-funciona", etiqueta: "Cómo funciona", icono: BookOpen },
 ];
 

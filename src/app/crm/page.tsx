@@ -6,7 +6,7 @@ import { Phone, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ETAPAS, ORIGENES, accionVencida, euros, haceCuanto, nombreOrigen, type Etapa, type Lead, type ResumenCrm } from "@/lib/crm";
+import { BANDEJAS, CATEGORIAS, ETAPAS, ORIGENES, accionVencida, chipCategoria, euros, haceCuanto, nombreCategoria, nombreOrigen, type Etapa, type Lead, type ResumenCrm } from "@/lib/crm";
 import { useApi } from "./use-api";
 import { NuevoLeadDialog } from "./nuevo-lead-dialog";
 import { FichaLeadDialog } from "./ficha-lead-dialog";
@@ -15,6 +15,8 @@ export default function CrmTableroPage() {
   const [recarga, setRecarga] = useState(0);
   const [busqueda, setBusqueda] = useState("");
   const [origen, setOrigen] = useState("");
+  const [bandeja, setBandeja] = useState("");
+  const [categoria, setCategoria] = useState("");
   const [soloVencidas, setSoloVencidas] = useState(false);
   const [nuevo, setNuevo] = useState(false);
   const [abierto, setAbierto] = useState<number | null>(null);
@@ -26,6 +28,8 @@ export default function CrmTableroPage() {
   const params = new URLSearchParams();
   if (busqueda.trim()) params.set("q", busqueda.trim());
   if (origen) params.set("origen", origen);
+  if (bandeja) params.set("bandeja", bandeja);
+  if (categoria) params.set("categoria", categoria);
   if (soloVencidas) params.set("vencidas", "1");
   const { datos, error } = useApi<{ ok: boolean; leads: Lead[] }>(`/api/crm/leads?${params.toString()}`, recarga);
   const { datos: resumen } = useApi<{ ok: boolean } & ResumenCrm>("/api/crm/resumen", recarga);
@@ -86,6 +90,14 @@ export default function CrmTableroPage() {
           <option value="">Todos los orígenes</option>
           {ORIGENES.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
         </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={bandeja} onChange={(e) => setBandeja(e.target.value)} aria-label="WhatsApp">
+          <option value="">Todos los WhatsApp</option>
+          {BANDEJAS.map((b) => <option key={b.id} value={b.id}>{b.nombre} · {b.numero}</option>)}
+        </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={categoria} onChange={(e) => setCategoria(e.target.value)} aria-label="Clasificación">
+          <option value="">Todas las clasificaciones</option>
+          {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
         <label className="flex cursor-pointer items-center gap-1.5 text-sm">
           <input type="checkbox" checked={soloVencidas} onChange={(e) => setSoloVencidas(e.target.checked)} /> Solo con acción vencida
         </label>
@@ -96,7 +108,7 @@ export default function CrmTableroPage() {
 
       {datos && (
         <>
-          {leads.length === 0 && !busqueda && !origen && !soloVencidas && (
+          {leads.length === 0 && !busqueda && !origen && !bandeja && !categoria && !soloVencidas && (
             <div className="rounded-lg border border-dashed p-8 text-center">
               <p className="font-medium">Todavía no hay leads</p>
               <p className="mt-1 text-sm text-muted-foreground">Cuando se conecten WhatsApp, las llamadas y las webs llegarán solos. Mientras tanto puedes crear uno a mano o leer cómo funciona en la pestaña «Cómo funciona».</p>
@@ -135,7 +147,9 @@ export default function CrmTableroPage() {
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                           <span className="rounded-full bg-muted px-1.5 py-0.5">{nombreOrigen(l.origen)}</span>
                           {Number(l.valor_estimado) > 0 && <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-emerald-800">{euros(l.valor_estimado)}</span>}
+                          <span className={`rounded-full px-1.5 py-0.5 ${chipCategoria(l.categoria)}`}>{nombreCategoria(l.categoria)}</span>
                         </div>
+                        {l.bandeja_nombre && <p className="mt-1.5 text-[11px] text-muted-foreground">Escribió a: <span className="font-medium text-foreground">{l.bandeja_nombre}</span>{l.numero_destino ? ` · ${l.numero_destino}` : ""}</p>}
                         {l.proxima_accion && (
                           <p className={`mt-1.5 text-xs ${accionVencida(l) ? "font-medium text-rose-700" : "text-muted-foreground"}`}>
                             {accionVencida(l) ? "⚠ " : "→ "}{l.proxima_accion}{l.proxima_accion_fecha ? ` (${l.proxima_accion_fecha.split("-").reverse().slice(0, 2).join("/")})` : ""}

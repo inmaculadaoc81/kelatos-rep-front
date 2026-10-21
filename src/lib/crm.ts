@@ -3,6 +3,7 @@ import { esSuperadmin } from "@/lib/superadmin";
 
 export type Etapa = "nuevo" | "contactado" | "presupuesto" | "ganado" | "perdido";
 export type Origen = "whatsapp" | "llamada" | "web" | "email" | "manual" | "otro";
+export type Categoria = "dyson" | "thermomix" | "ordenador" | "surface" | "consola" | "robot" | "monitor" | "alquiler" | "repuestos" | "otro";
 export type TipoActividad = "llamada" | "whatsapp" | "email" | "nota" | "cambio_etapa" | "alta";
 
 export interface Lead {
@@ -24,6 +25,10 @@ export interface Lead {
   creado_por: string | null;
   creado_en: string;
   actualizado_en: string;
+  bandeja_id: number | null;
+  bandeja_nombre: string | null;
+  numero_destino: string | null;
+  categoria: Categoria | null;
   actividades?: number;
 }
 
@@ -64,6 +69,56 @@ export const ORIGENES: { id: Origen; nombre: string }[] = [
   { id: "manual", nombre: "Manual" },
   { id: "otro", nombre: "Otro" },
 ];
+
+export const CATEGORIAS: { id: Categoria; nombre: string; chip: string }[] = [
+  { id: "dyson", nombre: "Dyson", chip: "bg-fuchsia-100 text-fuchsia-800" },
+  { id: "thermomix", nombre: "Thermomix", chip: "bg-lime-100 text-lime-800" },
+  { id: "ordenador", nombre: "Ordenador / portátil", chip: "bg-sky-100 text-sky-800" },
+  { id: "surface", nombre: "Surface", chip: "bg-indigo-100 text-indigo-800" },
+  { id: "consola", nombre: "Consola", chip: "bg-violet-100 text-violet-800" },
+  { id: "robot", nombre: "Robot (aspirador / cocina)", chip: "bg-teal-100 text-teal-800" },
+  { id: "monitor", nombre: "Monitor", chip: "bg-cyan-100 text-cyan-800" },
+  { id: "alquiler", nombre: "Alquiler", chip: "bg-amber-100 text-amber-800" },
+  { id: "repuestos", nombre: "Repuestos y piezas", chip: "bg-orange-100 text-orange-800" },
+  { id: "otro", nombre: "Otro", chip: "bg-zinc-100 text-zinc-700" },
+];
+
+/** WhatsApp (bandejas de Chatwoot) que alimentan el CRM. Debe coincidir con kelatos_app.crm_config.chatwoot_bandejas_info. */
+export const BANDEJAS: { id: number; nombre: string; numero: string }[] = [
+  { id: 1, nombre: "WhatsApp principal", numero: "+34 649 970 128" },
+  { id: 7, nombre: "Kelatos", numero: "+34 606 806 376" },
+  { id: 6, nombre: "Kelatos NL", numero: "+31 684 635 001" },
+  { id: 3, nombre: "Automatizaciones n8n", numero: "+34 638 619 588" },
+];
+
+export const nombreCategoria = (c: string | null | undefined) => (c ? CATEGORIAS.find((x) => x.id === c)?.nombre ?? c : "Sin clasificar");
+export const chipCategoria = (c: string | null | undefined) => (c ? CATEGORIAS.find((x) => x.id === c)?.chip ?? "bg-zinc-100 text-zinc-700" : "bg-zinc-100 text-zinc-500");
+
+export interface FilaMetrica { clave: string; extra: string | null; n: number; ganados: number }
+export interface MetricasCrm {
+  dias: number;
+  creados: number;
+  ganados: number;
+  perdidos: number;
+  abiertos: number;
+  sin_respuesta: number;
+  acciones_vencidas: number;
+  valor_ganado: number;
+  valor_perdido: number;
+  valor_abierto: number;
+  llegaron_contactado: number;
+  llegaron_presupuesto: number;
+  conversion: number;
+  mediana_primera_respuesta_horas: number | null;
+  leads_con_respuesta: number;
+  mediana_dias_hasta_ganar: number | null;
+  leads_ganados_con_fecha: number;
+  porDia: { dia: string; n: number }[];
+  porOrigen: FilaMetrica[];
+  porNumero: FilaMetrica[];
+  porCategoria: FilaMetrica[];
+  porResponsable: FilaMetrica[];
+}
 
 export const nombreEtapa = (e: string) => ETAPAS.find((x) => x.id === e)?.nombre ?? e;
 export const nombreOrigen = (o: string) => ORIGENES.find((x) => x.id === o)?.nombre ?? o;

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ETAPAS, ORIGENES, TIPOS_ACTIVIDAD, fechaHora, type Actividad, type Etapa, type Lead, type Origen, type TipoActividad } from "@/lib/crm";
+import { CATEGORIAS, ETAPAS, ORIGENES, TIPOS_ACTIVIDAD, fechaHora, type Actividad, type Categoria, type Etapa, type Lead, type Origen, type TipoActividad } from "@/lib/crm";
 import { useApi } from "./use-api";
 
 const SELECT = "h-9 w-full rounded-md border bg-background px-2 text-sm";
@@ -70,6 +70,7 @@ function FormularioLead({ lead, onGuardado }: { lead: Lead; onGuardado: () => vo
   const [fecha, setFecha] = useState(lead.proxima_accion_fecha ?? "");
   const [notas, setNotas] = useState(lead.notas ?? "");
   const [motivo, setMotivo] = useState(lead.motivo_perdida ?? "");
+  const [categoria, setCategoria] = useState<Categoria | "">(lead.categoria ?? "");
   const [guardando, setGuardando] = useState(false);
 
   async function guardar() {
@@ -79,7 +80,7 @@ function FormularioLead({ lead, onGuardado }: { lead: Lead; onGuardado: () => vo
       const res = await fetch(`/api/crm/leads/${lead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, telefono, email, origen, etapa, responsable, valor_estimado: valor, proxima_accion: accion, proxima_accion_fecha: fecha, notas, motivo_perdida: etapa === "perdido" ? motivo : "" }),
+        body: JSON.stringify({ nombre, telefono, email, origen, etapa, responsable, valor_estimado: valor, proxima_accion: accion, proxima_accion_fecha: fecha, notas, categoria, motivo_perdida: etapa === "perdido" ? motivo : "" }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -94,6 +95,11 @@ function FormularioLead({ lead, onGuardado }: { lead: Lead; onGuardado: () => vo
 
   return (
     <div className="space-y-3">
+      {lead.bandeja_nombre && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          Escribió a: <strong>{lead.bandeja_nombre}</strong>{lead.numero_destino ? ` · ${lead.numero_destino}` : ""}
+        </p>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="flEtapa">Etapa</Label>
         <select id="flEtapa" className={SELECT} value={etapa} onChange={(e) => setEtapa(e.target.value as Etapa)}>
@@ -131,6 +137,13 @@ function FormularioLead({ lead, onGuardado }: { lead: Lead; onGuardado: () => vo
           <Label htmlFor="flValor">Valor estimado (€)</Label>
           <Input id="flValor" type="number" min={0} value={valor} onChange={(e) => setValor(e.target.value)} />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="flCat">Clasificación (de qué consulta)</Label>
+        <select id="flCat" className={SELECT} value={categoria} onChange={(e) => setCategoria(e.target.value as Categoria | "")}>
+          <option value="">Sin clasificar</option>
+          {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="flResp">Responsable</Label>
