@@ -70,17 +70,17 @@ export const ORIGENES: { id: Origen; nombre: string }[] = [
   { id: "otro", nombre: "Otro" },
 ];
 
-export const CATEGORIAS: { id: Categoria; nombre: string; chip: string }[] = [
-  { id: "dyson", nombre: "Dyson", chip: "bg-fuchsia-100 text-fuchsia-800" },
-  { id: "thermomix", nombre: "Thermomix", chip: "bg-lime-100 text-lime-800" },
-  { id: "ordenador", nombre: "Ordenador / portátil", chip: "bg-sky-100 text-sky-800" },
-  { id: "surface", nombre: "Surface", chip: "bg-indigo-100 text-indigo-800" },
-  { id: "consola", nombre: "Consola", chip: "bg-violet-100 text-violet-800" },
-  { id: "robot", nombre: "Robot (aspirador / cocina)", chip: "bg-teal-100 text-teal-800" },
-  { id: "monitor", nombre: "Monitor", chip: "bg-cyan-100 text-cyan-800" },
-  { id: "alquiler", nombre: "Alquiler", chip: "bg-amber-100 text-amber-800" },
-  { id: "repuestos", nombre: "Repuestos y piezas", chip: "bg-orange-100 text-orange-800" },
-  { id: "otro", nombre: "Otro", chip: "bg-zinc-100 text-zinc-700" },
+export const CATEGORIAS: { id: Categoria; nombre: string; chip: string; borde: string }[] = [
+  { id: "dyson", nombre: "Dyson", chip: "bg-fuchsia-100 text-fuchsia-800", borde: "border-l-fuchsia-400" },
+  { id: "thermomix", nombre: "Thermomix", chip: "bg-lime-100 text-lime-800", borde: "border-l-lime-500" },
+  { id: "ordenador", nombre: "Ordenador / portátil", chip: "bg-sky-100 text-sky-800", borde: "border-l-sky-400" },
+  { id: "surface", nombre: "Surface", chip: "bg-indigo-100 text-indigo-800", borde: "border-l-indigo-400" },
+  { id: "consola", nombre: "Consola", chip: "bg-violet-100 text-violet-800", borde: "border-l-violet-400" },
+  { id: "robot", nombre: "Robot (aspirador / cocina)", chip: "bg-teal-100 text-teal-800", borde: "border-l-teal-400" },
+  { id: "monitor", nombre: "Monitor", chip: "bg-cyan-100 text-cyan-800", borde: "border-l-cyan-400" },
+  { id: "alquiler", nombre: "Alquiler", chip: "bg-amber-100 text-amber-800", borde: "border-l-amber-400" },
+  { id: "repuestos", nombre: "Repuestos y piezas", chip: "bg-orange-100 text-orange-800", borde: "border-l-orange-400" },
+  { id: "otro", nombre: "Otro", chip: "bg-zinc-100 text-zinc-700", borde: "border-l-zinc-400" },
 ];
 
 /** WhatsApp (bandejas de Chatwoot) que alimentan el CRM. Debe coincidir con kelatos_app.crm_config.chatwoot_bandejas_info. */
@@ -90,6 +90,26 @@ export const BANDEJAS: { id: number; nombre: string; numero: string }[] = [
   { id: 6, nombre: "Kelatos NL", numero: "+31 684 635 001" },
   { id: 3, nombre: "Automatizaciones n8n", numero: "+34 638 619 588" },
 ];
+
+export const bordeCategoria = (c: string | null | undefined) => (c ? CATEGORIAS.find((x) => x.id === c)?.borde ?? "border-l-zinc-300" : "border-l-zinc-300");
+
+export type GrupoFecha = "hoy" | "ayer" | "semana" | "antes";
+export const GRUPOS_FECHA: { id: GrupoFecha; nombre: string }[] = [
+  { id: "hoy", nombre: "Hoy" },
+  { id: "ayer", nombre: "Ayer" },
+  { id: "semana", nombre: "Esta semana" },
+  { id: "antes", nombre: "Anteriores" },
+];
+
+/** En qué bloque de fecha cae un lead (por el día de Madrid de su última actividad). */
+export function grupoFecha(iso: string | null | undefined): GrupoFecha {
+  if (!iso) return "antes";
+  const dia = (ms: number) => new Date(ms).toLocaleDateString("sv-SE", { timeZone: "Europe/Madrid" });
+  const d = dia(new Date(iso).getTime());
+  if (d === dia(Date.now())) return "hoy";
+  if (d === dia(Date.now() - 86400000)) return "ayer";
+  return d >= dia(Date.now() - 7 * 86400000) ? "semana" : "antes";
+}
 
 export const nombreCategoria = (c: string | null | undefined) => (c ? CATEGORIAS.find((x) => x.id === c)?.nombre ?? c : "Sin clasificar");
 export const chipCategoria = (c: string | null | undefined) => (c ? CATEGORIAS.find((x) => x.id === c)?.chip ?? "bg-zinc-100 text-zinc-700" : "bg-zinc-100 text-zinc-500");

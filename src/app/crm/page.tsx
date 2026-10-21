@@ -3,17 +3,35 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Phone, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Phone, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BANDEJAS, CATEGORIAS, ETAPAS, ORIGENES, accionVencida, chipCategoria, esReciente, euros, haceCuanto, nombreCategoria, nombreOrigen, type Etapa, type Lead, type ResumenCrm } from "@/lib/crm";
+import { BANDEJAS, CATEGORIAS, ETAPAS, GRUPOS_FECHA, ORIGENES, accionVencida, bordeCategoria, chipCategoria, esReciente, euros, grupoFecha, haceCuanto, nombreCategoria, nombreOrigen, type Etapa, type GrupoFecha, type Lead, type ResumenCrm } from "@/lib/crm";
 import { useApi } from "./use-api";
 import { NuevoLeadDialog } from "./nuevo-lead-dialog";
 import { FichaLeadDialog } from "./ficha-lead-dialog";
 
-/** Tarjetas que se pintan de golpe por columna: con cientos de leads el resto se ve con «Mostrar más» o en la Lista. */
+/** Tarjetas que se pintan de golpe por bloque: el resto se ve con «Mostrar más» o en la Lista. */
 const POR_PAGINA = 20;
+
+type Orden = "reciente" | "antiguo" | "accion" | "valor" | "nombre";
+const ORDENES: { id: Orden; nombre: string }[] = [
+  { id: "reciente", nombre: "Más recientes primero" },
+  { id: "antiguo", nombre: "Más antiguos primero" },
+  { id: "accion", nombre: "Próxima acción (la más urgente)" },
+  { id: "valor", nombre: "Mayor valor" },
+  { id: "nombre", nombre: "Nombre (A-Z)" },
+];
+
+const actividad = (l: Lead) => new Date(l.ultimo_contacto ?? l.creado_en).getTime();
+const comparadores: Record<Orden, (a: Lead, b: Lead) => number> = {
+  reciente: (a, b) => actividad(b) - actividad(a),
+  antiguo: (a, b) => actividad(a) - actividad(b),
+  accion: (a, b) => (a.proxima_accion_fecha ?? "9999").localeCompare(b.proxima_accion_fecha ?? "9999") || actividad(b) - actividad(a),
+  valor: (a, b) => (Number(b.valor_estimado) || 0) - (Number(a.valor_estimado) || 0) || actividad(b) - actividad(a),
+  nombre: (a, b) => a.nombre.localeCompare(b.nombre, "es"),
+};
 
 export default function CrmTableroPage() {
   const [recarga, setRecarga] = useState(0);
@@ -22,11 +40,13 @@ export default function CrmTableroPage() {
   const [bandeja, setBandeja] = useState("");
   const [categoria, setCategoria] = useState("");
   const [soloVencidas, setSoloVencidas] = useState(false);
+  const [orden, setOrden] = useState<Orden>("reciente");
   const [nuevo, setNuevo] = useState(false);
   const [abierto, setAbierto] = useState<number | null>(null);
   const [arrastrando, setArrastrando] = useState<number | null>(null);
   const [destino, setDestino] = useState<Etapa | null>(null);
-  const [visibles, setVisibles] = useState<Partial<Record<Etapa, number>>>({});
+  const [visibles, setVisibles] = useState<Record<string, number>>({});
+  const [plegados, setPlegados] = useState<Record<string, boolean>>({});
   // Mientras se arrastra, la tarjeta se ve ya en su columna nueva (el servidor confirma después).
   const [moviendo, setMoviendo] = useState<Record<number, Etapa>>({});
 
@@ -41,11 +61,12 @@ export default function CrmTableroPage() {
 
   const recargar = () => setRecarga((n) => n + 1);
 
-  // El tablero se actualiza solo cada 30 s (si la pestaña está a la vista y no hay una ficha abierta): los leads nuevos aparecen sin recargar.
+  // El tablero se actualiza solo cada 30 s (si la pestaña está a la vista): los leads nuevos aparecen sin recargar.
   useEffect(() => {
     const t = setInterval(() => { if (document.visibilityState === "visible") setRecarga((n) => n + 1); }, 30_000);
     return () => clearInterval(t);
   }, []);
+
   const leads = useMemo(() => (datos?.leads ?? []).map((l) => (moviendo[l.id] ? { ...l, etapa: moviendo[l.id] } : l)), [datos, moviendo]);
 
   async function mover(id: number, etapa: Etapa) {
@@ -68,13 +89,15 @@ export default function CrmTableroPage() {
   const valorPipeline = enPipeline.reduce((s, e) => s + e.valor, 0);
   const activos = enPipeline.reduce((s, e) => s + e.n, 0);
   const hayFiltros = !!(busqueda || origen || bandeja || categoria || soloVencidas);
+  // Los bloques por fecha solo tienen sentido cuando el orden es cronológico.
+  const porFecha = orden === "reciente" || orden === "antiguo";
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">CRM · Tablero</h1>
-          <p className="text-sm text-muted-foreground">Arrastra una ficha a otra columna para cambiarla de etapa. Cada columna se desplaza sola; con «Ver todos» la abres en la Lista.</p>
+          <p className="text-sm text-muted-foreground">Arrastra una ficha a otra columna para cambiarla de etapa. Cada columna se agrupa por fecha y se desplaza sola; «Ver todos» la abre en la Lista.</p>
         </div>
         <Button className="gap-1.5" onClick={() => setNuevo(true)}><Plus className="size-4" /> Nuevo lead</Button>
       </div>
@@ -104,6 +127,9 @@ export default function CrmTableroPage() {
           <option value="">Todas las clasificaciones</option>
           {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={orden} onChange={(e) => setOrden(e.target.value as Orden)} aria-label="Ordenar por">
+          {ORDENES.map((o) => <option key={o.id} value={o.id}>Orden: {o.nombre}</option>)}
+        </select>
         <label className="flex cursor-pointer items-center gap-1.5 text-sm">
           <input type="checkbox" checked={soloVencidas} onChange={(e) => setSoloVencidas(e.target.checked)} /> Solo con acción vencida
         </label>
@@ -124,9 +150,13 @@ export default function CrmTableroPage() {
           )}
           <div className="flex gap-3 overflow-x-auto pb-2">
             {ETAPAS.map((et) => {
-              const lista = leads.filter((l) => l.etapa === et.id);
+              const lista = leads.filter((l) => l.etapa === et.id).sort(comparadores[orden]);
               const valor = lista.reduce((s, l) => s + (Number(l.valor_estimado) || 0), 0);
-              const limite = visibles[et.id] ?? POR_PAGINA;
+              // Bloques: por fecha (Hoy, Ayer, Esta semana, Anteriores) o un único bloque sin título.
+              const bloques: { id: string; titulo: string | null; items: Lead[] }[] = porFecha
+                ? GRUPOS_FECHA.map((g) => ({ id: g.id, titulo: g.nombre, items: lista.filter((l) => grupoFecha(l.ultimo_contacto ?? l.creado_en) === g.id) })).filter((b) => b.items.length > 0)
+                : [{ id: "todos", titulo: null, items: lista }];
+              if (porFecha && orden === "antiguo") bloques.reverse();
               return (
                 <section
                   key={et.id}
@@ -144,39 +174,58 @@ export default function CrmTableroPage() {
                   )}
                   {/* Altura fija con scroll propio: la página no crece con cientos de tarjetas. */}
                   <div className="flex max-h-[calc(100vh-25rem)] min-h-40 flex-1 flex-col gap-1.5 overflow-y-auto p-2 pt-0">
-                    {lista.slice(0, limite).map((l) => (
-                      <button
-                        key={l.id}
-                        type="button"
-                        draggable
-                        onDragStart={() => setArrastrando(l.id)}
-                        onDragEnd={() => { setArrastrando(null); setDestino(null); }}
-                        onClick={() => setAbierto(l.id)}
-                        className={`rounded-md border bg-card px-2.5 py-2 text-left text-sm shadow-sm transition-shadow hover:shadow-md ${arrastrando === l.id ? "opacity-50" : ""}`}
-                      >
-                        <div className="flex items-baseline justify-between gap-2">
-                          <p className="flex min-w-0 items-center gap-1.5 truncate font-medium leading-tight">{esReciente(l.creado_en) && <span className="size-2 shrink-0 rounded-full bg-sky-500" title="Llegó hace menos de 2 horas" />}<span className="truncate">{l.nombre}</span></p>
-                          <span className="shrink-0 text-[10px] text-muted-foreground">{haceCuanto(l.ultimo_contacto ?? l.creado_en)}</span>
+                    {bloques.map((b) => {
+                      const clave = `${et.id}:${b.id}`;
+                      // «Anteriores» empieza plegado cuando la columna es grande: lo de hoy queda a la vista.
+                      const plegado = plegados[clave] ?? (b.id === "antes" && lista.length > 12);
+                      const limite = visibles[clave] ?? POR_PAGINA;
+                      return (
+                        <div key={b.id} className="space-y-1.5">
+                          {b.titulo && (
+                            <button type="button" onClick={() => setPlegados((p) => ({ ...p, [clave]: !plegado }))} className="sticky top-0 z-[1] flex w-full items-center gap-1 rounded bg-muted/90 px-1.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                              {plegado ? <ChevronRight className="size-3" /> : <ChevronDown className="size-3" />}
+                              {b.titulo} <span className="font-normal">· {b.items.length}</span>
+                            </button>
+                          )}
+                          {!plegado && b.items.slice(0, limite).map((l) => (
+                            <button
+                              key={l.id}
+                              type="button"
+                              draggable
+                              onDragStart={() => setArrastrando(l.id)}
+                              onDragEnd={() => { setArrastrando(null); setDestino(null); }}
+                              onClick={() => setAbierto(l.id)}
+                              className={`w-full rounded-md border border-l-4 bg-card px-2.5 py-2 text-left text-sm shadow-sm transition-shadow hover:shadow-md ${bordeCategoria(l.categoria)} ${arrastrando === l.id ? "opacity-50" : ""}`}
+                            >
+                              <div className="flex items-baseline justify-between gap-2">
+                                <p className="flex min-w-0 items-center gap-1.5 font-medium leading-tight">
+                                  {esReciente(l.creado_en) && <span className="size-2 shrink-0 rounded-full bg-sky-500" title="Llegó hace menos de 2 horas" />}
+                                  <span className="truncate">{l.nombre}</span>
+                                </p>
+                                <span className="shrink-0 text-[10px] text-muted-foreground">{haceCuanto(l.ultimo_contacto ?? l.creado_en)}</span>
+                              </div>
+                              {l.telefono && <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="size-3" />{l.telefono}</p>}
+                              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                                {l.bandeja_nombre && <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-emerald-800" title={l.numero_destino ?? undefined}>{l.bandeja_nombre}</span>}
+                                <span className={`rounded-full px-1.5 py-0.5 ${chipCategoria(l.categoria)}`}>{nombreCategoria(l.categoria)}</span>
+                                {l.origen !== "whatsapp" && <span className="rounded-full bg-muted px-1.5 py-0.5">{nombreOrigen(l.origen)}</span>}
+                                {Number(l.valor_estimado) > 0 && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-800">{euros(l.valor_estimado)}</span>}
+                              </div>
+                              {l.proxima_accion && (
+                                <p className={`mt-1 truncate text-[11px] ${accionVencida(l) ? "font-medium text-rose-700" : "text-muted-foreground"}`}>
+                                  {accionVencida(l) ? "⚠ " : "→ "}{l.proxima_accion}{l.proxima_accion_fecha ? ` (${l.proxima_accion_fecha.split("-").reverse().slice(0, 2).join("/")})` : ""}
+                                </p>
+                              )}
+                            </button>
+                          ))}
+                          {!plegado && b.items.length > limite && (
+                            <button type="button" className="w-full rounded-md border border-dashed py-1.5 text-xs text-muted-foreground hover:bg-muted" onClick={() => setVisibles((v) => ({ ...v, [clave]: limite + POR_PAGINA }))}>
+                              Mostrar {Math.min(POR_PAGINA, b.items.length - limite)} más ({b.items.length - limite} restantes)
+                            </button>
+                          )}
                         </div>
-                        {l.telefono && <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="size-3" />{l.telefono}</p>}
-                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
-                          {l.bandeja_nombre && <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-emerald-800" title={l.numero_destino ?? undefined}>{l.bandeja_nombre}</span>}
-                          <span className={`rounded-full px-1.5 py-0.5 ${chipCategoria(l.categoria)}`}>{nombreCategoria(l.categoria)}</span>
-                          {l.origen !== "whatsapp" && <span className="rounded-full bg-muted px-1.5 py-0.5">{nombreOrigen(l.origen)}</span>}
-                          {Number(l.valor_estimado) > 0 && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-800">{euros(l.valor_estimado)}</span>}
-                        </div>
-                        {l.proxima_accion && (
-                          <p className={`mt-1 truncate text-[11px] ${accionVencida(l) ? "font-medium text-rose-700" : "text-muted-foreground"}`}>
-                            {accionVencida(l) ? "⚠ " : "→ "}{l.proxima_accion}{l.proxima_accion_fecha ? ` (${l.proxima_accion_fecha.split("-").reverse().slice(0, 2).join("/")})` : ""}
-                          </p>
-                        )}
-                      </button>
-                    ))}
-                    {lista.length > limite && (
-                      <button type="button" className="rounded-md border border-dashed py-1.5 text-xs text-muted-foreground hover:bg-muted" onClick={() => setVisibles((v) => ({ ...v, [et.id]: limite + POR_PAGINA }))}>
-                        Mostrar {Math.min(POR_PAGINA, lista.length - limite)} más ({lista.length - limite} restantes)
-                      </button>
-                    )}
+                      );
+                    })}
                     {lista.length === 0 && <p className="px-1 py-3 text-center text-xs text-muted-foreground">Sin leads</p>}
                   </div>
                 </section>
