@@ -77,6 +77,7 @@ export default function ComoFuncionaPage() {
 
       <Seccion titulo="3. Cómo usarlo cada día">
         <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
+          <li>Trabaja desde la <strong className="text-foreground">Bandeja</strong>: la lista de la izquierda va por lo más reciente y, al elegir un lead, ves su conversación a la derecha y cambias su etapa con un clic. El <strong className="text-foreground">Tablero</strong> muestra lo mismo en columnas y la <strong className="text-foreground">Lista</strong> en tabla.</li>
           <li>Abre el <strong className="text-foreground">Tablero</strong> y mira las tarjetas de arriba: <em>Nuevos hoy</em>, <em>Sin respuesta</em> (más de 24 h en «Nuevo») y <em>Acciones vencidas</em>.</li>
           <li>Responde primero a los de la columna <strong className="text-foreground">Nuevo</strong>. Anota lo que hablaste con «Anotar una actividad».</li>
           <li>Deja siempre una <strong className="text-foreground">próxima acción con fecha</strong>: así nadie se queda sin seguimiento.</li>

@@ -30,6 +30,8 @@ export interface Lead {
   numero_destino: string | null;
   categoria: Categoria | null;
   actividades?: number;
+  /** Última línea de la última conversación de WhatsApp: «[15:17] Bot: …». */
+  ultima_linea?: string | null;
 }
 
 export interface Actividad {
