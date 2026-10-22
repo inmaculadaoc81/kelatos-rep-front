@@ -232,7 +232,7 @@ function Leads({ origen, titulo, descripcion }: CanalVista) {
             <div className="text-center"><Button variant="outline" size="sm" onClick={() => setLimite((n) => n + POR_PAGINA)}>Mostrar {Math.min(POR_PAGINA, leads.length - limite)} más ({leads.length - limite} restantes)</Button></div>
           )}
           <Sheet open={seleccionado !== null} onOpenChange={(o) => { if (!o) setSeleccionado(null); }}>
-            <SheetContent side="right" className="w-full overflow-y-auto p-4 sm:max-w-3xl">
+            <SheetContent side="right" className="overflow-y-auto p-4 data-[side=right]:w-full data-[side=right]:sm:max-w-4xl">
               <SheetTitle className="sr-only">Ficha del lead</SheetTitle>
               <SheetDescription className="sr-only">Conversación, datos y actividad del lead</SheetDescription>
               {seleccionado !== null && <FichaLead key={seleccionado} id={seleccionado} onCambio={recargar} />}

@@ -66,9 +66,10 @@ export function FichaLead({ id, onCambio }: { id: number; onCambio: () => void }
   const { lead, actividades } = datos;
 
   return (
-    <div className="space-y-4">
+    // @container: el reparto en dos columnas depende del ancho del PROPIO panel (no de la pantalla), así también cabe en el lateral.
+    <div className="@container space-y-4">
       <CabeceraLead lead={lead} onCambio={refrescar} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="grid gap-6 @3xl:grid-cols-[minmax(0,1fr)_21rem]">
         <LineaTiempo leadId={lead.id} actividades={actividades} onNueva={refrescar} />
         <FormularioLead key={`${lead.id}-${lead.actualizado_en}`} lead={lead} onGuardado={refrescar} />
       </div>
@@ -239,6 +240,30 @@ function lineasChat(detalle: string | null) {
   return salida.length ? salida : null;
 }
 
+const MOTIVO_FIN: Record<string, string> = {
+  user_hangup: "Colgó el cliente", agent_hangup: "Colgó el agente", call_transfer: "Transferida a una persona", inactivity: "Cortada por inactividad",
+  dial_no_answer: "Sin respuesta", voicemail_reached: "Buzón de voz", credit_exhausted: "Sin créditos en Retell: la llamada no se pudo atender",
+  error_no_audio_received: "Error: no llegó audio", max_duration_reached: "Duración máxima alcanzada",
+};
+
+/** Llamada de Retell: resumen y datos arriba, y la transcripción («Agent:» / «User:») como conversación. */
+function partesLlamada(detalle: string | null) {
+  if (!detalle || !/(Resumen:|Fin:|Transcripción:)/.test(detalle)) return null;
+  const [cabeza, ...resto] = detalle.split(/\n?Transcripción:\n/);
+  const meta = cabeza.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const m = /^Fin: (\S+)$/.exec(l);
+    return m ? `Final: ${MOTIVO_FIN[m[1]] ?? m[1]}` : l;
+  });
+  const dialogo: { quien: string; texto: string }[] = [];
+  for (const l of resto.join("\n").split("\n")) {
+    const m = /^(Agent|User):\s?([\s\S]*)$/.exec(l);
+    if (m) dialogo.push({ quien: m[1] === "Agent" ? "Bot" : "Cliente", texto: m[2] });
+    else if (dialogo.length && l.trim()) dialogo[dialogo.length - 1].texto += `\n${l}`;
+  }
+  return { meta, dialogo };
+}
+
+
 const BURBUJA: Record<string, string> = {
   Cliente: "mr-auto bg-muted",
   Bot: "ml-auto bg-violet-100 text-violet-950",
@@ -247,6 +272,8 @@ const BURBUJA: Record<string, string> = {
 };
 
 function LineaTiempo({ leadId, actividades, onNueva }: { leadId: number; actividades: Actividad[]; onNueva: () => void }) {
+  // La llamada más reciente con transcripción se muestra abierta; las anteriores, plegadas.
+  const primeraLlamadaId = actividades.find((x) => x.tipo === "llamada" && x.detalle?.includes("Transcripción:"))?.id;
   const [tipo, setTipo] = useState<TipoActividad>("nota");
   const [direccion, setDireccion] = useState<"entrante" | "saliente">("saliente");
   const [resumen, setResumen] = useState("");
@@ -311,6 +338,7 @@ function LineaTiempo({ leadId, actividades, onNueva }: { leadId: number; activid
         {actividades.map((a) => {
           const Icono = ICONO[a.tipo] ?? StickyNote;
           const chat = a.tipo === "whatsapp" ? lineasChat(a.detalle) : null;
+          const llamada = a.tipo === "llamada" ? partesLlamada(a.detalle) : null;
           return (
             <li key={a.id} className="flex gap-3">
               <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full ${COLOR_ICONO[a.tipo] ?? ""}`}><Icono className="size-3.5" /></span>
@@ -322,7 +350,30 @@ function LineaTiempo({ leadId, actividades, onNueva }: { leadId: number; activid
                 <p className="text-[11px] text-muted-foreground">
                   {fechaHora(a.creado_en)}{a.duracion_seg ? ` · ${Math.max(1, Math.round(a.duracion_seg / 60))} min` : ""}{a.usuario ? ` · ${a.usuario}` : ""}
                 </p>
-                {chat ? (
+                {llamada ? (
+                  <div className="mt-2 space-y-2">
+                    {llamada.meta.length > 0 && (
+                      <ul className={`space-y-0.5 rounded-lg border p-2 text-xs ${llamada.meta.some((m) => m.includes("Sin créditos")) ? "border-amber-300 bg-amber-50 text-amber-900" : "bg-muted/40 text-muted-foreground"}`}>
+                        {llamada.meta.map((m, i) => <li key={i}>{m}</li>)}
+                      </ul>
+                    )}
+                    {llamada.dialogo.length > 0 ? (
+                      <details className="rounded-lg border bg-card p-2" open={a.id === primeraLlamadaId}>
+                        <summary className="cursor-pointer text-xs font-medium">Conversación ({llamada.dialogo.length} mensajes)</summary>
+                        <div className="mt-2 space-y-1.5">
+                          {llamada.dialogo.map((c, i) => (
+                            <div key={i} className={`w-fit max-w-[85%] rounded-xl px-3 py-1.5 text-[13px] ${BURBUJA[c.quien] ?? BURBUJA.Cliente}`}>
+                              <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide opacity-60">{c.quien}</span>
+                              <span className="whitespace-pre-line break-words">{c.texto}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Sin transcripción: no hubo conversación.</p>
+                    )}
+                  </div>
+                ) : chat ? (
                   <div className="mt-2 space-y-1.5 rounded-lg border bg-card p-2">
                     {chat.map((c, i) => (
                       <div key={i} className={`w-fit max-w-[85%] rounded-xl px-3 py-1.5 text-[13px] ${BURBUJA[c.quien] ?? BURBUJA.Cliente}`}>
