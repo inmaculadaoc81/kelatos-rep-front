@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } f
 import { Button } from "@/components/ui/button";
 import { Receipt, Ticket } from "@/lib/icons";
 import type { StockPieza } from "@/lib/stock-piezas";
+import { RecepcionEquipoDialog } from "./recepcion-equipo-dialog";
 import { TicketManualDialog } from "./reparaciones/ticket-manual-dialog";
 import { NuevaFacturaManualDialog } from "./reparaciones/nueva-factura-manual-dialog";
 
@@ -45,8 +46,14 @@ interface CargadorEscaneado {
  * el foco esté en un campo de texto/textarea/select, y además exige que
  * las teclas lleguen a velocidad de escaneo (no de una persona tecleando).
  */
-export function EscanerCodigoBarras() {
+export function EscanerCodigoBarras({ recepcionEquipos = false }: { recepcionEquipos?: boolean }) {
   const router = useRouter();
+  // Un código de 12-14 dígitos (EAN/UPC de la caja de un equipo) abre la recepción de equipos (alta en stock). Solo si la cuenta puede tocar stock.
+  const [codigoEquipo, setCodigoEquipo] = useState<string | null>(null);
+  const recepcionRef = useRef({ activa: recepcionEquipos, abierta: false });
+  useEffect(() => {
+    recepcionRef.current = { activa: recepcionEquipos, abierta: codigoEquipo !== null };
+  }, [recepcionEquipos, codigoEquipo]);
   const buferRef = useRef("");
   const ultimaTeclaRef = useRef(0);
   const cargadoresRef = useRef<Map<string, CargadorEscaneado>>(new Map());
@@ -107,6 +114,11 @@ export function EscanerCodigoBarras() {
         if (/^\d{3,8}$/.test(codigo)) {
           e.preventDefault();
           router.push(`/reparaciones?resguardo=${codigo}`);
+          return;
+        }
+        if (recepcionRef.current.activa && !recepcionRef.current.abierta && /^\d{12,14}$/.test(codigo)) {
+          e.preventDefault();
+          setCodigoEquipo(codigo);
         }
         return;
       }
@@ -137,6 +149,7 @@ export function EscanerCodigoBarras() {
 
   return (
     <>
+      {codigoEquipo !== null && <RecepcionEquipoDialog key={codigoEquipo} codigo={codigoEquipo} onCerrar={() => setCodigoEquipo(null)} />}
       <Dialog open={selectorAbierto} onOpenChange={(o) => !o && setSelectorAbierto(false)}>
         <DialogContent className="max-w-sm">
           <DialogTitle>Cargador escaneado</DialogTitle>

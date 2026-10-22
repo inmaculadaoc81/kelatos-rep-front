@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Producto, MovimientoInventario } from "@/lib/productos";
 import { ProductoFormDialog } from "./producto-form-dialog";
 import { MovimientoDialog } from "./movimiento-dialog";
+import { RecepcionEquipoDialog } from "../recepcion-equipo-dialog";
 import { useCuentaRestringida } from "@/lib/use-cuenta-restringida";
 
 export default function ProductosPage() {
@@ -28,6 +29,7 @@ export default function ProductosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [formAbierto, setFormAbierto] = useState(false);
+  const [recepcionAbierta, setRecepcionAbierta] = useState(false);
   const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
   const [movimientoAbierto, setMovimientoAbierto] = useState<Producto | null>(null);
 
@@ -72,6 +74,11 @@ export default function ProductosPage() {
           <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
+          {puedeEditar && (
+            <Button variant="outline" size="sm" onClick={() => setRecepcionAbierta(true)} title="Registra un equipo nuevo escaneando (o escribiendo) su código de barras">
+              Recibir equipo
+            </Button>
+          )}
           {puedeEditar && (
             <Button
               size="sm"
@@ -230,6 +237,7 @@ export default function ProductosPage() {
       </Tabs>
 
       <ProductoFormDialog productoExistente={productoEditando} open={formAbierto} onOpenChange={setFormAbierto} onGuardado={cargar} />
+      {recepcionAbierta && <RecepcionEquipoDialog codigo={null} onCerrar={() => { setRecepcionAbierta(false); cargar(); }} />}
       <MovimientoDialog producto={movimientoAbierto} open={movimientoAbierto !== null} onOpenChange={(o) => !o && setMovimientoAbierto(null)} onRegistrado={cargar} />
     </div>
   );

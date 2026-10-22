@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { esSuperadmin, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
+import { esCuentaEmpleadosRestringida, esSuperadmin, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 import { AppSidebar } from "./sidebar";
 import { Migas } from "./migas";
 import { BuscadorGlobal } from "./buscador-global";
@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth();
   return (
     <CodigoAccesoProvider>
-      <EscanerCodigoBarras />
+      <EscanerCodigoBarras recepcionEquipos={!!session?.user?.email && !esCuentaEmpleadosRestringida(session.user.email)} />
       <SidebarProvider>
         <AppSidebar session={session} />
         <SidebarInset>
