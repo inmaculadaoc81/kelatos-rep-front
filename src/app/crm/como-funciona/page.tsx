@@ -8,7 +8,8 @@ const CANALES: { nombre: string; que: string; estado: "listo" | "conectado" | "p
   { nombre: "WhatsApp (Chatwoot)", que: "Cada persona que escribe al WhatsApp de Kelatos (o Kelatos NL) crea su lead solo, o actualiza el que ya tiene. La conversación queda en su línea de tiempo, una entrada por día. Si ya es cliente, no se crea lead. Cuando responde el bot o una persona, pasa a «Contactado»: así «Nuevo» solo tiene a quien todavía no ha recibido ninguna respuesta. Las Métricas separan cuántos atendió el bot y cuántos una persona.", estado: "conectado" },
   { nombre: "Llamadas (Retell)", que: "Al terminar cada llamada de un agente de voz se guarda en la línea de tiempo con su resumen, sentimiento, duración y transcripción. Una llamada entrante de alguien nuevo crea el lead (y pasa a «Contactado» si el agente la atendió); las llamadas salientes se anotan en el lead que ya existe.", estado: "conectado" },
   { nombre: "Citas (Cal.com)", que: "Cada cita reservada crea el lead (o lo actualiza), lo pasa a «Contactado» y deja la cita como próxima acción con su fecha. Si se reprograma, cambia la fecha; si se cancela, se quita.", estado: "conectado" },
-  { nombre: "Webs y formularios", que: "Cada formulario de contacto de las webs crea un lead con sus datos.", estado: "pendiente" },
+  { nombre: "Formularios de las webs", que: "Cada formulario de contacto de las webs de Kelatos crea un lead en «Web y citas», con el nombre de la web como línea. Se filtra el spam y no se duplican las personas que ya tienen ficha.", estado: "conectado" },
+  { nombre: "Correo de Soporte", que: "Las personas que escriben directamente a soporte@kelatos.com (no clientes ya registrados, ni correos automáticos) entran como leads en «Correo». Si ya se les contestó desde Soporte, pasan a «Contactado».", estado: "conectado" },
 ];
 
 const AUTOMATICO: { cuando: string; que: string; auto: boolean }[] = [
@@ -103,7 +104,7 @@ export default function ComoFuncionaPage() {
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Los leads de WhatsApp, de llamadas y de citas aparecen solos, cada uno en la vista de su canal. Los formularios de las webs se conectarán después y, mientras tanto, se anotan a mano.
+          Los leads de WhatsApp, llamadas, citas, formularios web y correo aparecen solos, cada uno en la vista de su canal.
         </p>
       </Seccion>
 

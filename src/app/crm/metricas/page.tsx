@@ -10,6 +10,7 @@ const CANALES_FILTRO = [
   { id: "whatsapp", nombre: "WhatsApp" },
   { id: "llamada", nombre: "Llamadas" },
   { id: "web", nombre: "Web y citas" },
+  { id: "email", nombre: "Correo" },
 ];
 
 const PERIODOS = [
@@ -80,12 +81,12 @@ export default function CrmMetricasPage() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            {canal !== "llamada" && canal !== "web" && (
+            {(canal === "" || canal === "whatsapp") && (
               <Panel titulo="¿A qué WhatsApp escribieron?">
                 <Barras filas={m.porNumero} etiqueta={(f) => `${f.clave}${f.extra ? ` · ${f.extra}` : ""}`} color="bg-emerald-500" />
               </Panel>
             )}
-            {canal !== "whatsapp" && canal !== "web" && (
+            {(canal === "" || canal === "llamada") && (
               <Panel titulo="¿A qué agente de llamadas llamaron?">
                 <Barras filas={m.porAgente} etiqueta={(f) => `${f.clave}${f.extra ? ` · ${f.extra}` : ""}`} color="bg-violet-500" />
               </Panel>

@@ -150,7 +150,8 @@ export interface MetricasCrm {
 export const CANALES: { id: Origen; nombre: string; ruta: string; descripcion: string; color: string }[] = [
   { id: "whatsapp", nombre: "WhatsApp", ruta: "/crm/whatsapp", descripcion: "Conversaciones de los números de WhatsApp (Chatwoot).", color: "bg-emerald-500" },
   { id: "llamada", nombre: "Llamadas", ruta: "/crm/llamadas", descripcion: "Llamadas atendidas por los agentes de voz (Retell).", color: "bg-violet-500" },
-  { id: "web", nombre: "Web y citas", ruta: "/crm/web", descripcion: "Citas reservadas en Cal.com y formularios de las webs.", color: "bg-sky-500" },
+  { id: "web", nombre: "Web y citas", ruta: "/crm/web", descripcion: "Formularios de las webs y citas reservadas en Cal.com.", color: "bg-sky-500" },
+  { id: "email", nombre: "Correo", ruta: "/crm/correo", descripcion: "Personas que escriben al buzón de Soporte.", color: "bg-rose-500" },
 ];
 
 export interface CanalResumen {

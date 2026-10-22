@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase, type ItemNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { ClipboardText, Chart, Category, Message, Call, Global, Profile2User } from "@/lib/icons";
+import { ClipboardText, Chart, Category, Message, Call, Global, Sms, Profile2User } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 // Mismo patrón que Reparaciones: un grupo con varios hijos se despliega; con uno solo es un enlace directo.
@@ -27,6 +27,7 @@ const GRUPO_LEADS: GrupoNavegacionBase = {
     { label: "WhatsApp", href: "/crm/whatsapp", icon: Message },
     { label: "Llamadas", href: "/crm/llamadas", icon: Call },
     { label: "Web y citas", href: "/crm/web", icon: Global },
+    { label: "Correo", href: "/crm/correo", icon: Sms },
     { label: "Todos los leads", href: "/crm/lista", icon: ClipboardText },
   ],
 };

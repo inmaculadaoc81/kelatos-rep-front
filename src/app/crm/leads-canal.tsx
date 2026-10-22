@@ -124,7 +124,7 @@ function Leads({ origen, titulo, descripcion }: CanalVista) {
           {!compacta && (l.telefono || l.email) && <span className="mt-1 block truncate text-[11px] text-muted-foreground">{[l.telefono, l.email].filter(Boolean).join(" · ")}</span>}
           <span className="mt-1.5 flex flex-wrap items-center gap-1">
             <Badge variant="secondary" className={`h-5 px-1.5 text-[10px] ${ETAPAS.find((e) => e.id === l.etapa)?.chip ?? ""}`}>{nombreEtapa(l.etapa)}</Badge>
-            {l.bandeja_nombre && <Badge variant="secondary" className={`h-5 px-1.5 text-[10px] ${origen === "llamada" ? "bg-violet-100 text-violet-800" : "bg-emerald-100 text-emerald-800"}`}>{l.bandeja_nombre}</Badge>}
+            {l.bandeja_nombre && <Badge variant="secondary" className={`h-5 px-1.5 text-[10px] ${origen === "llamada" ? "bg-violet-100 text-violet-800" : origen === "web" ? "bg-sky-100 text-sky-800" : origen === "email" ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"}`}>{l.bandeja_nombre}</Badge>}
             {l.categoria && <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{nombreCategoria(l.categoria)}</Badge>}
             {accionVencida(l) && <Badge variant="secondary" className="h-5 bg-rose-100 px-1.5 text-[10px] text-rose-700">Acción vencida</Badge>}
             {!compacta && l.valor_estimado ? <span className="ml-auto text-[11px] font-medium">{euros(l.valor_estimado)}</span> : null}

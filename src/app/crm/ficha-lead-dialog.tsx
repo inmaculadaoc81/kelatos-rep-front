@@ -105,7 +105,7 @@ function CabeceraLead({ lead, onCambio }: { lead: Lead; onCambio: () => void }) 
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          {lead.bandeja_nombre && <span className={`rounded-full px-2 py-0.5 font-medium ${lead.origen === "llamada" ? "bg-violet-100 text-violet-800" : "bg-emerald-100 text-emerald-800"}`} title={lead.numero_destino ?? undefined}>{lead.origen === "llamada" ? "Llamó a" : "Escribió a"}: {lead.bandeja_nombre}{lead.numero_destino ? ` · ${lead.numero_destino}` : ""}</span>}
+          {lead.bandeja_nombre && <span className={`rounded-full px-2 py-0.5 font-medium ${lead.origen === "llamada" ? "bg-violet-100 text-violet-800" : lead.origen === "web" ? "bg-sky-100 text-sky-800" : lead.origen === "email" ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"}`} title={lead.numero_destino ?? undefined}>{lead.origen === "web" ? lead.bandeja_nombre : `${lead.origen === "llamada" ? "Llamó a" : "Escribió a"}: ${lead.bandeja_nombre}${lead.numero_destino ? ` · ${lead.numero_destino}` : ""}`}</span>}
           <span className={`rounded-full px-2 py-0.5 font-medium ${chipCategoria(lead.categoria)}`}>{nombreCategoria(lead.categoria)}</span>
         </div>
       </div>

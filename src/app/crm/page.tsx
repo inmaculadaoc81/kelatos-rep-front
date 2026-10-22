@@ -47,7 +47,7 @@ export default function CrmPanelPage() {
             <Resumen titulo="Con correo" valor={suma("con_correo")} nota={`de ${suma("total")} leads, para enviarles información`} />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {CANALES.map((canal) => {
               const c = por(canal.id);
               return (
@@ -63,7 +63,7 @@ export default function CrmPanelPage() {
                         <span className="text-xs text-muted-foreground">leads · {c.nuevos_hoy} hoy · {c.ultimos_7d} en 7 días</span>
                       </div>
                       {c.total === 0 ? (
-                        <p className="text-xs text-muted-foreground">{canal.id === "web" ? "Todavía no ha entrado ninguno. Las citas de Cal.com aparecerán aquí en cuanto se conecte." : "Todavía no ha entrado ninguno."}</p>
+                        <p className="text-xs text-muted-foreground">Todavía no ha entrado ninguno.</p>
                       ) : (
                         <>
                           <div className="flex h-2 overflow-hidden rounded-full bg-muted" title="Nuevo · Contactado · Presupuesto · Ganado · Perdido">
