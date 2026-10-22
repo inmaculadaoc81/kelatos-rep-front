@@ -6,7 +6,8 @@ import { ETAPAS } from "@/lib/crm";
 const CANALES: { nombre: string; que: string; estado: "listo" | "conectado" | "pendiente" }[] = [
   { nombre: "Alta manual", que: "Botón «Nuevo lead» y anotar llamadas, mensajes y notas a mano en la ficha.", estado: "listo" },
   { nombre: "WhatsApp (Chatwoot)", que: "Cada persona que escribe al WhatsApp de Kelatos (o Kelatos NL) crea su lead solo, o actualiza el que ya tiene. La conversación queda en su línea de tiempo, una entrada por día. Si ya es cliente, no se crea lead. Cuando responde el bot o una persona, pasa a «Contactado»: así «Nuevo» solo tiene a quien todavía no ha recibido ninguna respuesta. Las Métricas separan cuántos atendió el bot y cuántos una persona.", estado: "conectado" },
-  { nombre: "Llamadas (Retell)", que: "Al terminar cada llamada de un agente de voz se guarda el resumen, la transcripción y la duración.", estado: "pendiente" },
+  { nombre: "Llamadas (Retell)", que: "Al terminar cada llamada de un agente de voz se guarda en la línea de tiempo con su resumen, sentimiento, duración y transcripción. Una llamada entrante de alguien nuevo crea el lead (y pasa a «Contactado» si el agente la atendió); las llamadas salientes se anotan en el lead que ya existe.", estado: "conectado" },
+  { nombre: "Citas (Cal.com)", que: "Cada cita reservada crea el lead (o lo actualiza), lo pasa a «Contactado» y deja la cita como próxima acción con su fecha. Si se reprograma, cambia la fecha; si se cancela, se quita.", estado: "conectado" },
   { nombre: "Webs y formularios", que: "Cada formulario de contacto de las webs crea un lead con sus datos.", estado: "pendiente" },
 ];
 
