@@ -19,10 +19,13 @@ import { ProductoFormDialog } from "./producto-form-dialog";
 import { MovimientoDialog } from "./movimiento-dialog";
 import { RecepcionEquipoDialog } from "../recepcion-equipo-dialog";
 import { useCuentaRestringida } from "@/lib/use-cuenta-restringida";
+import { useEsAdmin } from "@/lib/use-es-admin";
+import { TabRecibidos } from "./tab-recibidos";
 
 export default function ProductosPage() {
   const { restringida, cargada: sesionCargada } = useCuentaRestringida();
   const puedeEditar = sesionCargada && !restringida;
+  const { esAdmin } = useEsAdmin();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -113,6 +116,7 @@ export default function ProductosPage() {
         <TabsList>
           <TabsTrigger value="productos">Productos ({productos.length})</TabsTrigger>
           <TabsTrigger value="movimientos">Movimientos</TabsTrigger>
+          {esAdmin && <TabsTrigger value="recibidos">Recibidos <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">Beta</span></TabsTrigger>}
         </TabsList>
 
         <TabsContent value="productos" className="pt-3">
@@ -194,6 +198,8 @@ export default function ProductosPage() {
             </Table>
           </div>
         </TabsContent>
+
+        {esAdmin && <TabsContent value="recibidos" className="pt-3"><TabRecibidos /></TabsContent>}
 
         <TabsContent value="movimientos" className="pt-3">
           <div className="overflow-hidden rounded-lg border bg-card">
