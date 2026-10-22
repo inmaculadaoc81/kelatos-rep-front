@@ -10,13 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface DatosEquipo { nombre: string; marca: string | null; modelo: string | null; categoria: string | null }
 interface Busqueda {
-  ok: boolean; error?: string; ean: string; origen: "catalogo" | "externo" | "no_encontrado" | "error_externo"; datos: DatosEquipo | null;
+  ok: boolean; error?: string; ean: string; origen: "catalogo" | "externo" | "solo_marca" | "no_encontrado" | "error_externo"; fuente?: string | null; datos: DatosEquipo | null;
   producto: { id: string; nombre: string; stock_actual: number | null } | null; aviso?: string | null;
 }
 
 const ORIGEN: Record<Busqueda["origen"], { texto: string; clase: string }> = {
   catalogo: { texto: "Está en tu catálogo", clase: "bg-emerald-100 text-emerald-800" },
-  externo: { texto: "Datos de la base externa: revísalos", clase: "bg-sky-100 text-sky-800" },
+  externo: { texto: "Datos de una base externa: revísalos", clase: "bg-sky-100 text-sky-800" },
+  solo_marca: { texto: "Solo reconocemos la marca por el código: escribe el modelo", clase: "bg-amber-100 text-amber-800" },
   no_encontrado: { texto: "No lo encontramos: rellénalo a mano (solo la primera vez)", clase: "bg-amber-100 text-amber-800" },
   error_externo: { texto: "No se pudo consultar la base externa: rellénalo a mano", clase: "bg-amber-100 text-amber-800" },
 };
@@ -117,6 +118,7 @@ export function RecepcionEquipoDialog({ codigo, onCerrar }: { codigo: string | n
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="rounded-md bg-muted px-2 py-1 font-mono">{busqueda.ean}</span>
               <span className={`rounded-full px-2 py-0.5 font-medium ${ORIGEN[busqueda.origen].clase}`}>{ORIGEN[busqueda.origen].texto}</span>
+              {busqueda.fuente && <span className="text-muted-foreground">Fuente: {busqueda.fuente}</span>}
             </div>
             {busqueda.aviso && <p className="text-xs text-amber-800">{busqueda.aviso}</p>}
             {busqueda.producto && (
