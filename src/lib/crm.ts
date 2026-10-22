@@ -32,6 +32,8 @@ export interface Lead {
   actividades?: number;
   /** Última línea de la última conversación de WhatsApp: «[15:17] Bot: …». */
   ultima_linea?: string | null;
+  /** Resumen de la última llamada o cita (Retell / Cal.com) para la vista previa de la lista. */
+  ultimo_resumen?: string | null;
 }
 
 export interface Actividad {
@@ -139,9 +141,23 @@ export interface MetricasCrm {
   porDia: { dia: string; n: number }[];
   porOrigen: FilaMetrica[];
   porNumero: FilaMetrica[];
+  porAgente: FilaMetrica[];
   porCategoria: FilaMetrica[];
   porResponsable: FilaMetrica[];
 }
+
+/** Canales de entrada: cada uno tiene su propia vista para que no se mezclen (WhatsApp, llamadas, web y citas). */
+export const CANALES: { id: Origen; nombre: string; ruta: string; descripcion: string; color: string }[] = [
+  { id: "whatsapp", nombre: "WhatsApp", ruta: "/crm/whatsapp", descripcion: "Conversaciones de los números de WhatsApp (Chatwoot).", color: "bg-emerald-500" },
+  { id: "llamada", nombre: "Llamadas", ruta: "/crm/llamadas", descripcion: "Llamadas atendidas por los agentes de voz (Retell).", color: "bg-violet-500" },
+  { id: "web", nombre: "Web y citas", ruta: "/crm/web", descripcion: "Citas reservadas en Cal.com y formularios de las webs.", color: "bg-sky-500" },
+];
+
+export interface CanalResumen {
+  origen: Origen; total: number; nuevo: number; contactado: number; presupuesto: number; ganado: number; perdido: number;
+  nuevos_hoy: number; ultimos_7d: number; sin_respuesta: number; acciones_vencidas: number; con_correo: number; ultimo_contacto: string | null;
+}
+export interface CanalesCrm { canales: CanalResumen[]; porDia: { dia: string; origen: Origen; n: number }[] }
 
 export const nombreEtapa = (e: string) => ETAPAS.find((x) => x.id === e)?.nombre ?? e;
 export const nombreOrigen = (o: string) => ORIGENES.find((x) => x.id === o)?.nombre ?? o;

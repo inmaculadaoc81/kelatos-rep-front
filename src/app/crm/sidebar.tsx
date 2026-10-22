@@ -12,19 +12,26 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ClipboardTick, ClipboardText, Chart } from "@/lib/icons";
+import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase, type ItemNavegacionBase } from "@/components/sidebar-grupo-colapsable";
+import { ClipboardText, Chart, Category, Message, Call, Global, Profile2User } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
-const VISTAS = [
-  { href: "/crm", etiqueta: "Leads", icono: ClipboardTick },
-  { href: "/crm/lista", etiqueta: "Tabla", icono: ClipboardText },
-  { href: "/crm/metricas", etiqueta: "Métricas", icono: Chart },
-  { href: "/crm/como-funciona", etiqueta: "Cómo funciona", icono: BookOpen },
-];
+// Mismo patrón que Reparaciones: un grupo con varios hijos se despliega; con uno solo es un enlace directo.
+const PANEL: ItemNavegacionBase = { label: "Panel", href: "/crm", icon: Category, exacto: true };
+const GRUPO_LEADS: GrupoNavegacionBase = {
+  titulo: "Leads por canal",
+  icon: Profile2User,
+  items: [
+    { label: "WhatsApp", href: "/crm/whatsapp", icon: Message },
+    { label: "Llamadas", href: "/crm/llamadas", icon: Call },
+    { label: "Web y citas", href: "/crm/web", icon: Global },
+    { label: "Todos los leads", href: "/crm/lista", icon: ClipboardText },
+  ],
+};
+const METRICAS: ItemNavegacionBase = { label: "Métricas", href: "/crm/metricas", icon: Chart };
+const AYUDA: ItemNavegacionBase = { label: "Cómo funciona", href: "/crm/como-funciona", icon: BookOpen };
 
 /** Mismo esqueleto (logo + NavUser) que Tareas/Webs Kelatos. */
 export function CrmSidebar({ session }: { session: Session | null }) {
@@ -47,15 +54,11 @@ export function CrmSidebar({ session }: { session: Session | null }) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {VISTAS.map((v) => (
-                <SidebarMenuItem key={v.href}>
-                  <SidebarMenuButton isActive={pathname === v.href} tooltip={v.etiqueta} render={<Link href={v.href} />}>
-                    <v.icono className="text-sidebar-primary" />
-                    <span>{v.etiqueta}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+            <SidebarMenu className="gap-1.5">
+              <ItemDirecto item={PANEL} pathname={pathname} />
+              <GrupoColapsable titulo={GRUPO_LEADS.titulo} icon={GRUPO_LEADS.icon} items={GRUPO_LEADS.items} pathname={pathname} />
+              <ItemDirecto item={METRICAS} pathname={pathname} />
+              <ItemDirecto item={AYUDA} pathname={pathname} />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

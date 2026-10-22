@@ -7,9 +7,11 @@ import { puedeVerCrm, type MetricasCrm } from "@/lib/crm";
 export async function GET(req: Request) {
   const session = await auth();
   if (!puedeVerCrm(session?.user)) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
-  const dias = new URL(req.url).searchParams.get("dias") ?? "30";
+  const sp = new URL(req.url).searchParams;
+  const dias = sp.get("dias") ?? "30";
+  const origen = sp.get("origen");
   try {
-    const data = await kelatosApiGet<{ ok: boolean } & MetricasCrm>("/v1/crm/metricas", { dias });
+    const data = await kelatosApiGet<{ ok: boolean } & MetricasCrm>("/v1/crm/metricas", origen ? { dias, origen } : { dias });
     const { ok, ...resto } = data;
     void ok;
     return NextResponse.json({ ok: true, ...resto });

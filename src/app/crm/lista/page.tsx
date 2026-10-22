@@ -2,12 +2,13 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Download, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BANDEJAS, CATEGORIAS, ETAPAS, ORIGENES, accionVencida, chipCategoria, euros, haceCuanto, nombreCategoria, nombreEtapa, nombreOrigen, type Lead } from "@/lib/crm";
+import { descargarCsvLeads } from "@/lib/exportar-leads";
 import { useApi } from "../use-api";
 import { NuevoLeadDialog } from "../nuevo-lead-dialog";
 import { FichaLeadDialog } from "../ficha-lead-dialog";
@@ -31,6 +32,7 @@ function ListaContenido() {
   const [origen, setOrigen] = useState("");
   const [bandeja, setBandeja] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [soloCorreo, setSoloCorreo] = useState(false);
   const [limite, setLimite] = useState(POR_PAGINA);
   const [nuevo, setNuevo] = useState(false);
   const [abierto, setAbierto] = useState<number | null>(null);
@@ -45,16 +47,19 @@ function ListaContenido() {
   const recargar = () => setRecarga((n) => n + 1);
   // Al cambiar un filtro se vuelve a las primeras 50 filas.
   const cambiar = (fn: () => void) => { fn(); setLimite(POR_PAGINA); };
-  const filas = datos?.leads ?? [];
+  const filas = (datos?.leads ?? []).filter((l) => !soloCorreo || !!l.email);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">CRM · Tabla</h1>
-          <p className="text-sm text-muted-foreground">Todos los leads en una tabla con todos sus datos, para revisar, comparar y filtrar. Para trabajar un lead y ver su conversación, usa «Leads». {datos ? `${filas.length} resultado${filas.length === 1 ? "" : "s"}.` : ""}</p>
+          <h1 className="text-lg font-semibold">CRM · Todos los leads</h1>
+          <p className="text-sm text-muted-foreground">Todos los canales juntos en una tabla, para revisar, filtrar y descargar (por ejemplo, los que tienen correo para escribirles). Para trabajar un lead y ver su conversación, entra en su canal. {datos ? `${filas.length} resultado${filas.length === 1 ? "" : "s"}.` : ""}</p>
         </div>
-        <Button className="gap-1.5" onClick={() => setNuevo(true)}><Plus className="size-4" /> Nuevo lead</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-1.5" disabled={filas.length === 0} onClick={() => descargarCsvLeads(filas, "leads")} title="Descarga en Excel (CSV) lo que ves con los filtros actuales"><Download className="size-4" /> Exportar</Button>
+          <Button className="gap-1.5" onClick={() => setNuevo(true)}><Plus className="size-4" /> Nuevo lead</Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -74,6 +79,7 @@ function ListaContenido() {
           <option value="">Todos los WhatsApp</option>
           {BANDEJAS.map((b) => <option key={b.id} value={b.id}>{b.nombre} · {b.numero}</option>)}
         </select>
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm"><input type="checkbox" checked={soloCorreo} onChange={(e) => cambiar(() => setSoloCorreo(e.target.checked))} /> Solo con correo</label>
         <select className="h-9 rounded-md border bg-background px-2 text-sm" value={categoria} onChange={(e) => cambiar(() => setCategoria(e.target.value))} aria-label="Clasificación">
           <option value="">Todas las clasificaciones</option>
           {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -90,7 +96,7 @@ function ListaContenido() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Contacto</TableHead>
                 <TableHead>Origen</TableHead>
-                <TableHead>Escribió a</TableHead>
+                <TableHead>Línea o agente</TableHead>
                 <TableHead>Clasificación</TableHead>
                 <TableHead>Etapa</TableHead>
                 <TableHead>Responsable</TableHead>

@@ -5,6 +5,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { euros, nombreCategoria, nombreOrigen, type FilaMetrica, type MetricasCrm } from "@/lib/crm";
 import { useApi } from "../use-api";
 
+const CANALES_FILTRO = [
+  { id: "", nombre: "Todos los canales" },
+  { id: "whatsapp", nombre: "WhatsApp" },
+  { id: "llamada", nombre: "Llamadas" },
+  { id: "web", nombre: "Web y citas" },
+];
+
 const PERIODOS = [
   { dias: 7, nombre: "7 días" },
   { dias: 30, nombre: "30 días" },
@@ -17,7 +24,8 @@ const horas = (h: number | null) => (h === null ? "—" : h < 1 ? `${Math.max(1,
 
 export default function CrmMetricasPage() {
   const [dias, setDias] = useState(30);
-  const { datos: m, error } = useApi<{ ok: boolean } & MetricasCrm>(`/api/crm/metricas?dias=${dias}`);
+  const [canal, setCanal] = useState("");
+  const { datos: m, error } = useApi<{ ok: boolean } & MetricasCrm>(`/api/crm/metricas?dias=${dias}${canal ? `&origen=${canal}` : ""}`);
 
   return (
     <div className="space-y-6">
@@ -26,12 +34,21 @@ export default function CrmMetricasPage() {
           <h1 className="text-lg font-semibold">CRM · Métricas</h1>
           <p className="text-sm text-muted-foreground">Cómo se comportan los leads creados en el periodo elegido: cuántos entran, por dónde, y cuántos se convierten.</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-1 rounded-lg border bg-card p-1">
+          {CANALES_FILTRO.map((c) => (
+            <button key={c.id} type="button" onClick={() => setCanal(c.id)} className={`rounded-md px-3 py-1 text-sm transition-colors ${canal === c.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+              {c.nombre}
+            </button>
+          ))}
+        </div>
         <div className="flex gap-1 rounded-lg border bg-card p-1">
           {PERIODOS.map((p) => (
             <button key={p.dias} type="button" onClick={() => setDias(p.dias)} className={`rounded-md px-3 py-1 text-sm transition-colors ${dias === p.dias ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
               {p.nombre}
             </button>
           ))}
+        </div>
         </div>
       </div>
 
@@ -63,9 +80,16 @@ export default function CrmMetricasPage() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Panel titulo="¿A qué WhatsApp escribieron?">
-              <Barras filas={m.porNumero} etiqueta={(f) => `${f.clave}${f.extra ? ` · ${f.extra}` : ""}`} color="bg-emerald-500" />
-            </Panel>
+            {canal !== "llamada" && canal !== "web" && (
+              <Panel titulo="¿A qué WhatsApp escribieron?">
+                <Barras filas={m.porNumero} etiqueta={(f) => `${f.clave}${f.extra ? ` · ${f.extra}` : ""}`} color="bg-emerald-500" />
+              </Panel>
+            )}
+            {canal !== "whatsapp" && canal !== "web" && (
+              <Panel titulo="¿A qué agente de llamadas llamaron?">
+                <Barras filas={m.porAgente} etiqueta={(f) => `${f.clave}${f.extra ? ` · ${f.extra}` : ""}`} color="bg-violet-500" />
+              </Panel>
+            )}
             <Panel titulo="Clasificación (de qué consultan)">
               <Barras filas={m.porCategoria} etiqueta={(f) => (f.clave === "sin_clasificar" ? "Sin clasificar" : nombreCategoria(f.clave))} color="bg-sky-500" />
             </Panel>

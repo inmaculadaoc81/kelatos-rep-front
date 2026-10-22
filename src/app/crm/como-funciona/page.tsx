@@ -23,8 +23,10 @@ const AUTOMATICO: { cuando: string; que: string; auto: boolean }[] = [
 const PREGUNTAS: { p: string; r: string }[] = [
   { p: "¿Qué es un lead y qué es un cliente?", r: "Un lead es alguien que ha contactado pero todavía no nos ha comprado nada. Cuando acepta un presupuesto o trae un equipo pasa a «Ganado» y ya es cliente (con su resguardo en Reparaciones)." },
   { p: "¿Y si la misma persona escribe por WhatsApp y luego llama?", r: "Se reconoce por el teléfono: sigue siendo una sola ficha y la llamada se añade a la misma línea de tiempo. Si intentas crear a mano un lead con un teléfono que ya existe, el sistema te avisa y te abre la ficha." },
-  { p: "¿Cómo muevo un lead de etapa?", r: "Abre su ficha en «Leads» y pulsa la etapa que toque: los cinco estados son botones y la actual aparece marcada. Cada cambio queda anotado en la línea de tiempo." },
+  { p: "¿Cómo muevo un lead de etapa?", r: "Abre su ficha (en la vista de su canal) y pulsa la etapa que toque: los cinco estados son botones y la actual aparece marcada. Cada cambio queda anotado en la línea de tiempo." },
   { p: "¿Para qué sirve la «próxima acción»?", r: "Es lo siguiente que hay que hacer con ese lead y para qué día (por ejemplo «llamarle el viernes»). Si el día pasa y no se hizo, la ficha se marca en rojo y suma a «Acciones vencidas»." },
+  { p: "¿Cómo descargo los contactos para escribirles?", r: "En cualquier vista de canal, y en «Todos los leads», el botón «Exportar» descarga en Excel (CSV) justo lo que estás viendo con los filtros puestos. En «Todos los leads» marca «Solo con correo» para quedarte con quienes tienen correo." },
+  { p: "¿Por qué alguien que escribió por WhatsApp y luego llamó no sale en «Llamadas»?", r: "Porque es una sola persona con una sola ficha: aparece en el canal por el que llegó primero, y su llamada queda anotada en su línea de tiempo. Así los canales no se mezclan ni se cuentan dos veces." },
   { p: "¿Qué hago con un lead que ya no responde?", r: "Muévelo a «Perdido» y, si quieres, anota el motivo. No se borra: se queda en la Lista por si vuelve a escribir." },
 ];
 
@@ -39,7 +41,7 @@ export default function ComoFuncionaPage() {
       </div>
 
       <Seccion titulo="1. El recorrido de un lead">
-        <p className="mb-3 text-sm text-muted-foreground">Cada persona avanza por estas etapas (son las pestañas de «Leads»):</p>
+        <p className="mb-3 text-sm text-muted-foreground">Cada persona avanza por estas etapas (son las pestañas de la vista de cada canal):</p>
         <ol className="space-y-2">
           {ETAPAS.map((e, i) => (
             <li key={e.id} className="flex items-start gap-3 rounded-lg border bg-card p-3">
@@ -78,8 +80,8 @@ export default function ComoFuncionaPage() {
 
       <Seccion titulo="3. Cómo usarlo cada día">
         <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
-          <li>Trabaja desde <strong className="text-foreground">Leads</strong>: la lista de la izquierda va por lo más reciente y, al elegir un lead, ves su conversación a la derecha y cambias su etapa con un clic. La <strong className="text-foreground">Tabla</strong> muestra todos los datos juntos, para revisar y filtrar.</li>
-          <li>Mira primero lo urgente: en «Leads» marca «Solo con acción vencida» y revisa la pestaña «Nuevo». Las <strong className="text-foreground">Métricas</strong> te dicen cuántos están <em>sin respuesta</em> (más de 24 h en «Nuevo») y cuántas <em>acciones</em> están <em>vencidas</em>.</li>
+          <li>Empieza por el <strong className="text-foreground">Panel</strong>: te dice, canal por canal, cuántos han entrado hoy y cuántos esperan respuesta. Pulsa un canal para trabajar sus leads: <strong className="text-foreground">WhatsApp</strong>, <strong className="text-foreground">Llamadas</strong> o <strong className="text-foreground">Web y citas</strong>. Cada canal tiene su vista, y puedes verla como bandeja (lista + conversación) o como tarjetas.</li>
+          <li>Mira primero lo urgente: en la vista de cada canal marca «Acción vencida» y revisa la pestaña «Nuevo». Las <strong className="text-foreground">Métricas</strong> te dicen cuántos están <em>sin respuesta</em> (más de 24 h en «Nuevo») y cuántas <em>acciones</em> están <em>vencidas</em>.</li>
           <li>Responde primero a los de la pestaña <strong className="text-foreground">Nuevo</strong>. Anota lo que hablaste con «Anotar una actividad».</li>
           <li>Deja siempre una <strong className="text-foreground">próxima acción con fecha</strong>: así nadie se queda sin seguimiento.</li>
           <li>Cuando acepte o rechace, cambia su etapa a <strong className="text-foreground">Ganado</strong> o <strong className="text-foreground">Perdido</strong>.</li>
@@ -101,7 +103,7 @@ export default function ComoFuncionaPage() {
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Los leads de WhatsApp aparecen solos en «Leads» con su origen marcado; el resto de canales se irán conectando. Mientras tanto, las llamadas y los formularios se anotan a mano.
+          Los leads de WhatsApp, de llamadas y de citas aparecen solos, cada uno en la vista de su canal. Los formularios de las webs se conectarán después y, mientras tanto, se anotan a mano.
         </p>
       </Seccion>
 
@@ -117,7 +119,7 @@ export default function ComoFuncionaPage() {
       </Seccion>
 
       <p className="text-sm text-muted-foreground">
-        ¿Listo? Ve a <Link href="/crm" className="font-medium text-primary underline">Leads</Link> o a la <Link href="/crm/lista" className="font-medium text-primary underline">Tabla</Link>.
+        ¿Listo? Ve al <Link href="/crm" className="font-medium text-primary underline">Panel</Link> o a <Link href="/crm/lista" className="font-medium text-primary underline">Todos los leads</Link>.
       </p>
     </div>
   );
