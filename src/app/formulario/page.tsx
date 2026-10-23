@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { tipoDesdeFicha, useEscanerEquipo } from "./use-escaner-equipo";
 import Image from "next/image";
 import {
   DatosFormularioCliente,
@@ -336,6 +337,22 @@ export default function FormularioClientePage() {
     if (!accesoConcedido || resultado) return;
     guardarBorrador({ codigo: codigoAcceso, paso, datos, guardadoEn: Date.now() });
   }, [accesoConcedido, resultado, codigoAcceso, paso, datos]);
+
+  // Escáner de códigos de barras en el paso «Equipo»: rellena marca y modelo con los datos del código escaneado.
+  const { aviso: avisoEscaneo } = useEscanerEquipo({
+    activo: accesoConcedido && !resultado && paso === 3,
+    codigoAcceso,
+    onDatos: (d) =>
+      setDatos((prev) => {
+        const marca = d.marca || prev.marca;
+        let modelo = d.modelo || d.nombre || "";
+        if (!d.modelo && marca && modelo.toLowerCase().startsWith(marca.toLowerCase())) modelo = modelo.slice(marca.length).trim();
+        return { ...prev, marca, modelo: modelo.slice(0, 80), tipoProducto: prev.tipoProducto || tipoDesdeFicha(d.categoria, d.nombre) || "" };
+      }),
+    onRestaurar: (campo, valor) => {
+      if (campo === "marca" || campo === "modelo" || campo === "serie") setDatos((prev) => ({ ...prev, [campo]: valor }));
+    },
+  });
 
   if (!accesoConcedido) {
     return (
@@ -807,6 +824,11 @@ export default function FormularioClientePage() {
                 </SelectContent>
               </Select>
             </Campo>
+            {avisoEscaneo && (
+              <p className={`rounded-md border px-3 py-2 text-sm ${avisoEscaneo.tipo === "ok" ? "border-emerald-300 bg-emerald-50 text-emerald-900" : avisoEscaneo.tipo === "buscando" ? "border-sky-200 bg-sky-50 text-sky-900" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
+                {avisoEscaneo.texto}
+              </p>
+            )}
             {esOtro && (
               <Campo label="Describe el tipo de producto" required error={errores.tipoOtro}>
                 <Input className="h-11 text-base" value={datos.tipoOtro} onChange={(e) => actualizar("tipoOtro", e.target.value)} />
@@ -817,18 +839,18 @@ export default function FormularioClientePage() {
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <Campo label="Marca" required error={errores.marca}>
-                      <Input className="h-11 text-base" value={datos.marca} onChange={(e) => actualizar("marca", e.target.value)} />
+                      <Input data-campo="marca" className="h-11 text-base" value={datos.marca} onChange={(e) => actualizar("marca", e.target.value)} />
                     </Campo>
                   </div>
                   <div className="flex-1">
                     <Campo label="Modelo" required error={errores.modelo}>
-                      <Input className="h-11 text-base" value={datos.modelo} onChange={(e) => actualizar("modelo", e.target.value)} />
+                      <Input data-campo="modelo" className="h-11 text-base" value={datos.modelo} onChange={(e) => actualizar("modelo", e.target.value)} />
                     </Campo>
                   </div>
                 </div>
                 {TIPOS_CON_NUMERO_SERIE.includes(datos.tipoProducto) && (
                   <Campo label="Número de serie (opcional)">
-                    <Input className="h-11 text-base" value={datos.serie} onChange={(e) => actualizar("serie", e.target.value)} />
+                    <Input data-campo="serie" className="h-11 text-base" value={datos.serie} onChange={(e) => actualizar("serie", e.target.value)} />
                   </Campo>
                 )}
               </>
