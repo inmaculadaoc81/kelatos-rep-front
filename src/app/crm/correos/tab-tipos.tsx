@@ -27,6 +27,9 @@ export function TabTipos() {
   const [recarga, setRecarga] = useState(0);
   const { datos, error } = useApi<{ ok: boolean; tipos: TipoCorreo[] }>("/api/crm/correos/tipos", recarga);
   const [editando, setEditando] = useState<TipoCorreo | "nuevo" | null>(null);
+  const [verDesactivadas, setVerDesactivadas] = useState(false);
+  const desactivadas = datos?.tipos.filter((x) => !x.activo).length ?? 0;
+  const tiposVisibles = (datos?.tipos ?? []).filter((x) => x.activo || verDesactivadas);
 
   async function alternar(t: TipoCorreo, activo: boolean) {
     try {
@@ -45,9 +48,14 @@ export function TabTipos() {
       </div>
       {error && <p className="text-sm text-destructive">No se pudo cargar: {error}</p>}
       {!datos && !error && <Skeleton className="h-48 w-full" />}
+      {datos && desactivadas > 0 && (
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground">
+          <input type="checkbox" checked={verDesactivadas} onChange={(e) => setVerDesactivadas(e.target.checked)} /> Ver también las desactivadas ({desactivadas})
+        </label>
+      )}
       {datos && (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {datos.tipos.map((t) => (
+          {tiposVisibles.map((t) => (
             <Card key={t.id} className={t.activo ? "" : "opacity-60"}>
               <CardContent className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
