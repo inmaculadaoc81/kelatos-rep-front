@@ -1,6 +1,6 @@
 import type { Categoria, Etapa, Origen } from "@/lib/crm";
 
-export type CategoriaTipo = "promocion" | "seguimiento" | "bienvenida" | "recordatorio" | "informativo";
+export type CategoriaTipo = "promocion" | "seguimiento" | "bienvenida" | "recordatorio" | "informativo" | "propuesta";
 export type EstadoCampana = "borrador" | "programada" | "pausada" | "cancelada";
 export type Recurrencia = "ninguna" | "semanal" | "mensual";
 
@@ -10,6 +10,7 @@ export const CATEGORIAS_TIPO: { id: CategoriaTipo; nombre: string; chip: string 
   { id: "bienvenida", nombre: "Bienvenida", chip: "bg-emerald-100 text-emerald-800" },
   { id: "recordatorio", nombre: "Recordatorio", chip: "bg-amber-100 text-amber-800" },
   { id: "informativo", nombre: "Informativo", chip: "bg-violet-100 text-violet-800" },
+  { id: "propuesta", nombre: "Propuesta comercial", chip: "bg-indigo-100 text-indigo-800" },
 ];
 export const ESTADOS_CAMPANA: { id: EstadoCampana; nombre: string; chip: string }[] = [
   { id: "borrador", nombre: "Borrador", chip: "bg-zinc-100 text-zinc-700" },

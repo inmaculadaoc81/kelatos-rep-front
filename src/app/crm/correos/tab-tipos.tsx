@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,13 @@ import { CATEGORIAS_TIPO, chipCategoriaTipo, llamarCorreos, nombreCategoriaTipo,
 import { useApi } from "../use-api";
 
 const SELECT = "h-9 w-full rounded-md border bg-background px-2 text-sm";
-const EJEMPLO: Record<string, string> = { "{{nombre}}": "María", "{{web}}": "Kelatos" };
-const rellenar = (t: string) => Object.entries(EJEMPLO).reduce((s, [k, v]) => s.split(k).join(v), t);
+/** Asunto «de ejemplo» para las tarjetas: se queda con la rama «con datos» de los bloques {{si:…}}…{{sino}}…{{fin}} y rellena las variables. */
+const rellenar = (t: string) =>
+  t
+    .replace(/\{\{si:\w+\}\}([\s\S]*?)(?:\{\{sino\}\}[\s\S]*?)?\{\{fin\}\}/g, "$1")
+    .replace(/\{\{empresa(?:\|[^}]*)?\}\}/g, "Taller Ejemplo SL")
+    .replace(/\{\{nombre(?:\|[^}]*)?\}\}/g, "María")
+    .replace(/\{\{(\w+)(?:\|([^}]*))?\}\}/g, (_m, _v, alt) => alt ?? "");
 
 export function TabTipos() {
   const [recarga, setRecarga] = useState(0);
@@ -55,7 +60,7 @@ export function TabTipos() {
                 {t.descripcion && <p className="text-xs text-muted-foreground">{t.descripcion}</p>}
                 <div className="rounded-md border bg-muted/30 p-2 text-xs">
                   <p className="font-medium">{rellenar(t.asunto)}</p>
-                  <p className="mt-1 line-clamp-3 whitespace-pre-line text-muted-foreground">{rellenar(t.cuerpo)}</p>
+                  <p className="mt-1 line-clamp-3 whitespace-pre-line text-muted-foreground">{t.cuerpo.includes("{{si:") ? `${t.cuerpo.split(/\n\s*\n/).slice(1, 3).join(" ")}` : rellenar(t.cuerpo)}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setEditando(t)}>Editar y ver</Button>
               </CardContent>
@@ -75,6 +80,22 @@ function EditorTipo({ tipo, onCerrar, onGuardado }: { tipo: TipoCorreo | null; o
   const [asunto, setAsunto] = useState(tipo?.asunto ?? "");
   const [cuerpo, setCuerpo] = useState(tipo?.cuerpo ?? "");
   const [guardando, setGuardando] = useState(false);
+  const [previa, setPrevia] = useState<{ asunto: string; html: string } | null>(null);
+  const [conDatos, setConDatos] = useState(true);
+
+  // Vista previa: la compone el servidor con el mismo motor que usará el envío (con datos de ejemplo, o sin empresa para ver los textos alternativos).
+  useEffect(() => {
+    let vigente = true;
+    const t = setTimeout(async () => {
+      try {
+        const d = await llamarCorreos("tipos/previsualizar", "POST", { asunto, cuerpo, sinDatos: !conDatos });
+        if (vigente) setPrevia({ asunto: String(d.asunto ?? ""), html: String(d.html ?? "") });
+      } catch {
+        if (vigente) setPrevia(null);
+      }
+    }, 400);
+    return () => { vigente = false; clearTimeout(t); };
+  }, [asunto, cuerpo, conDatos]);
 
   async function guardar() {
     if (!nombre.trim() || !asunto.trim() || !cuerpo.trim()) { toast.error("Rellena nombre, asunto y mensaje"); return; }
@@ -97,7 +118,7 @@ function EditorTipo({ tipo, onCerrar, onGuardado }: { tipo: TipoCorreo | null; o
       <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{tipo ? "Editar tipo de correo" : "Nuevo tipo de correo"}</DialogTitle>
-          <DialogDescription>A la derecha ves cómo quedaría con un nombre de ejemplo. No se envía nada.</DialogDescription>
+          <DialogDescription>A la derecha ves cómo quedaría. No se envía nada.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-3">
@@ -108,13 +129,22 @@ function EditorTipo({ tipo, onCerrar, onGuardado }: { tipo: TipoCorreo | null; o
             </div>
             <div className="space-y-1.5"><Label>Para qué sirve (opcional)</Label><Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} maxLength={300} /></div>
             <div className="space-y-1.5"><Label>Asunto</Label><Input value={asunto} onChange={(e) => setAsunto(e.target.value)} maxLength={200} /></div>
-            <div className="space-y-1.5"><Label>Mensaje</Label><Textarea rows={10} value={cuerpo} onChange={(e) => setCuerpo(e.target.value)} maxLength={8000} /></div>
+            <div className="space-y-1.5">
+              <Label>Mensaje (párrafos separados por una línea en blanco)</Label>
+              <Textarea rows={12} value={cuerpo} onChange={(e) => setCuerpo(e.target.value)} maxLength={8000} />
+              <p className="text-[11px] text-muted-foreground">
+                Variables: <code>{"{{empresa}}"}</code> <code>{"{{categoria}}"}</code> <code>{"{{nombre}}"}</code>; con texto alternativo si falta el dato: <code>{"{{empresa|vuestra empresa}}"}</code>.
+                Condicional: <code>{"{{si:empresa}}…{{sino}}…{{fin}}"}</code>. El enlace de baja se añade solo al final.
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-            <p className="text-xs text-muted-foreground">Vista previa</p>
-            <p className="mt-2 font-semibold">{rellenar(asunto) || "(sin asunto)"}</p>
-            <p className="mt-3 whitespace-pre-line">{rellenar(cuerpo) || "(sin mensaje)"}</p>
-            <p className="mt-4 border-t pt-2 text-[11px] text-muted-foreground">Al final de cada correo se añadirá el enlace de baja.</p>
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Vista previa</p>
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs"><input type="checkbox" checked={conDatos} onChange={(e) => setConDatos(e.target.checked)} /> con datos de la empresa</label>
+            </div>
+            <p className="mt-2 font-semibold">{previa?.asunto || "(sin asunto)"}</p>
+            {previa ? <iframe title="Vista previa del correo" sandbox="" srcDoc={previa.html} className="mt-2 h-96 w-full rounded-md border bg-white" /> : <p className="mt-3 text-xs text-muted-foreground">Escribe el mensaje para ver cómo queda.</p>}
           </div>
         </div>
         <DialogFooter>

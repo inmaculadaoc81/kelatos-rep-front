@@ -4,7 +4,7 @@ import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { puedeVerCrm } from "@/lib/crm";
 
 // Proxy hacia /v1/crm/correos/* (solo administradores). Rutas permitidas por lista cerrada.
-const PERMITIDAS = [/^resumen$/, /^contactos$/, /^tipos$/, /^tipos\/\d+$/, /^campanas$/, /^campanas\/\d+$/, /^audiencia$/, /^metricas$/, /^config$/, /^seguimiento$/, /^plan$/, /^respuestas\/revisar$/];
+const PERMITIDAS = [/^resumen$/, /^contactos$/, /^tipos$/, /^tipos\/previsualizar$/, /^tipos\/\d+$/, /^campanas$/, /^campanas\/\d+$/, /^audiencia$/, /^metricas$/, /^config$/, /^seguimiento$/, /^plan$/, /^respuestas\/revisar$/];
 
 async function resolver(req: Request, params: Promise<{ ruta: string[] }>, metodo: "GET" | "POST" | "PATCH" | "PUT") {
   const session = await auth();
