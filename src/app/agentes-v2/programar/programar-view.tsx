@@ -49,6 +49,12 @@ const ZONA = "Europe/Madrid";
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
+/** Ya pasó la hora programada (hora de Madrid) pero el estado todavía es «Programado»: el sistema está a punto de arrancarla. */
+function yaLlegoLaHora(i: { fecha: string; hora: string }): boolean {
+  const ahoraMadrid = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }).format(new Date()).replace(" ", "T");
+  return `${i.fecha}T${i.hora.slice(0, 5)}` <= ahoraMadrid;
+}
+
 const ESTADO_ETIQUETA: Record<EstadoProgramado, string> = {
   scheduled: "Programado",
   running: "Generando…",
@@ -119,6 +125,9 @@ export function ProgramarView() {
   const [biblioteca, setBiblioteca] = useState(false);
 
   const items = useMemo(() => datos?.items ?? [], [datos]);
+  // El cuadro abierto muestra SIEMPRE la versión más reciente de esa programación (la lista se refresca sola cada 20 s mientras hay algo en curso);
+  // si no estuviera en la semana cargada, se queda con la copia con la que se abrió.
+  const detalleActual = detalle ? (items.find((i) => i.id === detalle.id) ?? detalle) : null;
   const hayEnCurso = items.some((i) => i.status === "running" || (i.status === "scheduled" && `${i.fecha}T${i.hora}` <= new Date().toISOString().slice(0, 16)));
   useEffect(() => {
     if (!hayEnCurso) return;
@@ -215,9 +224,9 @@ export function ProgramarView() {
         />
       )}
       <BibliotecaImagenes abierto={biblioteca} onCerrar={() => setBiblioteca(false)} />
-      {detalle && (
+      {detalleActual && (
         <DialogoDetalle
-          item={detalle}
+          item={detalleActual}
           organizacionId={organizacionId}
           onCerrar={() => setDetalle(null)}
           onCambio={() => { setDetalle(null); recargar(); }}
@@ -519,7 +528,7 @@ function DialogoDetalle({
         <DialogHeader>
           <DialogTitle>{textoFecha(item.fecha)} a las {item.hora}</DialogTitle>
           <DialogDescription>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_ESTILO[item.status]}`}>{ESTADO_ETIQUETA[item.status]}</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_ESTILO[item.status === "scheduled" && yaLlegoLaHora(item) ? "running" : item.status]}`}>{ESTADO_ETIQUETA[item.status === "scheduled" && yaLlegoLaHora(item) ? "running" : item.status]}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-3">
@@ -532,7 +541,7 @@ function DialogoDetalle({
             <p className="text-xs text-muted-foreground">Diseño: {diseno} · Slides: {item.slide_count ?? "automático"}{item.slides_custom ? ` (personalizadas: ${item.slides_custom.filter((s) => s.headline || s.body || s.assetId).length} con contenido propio)` : ""}</p>
             {item.caption_custom && <p className="line-clamp-3 text-xs text-muted-foreground">Descripción: {item.caption_custom}</p>}
             {item.notes && <p className="text-xs text-muted-foreground">Indicaciones: {item.notes}</p>}
-            {item.status === "running" && <p className="text-xs text-amber-700">Se está generando; tarda unos minutos.</p>}
+            {(item.status === "running" || (item.status === "scheduled" && yaLlegoLaHora(item))) && <p className="text-xs text-amber-700">Se está generando y publicando; tarda unos minutos. Esta ventana se actualiza sola.</p>}
             {item.result_note && <p className="text-xs text-muted-foreground">{item.result_note}</p>}
             {item.error && <p className="rounded bg-red-50 p-2 text-xs text-red-800">{item.error}</p>}
           </div>
