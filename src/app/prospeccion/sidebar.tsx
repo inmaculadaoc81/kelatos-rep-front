@@ -16,11 +16,12 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Chart, Sms, Setting2 } from "@/lib/icons";
+import { Chart, Sms, Setting2, SearchNormal1 } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const VISTAS = [
   { href: "/prospeccion", etiqueta: "Resumen", icono: Chart },
+  { href: "/prospeccion/leads", etiqueta: "Buscar leads", icono: SearchNormal1 },
   { href: "/prospeccion/envios", etiqueta: "Mensajes", icono: Sms },
   { href: "/prospeccion/agente", etiqueta: "Agente", icono: Setting2 },
   { href: "/prospeccion/como-funciona", etiqueta: "Cómo funciona", icono: BookOpen },

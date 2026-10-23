@@ -4,7 +4,7 @@ import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { puedeVerProspeccion } from "@/lib/prospeccion";
 
 // Proxy único hacia /v1/prospeccion/* del API (solo administradores). Rutas permitidas, por lista cerrada.
-const PERMITIDAS = [/^config$/, /^resumen$/, /^envios$/, /^envios\/\d+$/, /^envios\/\d+\/(aprobar|omitir|enviar)$/, /^generar$/];
+const PERMITIDAS = [/^config$/, /^resumen$/, /^envios$/, /^envios\/\d+$/, /^envios\/\d+\/(aprobar|omitir|enviar)$/, /^generar$/, /^leads$/, /^leads\/(sectores|estado|buscar|importar|descartar)$/];
 
 async function resolver(req: Request, params: Promise<{ ruta: string[] }>, metodo: "GET" | "POST" | "PUT" | "PATCH") {
   const session = await auth();
