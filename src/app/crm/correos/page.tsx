@@ -7,6 +7,8 @@ import { TabContactos } from "./tab-contactos";
 import { TabTipos } from "./tab-tipos";
 import { TabCampanas } from "./tab-campanas";
 import { TabMetricas } from "./tab-metricas";
+import { TabSeguimiento } from "./tab-seguimiento";
+import { TabAjustes } from "./tab-ajustes";
 
 /** CRM · Envío de correos (campañas). SOLO ESTRUCTURA: contactos, tipos, programación y métricas; los envíos están desactivados. */
 export default function CorreosPage() {
@@ -27,13 +29,17 @@ export default function CorreosPage() {
           <TabsTrigger value="contactos">Contactos</TabsTrigger>
           <TabsTrigger value="tipos">Tipos de correo</TabsTrigger>
           <TabsTrigger value="campanas">Programar envíos</TabsTrigger>
+          <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
           <TabsTrigger value="metricas">Métricas</TabsTrigger>
+          <TabsTrigger value="ajustes">Ajustes de envío</TabsTrigger>
         </TabsList>
         <TabsContent value="resumen"><TabResumen irA={setPestana} /></TabsContent>
         <TabsContent value="contactos"><TabContactos /></TabsContent>
         <TabsContent value="tipos"><TabTipos /></TabsContent>
         <TabsContent value="campanas"><TabCampanas /></TabsContent>
+        <TabsContent value="seguimiento"><TabSeguimiento /></TabsContent>
         <TabsContent value="metricas"><TabMetricas /></TabsContent>
+        <TabsContent value="ajustes"><TabAjustes /></TabsContent>
       </Tabs>
     </div>
   );
