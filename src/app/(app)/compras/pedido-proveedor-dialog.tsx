@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { esPlataformaSinFactura } from "@/lib/compras";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -337,6 +338,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   onRegistrado: () => void;
 }) {
   const [proveedorNombre, setProveedorNombre] = useState("ASWO");
+  /** Dónde se hizo el pedido (Wallapop, AliExpress, Amazon...): distinto del proveedor, que es quien vende. */
+  const [plataforma, setPlataforma] = useState("");
   /** Antes de analizar: ¿la mercancía de lo que se sube ya llegó al local o aún no? Cada línea se puede cambiar después. */
   const [llegada, setLlegada] = useState<"aun_no" | "llego">("aun_no");
   /** Textos sin imagen (p. ej. un aviso de "recibido" por mensaje). */
@@ -346,7 +349,6 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [proveedorIdSugerido, setProveedorIdSugerido] = useState<string | null>(null);
   const [numeroPedidoGlobal, setNumeroPedidoGlobal] = useState<string | null>(null);
   const [proveedorCreado, setProveedorCreado] = useState(false);
-  const [sinFactura, setSinFactura] = useState(false);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [compradoPor, setCompradoPor] = useState("");
   const [registrando, setRegistrando] = useState(false);
@@ -370,7 +372,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setProveedorIdSugerido(null);
       setNumeroPedidoGlobal(null);
       setProveedorCreado(false);
-      setSinFactura(false);
+      setPlataforma("");
       setCompradoPor("");
       setTextosSueltos([]);
       setLlegada("aun_no");
@@ -630,7 +632,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada segundo (máx. 7 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; sinFactura?: boolean;
+        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -667,7 +669,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // El campo Proveedor pasa a mostrar el que se ha detectado de verdad (antes se quedaba con lo escrito, p. ej. ASWO, aunque fuera Wallapop).
       if (data.proveedorNombreSugerido) setProveedorNombre(data.proveedorNombreSugerido);
       setProveedorCreado(!!data.proveedorCreado);
-      setSinFactura(!!data.sinFactura);
+      setPlataforma(data.plataforma ?? "");
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo leer el pedido");
@@ -766,6 +768,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     setRegistrando(true);
     let okStock = 0, okResguardo = 0, okRecibidos = 0, fallos = 0;
     const resumen: LineaRegistroPedidoProveedor[] = [];
+    /** Pedidos creados en esta pasada (PED-n, VTA-<item>, STK-n): a cada uno se le anota la plataforma al final. */
+    const refsCreados: string[] = [];
     try {
       // --- Líneas "recibir": marcan como RECIBIDOS pedidos que ya estaban registrados (sin crear nada nuevo) ---
       const yaMarcados = new Set<string>();
@@ -828,6 +832,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const dataPedido = await resPedido.json();
           if (!dataPedido.ok) throw new Error(dataPedido.error || "No se pudo crear el pedido de stock");
           okStock++;
+          if (dataPedido.pedido?.id != null) refsCreados.push(`STK-${dataPedido.pedido.id}`);
           // El mensaje decía que ya llegó: el pedido de stock se marca recibido en el acto (y el stock sube).
           let detalleRecibido = referencia;
           if (l.recibido && dataPedido.pedido?.id != null) {
@@ -868,6 +873,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const data = await res.json();
           if (!data.ok) throw new Error(data.error || "No se pudo registrar el pedido");
           okResguardo += grupo.length;
+          if (Array.isArray(data.pedidoIds)) refsCreados.push(...data.pedidoIds.map(String));
           // La mercancía ya llegó (factura/albarán o aviso): los pedidos recién creados se marcan Recibidos en el acto.
           if (grupo.some((l) => l.recibido) && Array.isArray(data.pedidoIds) && data.pedidoIds.length > 0) {
             const resRec = await fetch("/api/pedidos/cambiar-estado", {
@@ -938,6 +944,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               if (!dataRec.ok) throw new Error(`pedido registrado pero no se pudo marcar recibido: ${dataRec.error || "error"}`);
             }
             okLinea++;
+            refsCreados.push(`VTA-${itemId}`);
           } catch (e) {
             errorLinea = e instanceof Error ? e.message : "error desconocido";
           }
@@ -950,6 +957,13 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       }
 
       toast.success(`${okStock} pedido(s) de stock, ${okResguardo} pedido(s) de cliente (reparación o venta) registrados${okRecibidos ? `, ${okRecibidos} pedido(s) existente(s) marcado(s) o vinculado(s)` : ""}${fallos ? ` — ${fallos} con error` : ""}`);
+      if (plataforma.trim() && refsCreados.length > 0) {
+        fetch("/api/compras/plataforma", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pedidos: refsCreados.map((ref) => ({ ref, plataforma: plataforma.trim() })) }),
+        }).catch(() => toast.error("Los pedidos se registraron, pero no se pudo anotar la plataforma"));
+      }
       if (resumen.length > 0) {
         fetch("/api/compras/pedido-proveedor/registro", {
           method: "POST",
@@ -982,6 +996,13 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               <Label className="text-xs text-muted-foreground">Proveedor</Label>
               <Input className="h-8 w-40" value={proveedorNombre} onChange={(e) => setProveedorNombre(e.target.value)} placeholder="ASWO" />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Plataforma (dónde se pidió)</Label>
+              <Input className="h-8 w-44" list="plataformas-pedido" value={plataforma} onChange={(e) => setPlataforma(e.target.value)} placeholder="Wallapop, AliExpress…" />
+              <datalist id="plataformas-pedido">
+                {["Wallapop", "AliExpress", "Amazon", "eBay", "Temu", "ASWO", "Web del proveedor"].map((p) => <option key={p} value={p} />)}
+              </datalist>
+            </div>
             <input ref={inputOcr} type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={(e) => anadirArchivos(e.target.files)} />
             <Button
               type="button" variant="outline" size="sm" className="gap-1.5"
@@ -1007,9 +1028,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 {proveedorCreado ? "Proveedor creado automáticamente" : "Proveedor encontrado"}: <strong className="font-medium text-foreground">{proveedorNombre}</strong>
               </span>
             )}
-            {sinFactura && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400" title="Wallapop no emite factura: el pedido se registra como Sin factura y la captura queda como justificante">
-                <Warning2 className="size-3.5" /> Wallapop · sin factura
+            {esPlataformaSinFactura(plataforma) && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400" title="Esta plataforma no emite factura: el pedido se registra como Sin factura y la captura queda como justificante">
+                <Warning2 className="size-3.5" /> {plataforma} · sin factura
               </span>
             )}
           </div>

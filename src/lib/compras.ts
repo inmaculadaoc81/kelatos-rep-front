@@ -9,8 +9,9 @@
  * ya existentes de Reparaciones (/api/pedidos/cambiar-estado).
  */
 
-/** Plataformas que no emiten factura (compra a un particular): el pedido queda "Sin factura" y no se pide registrarla en el Libro de Compras. */
-export const esProveedorSinFactura = (nombre: string) => /wallapop/i.test(nombre);
+/** Plataformas que no emiten factura (compra a un particular): el pedido queda "Sin factura" y no se pide registrarla en el Libro de Compras.
+    La plataforma (dónde se pidió) es distinta del proveedor (quien vende). */
+export const esPlataformaSinFactura = (plataforma: string) => /wallapop/i.test(plataforma);
 
 export interface CompraFila {
   /** "reparacion" (kelatos_app.pedidos) o "venta" (kelatos_app.items_venta,
@@ -47,6 +48,8 @@ export interface CompraFila {
   proveedorId: string;
   proveedorNombre: string;
   proveedorOtro: string;
+  /** Plataforma donde se hizo el pedido (Wallapop, AliExpress...); "" si no se anotó. */
+  plataforma: string;
   /** Pedido activo cuya fecha estimada ya pasó sin haber llegado (calculado en el servidor). */
   retrasado: boolean;
   /** Precio de compra pagado (null si el pedido no lo tiene registrado — pedidos anteriores a este campo). */
@@ -79,6 +82,7 @@ interface FilaCompraSql {
   proveedor_id: string | null;
   proveedor_nombre: string | null;
   proveedor_otro: string | null;
+  plataforma?: string | null;
   retrasado: boolean | null;
   costo: string | number | null;
   facturas_count?: number | null;
@@ -109,6 +113,7 @@ export function mapearCompra(row: FilaCompraSql): CompraFila {
     proveedorId: row.proveedor_id || "",
     proveedorNombre: row.proveedor_nombre || "",
     proveedorOtro: row.proveedor_otro || "",
+    plataforma: row.plataforma || "",
     // Calculado en el servidor (kelatos_app.pedidos no tiene columna para esto):
     // pedido activo cuya fecha estimada ya pasó sin haber llegado.
     retrasado: row.retrasado === true,
