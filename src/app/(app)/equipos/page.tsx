@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
 import { Equipo, EstadoEquipo } from "@/lib/equipos";
 import { codigoBarrasEquipo, imprimirEtiquetaEquipo, numeroDeEquipo } from "@/lib/imprimir-etiqueta";
 import { NuevoEquipoDialog } from "./nuevo-equipo-dialog";
@@ -120,6 +121,7 @@ export default function EquiposPage() {
   const [confirmando, setConfirmando] = useState(false);
   // Número de equipo escaneado mientras la lista aún cargaba.
   const pendienteRef = useRef<number | null>(null);
+  const confirmar = useConfirm();
   const [imprimiendo, setImprimiendo] = useState<string | null>(null);
 
   async function cargar() {
@@ -166,6 +168,11 @@ export default function EquiposPage() {
       toast.error(`El id ${e.id} no tiene la forma EQ-número, no se puede generar su código de barras`);
       return;
     }
+    const ok0 = await confirmar(`¿Imprimir la etiqueta de ${e.marca} ${e.modelo} (${e.id})?`, {
+      titulo: "Imprimir etiqueta",
+      detalle: "Se mandará a la impresora conectada a este PC ahora mismo.",
+    });
+    if (!ok0) return;
     setImprimiendo(e.id);
     try {
       const ok = await imprimirEtiquetaEquipo(e.id, `${e.marca} ${e.modelo}`.trim());
