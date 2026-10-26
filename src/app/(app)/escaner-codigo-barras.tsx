@@ -40,6 +40,9 @@ interface CargadorEscaneado {
  *    "CARGADOR") → pregunta Ticket o Factura y abre el formulario con esa
  *    pieza ya añadida como línea. Petición del usuario, 2026-10-09.
  *
+ *  - El código de una ETIQUETA DE EQUIPO DE ALQUILER (9 dígitos, empieza por 8) → abre Equipos de Alquiler con ese
+ *    equipo: Alquilar si está disponible, Devolver si está alquilado, su ficha en cualquier otro estado.
+ *
  * Los cargadores se comprueban PRIMERO (por referencia exacta conocida) —
  * solo si no coincide con ningún cargador se interpreta como resguardo.
  * No interfiere con la escritura normal: se ignora por completo mientras
@@ -108,6 +111,14 @@ export function EscanerCodigoBarras({ recepcionEquipos = false }: { recepcionEqu
           e.preventDefault();
           setCargadorEscaneado(cargador);
           setSelectorAbierto(true);
+          return;
+        }
+
+        // Etiqueta de un equipo de alquiler: "8" + número del equipo con ceros hasta 8 dígitos (EQ-0036 = 800000036).
+        const equipo = /^8(\d{8})$/.exec(codigo);
+        if (equipo && Number(equipo[1]) > 0) {
+          e.preventDefault();
+          router.push(`/equipos?equipo=${Number(equipo[1])}`);
           return;
         }
 

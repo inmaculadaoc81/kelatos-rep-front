@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Refresh2,
   Category2,
@@ -13,6 +14,7 @@ import {
   Wallet,
   BoxRemove,
   Warning2,
+  ScanBarcode,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +39,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Equipo, EstadoEquipo } from "@/lib/equipos";
+import { codigoBarrasEquipo, imprimirEtiquetaEquipo, numeroDeEquipo } from "@/lib/imprimir-etiqueta";
 import { NuevoEquipoDialog } from "./nuevo-equipo-dialog";
 import { NuevoAlquilerDialog } from "./alquiler-dialogs";
 import { DevolverAlquilerDialog } from "./devolver-alquiler-dialog";
@@ -83,6 +86,23 @@ const TEXTOS_CONFIRMACION: Record<EstadoEquipo, { titulo: string; boton: string;
   ALQUILADO: { titulo: "", boton: "", descripcion: "" }, // no se usa: ALQUILADO se gestiona con Alquilar/Devolver, no con este diálogo
 };
 
+/** useSearchParams() exige un <Suspense> alrededor. El escáner global manda aquí con ?equipo=N (número del equipo, p. ej. 36 = EQ-0036). */
+function AbrirEquipoPorQuery({ onAbrir }: { onAbrir: (numero: number) => void }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const n = Number(searchParams.get("equipo"));
+    if (Number.isInteger(n) && n > 0) {
+      onAbrir(n);
+      router.replace("/equipos");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  return null;
+}
+
 export default function EquiposPage() {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -98,6 +118,9 @@ export default function EquiposPage() {
   const [confirmarAccion, setConfirmarAccion] = useState<{ equipo: Equipo; estado: EstadoEquipo } | null>(null);
   const [confirmado, setConfirmado] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  // Número de equipo escaneado mientras la lista aún cargaba.
+  const pendienteRef = useRef<number | null>(null);
+  const [imprimiendo, setImprimiendo] = useState<string | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -107,6 +130,10 @@ export default function EquiposPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       setEquipos(data.equipos as Equipo[]);
+      if (pendienteRef.current !== null) {
+        abrirEscaneado(pendienteRef.current, data.equipos as Equipo[]);
+        pendienteRef.current = null;
+      }
       setPuedeEditarTarifas(data.puedeEditarTarifas === true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
@@ -117,7 +144,37 @@ export default function EquiposPage() {
 
   useEffect(() => {
     cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Abre la acción del equipo escaneado según su estado; si la lista aún no ha cargado, queda pendiente hasta que cargue. */
+  function abrirEscaneado(numero: number, lista: Equipo[]) {
+    const e = lista.find((x) => numeroDeEquipo(x.id) === numero);
+    if (!e) toast.error(`No existe ningún equipo con el código escaneado (EQ-${numero})`);
+    else if (e.estado === "DISPONIBLE") setAlquilerAbierto(e);
+    else if (e.estado === "ALQUILADO") setDevolverAbierto(e);
+    else setFichaId(e.id);
+  }
+
+  function alEscanear(numero: number) {
+    if (cargando) pendienteRef.current = numero;
+    else abrirEscaneado(numero, equipos);
+  }
+
+  async function imprimirEtiqueta(e: Equipo) {
+    if (!codigoBarrasEquipo(e.id)) {
+      toast.error(`El id ${e.id} no tiene la forma EQ-número, no se puede generar su código de barras`);
+      return;
+    }
+    setImprimiendo(e.id);
+    try {
+      const ok = await imprimirEtiquetaEquipo(e.id, `${e.marca} ${e.modelo}`.trim(), e.serie);
+      if (ok) toast.success(`Etiqueta de ${e.id} enviada a la impresora`);
+      else toast.error("No se pudo imprimir — comprueba que el puente de impresión esté corriendo en este PC");
+    } finally {
+      setImprimiendo(null);
+    }
+  }
 
   const fichaEquipo = fichaId ? equipos.find((x) => x.id === fichaId) ?? null : null;
 
@@ -186,6 +243,9 @@ export default function EquiposPage() {
 
   return (
     <div className="p-6">
+      <Suspense fallback={null}>
+        <AbrirEquipoPorQuery onAbrir={alEscanear} />
+      </Suspense>
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Equipos de Alquiler</h1>
@@ -362,6 +422,18 @@ export default function EquiposPage() {
                   </TableCell>
                   <TableCell onClick={(ev) => ev.stopPropagation()}>
                     <div className="flex flex-wrap items-center gap-1">
+                      {e.estado !== "VENDIDO" && (
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          disabled={imprimiendo === e.id}
+                          onClick={() => imprimirEtiqueta(e)}
+                          title="Imprimir etiqueta con código de barras para pegar en el equipo"
+                        >
+                          <ScanBarcode className="size-3.5" />
+                        </Button>
+                      )}
                       {e.estado === "DISPONIBLE" && (
                         <>
                           <Button size="sm" variant="outline" className="h-7" onClick={() => setAlquilerAbierto(e)}>

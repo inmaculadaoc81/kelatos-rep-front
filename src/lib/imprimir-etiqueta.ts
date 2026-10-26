@@ -44,6 +44,38 @@ export async function imprimirEtiquetaResguardoConFeedback(resguardo: string): P
   }
 }
 
+/** Número del equipo de alquiler dentro de su id ("EQ-0036" → 36); null si no tiene la forma EQ-n. */
+export function numeroDeEquipo(id: string): number | null {
+  const m = /^EQ-0*(\d{1,8})$/i.exec(id.trim());
+  return m ? Number(m[1]) : null;
+}
+
+/** Código de barras de un equipo de alquiler: solo dígitos ("8" + número con ceros hasta 8 → EQ-0036 = 800000036), como las
+    piezas ("7"+...), porque el escáner global solo recoge dígitos. Debe coincidir con codigoBarrasEquipo() del puente. */
+export function codigoBarrasEquipo(id: string): string | null {
+  const n = numeroDeEquipo(id);
+  return n === null || n === 0 ? null : "8" + String(n).padStart(8, "0");
+}
+
+const PUENTE_IMPRESORA_EQUIPO_URL = "http://127.0.0.1:9876/imprimir-etiqueta-equipo";
+
+/** Etiqueta de un equipo de alquiler para pegar en el portátil: al escanearla (en cualquier pantalla) se abre el equipo para
+    alquilarlo si está disponible o devolverlo si está alquilado (ver escaner-codigo-barras.tsx). Botón manual en Equipos de Alquiler. */
+export async function imprimirEtiquetaEquipo(id: string, descripcion: string, serie: string): Promise<boolean> {
+  if (!codigoBarrasEquipo(id)) return false;
+  try {
+    const res = await fetch(PUENTE_IMPRESORA_EQUIPO_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, descripcion, serie }),
+    });
+    const data = await res.json();
+    return !!data.ok;
+  } catch {
+    return false;
+  }
+}
+
 const PUENTE_IMPRESORA_PIEZA_URL = "http://127.0.0.1:9876/imprimir-etiqueta-pieza";
 
 /** Etiqueta de una pieza de Stock (p. ej. un cargador) para pegar en el
