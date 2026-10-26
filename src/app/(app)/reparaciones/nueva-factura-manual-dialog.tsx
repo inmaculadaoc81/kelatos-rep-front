@@ -77,7 +77,8 @@ export function NuevaFacturaManualDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onGenerada: () => void;
+  /** Recibe el número de la factura recién generada y el cliente (quien la use puede ignorarlos). */
+  onGenerada: (resultado?: { numeroFactura: string; clienteNombre: string }) => void;
   /** Precarga una única línea al abrir (p. ej. al escanear el código de
       barras de una pieza de Stock, como un cargador). */
   lineaInicial?: { referencia: string; descripcion: string; precio: number };
@@ -196,7 +197,7 @@ export function NuevaFacturaManualDialog({
       toast.success(`Factura ${data.numeroFactura} generada correctamente`);
       guardarSuReferencia(data.numeroFactura, suReferencia);
       setResultado({ numeroFactura: data.numeroFactura, urlPdf: data.urlPdf, entidadId: data.entidadId });
-      onGenerada();
+      onGenerada({ numeroFactura: data.numeroFactura, clienteNombre: nombre.trim() });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {

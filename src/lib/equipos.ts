@@ -64,6 +64,10 @@ export interface Equipo {
   precioVenta: number;
   estado: EstadoEquipo;
   fechaAlta: string | null;
+  /** Venta: número de la factura, fecha y comprador (vacíos si no se vendió o se vendió antes de registrar la factura). */
+  facturaVenta?: string;
+  fechaVenta?: string | null;
+  comprador?: string;
   alquilerActualId: string | null;
   clienteActual: { nombre: string; telefono: string } | null;
   fechaInicio: string | null;

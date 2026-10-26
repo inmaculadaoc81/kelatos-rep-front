@@ -43,6 +43,8 @@ import { Equipo, EstadoEquipo } from "@/lib/equipos";
 import { codigoBarrasEquipo, imprimirEtiquetaEquipo, numeroDeEquipo } from "@/lib/imprimir-etiqueta";
 import { NuevoEquipoDialog } from "./nuevo-equipo-dialog";
 import { NuevoAlquilerDialog } from "./alquiler-dialogs";
+import { VenderEquipoDialog } from "./vender-equipo-dialog";
+import { NuevaFacturaManualDialog } from "../reparaciones/nueva-factura-manual-dialog";
 import { DevolverAlquilerDialog } from "./devolver-alquiler-dialog";
 import { AlquilerDetalleDialog } from "./alquiler-detalle-dialog";
 import { EquipoDetalleDialog } from "./equipo-detalle-dialog";
@@ -123,6 +125,9 @@ export default function EquiposPage() {
   const pendienteRef = useRef<number | null>(null);
   const confirmar = useConfirm();
   const [imprimiendo, setImprimiendo] = useState<string | null>(null);
+  // Venta: el equipo que se está vendiendo y si se factura aquí mismo (factura manual con el equipo precargado).
+  const [vendiendo, setVendiendo] = useState<{ equipo: Equipo; soloFactura: boolean } | null>(null);
+  const [facturandoVenta, setFacturandoVenta] = useState<Equipo | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -205,6 +210,8 @@ export default function EquiposPage() {
           e.marca.toLowerCase().includes(q) ||
           e.modelo.toLowerCase().includes(q) ||
           e.serie.toLowerCase().includes(q) ||
+          (e.facturaVenta ?? "").toLowerCase().includes(q) ||
+          (e.comprador ?? "").toLowerCase().includes(q) ||
           e.clienteActual?.nombre.toLowerCase().includes(q) ||
           e.clienteActual?.telefono.includes(q)
       );
@@ -309,7 +316,7 @@ export default function EquiposPage() {
         <div className="relative">
           <SearchNormal1 className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por marca, modelo, serie, cliente..."
+            placeholder="Buscar por marca, modelo, serie, cliente, factura..."
             className="w-72 pl-7"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
@@ -382,6 +389,15 @@ export default function EquiposPage() {
                     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${COLOR_ESTADO[e.estado] || ""}`}>
                       {ETIQUETAS_ESTADO[e.estado] ?? e.estado}
                     </span>
+                    {e.estado === "VENDIDO" && (
+                      <div className="mt-1 text-xs">
+                        {e.facturaVenta ? (
+                          <span className="font-medium text-foreground" title={[e.comprador, e.fechaVenta ? new Date(e.fechaVenta).toLocaleDateString("es-ES") : ""].filter(Boolean).join(" · ")}>Factura {e.facturaVenta}</span>
+                        ) : (
+                          <span className="text-amber-700">Sin factura registrada</span>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">
                     {e.clienteActual ? (
@@ -476,9 +492,9 @@ export default function EquiposPage() {
                             }
                           />
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => pedirConfirmacion(e, "VENDIDO")}>
+                            <DropdownMenuItem onClick={() => setVendiendo({ equipo: e, soloFactura: false })}>
                               <Wallet className="size-3.5" />
-                              Marcar como vendido
+                              Vender equipo
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => pedirConfirmacion(e, "FUERA_SERVICIO")}>
                               <BoxRemove className="size-3.5" />
@@ -486,6 +502,11 @@ export default function EquiposPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      )}
+                      {e.estado === "VENDIDO" && (
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => setVendiendo({ equipo: e, soloFactura: true })}>
+                          {e.facturaVenta ? "Cambiar factura" : "Añadir factura"}
+                        </Button>
                       )}
                       {e.estado === "FUERA_SERVICIO" && (
                         <Button size="sm" variant="outline" className="h-7" onClick={() => pedirConfirmacion(e, "DISPONIBLE")}>
@@ -525,6 +546,37 @@ export default function EquiposPage() {
         onVerAlquiler={(x) => {
           setFichaId(null);
           setDetalleAbierto(x);
+        }}
+      />
+      {vendiendo && (
+        <VenderEquipoDialog
+          equipo={vendiendo.equipo}
+          soloFactura={vendiendo.soloFactura}
+          onCerrar={() => setVendiendo(null)}
+          onFacturar={() => { setFacturandoVenta(vendiendo.equipo); setVendiendo(null); }}
+          onVendido={() => { setVendiendo(null); cargar(); }}
+        />
+      )}
+      <NuevaFacturaManualDialog
+        open={facturandoVenta !== null}
+        onOpenChange={(o) => !o && setFacturandoVenta(null)}
+        lineaInicial={facturandoVenta ? { referencia: facturandoVenta.id, descripcion: `Venta de equipo ${facturandoVenta.marca} ${facturandoVenta.modelo}${facturandoVenta.serie ? ` (S/N ${facturandoVenta.serie})` : ""} — ${facturandoVenta.id}`, precio: facturandoVenta.precioVenta } : undefined}
+        onGenerada={async (r) => {
+          const eq = facturandoVenta;
+          if (!eq || !r) return;
+          try {
+            const d = await fetch(`/api/equipos/${encodeURIComponent(eq.id)}/vender`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ numeroFactura: r.numeroFactura, comprador: r.clienteNombre }),
+            }).then((x) => x.json());
+            if (!d.ok) throw new Error(d.error || "Error desconocido");
+            toast.success(`${eq.id} vendido con la factura ${r.numeroFactura}`);
+          } catch (err) {
+            toast.error(`La factura ${r.numeroFactura} se generó, pero no se pudo vincular a ${eq.id}: ${err instanceof Error ? err.message : "error"}. Usa «Vender equipo → Ya tengo la factura».`);
+          } finally {
+            cargar();
+          }
         }}
       />
       <AlquilerDetalleDialog
