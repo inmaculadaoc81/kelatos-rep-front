@@ -36,7 +36,6 @@ export const GRUPOS_DESPUES: GrupoNav[] = [
     titulo: "Datos",
     items: [
       { label: "Analítica", href: "/agentes-v2/analitica", icon: Chart },
-      { label: "Redes sociales", href: "/agentes-v2/redes", icon: Global },
       { label: "Informes", href: "/agentes-v2/informes", icon: DocumentText },
     ],
   },
@@ -78,7 +77,6 @@ export const TITULO_SECCION: Record<string, string> = {
   "en-vivo": "En vivo",
   ejecuciones: "Ejecuciones",
   analitica: "Analítica",
-  redes: "Redes sociales",
   informes: "Informes",
   integraciones: "Integraciones",
   "modelos-ia": "Modelos IA",

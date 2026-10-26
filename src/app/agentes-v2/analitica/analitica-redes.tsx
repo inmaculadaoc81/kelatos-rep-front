@@ -6,9 +6,8 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "rec
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { enviarV2, useV2 } from "@/components/agentes-v2/use-v2";
-import { Cabecera, CargandoFilas, ErrorCaja, Kpi, Vacio } from "@/components/agentes-v2/componentes";
+import { CargandoFilas, ErrorCaja, Kpi, Vacio } from "@/components/agentes-v2/componentes";
 import { fechaHora } from "@/lib/agentes-v2";
-import { cn } from "@/lib/utils";
 
 interface PublicacionTop {
   media_id: string;
@@ -42,15 +41,13 @@ interface Resumen {
   mejores?: PublicacionTop[];
 }
 
-const PERIODOS = [7, 30, 90] as const;
 const NOMBRE_TIPO: Record<string, string> = { reel: "Reels", carrusel: "Carruseles", imagen: "Imágenes", video: "Vídeos" };
 const n = (v: number | null | undefined, dec = 0) => (v === null || v === undefined ? "—" : v.toLocaleString("es-ES", { maximumFractionDigits: dec }));
 const CONFIG_SEGUIDORES = { seguidores: { label: "Seguidores", color: "#2a6df4" } } satisfies ChartConfig;
 const CONFIG_DIAS = { interacciones_medias: { label: "Interacciones medias", color: "#2a9d6f" } } satisfies ChartConfig;
 
-/** Analítica de Instagram de la organización activa: seguidores, interacciones, qué tipo de contenido y qué día funcionan mejor. Solo lectura. */
-export default function RedesPage() {
-  const [dias, setDias] = useState<(typeof PERIODOS)[number]>(30);
+/** Analítica de Instagram de la organización activa (sección de Analítica): seguidores, interacciones, qué tipo de contenido y qué día funcionan mejor. Solo lectura. */
+export function AnaliticaRedes({ dias }: { dias: number }) {
   const [actualizando, setActualizando] = useState(false);
   const { datos, error, cargando, recargar } = useV2<Resumen>(`social/analytics/resumen?dias=${dias}`);
 
@@ -72,23 +69,11 @@ export default function RedesPage() {
   const cambio = datos?.cuenta?.cambio_seguidores;
 
   return (
-    <div>
-      <Cabecera
-        titulo="Redes sociales"
-        descripcion={datos?.usuario ? `Instagram · @${datos.usuario}. Cómo van tus publicaciones y qué funciona mejor.` : "Instagram: cómo van tus publicaciones y qué funciona mejor."}
-        acciones={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1.5">
-              {PERIODOS.map((p) => (
-                <button key={p} type="button" aria-pressed={dias === p} onClick={() => setDias(p)} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", dias === p ? "border-primary bg-primary/10 font-medium" : "text-muted-foreground hover:text-foreground")}>
-                  {p} días
-                </button>
-              ))}
-            </div>
-            <Button size="sm" variant="outline" onClick={actualizar} disabled={actualizando || (datos ? !datos.configurado : false)}>{actualizando ? "Actualizando…" : "Actualizar ahora"}</Button>
-          </div>
-        }
-      />
+    <div className="mt-8">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Instagram{datos?.usuario ? ` · @${datos.usuario}` : ""}</h2>
+        <Button size="sm" variant="outline" onClick={actualizar} disabled={actualizando || (datos ? !datos.configurado : false)}>{actualizando ? "Actualizando…" : "Actualizar ahora"}</Button>
+      </div>
 
       {error && <ErrorCaja mensaje={error} />}
       {cargando && !datos ? (
