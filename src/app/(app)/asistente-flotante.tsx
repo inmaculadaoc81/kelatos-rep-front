@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Streamdown } from "streamdown";
-import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1 } from "@/lib/icons";
+import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1, Microphone, VolumeHigh, VolumeSlash } from "@/lib/icons";
+import { useVoz } from "@/lib/asistente/use-voz";
 import { contextoPantallaActual } from "@/lib/asistente/contexto";
 
 interface Mensaje {
@@ -13,6 +14,7 @@ interface Mensaje {
 }
 
 const CLAVE_STORAGE = "kelatos-asistente-chat";
+const CLAVE_LEER = "kelatos-asistente-leer-voz";
 interface Sugerencia {
   pregunta: string;
   /** "guia" = explica cómo funciona algo; "datos" = consulta datos reales. */
@@ -174,6 +176,21 @@ export function AsistenteFlotante() {
   const desplazableRef = useRef<HTMLDivElement>(null);
   const enviandoRef = useRef(false);
   const cancelarRef = useRef(false);
+  // Leer las respuestas en voz alta: se recuerda en el navegador. Si la pregunta se hizo hablando, la respuesta se lee siempre.
+  const [leerRespuestas, setLeerRespuestas] = useState<boolean>(() => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem(CLAVE_LEER) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const preguntaPorVozRef = useRef(false);
+  const voz = useVoz({
+    alTranscribir: (texto) => {
+      preguntaPorVozRef.current = true;
+      void enviar(texto);
+    },
+  });
 
   useEffect(() => {
     try {
@@ -212,7 +229,10 @@ export function AsistenteFlotante() {
 
   async function enviar(textoPregunta: string) {
     const pregunta = textoPregunta.trim();
+    const porVoz = preguntaPorVozRef.current;
+    preguntaPorVozRef.current = false;
     if (!pregunta || enviandoRef.current) return;
+    voz.callar();
     enviandoRef.current = true;
     cancelarRef.current = false;
     setFase("");
@@ -231,6 +251,8 @@ export function AsistenteFlotante() {
       if (!data.ok) throw new Error(data.error || "No se pudo consultar al asistente");
 
       let consultas = 0;
+      let textoFinal = "";
+      let terminado = false;
       while (!cancelarRef.current) {
         await new Promise((r) => setTimeout(r, 500));
         if (++consultas > 600) throw new Error("La respuesta está tardando demasiado. Inténtalo de nuevo.");
@@ -238,10 +260,17 @@ export function AsistenteFlotante() {
         const d = await r.json();
         if (!d.ok) throw new Error(d.error || "No se pudo leer la respuesta");
         if (typeof d.fase === "string") setFase(d.fase);
-        if (d.texto) ponerRespuesta(d.texto);
+        if (d.texto) {
+          ponerRespuesta(d.texto);
+          textoFinal = d.texto;
+        }
         if (d.estado === "error") throw new Error(d.error || "No se pudo responder");
-        if (d.estado === "listo") break;
+        if (d.estado === "listo") {
+          terminado = true;
+          break;
+        }
       }
+      if (terminado && textoFinal && (porVoz || leerRespuestas)) voz.hablar(textoFinal);
     } catch (e) {
       const msg = e instanceof Error ? (e.name === "TimeoutError" ? "El asistente no responde. Inténtalo de nuevo." : e.message) : "Error desconocido";
       setMensajes((m) => {
@@ -257,6 +286,22 @@ export function AsistenteFlotante() {
 
   function detener() {
     cancelarRef.current = true;
+    voz.callar();
+  }
+
+  function alternarLectura() {
+    if (voz.hablando) {
+      voz.callar();
+      return;
+    }
+    const nuevo = !leerRespuestas;
+    setLeerRespuestas(nuevo);
+    if (!nuevo) voz.callar();
+    try {
+      localStorage.setItem(CLAVE_LEER, nuevo ? "1" : "0");
+    } catch {
+      /* ignorar */
+    }
   }
 
   function nuevaConversacion() {
@@ -288,6 +333,17 @@ export function AsistenteFlotante() {
                 {respondiendo ? "Escribiendo…" : "En línea · te ayudo con el sistema"}
               </p>
             </div>
+            {voz.soportaVoz && (
+              <button
+                type="button"
+                onClick={alternarLectura}
+                className={`relative rounded-xl p-2 transition-colors hover:bg-primary-foreground/15 hover:text-primary-foreground ${voz.hablando || leerRespuestas ? "bg-primary-foreground/20 text-primary-foreground" : "text-primary-foreground/85"}`}
+                title={voz.hablando ? "Dejar de hablar" : leerRespuestas ? "Las respuestas se leen en voz alta (pulsa para desactivarlo)" : "Leer las respuestas en voz alta"}
+                aria-pressed={leerRespuestas}
+              >
+                {leerRespuestas || voz.hablando ? <VolumeHigh className="size-4.5" /> : <VolumeSlash className="size-4.5" />}
+              </button>
+            )}
             <button type="button" onClick={nuevaConversacion} disabled={respondiendo || mensajes.length === 0} className="relative rounded-xl p-2 text-primary-foreground/85 transition-colors hover:bg-primary-foreground/15 hover:text-primary-foreground disabled:opacity-30" title="Nueva conversación">
               <Refresh2 className="size-4.5" />
             </button>
@@ -373,10 +429,10 @@ export function AsistenteFlotante() {
             >
               <textarea
                 rows={1}
-                value={entrada}
+                value={voz.escuchando ? voz.parcial : entrada}
                 maxLength={1200}
-                disabled={respondiendo}
-                placeholder={respondiendo ? "Respondiendo…" : "Escribe tu pregunta…"}
+                disabled={respondiendo || voz.escuchando}
+                placeholder={respondiendo ? "Respondiendo…" : voz.escuchando ? "Te escucho… habla ahora" : "Escribe o pulsa el micrófono…"}
                 onChange={(e) => setEntrada(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -386,6 +442,19 @@ export function AsistenteFlotante() {
                 }}
                 className="max-h-28 min-h-9 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70 disabled:opacity-60"
               />
+              {voz.soportaMicrofono && (
+                <button
+                  type="button"
+                  onClick={voz.escuchando ? voz.parar : voz.iniciar}
+                  disabled={respondiendo}
+                  title={voz.escuchando ? "Pulsa para terminar de hablar" : "Hablar: pulsa y haz tu pregunta"}
+                  aria-pressed={voz.escuchando}
+                  className={`relative flex size-9 shrink-0 items-center justify-center rounded-xl transition-all disabled:opacity-40 ${voz.escuchando ? "bg-red-500 text-white shadow-md" : "bg-muted text-foreground hover:bg-accent"}`}
+                >
+                  {voz.escuchando && <span aria-hidden className="absolute inset-0 animate-ping rounded-xl bg-red-500/40" />}
+                  <Microphone className="relative size-[17px]" />
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={!respondiendo && !entrada.trim()}
@@ -395,7 +464,11 @@ export function AsistenteFlotante() {
                 {respondiendo ? <span className="size-3 rounded-[3px] bg-primary-foreground" /> : <Send2 className="size-[17px]" />}
               </button>
             </form>
-            <p className="mt-2 text-center text-[10.5px] text-muted-foreground">Las respuestas pueden contener errores: contrasta los datos importantes.</p>
+            {voz.error && <p className="mt-2 text-center text-[11px] text-destructive">{voz.error}</p>}
+            <p className="mt-2 text-center text-[10.5px] text-muted-foreground">
+              {voz.soportaMicrofono ? "Pulsa el micrófono para preguntar hablando. " : "Para preguntar por voz usa Chrome o Edge. "}
+              Las respuestas pueden contener errores: contrasta los datos importantes.
+            </p>
           </div>
         </div>
       )}
