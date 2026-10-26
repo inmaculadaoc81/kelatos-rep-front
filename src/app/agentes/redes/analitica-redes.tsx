@@ -20,6 +20,7 @@ interface PublicacionTop {
   likes: number;
   comentarios: number;
   alcance: number | null;
+  vistas: number | null;
   guardados: number | null;
   compartidos: number | null;
   interacciones: number;
@@ -35,7 +36,7 @@ interface Resumen {
   error?: string | null;
   insights_disponibles?: boolean;
   cuenta?: { seguidores: number | null; siguiendo: number | null; publicaciones_totales: number | null; cambio_seguidores: number | null; desde: string | null; serie: { fecha: string; seguidores: number }[] };
-  periodo?: { publicaciones: number; likes: number; comentarios: number; guardados: number | null; compartidos: number | null; alcance: number | null; interacciones: number; tasa_interaccion: number | null; interacciones_por_publicacion: number | null; interacciones_mediana: number | null };
+  periodo?: { publicaciones: number; likes: number; comentarios: number; guardados: number | null; compartidos: number | null; alcance: number | null; vistas: number | null; interacciones: number; tasa_interaccion: number | null; interacciones_por_publicacion: number | null; interacciones_mediana: number | null };
   por_tipo?: { tipo: string; publicaciones: number; likes_medios: number; comentarios_medios: number; alcance_medio: number | null; interacciones_mediana: number | null }[];
   por_dia?: { dia: string; publicaciones: number; interacciones_medias: number | null; interacciones_mediana: number | null }[];
   por_origen?: { origen: "kelatos" | "externo"; publicaciones: number; interacciones_medias: number | null; interacciones_mediana: number | null }[];
@@ -142,7 +143,7 @@ export function AnaliticaRedes({ dias }: { dias: number }) {
             <Kpi titulo="Publicaciones" valor={n(datos.periodo.publicaciones)} sub={`${n(datos.periodo.publicaciones / (datos.dias / 7), 1)} por semana · últimos ${datos.dias} días`} />
             <Kpi titulo="Interacciones" valor={n(datos.periodo.interacciones)} sub={`${n(datos.periodo.likes)} me gusta · ${n(datos.periodo.comentarios)} comentarios`} />
             {datos.insights_disponibles ? (
-              <Kpi titulo="Alcance" valor={n(datos.periodo.alcance)} sub={`tasa de interacción ${n(datos.periodo.tasa_interaccion, 1)} %`} />
+              <Kpi titulo="Vistas" valor={n(datos.periodo.vistas)} sub={`alcance ${n(datos.periodo.alcance)} · tasa de interacción ${n(datos.periodo.tasa_interaccion, 1)} %`} />
             ) : (
               <Kpi titulo="Publicación típica" valor={n(datos.periodo.interacciones_mediana, 1)} sub={`interacciones (la mediana; la media es ${n(datos.periodo.interacciones_por_publicacion, 1)})`} />
             )}
@@ -241,7 +242,7 @@ export function AnaliticaRedes({ dias }: { dias: number }) {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs tabular-nums text-muted-foreground">
                     <span><strong className="text-sm text-foreground">{n(p.interacciones)}</strong> interacciones</span>
-                    <span>♥ {n(p.likes)} · 💬 {n(p.comentarios)}{p.alcance !== null ? ` · alcance ${n(p.alcance)}` : ""}</span>
+                    <span>♥ {n(p.likes)} · 💬 {n(p.comentarios)}{p.vistas !== null ? ` · ${n(p.vistas)} vistas` : ""}{p.alcance !== null ? ` · alcance ${n(p.alcance)}` : ""}{p.guardados !== null ? ` · ${n(p.guardados)} guardados` : ""}</span>
                     {p.permalink && <a href={p.permalink} target="_blank" rel="noreferrer" className="text-primary hover:underline">Ver en Instagram</a>}
                   </div>
                 </li>
