@@ -9,6 +9,9 @@
  * ya existentes de Reparaciones (/api/pedidos/cambiar-estado).
  */
 
+/** Plataformas que no emiten factura (compra a un particular): el pedido queda "Sin factura" y no se pide registrarla en el Libro de Compras. */
+export const esProveedorSinFactura = (nombre: string) => /wallapop/i.test(nombre);
+
 export interface CompraFila {
   /** "reparacion" (kelatos_app.pedidos) o "venta" (kelatos_app.items_venta,
       pedido de pieza a un cliente sin reparación) — distingue qué detalle

@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CompraFila, ESTADOS_PLATAFORMA, ESTILO_BADGE_ESTADO, ESTILO_BADGE_PLATAFORMA, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor, precioLegible } from "@/lib/compras";
+import { CompraFila, ESTADOS_PLATAFORMA, ESTILO_BADGE_ESTADO, ESTILO_BADGE_PLATAFORMA, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor, esProveedorSinFactura, precioLegible } from "@/lib/compras";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import type { Empleado } from "@/app/api/empleados/route";
 
@@ -368,8 +368,11 @@ export default function ComprasPage() {
                     </TableCell>
                     <TableCell>
                       {c.proveedorNombre ? (
-                        <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${colorProveedor(c.proveedorNombre)}`}>
-                          {c.proveedorNombre}
+                        <span className="inline-flex flex-col items-start gap-0.5">
+                          <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${colorProveedor(c.proveedorNombre)}`}>
+                            {c.proveedorNombre}
+                          </span>
+                          {esProveedorSinFactura(c.proveedorNombre) && <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">Sin factura</span>}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -469,12 +472,12 @@ export default function ComprasPage() {
                                 <Book1 className="size-3.5" /> Facturas ({c.facturasCount})
                               </Button>
                             )}
-                            {c.estado === "Recibido" && c.proveedorId && c.facturasCount === 0 && (
+                            {c.estado === "Recibido" && c.proveedorId && c.facturasCount === 0 && !esProveedorSinFactura(c.proveedorNombre) && (
                               <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setBorradorFactura(c)} title="Registrar la factura de este pedido en el Libro de Compras">
                                 <Book1 className="size-3.5" /> Registrar factura
                               </Button>
                             )}
-                            {!sig && c.facturasCount === 0 && !(c.estado === "Recibido" && c.proveedorId) && <span className="text-muted-foreground">—</span>}
+                            {!sig && c.facturasCount === 0 && !(c.estado === "Recibido" && c.proveedorId && !esProveedorSinFactura(c.proveedorNombre)) && <span className="text-muted-foreground">—</span>}
                           </>
                         )}
                       </div>

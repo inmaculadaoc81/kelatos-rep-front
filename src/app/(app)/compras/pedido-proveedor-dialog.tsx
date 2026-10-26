@@ -311,6 +311,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [proveedorIdSugerido, setProveedorIdSugerido] = useState<string | null>(null);
   const [numeroPedidoGlobal, setNumeroPedidoGlobal] = useState<string | null>(null);
   const [proveedorCreado, setProveedorCreado] = useState(false);
+  const [sinFactura, setSinFactura] = useState(false);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [compradoPor, setCompradoPor] = useState("");
   const [registrando, setRegistrando] = useState(false);
@@ -333,6 +334,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setProveedorIdSugerido(null);
       setNumeroPedidoGlobal(null);
       setProveedorCreado(false);
+      setSinFactura(false);
       setCompradoPor("");
       setTextosSueltos([]);
       setLlegada("aun_no");
@@ -591,7 +593,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada pocos segundos (máx. 4 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean;
+        proveedorIdSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; sinFactura?: boolean;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -625,6 +627,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
       setProveedorIdSugerido(data.proveedorIdSugerido ?? null);
       setProveedorCreado(!!data.proveedorCreado);
+      setSinFactura(!!data.sinFactura);
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo leer el pedido");
@@ -961,6 +964,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <TickCircle className="size-3.5 text-emerald-600" />
                 {proveedorCreado ? "Proveedor creado automáticamente" : "Proveedor encontrado"}
+              </span>
+            )}
+            {sinFactura && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400" title="Wallapop no emite factura: el pedido se registra como Sin factura y la captura queda como justificante">
+                <Warning2 className="size-3.5" /> Wallapop · sin factura
               </span>
             )}
           </div>
