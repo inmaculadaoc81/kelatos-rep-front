@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import type { ComponentType } from "react";
 import type { IconProps } from "iconsax-react";
-import { Cpu, SecuritySafe, Video, Microphone } from "@/lib/icons";
+import { Cpu, SecuritySafe, Video, Microphone, Chart } from "@/lib/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentType, hrefParaTipoAgente } from "@/lib/agentes";
 import { NavUser } from "../(app)/nav-user";
@@ -122,6 +122,13 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
                     </SidebarMenuSubItem>
                   );
                 })}
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton isActive={pathname?.startsWith("/agentes/redes") ?? false} render={<Link href="/agentes/redes" />}>
+                    <span className="size-1.5 shrink-0 rounded-full bg-sidebar-foreground/25" />
+                    <Chart />
+                    <span className="truncate">Redes sociales</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
               </SidebarMenuSub>
             </SidebarMenu>
           </SidebarGroupContent>

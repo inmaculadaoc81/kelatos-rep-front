@@ -7,7 +7,6 @@ import { useV2 } from "@/components/agentes-v2/use-v2";
 import { Cabecera, CargandoFilas, ErrorCaja, Kpi, Vacio } from "@/components/agentes-v2/componentes";
 import { fechaHora } from "@/lib/agentes-v2";
 import { cn } from "@/lib/utils";
-import { AnaliticaRedes } from "./analitica-redes";
 
 interface Actividad {
   ok: boolean;
@@ -65,7 +64,7 @@ export default function AnaliticaPage() {
     <div>
       <Cabecera
         titulo="Analítica"
-        descripcion="Lo que ha hecho el sistema, las métricas de cada departamento y cómo va Instagram."
+        descripcion="Lo que ha hecho el sistema y las métricas de cada departamento."
         acciones={
           <div className="flex gap-1.5">
             {PERIODOS.map((p) => (
@@ -168,8 +167,6 @@ export default function AnaliticaPage() {
           ))}
         </div>
       )}
-
-      <AnaliticaRedes dias={dias} />
     </div>
   );
 }
