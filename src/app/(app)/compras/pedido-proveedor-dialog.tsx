@@ -495,35 +495,56 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     );
   }
 
-  /** Para las líneas que NO son «ya llegó»: ¿ese pedido ya está registrado? Se busca por nº de pedido (mismo número y una pieza
-      parecida) en Compras (reparaciones y ventas) y, en tienda, por pedidos de stock pendientes de la misma referencia y cantidad.
+  /** Para las líneas que NO son «ya llegó»: ¿ese pedido ya está registrado? Se busca en Compras (reparaciones y ventas) por:
+      · nº de pedido igual + una pieza parecida + el MISMO PROVEEDOR (el de la línea, o el del cuadro de arriba si la línea no dice
+        otro), para que dos proveedores con el mismo número no se confundan; y
+      · sin número válido: mismo resguardo + mismo proveedor + pieza parecida.
+      En tienda, además, pedidos de stock pendientes de la misma referencia y cantidad.
       Si aparece, la línea se desmarca (no se registra otra vez) y se avisa; el empleado puede volver a marcarla si es otro pedido. */
   async function buscarDuplicados(nuevas: LineaPedidoEditable[]) {
     const normal = (x: string) => x.toLowerCase().replace(/[\s-]/g, "");
+    // Proveedor comparable: sin acentos ni signos; «aswo» y «aswoo» o «Amazon.es» y «amazon» se consideran el mismo.
+    const prov = (x: string) => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").replace(/(.)\1+/g, "$1");
+    const mismoProveedor = (a: string, b: string) => {
+      const x = prov(a), y = prov(b);
+      return !x || !y || x === y || x.includes(y) || y.includes(x);
+    };
+    type FilaC = { origen: "reparacion" | "venta"; pedidoId: string; resguardo: string; clienteNombre: string; numeroPedido: string; descripcion: string; estado: string; costo: number | null; proveedorNombre?: string; proveedorOtro?: string };
     await Promise.all(
       nuevas.map(async (l, i) => {
         if (l.recibido || l.soloRecepcion) return;
+        const proveedorLinea = (l.proveedorTexto || proveedorNombre || "").trim();
         const encontrados = new Map<string, CandidatoRecepcion>();
+        const anadir = (c: FilaC) => {
+          const clave = `${c.origen}-${c.pedidoId}`;
+          const prv = c.proveedorOtro || c.proveedorNombre || "—";
+          encontrados.set(clave, {
+            clave, origen: c.origen, id: c.pedidoId, titulo: c.descripcion || "Pieza",
+            detalle: `${c.origen === "venta" ? `Venta ${c.resguardo}` : `Resguardo ${c.resguardo}`} · ${c.clienteNombre || "—"} · ${prv} · pedido ${c.numeroPedido || "—"}`,
+            estado: c.estado, costo: c.costo ?? null, numeroPedido: c.numeroPedido || "",
+          });
+        };
         try {
+          const buscadas = palabrasDe(l.nombre);
+          const parecida = (c: FilaC) => !c.descripcion || [...palabrasDe(c.descripcion)].some((w) => buscadas.has(w));
+          const valido = (c: FilaC) => String(c.estado).toLowerCase() !== "cancelado" && mismoProveedor(proveedorLinea, c.proveedorOtro || c.proveedorNombre || "");
           const num = (l.numeroPedidoLinea || "").trim();
           if (num.length >= 5 && /\d/.test(num)) {
             const r = await fetch(`/api/compras?busqueda=${encodeURIComponent(num)}&porPagina=50`).then((x) => x.json()).catch(() => null);
-            const buscadas = palabrasDe(l.nombre);
-            for (const c of (r?.ok ? r.compras : []) as { origen: "reparacion" | "venta"; pedidoId: string; resguardo: string; clienteNombre: string; numeroPedido: string; descripcion: string; estado: string; costo: number | null }[]) {
-              if (normal(c.numeroPedido || "") !== normal(num) || String(c.estado).toLowerCase() === "cancelado") continue;
-              if (c.descripcion && ![...palabrasDe(c.descripcion)].some((w) => buscadas.has(w))) continue;
-              const clave = `${c.origen}-${c.pedidoId}`;
-              encontrados.set(clave, {
-                clave, origen: c.origen, id: c.pedidoId, titulo: c.descripcion || "Pieza",
-                detalle: `${c.origen === "venta" ? `Venta ${c.resguardo}` : `Resguardo ${c.resguardo}`} · ${c.clienteNombre || "—"} · pedido ${c.numeroPedido || "—"}`,
-                estado: c.estado, costo: c.costo ?? null, numeroPedido: c.numeroPedido || "",
-              });
+            for (const c of (r?.ok ? r.compras : []) as FilaC[]) {
+              if (normal(c.numeroPedido || "") === normal(num) && valido(c) && parecida(c)) anadir(c);
+            }
+          } else if (l.destino === "cliente" && l.resguardo) {
+            // Sin número de pedido utilizable: mismo resguardo, mismo proveedor y una pieza parecida.
+            const r = await fetch(`/api/compras?busqueda=${encodeURIComponent(l.resguardo)}&porPagina=50`).then((x) => x.json()).catch(() => null);
+            for (const c of (r?.ok ? r.compras : []) as FilaC[]) {
+              if (c.origen === "reparacion" && c.resguardo === l.resguardo && c.descripcion && valido(c) && parecida(c)) anadir(c);
             }
           }
           if (l.destino === "tienda" && l.referencia) {
             const r = await fetch(`/api/stock-piezas/pedidos/buscar?q=${encodeURIComponent(l.referencia)}`).then((x) => x.json()).catch(() => null);
             for (const sp of (r?.ok ? r.pedidos : []) as { id: number; referencia: string; proveedor: string | null; cantidad: number; estado: string }[]) {
-              if (String(sp.estado).toLowerCase() !== "pendiente" || sp.referencia !== l.referencia || sp.cantidad !== l.cantidad) continue;
+              if (String(sp.estado).toLowerCase() !== "pendiente" || sp.referencia !== l.referencia || sp.cantidad !== l.cantidad || !mismoProveedor(proveedorLinea, sp.proveedor || "")) continue;
               const clave = `stock-${sp.id}`;
               encontrados.set(clave, { clave, origen: "stock", id: String(sp.id), titulo: sp.referencia, detalle: `Stock · ${sp.proveedor || "—"} · ${sp.cantidad} uds`, estado: sp.estado, costo: null, numeroPedido: "" });
             }
