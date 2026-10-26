@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Setting2,
   Send2,
@@ -354,9 +354,12 @@ export function DetalleReparacionDialog({
   resguardo,
   onOpenChange,
   onActualizado,
+  accionInicial,
 }: {
   resguardo: string | null;
   onOpenChange: (open: boolean) => void;
+  /** Orden del asistente de voz: al cargar el detalle abre además este formulario (nunca guarda nada por sí solo). */
+  accionInicial?: string | null;
   /** Se llama además de refrescar el propio modal — para que la tabla y el
       Dashboard de la página no queden con el estado antiguo hasta que el
       usuario refresque manualmente después de cualquier acción de aquí. */
@@ -427,6 +430,22 @@ export function DetalleReparacionDialog({
     }
   }
 
+  // La orden del asistente se aplica una sola vez, cuando llega el primer detalle.
+  const accionPendienteRef = useRef<string | null>(accionInicial ?? null);
+
+  function aplicarAccionInicial(d: ReparacionDetalle) {
+    const accion = accionPendienteRef.current;
+    accionPendienteRef.current = null;
+    if (!accion) return;
+    if (ENTREGA_CERRADA.includes(d.estadoEntrega)) {
+      toast.info(`El resguardo ${d.resguardo} ya está entregado: no se puede abrir esa acción.`);
+      return;
+    }
+    if (accion === "presupuesto") setNuevoPresupuestoAbierto(true);
+    else if (accion === "pedido") setRegistrarPedidoAbierto(true);
+    else if (accion === "finalizar") setFinalizarAbierto(true);
+  }
+
   function cargarDetalle() {
     if (!resguardo) return;
     fetch(`/api/reparaciones/${resguardo}`)
@@ -434,6 +453,7 @@ export function DetalleReparacionDialog({
       .then((data) => {
         if (!data.ok) throw new Error(data.error);
         setDetalle(data.detalle as ReparacionDetalle);
+        aplicarAccionInicial(data.detalle as ReparacionDetalle);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Error desconocido"));
   }

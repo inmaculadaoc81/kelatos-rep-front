@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Streamdown } from "streamdown";
 import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1, Microphone, VolumeHigh, VolumeSlash } from "@/lib/icons";
 import { useVoz } from "@/lib/asistente/use-voz";
+import { interpretar, resolver } from "@/lib/asistente/comandos-voz";
 import { contextoPantallaActual } from "@/lib/asistente/contexto";
 
 interface Mensaje {
@@ -159,6 +160,7 @@ function BotonCopiar({ texto }: { texto: string }) {
  */
 export function AsistenteFlotante() {
   const ruta = usePathname();
+  const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   // La conversación se conserva mientras dure la pestaña (no entre sesiones). El panel arranca cerrado, así que
   // leerla al montar no provoca diferencias con el HTML del servidor.
@@ -233,6 +235,18 @@ export function AsistenteFlotante() {
     preguntaPorVozRef.current = false;
     if (!pregunta || enviandoRef.current) return;
     voz.callar();
+    // Órdenes («abre el resguardo 19538», «crea un presupuesto para el 19538», «ve a Compras»): se ejecutan al instante, sin IA.
+    // Solo abren pantallas y formularios; la persona revisa y guarda.
+    const orden = interpretar(pregunta);
+    if (orden) {
+      const { url, mensaje } = resolver(orden);
+      setEntrada("");
+      setMensajes((m) => [...m, { rol: "usuario", texto: pregunta }, { rol: "asistente", texto: mensaje }]);
+      if (porVoz || leerRespuestas) voz.hablar(mensaje);
+      router.push(url);
+      setAbierto(false);
+      return;
+    }
     enviandoRef.current = true;
     cancelarRef.current = false;
     setFase("");
@@ -367,6 +381,9 @@ export function AsistenteFlotante() {
                 </div>
                 <div className="space-y-2">
                   <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Prueba a preguntar</p>
+                  <p className="px-1 text-[11.5px] leading-snug text-muted-foreground">
+                    También entiendo órdenes, escritas o habladas: «abre el resguardo 19538», «crea un presupuesto para el 19538», «registra un pedido para el 19538», «termina la reparación 19538», «nueva reparación» o «ve a Compras».
+                  </p>
                   {sugerenciasPara(ruta, contextoPantallaActual()).map((s) => (
                     <button
                       key={s.pregunta}

@@ -152,14 +152,16 @@ function AbrirNuevaPorQuery({ onAbrir }: { onAbrir: () => void }) {
 
 /** Reproduce abrirReparacionDesdeFacturas() del original — Facturas de
     Clientes enlaza aquí con ?resguardo=X para abrir el detalle directamente. */
-function AbrirDetallePorQuery({ onAbrir }: { onAbrir: (resguardo: string) => void }) {
+function AbrirDetallePorQuery({ onAbrir }: { onAbrir: (resguardo: string, accion: string | null) => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const resguardo = searchParams.get("resguardo");
     if (resguardo) {
-      onAbrir(resguardo);
+      // «accion» la manda el asistente de voz: abre además el formulario correspondiente dentro del detalle.
+      const accion = searchParams.get("accion");
+      onAbrir(resguardo, accion === "presupuesto" || accion === "pedido" || accion === "finalizar" ? accion : null);
       router.replace("/reparaciones");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -183,6 +185,7 @@ export default function ReparacionesPage() {
   const [cardFiltro, setCardFiltro] = useState<CardFiltroId | null>(null);
   const [orden, setOrden] = useState<Orden>({ campo: null, direccion: null });
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
+  const [accionDetalle, setAccionDetalle] = useState<string | null>(null);
   const [formularioPendiente, setFormularioPendiente] = useState<{ rep: Reparacion; modo: "confirmar" | "rechazar" } | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
   const [nuevaFacturaAbierta, setNuevaFacturaAbierta] = useState(false);
@@ -671,7 +674,7 @@ export default function ReparacionesPage() {
 
       <Suspense fallback={null}>
         <AbrirNuevaPorQuery onAbrir={() => setNuevaAbierta(true)} />
-        <AbrirDetallePorQuery onAbrir={setResguardoDetalle} />
+        <AbrirDetallePorQuery onAbrir={(r, a) => { setResguardoDetalle(r); setAccionDetalle(a); }} />
       </Suspense>
 
       {eliminarResguardo && (
@@ -686,8 +689,10 @@ export default function ReparacionesPage() {
       )}
 
       <DetalleReparacionDialog
+        key={`${resguardoDetalle ?? ""}:${accionDetalle ?? ""}`}
         resguardo={resguardoDetalle}
-        onOpenChange={(open) => !open && setResguardoDetalle(null)}
+        accionInicial={accionDetalle}
+        onOpenChange={(open) => { if (!open) { setResguardoDetalle(null); setAccionDetalle(null); } }}
         onActualizado={() => {
           cargar();
           cargarMetricas();
