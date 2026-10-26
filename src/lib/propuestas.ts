@@ -18,6 +18,7 @@ export interface SeccionesPropuesta {
 export interface DatosLegales {
   prestador_nombre: string;
   prestador_nif: string;
+  prestador_direccion: string;
   cliente_nif: string;
   cliente_direccion: string;
   validez_dias: string;
@@ -27,7 +28,7 @@ export interface DatosLegales {
   dpa_acordado: boolean;
 }
 
-export const LEGAL_VACIO: DatosLegales = { prestador_nombre: "", prestador_nif: "", cliente_nif: "", cliente_direccion: "", validez_dias: "", forma_pago: "", duracion: "", condiciones_extra: "", dpa_acordado: false };
+export const LEGAL_VACIO: DatosLegales = { prestador_nombre: "", prestador_nif: "", prestador_direccion: "", cliente_nif: "", cliente_direccion: "", validez_dias: "", forma_pago: "", duracion: "", condiciones_extra: "", dpa_acordado: false };
 
 export interface ClausulaPropuesta { titulo: string; texto: string }
 export interface AvisoPropuesta { nivel: "falta" | "revisar"; texto: string }
@@ -113,7 +114,7 @@ export function imprimirPropuesta(p: Propuesta): boolean {
     ${precios}
     ${s.siguientes_pasos?.length ? `<h2>Siguientes pasos</h2>${vinetas(s.siguientes_pasos)}` : ""}
     <h2>Partes</h2>
-    <table><tr><td><strong>Prestador</strong><br>${esc(l.prestador_nombre || "[a definir]")}<br>NIF/CIF: ${esc(l.prestador_nif || "[a definir]")}</td>
+    <table><tr><td><strong>Prestador</strong><br>${esc(l.prestador_nombre || "[a definir]")}<br>NIF/CIF: ${esc(l.prestador_nif || "[a definir]")}<br>${esc(l.prestador_direccion || "")}</td>
     <td><strong>Cliente</strong><br>${esc(p.cliente)}<br>NIF/CIF: ${esc(l.cliente_nif || "[a definir]")}<br>${esc(l.cliente_direccion || "")}</td></tr></table>
     ${p.clausulas?.length ? `<h2>Condiciones</h2><ol class="cl">${p.clausulas.map((c) => `<li><strong>${esc(c.titulo)}.</strong> ${esc(c.texto)}</li>`).join("")}</ol>` : ""}
     ${l.condiciones_extra ? `<h2>Condiciones adicionales</h2>${parrafos(l.condiciones_extra)}` : ""}
