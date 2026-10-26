@@ -12,6 +12,7 @@ import {
 import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
 import { HistorialPedidoProveedorDialog } from "./historial-pedido-proveedor-dialog";
 import { HistorialPiezaDialog } from "./historial-pieza-dialog";
+import { BotonJustificante } from "./boton-justificante";
 import { useCuentaRestringida } from "@/lib/use-cuenta-restringida";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CompraFila, ESTADOS_PLATAFORMA, ESTILO_BADGE_ESTADO, ESTILO_BADGE_PLATAFORMA, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor, esPlataformaSinFactura, precioLegible } from "@/lib/compras";
+import { CompraFila, ESTADOS_PLATAFORMA, ESTILO_BADGE_ESTADO, ESTILO_BADGE_PLATAFORMA, KPIS_COMPRAS_VACIOS, KpisCompras, colorProveedor, esPlataformaSinFactura, precioLegible, urlArchivoDrive, urlCarpetaDrive } from "@/lib/compras";
 import type { Proveedor } from "@/app/api/proveedores/route";
 import type { Empleado } from "@/app/api/empleados/route";
 
@@ -58,6 +59,7 @@ export default function ComprasPage() {
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [ventaDetalleId, setVentaDetalleId] = useState<string | null>(null);
   const [piezaHistorial, setPiezaHistorial] = useState<CompraFila | null>(null);
+  const [carpetaJustificantes, setCarpetaJustificantes] = useState<string | null>(null);
   const [borradorFactura, setBorradorFactura] = useState<CompraFila | null>(null);
   const [facturasDePedido, setFacturasDePedido] = useState<CompraFila | null>(null);
   const [compras, setCompras] = useState<CompraFila[]>([]);
@@ -134,6 +136,7 @@ export default function ComprasPage() {
         setCompras(data.compras as CompraFila[]);
         setTotal(data.total as number);
         setKpis(data.kpis as KpisCompras);
+        setCarpetaJustificantes((data.justificantesCarpeta as string | null) ?? null);
       } catch (e) {
         if (id === consulta.current) setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
@@ -223,6 +226,11 @@ export default function ComprasPage() {
           {puedeSubirPedidoIA && (
             <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setPedidoProveedorAbierto(true)}>
               <DocumentUpload className="size-4" /> Subir pedido con IA
+            </Button>
+          )}
+          {carpetaJustificantes && (
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" nativeButton={false} render={<a href={urlCarpetaDrive(carpetaJustificantes)} target="_blank" rel="noopener noreferrer" />} title="Abrir en Drive la carpeta con los justificantes de los pedidos">
+              <Link2 className="size-4" /> Justificantes en Drive
             </Button>
           )}
           <Button variant="outline" size="icon" className="size-8" onClick={() => setHistorialPedidoProveedorAbierto(true)} title="Historial de Subir pedido con IA">
@@ -448,8 +456,9 @@ export default function ComprasPage() {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1.5">
+                        <BotonJustificante justificantes={c.justificantes} />
                         {c.origen === "venta" ? (
-                          <span className="text-muted-foreground">—</span>
+                          c.justificantes.length === 0 && <span className="text-muted-foreground">—</span>
                         ) : c.origen === "stock" ? (
                           <>
                             {c.estado === "Pedido" && (

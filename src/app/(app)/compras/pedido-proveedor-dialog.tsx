@@ -957,6 +957,18 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       }
 
       toast.success(`${okStock} pedido(s) de stock, ${okResguardo} pedido(s) de cliente (reparación o venta) registrados${okRecibidos ? `, ${okRecibidos} pedido(s) existente(s) marcado(s) o vinculado(s)` : ""}${fallos ? ` — ${fallos} con error` : ""}`);
+      // El archivo original queda como justificante en Drive, enlazado a cada pedido creado (sobre todo para plataformas sin factura).
+      if (archivos.length > 0 && refsCreados.length > 0) {
+        fetch("/api/compras/justificantes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            archivos: archivos.map((a) => ({ base64: a.base64, mimeType: a.mimeType })),
+            pedidos: refsCreados, proveedor: proveedorNombre, plataforma: plataforma.trim(), numeroPedido: numeroPedidoGlobal,
+          }),
+        }).then((r) => r.json()).then((d) => { if (!d.ok) toast.error(`Los pedidos se registraron, pero no se pudo guardar el justificante en Drive: ${d.error || "error"}`); })
+          .catch(() => toast.error("Los pedidos se registraron, pero no se pudo guardar el justificante en Drive"));
+      }
       if (plataforma.trim() && refsCreados.length > 0) {
         fetch("/api/compras/plataforma", {
           method: "POST",

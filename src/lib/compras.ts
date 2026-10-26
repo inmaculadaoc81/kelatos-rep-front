@@ -13,6 +13,10 @@
     La plataforma (dónde se pidió) es distinta del proveedor (quien vende). */
 export const esPlataformaSinFactura = (plataforma: string) => /wallapop/i.test(plataforma);
 
+/** Enlaces de Drive: un archivo concreto y la carpeta donde se guardan los justificantes de los pedidos. */
+export const urlArchivoDrive = (id: string) => `https://drive.google.com/file/d/${id}/view`;
+export const urlCarpetaDrive = (id: string) => `https://drive.google.com/drive/folders/${id}`;
+
 export interface CompraFila {
   /** "reparacion" (kelatos_app.pedidos) o "venta" (kelatos_app.items_venta,
       pedido de pieza a un cliente sin reparación) — distingue qué detalle
@@ -48,6 +52,8 @@ export interface CompraFila {
   proveedorId: string;
   proveedorNombre: string;
   proveedorOtro: string;
+  /** Justificantes (captura, factura o foto original) guardados en Drive para este pedido. */
+  justificantes: { id: string; nombre: string }[];
   /** Plataforma donde se hizo el pedido (Wallapop, AliExpress...); "" si no se anotó. */
   plataforma: string;
   /** Pedido activo cuya fecha estimada ya pasó sin haber llegado (calculado en el servidor). */
@@ -83,6 +89,7 @@ interface FilaCompraSql {
   proveedor_nombre: string | null;
   proveedor_otro: string | null;
   plataforma?: string | null;
+  justificantes?: { id: string; nombre: string }[] | null;
   retrasado: boolean | null;
   costo: string | number | null;
   facturas_count?: number | null;
@@ -114,6 +121,7 @@ export function mapearCompra(row: FilaCompraSql): CompraFila {
     proveedorNombre: row.proveedor_nombre || "",
     proveedorOtro: row.proveedor_otro || "",
     plataforma: row.plataforma || "",
+    justificantes: Array.isArray(row.justificantes) ? row.justificantes : [],
     // Calculado en el servidor (kelatos_app.pedidos no tiene columna para esto):
     // pedido activo cuya fecha estimada ya pasó sin haber llegado.
     retrasado: row.retrasado === true,

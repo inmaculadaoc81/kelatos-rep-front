@@ -7,6 +7,7 @@ interface RespuestaCompras {
   total: number;
   kpis: KpisCompras;
   compras: Parameters<typeof mapearCompra>[0][];
+  justificantesCarpeta?: string | null;
 }
 
 /** Proxy de GET /v1/compras — todos los pedidos de piezas de todas las reparaciones. */
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     });
 
     const compras: CompraFila[] = data.compras.map(mapearCompra);
-    return NextResponse.json({ ok: true, compras, total: data.total, kpis: data.kpis });
+    return NextResponse.json({ ok: true, compras, total: data.total, kpis: data.kpis, justificantesCarpeta: data.justificantesCarpeta ?? null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
