@@ -101,6 +101,8 @@ export interface PedidoStock {
   enlaceId: number | null;
   proveedor: string;
   enlace: string;
+  /** Precio unitario con el que se pidió (copia del enlace del proveedor en ese momento). */
+  costoUnitario: number | null;
   cantidad: number;
   fechaPedido: string | null;
   fechaEstimadaLlegada: string | null;
@@ -125,6 +127,7 @@ interface FilaPedidoStockSql {
   enlace_id: number | null;
   proveedor: string | null;
   enlace: string | null;
+  costo_unitario?: string | number | null;
   cantidad: number;
   fecha_pedido: string | null;
   fecha_estimada_llegada: string | null;
@@ -152,6 +155,7 @@ export function mapearPedidoStock(row: FilaPedidoStockSql): PedidoStock {
     enlaceId: row.enlace_id,
     proveedor: row.proveedor || "",
     enlace: row.enlace || "",
+    costoUnitario: row.costo_unitario === null || row.costo_unitario === undefined ? null : numero(row.costo_unitario),
     cantidad: numero(row.cantidad),
     fechaPedido: row.fecha_pedido,
     fechaEstimadaLlegada: row.fecha_estimada_llegada,

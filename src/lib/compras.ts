@@ -15,7 +15,7 @@ export interface CompraFila {
       abrir al hacer clic en la fila y qué acciones tienen sentido.
       Petición del usuario, 2026-10-12: que los pedidos de Ventas también se
       vean en Compras. */
-  origen: "reparacion" | "venta";
+  origen: "reparacion" | "venta" | "stock";
   pedidoId: string;
   piezaId: string;
   resguardo: string;
@@ -53,7 +53,7 @@ export interface CompraFila {
 }
 
 interface FilaCompraSql {
-  origen: "reparacion" | "venta";
+  origen: "reparacion" | "venta" | "stock";
   pedido_id: string;
   pieza_id: string | null;
   resguardo: string | null;
@@ -83,7 +83,7 @@ interface FilaCompraSql {
 
 export function mapearCompra(row: FilaCompraSql): CompraFila {
   return {
-    origen: row.origen === "venta" ? "venta" : "reparacion",
+    origen: row.origen === "venta" ? "venta" : row.origen === "stock" ? "stock" : "reparacion",
     pedidoId: row.pedido_id || "",
     piezaId: row.pieza_id || "",
     resguardo: row.resguardo || "",

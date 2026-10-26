@@ -11,6 +11,7 @@ import {
 } from "@/lib/icons";
 import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
 import { HistorialPedidoProveedorDialog } from "./historial-pedido-proveedor-dialog";
+import { HistorialPiezaDialog } from "./historial-pieza-dialog";
 import { useCuentaRestringida } from "@/lib/use-cuenta-restringida";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ export default function ComprasPage() {
   const puedeSubirPedidoIA = sesionCargada && !cuentaRestringida;
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [ventaDetalleId, setVentaDetalleId] = useState<string | null>(null);
+  const [piezaHistorial, setPiezaHistorial] = useState<CompraFila | null>(null);
   const [borradorFactura, setBorradorFactura] = useState<CompraFila | null>(null);
   const [facturasDePedido, setFacturasDePedido] = useState<CompraFila | null>(null);
   const [compras, setCompras] = useState<CompraFila[]>([]);
@@ -148,6 +150,21 @@ export default function ComprasPage() {
   const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
   const inicio = total === 0 ? 0 : (pagina - 1) * filasPorPagina;
   const fin = Math.min(inicio + filasPorPagina, total);
+
+  async function recibirPedidoStock(c: CompraFila) {
+    setEnviando(c.pedidoId);
+    try {
+      const res = await fetch(`/api/stock-piezas/pedidos/${encodeURIComponent(c.pedidoId.replace(/^STK-/, ""))}/recibido`, { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Pedido recibido: unidades sumadas al stock");
+      cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviando(null);
+    }
+  }
 
   async function cambiarEstado(pedidoId: string, nuevoEstado: string) {
     setEnviando(pedidoId);
@@ -327,13 +344,18 @@ export default function ComprasPage() {
                 return (
                   <TableRow
                     key={c.pedidoId}
-                    className={c.resguardo ? "cursor-pointer hover:bg-muted/40" : undefined}
-                    onClick={c.resguardo ? () => (c.origen === "venta" ? setVentaDetalleId(c.resguardo) : setResguardoDetalle(c.resguardo)) : undefined}
-                    title={c.resguardo ? (c.origen === "venta" ? `Abrir pedido de venta ${c.resguardo}` : `Abrir resguardo ${c.resguardo}`) : undefined}
+                    className={c.resguardo || c.origen === "stock" ? "cursor-pointer hover:bg-muted/40" : undefined}
+                    onClick={c.origen === "stock" ? () => setPiezaHistorial(c) : c.resguardo ? () => (c.origen === "venta" ? setVentaDetalleId(c.resguardo) : setResguardoDetalle(c.resguardo)) : undefined}
+                    title={c.origen === "stock" ? "Ver el historial de compras de esta pieza" : c.resguardo ? (c.origen === "venta" ? `Abrir pedido de venta ${c.resguardo}` : `Abrir resguardo ${c.resguardo}`) : undefined}
                   >
                     <TableCell className="whitespace-nowrap font-mono text-xs">{c.pedidoId}</TableCell>
                     <TableCell className="max-w-48">
-                      {c.resguardo ? (
+                      {c.origen === "stock" ? (
+                        <div>
+                          <span className="block truncate text-sm font-medium">Stock de tienda</span>
+                          <span className="block truncate text-xs text-muted-foreground">{c.equipoModelo}</span>
+                        </div>
+                      ) : c.resguardo ? (
                         <div>
                           <span className="block truncate text-sm font-medium">{c.clienteNombre || c.resguardo}</span>
                           <span className="block truncate text-xs text-muted-foreground">
@@ -372,7 +394,7 @@ export default function ComprasPage() {
                       </span>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      {c.origen === "venta" ? (
+                      {c.origen !== "reparacion" ? (
                         <span className="text-muted-foreground">—</span>
                       ) : (
                         <Select
@@ -393,7 +415,7 @@ export default function ComprasPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {c.origen === "venta" ? (
+                      {c.origen !== "reparacion" ? (
                         <span className="text-muted-foreground">—</span>
                       ) : c.estado === "Recibido" ? (
                         c.estadoPlataforma === "Entregado" ? (
@@ -424,6 +446,17 @@ export default function ComprasPage() {
                       <div className="flex justify-end gap-1.5">
                         {c.origen === "venta" ? (
                           <span className="text-muted-foreground">—</span>
+                        ) : c.origen === "stock" ? (
+                          <>
+                            {c.estado === "Pedido" && (
+                              <Button size="sm" variant="outline" className="h-7 gap-1" disabled={enviando === c.pedidoId} onClick={() => recibirPedidoStock(c)} title="Marcar recibido: suma las unidades al stock">
+                                <TickCircle className="size-3.5" /> Recibido
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setPiezaHistorial(c)} title="Historial de compras de esta pieza">
+                              <Clock className="size-3.5" /> Historial
+                            </Button>
+                          </>
                         ) : (
                           <>
                             {sig && (
@@ -530,6 +563,13 @@ export default function ComprasPage() {
         open={pedidoProveedorAbierto}
         onOpenChange={setPedidoProveedorAbierto}
         onRegistrado={cargar}
+      />
+
+      <HistorialPiezaDialog
+        referencia={piezaHistorial?.piezaId ?? null}
+        nombre={piezaHistorial?.equipoModelo ?? ""}
+        resaltarId={piezaHistorial?.pedidoId.replace(/^STK-/, "")}
+        onOpenChange={(open) => !open && setPiezaHistorial(null)}
       />
 
       <HistorialPedidoProveedorDialog

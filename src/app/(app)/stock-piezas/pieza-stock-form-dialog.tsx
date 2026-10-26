@@ -481,7 +481,7 @@ export function PiezaStockFormDialog({
                   {pedidosPendientes.map((p) => (
                     <div key={p.id} className="flex items-center justify-between gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs dark:bg-amber-500/10">
                       <span>
-                        <strong>{p.cantidad}</strong> unidad(es){p.proveedor ? ` — ${p.proveedor}` : ""}
+                        <strong>{p.cantidad}</strong> unidad(es){p.proveedor ? ` — ${p.proveedor}` : ""}{p.costoUnitario !== null ? ` · ${p.costoUnitario.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}/ud.` : ""}
                         {p.fechaEstimadaLlegada ? ` · llega aprox. ${fechaCorta(p.fechaEstimadaLlegada)}` : ""}
                       </span>
                       <div className="flex shrink-0 items-center gap-1">
@@ -505,7 +505,7 @@ export function PiezaStockFormDialog({
                   <Label className="text-[11px] text-muted-foreground">Pedidos recibidos (últimos)</Label>
                   {pedidosRecibidos.map((p) => (
                     <div key={p.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs">
-                      <span><strong>{p.cantidad}</strong> unidad(es){p.proveedor ? ` — ${p.proveedor}` : ""}</span>
+                      <span><strong>{p.cantidad}</strong> unidad(es){p.proveedor ? ` — ${p.proveedor}` : ""}{p.costoUnitario !== null ? ` · ${p.costoUnitario.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}/ud.` : ""}</span>
                       <Button size="sm" variant="ghost" className="h-6 gap-1 px-2 text-[11px]" onClick={() => setFacturasDePedido(p)} title="Facturas del Libro de Compras enlazadas a este pedido">
                         <Book1 className="size-3" /> Facturas
                       </Button>
