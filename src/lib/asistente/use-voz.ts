@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * La síntesis usa las voces en español que tenga el sistema (en Windows, las «Natural» de Edge suenan mejor).
  */
 
-interface ResultadoVoz { isFinal: boolean; 0: { transcript: string } }
+interface ResultadoVoz { isFinal: boolean; 0: { transcript: string; confidence?: number } }
 interface EventoResultado { resultIndex: number; results: ArrayLike<ResultadoVoz> }
 interface ReconocimientoVoz {
   lang: string;
@@ -78,7 +78,7 @@ function elegirVoz(): SpeechSynthesisVoice | null {
  * forma continua: las pausas al pensar no cortan el dictado (si el navegador cierra la escucha por su cuenta, se reanuda sola).
  * Nada se envía ni se ejecuta hasta que la persona revisa el texto y pulsa Enviar.
  */
-export function useVoz({ alTerminar }: { alTerminar: (texto: string) => void }) {
+export function useVoz({ alTerminar }: { alTerminar: (texto: string, confianza: number | null) => void }) {
   const [escuchando, setEscuchando] = useState(false);
   const [parcial, setParcial] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +88,7 @@ export function useVoz({ alTerminar }: { alTerminar: (texto: string) => void }) 
   const acumuladoRef = useRef("");
   const ultimoRef = useRef("");
   const quiereRef = useRef(false);
+  const confianzas = useRef<number[]>([]);
   const reinicios = useRef<number[]>([]);
   const arrancarRef = useRef<() => void>(() => {});
 
@@ -128,7 +129,10 @@ export function useVoz({ alTerminar }: { alTerminar: (texto: string) => void }) 
     ultimoRef.current = "";
     acumuladoRef.current = "";
     setParcial("");
-    if (dicho) alTerminarRef.current(dicho);
+    // Confianza media del reconocimiento (0 a 1; null si el navegador no la da). El asistente la usa para decidir si pregunta.
+    const c = confianzas.current.filter((x) => x > 0);
+    confianzas.current = [];
+    if (dicho) alTerminarRef.current(dicho, c.length ? c.reduce((a, b) => a + b, 0) / c.length : null);
   }, []);
 
   const arrancar = useCallback(() => {
@@ -144,8 +148,10 @@ export function useVoz({ alTerminar }: { alTerminar: (texto: string) => void }) 
       let provisional = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const frase = e.results[i][0].transcript;
-        if (e.results[i].isFinal) nuevoFinal += frase;
-        else provisional += frase;
+        if (e.results[i].isFinal) {
+          nuevoFinal += frase;
+          confianzas.current.push(e.results[i][0].confidence ?? 0);
+        } else provisional += frase;
       }
       if (nuevoFinal) acumuladoRef.current = `${acumuladoRef.current} ${nuevoFinal}`.trim();
       const visible = `${acumuladoRef.current} ${provisional}`.trim();
@@ -198,6 +204,7 @@ export function useVoz({ alTerminar }: { alTerminar: (texto: string) => void }) 
     acumuladoRef.current = "";
     ultimoRef.current = "";
     reinicios.current = [];
+    confianzas.current = [];
     quiereRef.current = true;
     setEscuchando(true);
     arrancar();

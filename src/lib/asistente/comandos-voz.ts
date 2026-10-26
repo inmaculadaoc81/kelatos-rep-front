@@ -187,7 +187,7 @@ export const AYUDA_COMANDOS = `**Esto puedo hacer por orden** (escrita o hablada
 - «Nueva reparación»: abre el formulario de alta.
 - «Ve a Compras», «Stock de piezas», «Ventas», «Equipos de alquiler», «Facturas de clientes», «Libro de compras», «TPV», «Efectivo», «Clientes», «Presupuestos», «Proveedores», «Casilleros», «Recogidas», «Tareas»…
 
-**Antes de abrir nada, si lo has dictado por voz, te pregunto para confirmarlo** (sí / no). Si me falta un dato, como el número de resguardo, te lo pido. Y puedes preguntarme cómo funciona cualquier pantalla o pedirme datos, como siempre.`;
+**Cuándo pregunto y cuándo no:** si la orden es clara y el resguardo existe, la hago directamente, para ir rápido. Si dicto algo y no estoy seguro de haberte entendido bien, o no encuentro ese resguardo, te pregunto: te enseño los que se parecen para que elijas, o te pido que me lo repitas. Si me falta un dato, te lo pido, y si aun así no lo entiendo no hago nada y te pido más detalle. Y puedes preguntarme cómo funciona cualquier pantalla o pedirme datos, como siempre.`;
 
 const FRASE_AYUDA = /^(ayuda|ayudame|que puedes hacer|que sabes hacer|que ordenes|que comandos|que acciones|lista de ordenes|lista de acciones|lista de comandos|para que sirves)\b/;
 const NO_ES_ORDEN = /\b(saber|significa|explica|explicame|funciona|funcionan|sirve|diferencia|por que)\b/;

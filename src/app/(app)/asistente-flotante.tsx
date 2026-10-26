@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Streamdown } from "streamdown";
 import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1, Microphone, VolumeHigh, VolumeSlash, Clock } from "@/lib/icons";
 import { useVoz } from "@/lib/asistente/use-voz";
+import { comprobarResguardo, etiquetaResguardo, type FichaResguardo } from "@/lib/asistente/resguardos";
 import { analizar, AYUDA_COMANDOS, completar, describir, resolver, respuestaSiNo, extraerNumero, type Comando, type IntencionIncompleta } from "@/lib/asistente/comandos-voz";
 import { contextoPantallaActual } from "@/lib/asistente/contexto";
 
@@ -42,7 +43,11 @@ const ETIQUETA_CONFIRMACION: Record<AccionEjecutada["confirmacion"], { texto: st
 /** Orden a medias: o espera un «sí/no», o espera el dato que faltaba (el número de resguardo). */
 type Pendiente =
   | { tipo: "confirmar"; comando: Comando; frase: string; intentos: number }
-  | { tipo: "completar"; intencion: IntencionIncompleta; frase: string; intentos: number };
+  | { tipo: "completar"; intencion: IntencionIncompleta; frase: string; intentos: number }
+  | { tipo: "elegir"; intencion: IntencionIncompleta; opciones: FichaResguardo[]; frase: string; intentos: number };
+
+/** Por debajo de esta confianza del reconocimiento de voz se pregunta antes de abrir; por encima (y con el resguardo comprobado) se abre directamente. */
+const CONFIANZA_MINIMA = 0.8;
 
 const MAX_INTENTOS = 2;
 
@@ -225,9 +230,11 @@ export function AsistenteFlotante() {
   });
   // Lo dictado se queda en la caja de texto para revisarlo: NO se envía ni se ejecuta hasta que la persona pulsa Enviar.
   const dictadoRef = useRef(false);
+  const confianzaRef = useRef<number | null>(null);
   const voz = useVoz({
-    alTerminar: (texto) => {
+    alTerminar: (texto, confianza) => {
       dictadoRef.current = true;
+      confianzaRef.current = confianza;
       setEntrada((previo) => (previo.trim() ? `${previo.trim()} ${texto}` : texto));
     },
   });
@@ -312,8 +319,64 @@ export function AsistenteFlotante() {
     setAbierto(false);
   }
 
+  /**
+   * Decide qué hacer con una orden ya entendida, comprobando los datos antes de abrir nada:
+   *  · si trae un resguardo, se comprueba que EXISTE: si no, se ofrecen los que se le parecen (cifras cambiadas) o se pide repetirlo;
+   *  · una orden clara y comprobada se ejecuta directamente (más rápido); solo se pregunta si hay dudas, es decir, si el
+   *    reconocimiento de voz no estaba seguro (confianza baja) o no se pudo comprobar el dato.
+   */
+  async function decidir(comando: Comando, frase: string, porVoz: boolean, confianza: number | null, respuestaUsuario?: string) {
+    const seguro = !porVoz || confianza === null || confianza >= CONFIANZA_MINIMA;
+    const numero = comando.tipo === "abrir_resguardo" || comando.tipo === "accion_resguardo" ? comando.resguardo : null;
+    const intencion: IntencionIncompleta | null = comando.tipo === "abrir_resguardo" ? "abrir_resguardo" : comando.tipo === "accion_resguardo" ? comando.accion : null;
+    if (numero && intencion) {
+      const r = await comprobarResguardo(numero);
+      if (r && !r.existe) {
+        const opciones = r.parecidos;
+        const pregunta = opciones.length
+          ? `No encuentro el resguardo ${numero}. ¿Te refieres a ${opciones.length > 1 ? "alguno de estos" : "este"}? ${opciones.map(etiquetaResguardo).join(" — ")}`
+          : `No encuentro el resguardo ${numero}. Dímelo otra vez, despacio y cifra a cifra.`;
+        decir(frase, pregunta, porVoz, respuestaUsuario);
+        setPendiente(opciones.length ? { tipo: "elegir", intencion, opciones, frase, intentos: 0 } : { tipo: "completar", intencion, frase, intentos: 0 });
+        return;
+      }
+      if (r?.existe && r.reparacion && !seguro) {
+        const q = `Entendí: ${describir(comando)}. Es ${etiquetaResguardo(r.reparacion)}. ¿Lo abro?`;
+        decir(frase, q, porVoz, respuestaUsuario);
+        setPendiente({ tipo: "confirmar", comando, frase, intentos: 0 });
+        return;
+      }
+      if (!r && porVoz) {
+        // No se pudo comprobar el resguardo: no se adivina, se pregunta.
+        const q = `Entendí: ${describir(comando)}. No he podido comprobar que exista. ¿Lo abro?`;
+        decir(frase, q, porVoz, respuestaUsuario);
+        setPendiente({ tipo: "confirmar", comando, frase, intentos: 0 });
+        return;
+      }
+    } else if (!seguro) {
+      const q = `Entendí: ${describir(comando)}. ¿Lo hago? Responde sí o no.`;
+      decir(frase, q, porVoz, respuestaUsuario);
+      setPendiente({ tipo: "confirmar", comando, frase, intentos: 0 });
+      return;
+    }
+    ejecutar(comando, frase, porVoz, "directa", respuestaUsuario);
+  }
+
+  /** Muestra la respuesta del asistente: tras la frase nueva de la persona o tras su respuesta a una pregunta pendiente. */
+  function decir(frase: string, mensaje: string, porVoz: boolean, respuestaUsuario?: string) {
+    if (respuestaUsuario !== undefined) {
+      setMensajes((m) => [...m, { rol: "usuario", texto: respuestaUsuario }, { rol: "asistente", texto: mensaje }]);
+      if (porVoz || leerRespuestas) voz.hablar(mensaje);
+    } else dialogo(frase, mensaje, porVoz);
+  }
+
+  /** Una opción pulsada con el ratón o el dedo ya es una confirmación: se abre sin volver a preguntar. */
+  async function decidirDesdeBoton(intencion: IntencionIncompleta, resguardo: string, frase: string, textoBoton: string) {
+    ejecutar(completar(intencion, resguardo), frase, false, "confirmada", textoBoton);
+  }
+
   /** Devuelve true si el texto era una orden (o la respuesta a una pregunta pendiente) y ya se ha tratado. */
-  function gestionarOrden(texto: string, porVoz: boolean): boolean {
+  async function gestionarOrden(texto: string, porVoz: boolean, confianza: number | null): Promise<boolean> {
     // 1) Hay algo a medias: esto es la respuesta.
     if (pendiente) {
       const dicho = respuestaSiNo(texto);
@@ -331,8 +394,8 @@ export function AsistenteFlotante() {
         // Ni sí ni no: puede ser una corrección («no, el 19583», «el resguardo 19583»).
         const corregida = analizar(texto);
         if (corregida?.tipo === "comando") {
-          dialogo(texto, `Entendido, entonces: ${describir(corregida.comando)}. ¿Lo hago? Responde sí o no.`, porVoz);
-          setPendiente({ tipo: "confirmar", comando: corregida.comando, frase: texto, intentos: 0 });
+          setPendiente(null);
+          await decidir(corregida.comando, texto, porVoz, confianza);
           return true;
         }
         if (pareceOtraPregunta(texto)) {
@@ -350,22 +413,21 @@ export function AsistenteFlotante() {
         setPendiente({ ...pendiente, intentos: pendiente.intentos + 1 });
         return true;
       }
-      // pendiente.tipo === "completar": se esperaba el número del resguardo.
+      // «completar» (se esperaba el número) o «elegir» (se ofrecieron varios resguardos parecidos).
       if (dicho === "no") {
-        dialogo(texto, "Vale, lo dejamos. Dime qué necesitas.", porVoz);
-        anotar({ frase: pendiente.frase, entendido: `Orden incompleta (${pendiente.intencion})`, resultado: "La persona canceló la orden.", url: "", porVoz, confirmacion: "cancelada" });
-        setPendiente(null);
+        dialogo(texto, pendiente.tipo === "elegir" ? "Vale. Dime el número del resguardo otra vez, cifra a cifra." : "Vale, lo dejamos. Dime qué necesitas.", porVoz);
+        if (pendiente.tipo === "elegir") setPendiente({ tipo: "completar", intencion: pendiente.intencion, frase: pendiente.frase, intentos: 0 });
+        else {
+          anotar({ frase: pendiente.frase, entendido: `Orden incompleta (${pendiente.intencion})`, resultado: "La persona canceló la orden.", url: "", porVoz, confirmacion: "cancelada" });
+          setPendiente(null);
+        }
         return true;
       }
       const numero = extraerNumero(texto);
       if (numero) {
-        const comando = completar(pendiente.intencion, numero);
-        if (porVoz) {
-          dialogo(texto, `Entendí: ${describir(comando)}. ¿Lo hago? Responde sí o no.`, porVoz);
-          setPendiente({ tipo: "confirmar", comando, frase: pendiente.frase, intentos: 0 });
-        } else {
-          ejecutar(comando, pendiente.frase, porVoz, "directa");
-        }
+        const siguiente = pendiente;
+        setPendiente(null);
+        await decidir(completar(siguiente.intencion, numero), siguiente.frase, porVoz, confianza, texto);
         return true;
       }
       if (pareceOtraPregunta(texto)) {
@@ -401,26 +463,22 @@ export function AsistenteFlotante() {
       setPendiente({ tipo: "completar", intencion: analisis.intencion, frase: texto, intentos: 0 });
       return true;
     }
-    // Orden clara. Dictada por voz: se confirma antes; escrita: se ejecuta.
-    if (porVoz) {
-      dialogo(texto, `Entendí: ${describir(analisis.comando)}. ¿Lo hago? Responde sí o no.`, porVoz);
-      setPendiente({ tipo: "confirmar", comando: analisis.comando, frase: texto, intentos: 0 });
-    } else {
-      ejecutar(analisis.comando, texto, porVoz, "directa");
-    }
+    await decidir(analisis.comando, texto, porVoz, confianza);
     return true;
   }
 
   async function enviar(textoPregunta: string) {
     const pregunta = textoPregunta.trim();
     const porVoz = dictadoRef.current;
+    const confianza = confianzaRef.current;
     dictadoRef.current = false;
+    confianzaRef.current = null;
     if (!pregunta || enviandoRef.current) return;
     voz.callar();
     // Órdenes (abrir resguardos, formularios y pantallas): se resuelven al instante, sin IA, y NUNCA se ejecutan sin estar seguros:
     //  · lo dictado por voz se confirma antes (los números son lo que más se oye mal);
     //  · si falta un dato (p. ej. el resguardo) se pregunta; si tras repreguntar sigue sin entenderse, se pide más detalle y no se hace nada.
-    if (gestionarOrden(pregunta, porVoz)) return;
+    if (await gestionarOrden(pregunta, porVoz, confianza)) return;
     enviandoRef.current = true;
     cancelarRef.current = false;
     setFase("");
@@ -665,12 +723,32 @@ export function AsistenteFlotante() {
                       )}
                     </div>
                     {!m.error && m.texto && !(respondiendo && i === ultimo) && <BotonCopiar texto={m.texto} />}
+                    {pendiente?.tipo === "elegir" && i === ultimo && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {pendiente.opciones.map((o) => (
+                          <button
+                            key={o.resguardo}
+                            type="button"
+                            onClick={() => {
+                              const sig = pendiente;
+                              setPendiente(null);
+                              void decidirDesdeBoton(sig.intencion, o.resguardo, sig.frase, `El ${o.resguardo}`);
+                            }}
+                            className="rounded-xl border bg-card px-3 py-1.5 text-left text-xs font-medium shadow-sm hover:bg-accent"
+                          >
+                            <span className="font-semibold">{o.resguardo}</span>
+                            <span className="block text-[10.5px] font-normal text-muted-foreground">{[o.cliente, o.equipo].filter(Boolean).join(" · ")}</span>
+                          </button>
+                        ))}
+                        <button type="button" onClick={() => void gestionarOrden("ninguno, no", false, null)} className="rounded-xl border bg-card px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-accent">Ninguno</button>
+                      </div>
+                    )}
                     {pendiente?.tipo === "confirmar" && i === ultimo && (
                       <div className="mt-2 flex gap-2">
-                        <button type="button" onClick={() => gestionarOrden("sí", false)} className="rounded-xl bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:brightness-110">
+                        <button type="button" onClick={() => void gestionarOrden("sí", false, null)} className="rounded-xl bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:brightness-110">
                           Sí, hazlo
                         </button>
-                        <button type="button" onClick={() => gestionarOrden("no", false)} className="rounded-xl border bg-card px-3.5 py-1.5 text-xs font-semibold shadow-sm hover:bg-accent">
+                        <button type="button" onClick={() => void gestionarOrden("no", false, null)} className="rounded-xl border bg-card px-3.5 py-1.5 text-xs font-semibold shadow-sm hover:bg-accent">
                           No
                         </button>
                       </div>
