@@ -154,6 +154,7 @@ export type Analisis =
   | { tipo: "comando"; comando: Comando }
   | { tipo: "faltan"; intencion: IntencionIncompleta; pregunta: string }
   | { tipo: "aclarar"; pregunta: string }
+  | { tipo: "elegir_pantalla"; pregunta: string; opciones: { ruta: string; nombre: string }[] }
   | { tipo: "ayuda" };
 
 /** Cómo se lee una orden para pedir confirmación (el número va también cifra a cifra, que es donde más se falla al dictar). */
@@ -189,6 +190,12 @@ export const AYUDA_COMANDOS = `**Esto puedo hacer por orden** (escrita o hablada
 
 **Cuándo pregunto y cuándo no:** si la orden es clara y el resguardo existe, la hago directamente, para ir rápido. Si dicto algo y no estoy seguro de haberte entendido bien, o no encuentro ese resguardo, te pregunto: te enseño los que se parecen para que elijas, o te pido que me lo repitas. Si me falta un dato, te lo pido, y si aun así no lo entiendo no hago nada y te pido más detalle. Y puedes preguntarme cómo funciona cualquier pantalla o pedirme datos, como siempre.`;
 
+/** ¿La respuesta («ventas», «la primera»…) se refiere a esta pantalla? Sirve para resolver «¿Compras o Ventas?» sin pedir el verbo otra vez. */
+export function pantallaCoincide(ruta: string, texto: string): boolean {
+  const p = PANTALLAS.find((x) => x.ruta === ruta);
+  return !!p && p.claves.test(normalizar(texto));
+}
+
 const FRASE_AYUDA = /^(ayuda|ayudame|que puedes hacer|que sabes hacer|que ordenes|que comandos|que acciones|lista de ordenes|lista de acciones|lista de comandos|para que sirves)\b/;
 const NO_ES_ORDEN = /\b(saber|significa|explica|explicame|funciona|funcionan|sirve|diferencia|por que)\b/;
 
@@ -204,7 +211,13 @@ export function analizar(texto: string): Analisis | null {
     if (comando.tipo === "ir") {
       const resto = t.replace(PANTALLAS.find((p) => p.ruta === comando.ruta)?.claves ?? /^$/, " ");
       const otra = PANTALLAS.find((p) => p.ruta !== comando.ruta && p.claves.test(resto));
-      if (otra) return { tipo: "aclarar", pregunta: `¿Abro ${comando.nombre} o ${otra.nombre}? Dime solo una de las dos.` };
+      if (otra) {
+        return {
+          tipo: "elegir_pantalla",
+          pregunta: `¿Abro ${comando.nombre} o ${otra.nombre}? Dime solo una de las dos.`,
+          opciones: [{ ruta: comando.ruta, nombre: comando.nombre }, { ruta: otra.ruta, nombre: otra.nombre }],
+        };
+      }
     }
     return { tipo: "comando", comando };
   }

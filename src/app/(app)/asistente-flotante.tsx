@@ -6,7 +6,7 @@ import { Streamdown } from "streamdown";
 import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1, Microphone, VolumeHigh, VolumeSlash, Clock } from "@/lib/icons";
 import { useVoz } from "@/lib/asistente/use-voz";
 import { comprobarResguardo, etiquetaResguardo, type FichaResguardo } from "@/lib/asistente/resguardos";
-import { analizar, AYUDA_COMANDOS, completar, describir, resolver, respuestaSiNo, extraerNumero, type Comando, type IntencionIncompleta } from "@/lib/asistente/comandos-voz";
+import { analizar, AYUDA_COMANDOS, completar, describir, resolver, respuestaSiNo, extraerNumero, pantallaCoincide, type Comando, type IntencionIncompleta } from "@/lib/asistente/comandos-voz";
 import { contextoPantallaActual } from "@/lib/asistente/contexto";
 
 interface Mensaje {
@@ -44,7 +44,8 @@ const ETIQUETA_CONFIRMACION: Record<AccionEjecutada["confirmacion"], { texto: st
 type Pendiente =
   | { tipo: "confirmar"; comando: Comando; frase: string; intentos: number }
   | { tipo: "completar"; intencion: IntencionIncompleta; frase: string; intentos: number }
-  | { tipo: "elegir"; intencion: IntencionIncompleta; opciones: FichaResguardo[]; frase: string; intentos: number };
+  | { tipo: "elegir"; intencion: IntencionIncompleta; opciones: FichaResguardo[]; frase: string; intentos: number }
+  | { tipo: "pantalla"; opciones: { ruta: string; nombre: string }[]; frase: string; intentos: number };
 
 /** Por debajo de esta confianza del reconocimiento de voz se pregunta antes de abrir; por encima (y con el resguardo comprobado) se abre directamente. */
 const CONFIANZA_MINIMA = 0.8;
@@ -413,6 +414,34 @@ export function AsistenteFlotante() {
         setPendiente({ ...pendiente, intentos: pendiente.intentos + 1 });
         return true;
       }
+      if (pendiente.tipo === "pantalla") {
+        if (dicho === "no") {
+          dialogo(texto, "Vale, no abro nada. Dime qué necesitas.", porVoz);
+          anotar({ frase: pendiente.frase, entendido: "Había que elegir entre dos pantallas", resultado: "La persona canceló la orden.", url: "", porVoz, confirmacion: "cancelada" });
+          setPendiente(null);
+          return true;
+        }
+        const elegidas = pendiente.opciones.filter((o) => pantallaCoincide(o.ruta, texto));
+        if (elegidas.length === 1) {
+          setPendiente(null);
+          await decidir({ tipo: "ir", ruta: elegidas[0].ruta, nombre: elegidas[0].nombre }, pendiente.frase, porVoz, confianza, texto);
+          return true;
+        }
+        if (pareceOtraPregunta(texto)) {
+          anotar({ frase: pendiente.frase, entendido: "Había que elegir entre dos pantallas", resultado: "Se hizo otra pregunta antes de elegir; la orden se dejó sin ejecutar.", url: "", porVoz, confirmacion: "cancelada" });
+          setPendiente(null);
+          return false;
+        }
+        if (pendiente.intentos + 1 >= MAX_INTENTOS) {
+          dialogo(texto, "No he entendido cuál quieres, así que no abro nada. Dime, por ejemplo, «abre Compras».", porVoz);
+          anotar({ frase: pendiente.frase, entendido: "Había que elegir entre dos pantallas", resultado: "No se entendió la elección; no se abrió nada.", url: "", porVoz, confirmacion: "sin_entender" });
+          setPendiente(null);
+          return true;
+        }
+        dialogo(texto, `No te he entendido. ¿${pendiente.opciones.map((o) => o.nombre).join(" o ")}?`, porVoz);
+        setPendiente({ ...pendiente, intentos: pendiente.intentos + 1 });
+        return true;
+      }
       // «completar» (se esperaba el número) o «elegir» (se ofrecieron varios resguardos parecidos).
       if (dicho === "no") {
         dialogo(texto, pendiente.tipo === "elegir" ? "Vale. Dime el número del resguardo otra vez, cifra a cifra." : "Vale, lo dejamos. Dime qué necesitas.", porVoz);
@@ -456,6 +485,11 @@ export function AsistenteFlotante() {
     if (analisis.tipo === "aclarar") {
       dialogo(texto, analisis.pregunta, porVoz);
       anotar({ frase: texto, entendido: "Orden poco clara: se pidió más detalle", resultado: analisis.pregunta, url: "", porVoz, confirmacion: "sin_entender" });
+      return true;
+    }
+    if (analisis.tipo === "elegir_pantalla") {
+      dialogo(texto, analisis.pregunta, porVoz);
+      setPendiente({ tipo: "pantalla", opciones: analisis.opciones, frase: texto, intentos: 0 });
       return true;
     }
     if (analisis.tipo === "faltan") {
@@ -741,6 +775,24 @@ export function AsistenteFlotante() {
                           </button>
                         ))}
                         <button type="button" onClick={() => void gestionarOrden("ninguno, no", false, null)} className="rounded-xl border bg-card px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-accent">Ninguno</button>
+                      </div>
+                    )}
+                    {pendiente?.tipo === "pantalla" && i === ultimo && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {pendiente.opciones.map((o) => (
+                          <button
+                            key={o.ruta}
+                            type="button"
+                            onClick={() => {
+                              const sig = pendiente;
+                              setPendiente(null);
+                              ejecutar({ tipo: "ir", ruta: o.ruta, nombre: o.nombre }, sig.frase, false, "confirmada", o.nombre);
+                            }}
+                            className="rounded-xl border bg-card px-3.5 py-1.5 text-xs font-semibold shadow-sm hover:bg-accent"
+                          >
+                            {o.nombre}
+                          </button>
+                        ))}
                       </div>
                     )}
                     {pendiente?.tipo === "confirmar" && i === ultimo && (
