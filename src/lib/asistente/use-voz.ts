@@ -73,18 +73,27 @@ function elegirVoz(): SpeechSynthesisVoice | null {
   return [...voces].sort((a, b) => puntuar(b) - puntuar(a))[0];
 }
 
-export function useVoz({ alTranscribir }: { alTranscribir: (texto: string) => void }) {
+/**
+ * `alTerminar` recibe TODO lo dictado cuando la persona pulsa el micrófono para terminar. Mientras tanto se escucha de
+ * forma continua: las pausas al pensar no cortan el dictado (si el navegador cierra la escucha por su cuenta, se reanuda sola).
+ * Nada se envía ni se ejecuta hasta que la persona revisa el texto y pulsa Enviar.
+ */
+export function useVoz({ alTerminar }: { alTerminar: (texto: string) => void }) {
   const [escuchando, setEscuchando] = useState(false);
   const [parcial, setParcial] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [hablando, setHablando] = useState(false);
   const reconocimientoRef = useRef<ReconocimientoVoz | null>(null);
-  const alTranscribirRef = useRef(alTranscribir);
-  const textoFinalRef = useRef("");
+  const alTerminarRef = useRef(alTerminar);
+  const acumuladoRef = useRef("");
+  const ultimoRef = useRef("");
+  const quiereRef = useRef(false);
+  const reinicios = useRef<number[]>([]);
+  const arrancarRef = useRef<() => void>(() => {});
 
   useEffect(() => {
-    alTranscribirRef.current = alTranscribir;
-  }, [alTranscribir]);
+    alTerminarRef.current = alTerminar;
+  }, [alTerminar]);
 
   const soportaMicrofono = constructorReconocimiento() !== null;
   const soportaVoz = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -110,59 +119,100 @@ export function useVoz({ alTranscribir }: { alTranscribir: (texto: string) => vo
     window.speechSynthesis.speak(u);
   }, []);
 
-  const parar = useCallback(() => {
-    reconocimientoRef.current?.stop();
+  /** Cierra el dictado y entrega el texto completo. */
+  const finalizar = useCallback(() => {
+    quiereRef.current = false;
+    reconocimientoRef.current = null;
+    setEscuchando(false);
+    const dicho = ultimoRef.current.trim();
+    ultimoRef.current = "";
+    acumuladoRef.current = "";
+    setParcial("");
+    if (dicho) alTerminarRef.current(dicho);
   }, []);
 
-  const iniciar = useCallback(() => {
+  const arrancar = useCallback(() => {
     const Ctor = constructorReconocimiento();
-    if (!Ctor) {
+    if (!Ctor) return;
+    const r = new Ctor();
+    r.lang = "es-ES";
+    r.interimResults = true;
+    r.continuous = true;
+    r.maxAlternatives = 1;
+    r.onresult = (e) => {
+      let nuevoFinal = "";
+      let provisional = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const frase = e.results[i][0].transcript;
+        if (e.results[i].isFinal) nuevoFinal += frase;
+        else provisional += frase;
+      }
+      if (nuevoFinal) acumuladoRef.current = `${acumuladoRef.current} ${nuevoFinal}`.trim();
+      const visible = `${acumuladoRef.current} ${provisional}`.trim();
+      ultimoRef.current = visible;
+      setParcial(visible);
+    };
+    r.onerror = (e) => {
+      if (e.error === "aborted" || e.error === "no-speech") return; // las pausas largas se reanudan solas en onend
+      setError(MENSAJES_ERROR[e.error] || `No se pudo escuchar (${e.error}).`);
+      quiereRef.current = false;
+    };
+    r.onend = () => {
+      if (!quiereRef.current) {
+        finalizar();
+        return;
+      }
+      // El navegador cerró la escucha (silencio largo, límite de tiempo…) y la persona no había terminado: se reanuda.
+      const ahora = Date.now();
+      reinicios.current = [...reinicios.current.filter((x) => ahora - x < 5000), ahora];
+      if (reinicios.current.length > 6) {
+        setError("El micrófono se está cortando. Vuelve a pulsarlo para seguir dictando.");
+        finalizar();
+        return;
+      }
+      setTimeout(() => {
+        if (quiereRef.current) arrancarRef.current();
+      }, 200);
+    };
+    reconocimientoRef.current = r;
+    try {
+      r.start();
+    } catch {
+      setError("No se pudo iniciar el micrófono. Inténtalo de nuevo.");
+      finalizar();
+    }
+  }, [finalizar]);
+
+  useEffect(() => {
+    arrancarRef.current = arrancar;
+  }, [arrancar]);
+
+  const iniciar = useCallback(() => {
+    if (!constructorReconocimiento()) {
       setError("Este navegador no reconoce la voz. Usa Chrome o Edge.");
       return;
     }
     callar();
     setError(null);
     setParcial("");
-    textoFinalRef.current = "";
-    const r = new Ctor();
-    r.lang = "es-ES";
-    r.interimResults = true;
-    r.continuous = false;
-    r.maxAlternatives = 1;
-    r.onresult = (e) => {
-      let final = "";
-      let provisional = "";
-      for (let i = 0; i < e.results.length; i++) {
-        const frase = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final += frase;
-        else provisional += frase;
-      }
-      if (final) textoFinalRef.current = final.trim();
-      setParcial((final + provisional).trim());
-    };
-    r.onerror = (e) => {
-      if (e.error !== "aborted") setError(MENSAJES_ERROR[e.error] || `No se pudo escuchar (${e.error}).`);
-    };
-    r.onend = () => {
-      setEscuchando(false);
-      reconocimientoRef.current = null;
-      const dicho = textoFinalRef.current;
-      textoFinalRef.current = "";
-      setParcial("");
-      if (dicho) alTranscribirRef.current(dicho);
-    };
-    reconocimientoRef.current = r;
-    try {
-      r.start();
-      setEscuchando(true);
-    } catch {
-      setError("No se pudo iniciar el micrófono. Inténtalo de nuevo.");
-    }
-  }, [callar]);
+    acumuladoRef.current = "";
+    ultimoRef.current = "";
+    reinicios.current = [];
+    quiereRef.current = true;
+    setEscuchando(true);
+    arrancar();
+  }, [callar, arrancar]);
+
+  const parar = useCallback(() => {
+    quiereRef.current = false;
+    if (reconocimientoRef.current) reconocimientoRef.current.stop();
+    else finalizar();
+  }, [finalizar]);
 
   // Al cerrar la pantalla se corta lo que se estuviera oyendo o diciendo.
   useEffect(() => {
     return () => {
+      quiereRef.current = false;
       reconocimientoRef.current?.abort();
       if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
     };

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Streamdown } from "streamdown";
-import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1, Microphone, VolumeHigh, VolumeSlash } from "@/lib/icons";
+import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1, Microphone, VolumeHigh, VolumeSlash, Clock } from "@/lib/icons";
 import { useVoz } from "@/lib/asistente/use-voz";
 import { interpretar, resolver } from "@/lib/asistente/comandos-voz";
 import { contextoPantallaActual } from "@/lib/asistente/contexto";
@@ -16,6 +16,24 @@ interface Mensaje {
 
 const CLAVE_STORAGE = "kelatos-asistente-chat";
 const CLAVE_LEER = "kelatos-asistente-leer-voz";
+const CLAVE_ACCIONES = "kelatos-asistente-acciones";
+
+/** Una orden que el asistente ejecutó (abrir un resguardo, ir a una pantalla…), para repasarla o repetirla. */
+interface AccionEjecutada {
+  fecha: string;
+  frase: string;
+  resultado: string;
+  url: string;
+  porVoz: boolean;
+}
+
+function horaLegible(iso: string): string {
+  const d = new Date(iso);
+  const hoy = new Date();
+  const mismoDia = d.toDateString() === hoy.toDateString();
+  const hora = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  return mismoDia ? `hoy ${hora}` : `${d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })} ${hora}`;
+}
 interface Sugerencia {
   pregunta: string;
   /** "guia" = explica cómo funciona algo; "datos" = consulta datos reales. */
@@ -186,13 +204,32 @@ export function AsistenteFlotante() {
       return false;
     }
   });
-  const preguntaPorVozRef = useRef(false);
+  // Lo dictado se queda en la caja de texto para revisarlo: NO se envía ni se ejecuta hasta que la persona pulsa Enviar.
+  const dictadoRef = useRef(false);
   const voz = useVoz({
-    alTranscribir: (texto) => {
-      preguntaPorVozRef.current = true;
-      void enviar(texto);
+    alTerminar: (texto) => {
+      dictadoRef.current = true;
+      setEntrada((previo) => (previo.trim() ? `${previo.trim()} ${texto}` : texto));
     },
   });
+  // Historial de órdenes ejecutadas: se guarda en este navegador (las últimas 50).
+  const [acciones, setAcciones] = useState<AccionEjecutada[]>(() => {
+    try {
+      const g = typeof window !== "undefined" ? localStorage.getItem(CLAVE_ACCIONES) : null;
+      return g ? (JSON.parse(g) as AccionEjecutada[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [verHistorial, setVerHistorial] = useState(false);
+  const guardarAcciones = (lista: AccionEjecutada[]) => {
+    setAcciones(lista);
+    try {
+      localStorage.setItem(CLAVE_ACCIONES, JSON.stringify(lista));
+    } catch {
+      /* ignorar */
+    }
+  };
 
   useEffect(() => {
     try {
@@ -231,8 +268,8 @@ export function AsistenteFlotante() {
 
   async function enviar(textoPregunta: string) {
     const pregunta = textoPregunta.trim();
-    const porVoz = preguntaPorVozRef.current;
-    preguntaPorVozRef.current = false;
+    const porVoz = dictadoRef.current;
+    dictadoRef.current = false;
     if (!pregunta || enviandoRef.current) return;
     voz.callar();
     // Órdenes («abre el resguardo 19538», «crea un presupuesto para el 19538», «ve a Compras»): se ejecutan al instante, sin IA.
@@ -242,6 +279,7 @@ export function AsistenteFlotante() {
       const { url, mensaje } = resolver(orden);
       setEntrada("");
       setMensajes((m) => [...m, { rol: "usuario", texto: pregunta }, { rol: "asistente", texto: mensaje }]);
+      guardarAcciones([{ fecha: new Date().toISOString(), frase: pregunta, resultado: mensaje, url, porVoz }, ...acciones].slice(0, 50));
       if (porVoz || leerRespuestas) voz.hablar(mensaje);
       router.push(url);
       setAbierto(false);
@@ -347,6 +385,16 @@ export function AsistenteFlotante() {
                 {respondiendo ? "Escribiendo…" : "En línea · te ayudo con el sistema"}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setVerHistorial((v) => !v)}
+              className={`relative rounded-xl p-2 transition-colors hover:bg-primary-foreground/15 hover:text-primary-foreground ${verHistorial ? "bg-primary-foreground/20 text-primary-foreground" : "text-primary-foreground/85"}`}
+              title="Historial de acciones ejecutadas"
+              aria-pressed={verHistorial}
+            >
+              <Clock className="size-4.5" />
+              {acciones.length > 0 && <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-amber-300 px-1 text-[9px] font-bold leading-4 text-amber-950">{acciones.length > 9 ? "9+" : acciones.length}</span>}
+            </button>
             {voz.soportaVoz && (
               <button
                 type="button"
@@ -367,7 +415,45 @@ export function AsistenteFlotante() {
           </div>
 
           <div ref={desplazableRef} className="flex-1 space-y-4 overflow-y-auto bg-muted/40 px-4 py-5 text-sm">
-            {mensajes.length === 0 && (
+            {verHistorial && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Acciones ejecutadas</h3>
+                  <div className="flex gap-2 text-xs">
+                    {acciones.length > 0 && <button type="button" className="text-muted-foreground underline hover:text-foreground" onClick={() => guardarAcciones([])}>Borrar historial</button>}
+                    <button type="button" className="font-medium text-primary underline" onClick={() => setVerHistorial(false)}>Volver al chat</button>
+                  </div>
+                </div>
+                {acciones.length === 0 ? (
+                  <p className="rounded-xl border border-dashed bg-card px-3 py-6 text-center text-[13px] text-muted-foreground">
+                    Todavía no se ha ejecutado ninguna orden. Prueba con «abre el resguardo 19538».
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {acciones.map((a, i) => (
+                      <li key={`${a.fecha}-${i}`} className="rounded-xl border bg-card px-3 py-2.5 shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[13px] font-medium leading-snug">«{a.frase}»</p>
+                          <span className="shrink-0 text-[10.5px] text-muted-foreground">{horaLegible(a.fecha)}{a.porVoz ? " · 🎤" : ""}</span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{a.resultado}</p>
+                        <button
+                          type="button"
+                          className="mt-1.5 text-xs font-medium text-primary underline"
+                          onClick={() => {
+                            router.push(a.url);
+                            setAbierto(false);
+                          }}
+                        >
+                          Volver a abrir
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            {!verHistorial && mensajes.length === 0 && (
               <div className="flex min-h-full flex-col justify-center space-y-5 py-2">
                 <div className="flex flex-col items-center text-center">
                   <span className="relative mb-3 flex size-16 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-md">
@@ -401,7 +487,7 @@ export function AsistenteFlotante() {
                 </div>
               </div>
             )}
-            {mensajes.map((m, i) =>
+            {!verHistorial && mensajes.map((m, i) =>
               m.rol === "usuario" ? (
                 <div key={i} className="flex justify-end">
                   <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-[13.5px] leading-relaxed text-primary-foreground shadow-sm">
@@ -449,7 +535,7 @@ export function AsistenteFlotante() {
                 value={voz.escuchando ? voz.parcial : entrada}
                 maxLength={1200}
                 disabled={respondiendo || voz.escuchando}
-                placeholder={respondiendo ? "Respondiendo…" : voz.escuchando ? "Te escucho… habla ahora" : "Escribe o pulsa el micrófono…"}
+                placeholder={respondiendo ? "Respondiendo…" : voz.escuchando ? "Te escucho… pulsa el micrófono cuando termines" : "Escribe o pulsa el micrófono…"}
                 onChange={(e) => setEntrada(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -464,7 +550,7 @@ export function AsistenteFlotante() {
                   type="button"
                   onClick={voz.escuchando ? voz.parar : voz.iniciar}
                   disabled={respondiendo}
-                  title={voz.escuchando ? "Pulsa para terminar de hablar" : "Hablar: pulsa y haz tu pregunta"}
+                  title={voz.escuchando ? "Pulsa para terminar de dictar (después revisa el texto y pulsa Enviar)" : "Dictar: habla con calma, las pausas no cortan. Pulsa de nuevo al terminar"}
                   aria-pressed={voz.escuchando}
                   className={`relative flex size-9 shrink-0 items-center justify-center rounded-xl transition-all disabled:opacity-40 ${voz.escuchando ? "bg-red-500 text-white shadow-md" : "bg-muted text-foreground hover:bg-accent"}`}
                 >
@@ -474,7 +560,7 @@ export function AsistenteFlotante() {
               )}
               <button
                 type="submit"
-                disabled={!respondiendo && !entrada.trim()}
+                disabled={voz.escuchando || (!respondiendo && !entrada.trim())}
                 title={respondiendo ? "Detener" : "Enviar"}
                 className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:shadow-md hover:brightness-110 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
               >
@@ -483,7 +569,7 @@ export function AsistenteFlotante() {
             </form>
             {voz.error && <p className="mt-2 text-center text-[11px] text-destructive">{voz.error}</p>}
             <p className="mt-2 text-center text-[10.5px] text-muted-foreground">
-              {voz.soportaMicrofono ? "Pulsa el micrófono para preguntar hablando. " : "Para preguntar por voz usa Chrome o Edge. "}
+              {voz.soportaMicrofono ? "Pulsa el micrófono, habla y vuelve a pulsarlo al terminar; luego revisa y pulsa Enviar. " : "Para dictar por voz usa Chrome o Edge. "}
               Las respuestas pueden contener errores: contrasta los datos importantes.
             </p>
           </div>
