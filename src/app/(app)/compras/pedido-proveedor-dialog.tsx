@@ -296,6 +296,31 @@ function BuscadorClienteLinea({ textoInicial, onElegir }: { textoInicial: string
  * Pieza"). Nunca toca el stock ni el presupuesto de un cliente solo por leer
  * el pantallazo. Petición del usuario, 2026-10-09/10.
  */
+const FRASES_ANALISIS = ["Analizando…", "Leyendo la imagen…", "Identificando artículos…", "Detectando precios…", "Reconociendo el proveedor…", "Ordenando las líneas…", "Casi listo…"];
+
+/** Barra de progreso del análisis con IA: fina, pegada al borde inferior del encabezado, con porcentaje y una frase que va cambiando.
+    No se sabe cuánto tarda la IA, así que el porcentaje es una estimación que se frena hacia el 95 % hasta que llega el resultado. */
+function BarraAnalisis() {
+  const [segundos, setSegundos] = useState(0);
+  useEffect(() => {
+    const inicio = Date.now();
+    const id = setInterval(() => setSegundos((Date.now() - inicio) / 1000), 250);
+    return () => clearInterval(id);
+  }, []);
+  const porcentaje = Math.round(95 * (1 - Math.exp(-segundos / 30)));
+  const frase = FRASES_ANALISIS[Math.min(Math.floor(segundos / 4), FRASES_ANALISIS.length - 1)];
+  return (
+    <>
+      <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400" aria-live="polite">
+        <MagicStar className="size-3.5 animate-pulse" /> IA · {frase} <span className="tabular-nums">{porcentaje}%</span>
+      </span>
+      <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-violet-500/15" role="progressbar" aria-valuenow={porcentaje} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full bg-violet-500 transition-[width] duration-300 ease-out" style={{ width: `${porcentaje}%` }} />
+      </div>
+    </>
+  );
+}
+
 export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -929,8 +954,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-2xl lg:max-w-3xl">
-        <div className="flex items-center justify-between gap-3 border-b px-4 py-3 pr-12">
+        <div className="relative flex items-center justify-between gap-3 border-b px-4 py-3 pr-12">
           <DialogTitle className="flex items-center gap-1.5"><DocumentUpload className="size-5" /> Subir pedido con IA</DialogTitle>
+          {leyendoOcr && <BarraAnalisis />}
         </div>
 
         <div className="flex min-h-0 flex-1">
