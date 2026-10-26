@@ -246,6 +246,18 @@ const DATOS_EMPRESA = {
   direccion: "Blasco de Garay 63 BJ 2, 28015 Madrid",
 };
 
+/** Estado del IVA que se puede deducir del propio PDF. Solo se decide con datos claros y sin dudas de la IA: sin cuota de IVA, o con IVA que
+    cuadra con el total en una factura a nombre de Affirma (deducible). «Parcialmente deducible» y «No deducible» dependen del uso del gasto
+    y no se pueden saber leyendo el PDF: nunca se deducen. */
+function deducirEstadoIva(e: FacturaOcrExtraido): { estado: EstadoIvaFactura; motivo: string } | null {
+  if (e.advertencias.length > 0 || e.receptorCoincide !== true) return null;
+  const { baseImponible: base, cuotaIvaSoportado: cuota, importeTotal: total, tipoIva } = e;
+  if (base === null || total === null) return null;
+  if ((cuota === 0 || (cuota === null && tipoIva === 0)) && Math.abs(base - total) <= 0.5) return { estado: "sin_cuota", motivo: "la factura no lleva IVA" };
+  if (cuota !== null && cuota > 0 && Math.abs(base + cuota - total) <= 0.5) return { estado: "deducible", motivo: "lleva IVA, la base más el IVA cuadra con el total y está a nombre de Affirma" };
+  return null;
+}
+
 /** La gestoría solo recibe PDF: las facturas se cargan únicamente en ese formato. */
 const MENSAJE_SOLO_PDF = "Las facturas solo se pueden cargar en PDF (la gestoría solo recibe PDF). Conviértela a PDF y vuelve a subirla.";
 const esPdf = (a: File) => a.type === "application/pdf" || /\.pdf$/i.test(a.name);
@@ -328,6 +340,8 @@ export function FacturaRecibidaFormDialog({
   // usuario antes de dejar registrar — así una lectura mal hecha no se
   // convierte en un registro real sin que nadie la haya comprobado.
   const [advertenciasVistas, setAdvertenciasVistas] = useState(false);
+  /** Motivo por el que el estado del IVA se marcó solo al leer el PDF (null = lo eligió la persona). */
+  const [ivaDeducidoDelPdf, setIvaDeducidoDelPdf] = useState<string | null>(null);
   const inputOcr = useRef<HTMLInputElement>(null);
   // Controlador de la petición de OCR en curso — sin esto, cerrar el
   // diálogo mientras "Leyendo con IA" seguía corriendo dejaba el fetch vivo
@@ -421,7 +435,24 @@ export function FacturaRecibidaFormDialog({
     else aplicarIva({ tipoOperacion: tipo });
   }
 
+  /** Cambia el CIF de la ficha del proveedor por el que trae la factura (pide confirmación; es un dato maestro). */
+  async function usarCifDeLaFactura(cif: string) {
+    const prov = proveedores.find((p) => p.proveedorId === datos.proveedorId);
+    if (!prov) return;
+    if (!window.confirm(`Se cambiará el CIF de la ficha de «${prov.nombre}» de ${prov.dniCif || "(vacío)"} a ${cif}. ¿Continuar?`)) return;
+    try {
+      const res = await fetch(`/api/proveedores/${encodeURIComponent(prov.proveedorId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dniCif: cif }) });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "Error desconocido");
+      setProveedores((ps) => ps.map((p) => (p.proveedorId === prov.proveedorId ? { ...p, dniCif: cif } : p)));
+      toast.success(`CIF de «${prov.nombre}» actualizado a ${cif}`);
+    } catch (e) {
+      toast.error(`No se pudo actualizar la ficha: ${e instanceof Error ? e.message : "error desconocido"}`);
+    }
+  }
+
   function cambiarEstadoIva(estado: EstadoIvaFactura) {
+    setIvaDeducidoDelPdf(null);
     if (estado === "sin_cuota") aplicarIva({ estadoIva: estado, tipoIva: 0, cuotaIvaSoportado: 0, importeTotal: datos.baseImponible });
     else aplicarIva({ estadoIva: estado });
   }
@@ -632,6 +663,14 @@ export function FacturaRecibidaFormDialog({
       if (e.importeTotal !== null) set("importeTotal", e.importeTotal);
       if (e.moneda) set("moneda", e.moneda);
       if (e.descripcion) set("descripcion", e.descripcion);
+      // El estado del IVA se deduce del PDF solo en compra nacional y si la persona no había elegido otro todavía.
+      setIvaDeducidoDelPdf(null);
+      const iva = datos.tipoOperacion === "nacional" && datos.estadoIva === "pendiente_justificar" ? deducirEstadoIva(e) : null;
+      if (iva) {
+        if (iva.estado === "sin_cuota") aplicarIva({ estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0 });
+        else aplicarIva({ estadoIva: iva.estado });
+        setIvaDeducidoDelPdf(`${ESTADOS_IVA.find((x) => x.id === iva.estado)?.nombre ?? iva.estado}: ${iva.motivo}`);
+      }
       setOrigenAutomatico(true);
       setArticulosStock(articulosEmparejadosAEditables(data.articulosEmparejados || []));
 
@@ -933,6 +972,7 @@ export function FacturaRecibidaFormDialog({
                     <VerificacionNifIva
                       tipo={datos.tipoOperacion}
                       nifFactura={resumenOcr?.extraido.proveedorDniCif}
+                      onUsarCifFactura={usarCifDeLaFactura}
                       nif={datos.tipoOperacion === "nacional" ? (proveedores.find((p) => p.proveedorId === datos.proveedorId)?.dniCif ?? "") : datos.nifIvaProveedor}
                     />
                   </div>
@@ -996,6 +1036,12 @@ export function FacturaRecibidaFormDialog({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">{ESTADOS_IVA.find((e) => e.id === datos.estadoIva)?.descripcion}</p>
+                {ivaDeducidoDelPdf && (
+                  <p className="flex items-start gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-xs text-violet-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300">
+                    <MagicStar className="mt-0.5 size-3.5 shrink-0" />
+                    <span>Marcado automáticamente al leer el PDF — <strong className="font-medium">{ivaDeducidoDelPdf}</strong>. Cámbialo si no es correcto.</span>
+                  </p>
+                )}
                 {datos.estadoIva === "parcial" && (
                   <div className="grid max-w-md gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
