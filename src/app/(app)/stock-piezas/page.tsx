@@ -27,6 +27,8 @@ function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
+const sinAcentos = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+
 export default function StockPiezasPage() {
   const [piezas, setPiezas] = useState<StockPieza[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -85,18 +87,16 @@ export default function StockPiezasPage() {
     let lista = piezas;
     if (soloBajo) lista = lista.filter((p) => p.stockBajo);
     if (categoria) lista = lista.filter((p) => p.categoria === categoria);
-    if (busqueda.trim()) {
-      const q = busqueda.trim().toLowerCase();
-      lista = lista.filter(
-        (p) =>
-          p.referencia.toLowerCase().includes(q) ||
-          p.nombre.toLowerCase().includes(q) ||
-          p.nombreInternoProveedor.toLowerCase().includes(q) ||
-          p.codigoProveedor.toLowerCase().includes(q) ||
-          p.idPedidoProveedor.toLowerCase().includes(q) ||
-          p.descripcion.toLowerCase().includes(q) ||
-          p.proveedor.toLowerCase().includes(q)
-      );
+    // Cada palabra escrita debe aparecer en algún campo de la pieza (incluida la categoría, que suele llevar la marca:
+    // «Thermomix»), sin distinguir mayúsculas ni acentos: así «thermomix tm31» o «cuchilla thermomix» también la encuentran.
+    const palabras = sinAcentos(busqueda).split(/\s+/).filter(Boolean);
+    if (palabras.length) {
+      lista = lista.filter((p) => {
+        const campos = sinAcentos([
+          p.referencia, p.nombre, p.categoria, p.nombreInternoProveedor, ...p.nombresInternoProveedorAlt, p.codigoProveedor, p.idPedidoProveedor, p.descripcion, p.proveedor,
+        ].join(" "));
+        return palabras.every((w) => campos.includes(w));
+      });
     }
     return lista;
   }, [piezas, busqueda, categoria, soloBajo]);
@@ -147,7 +147,7 @@ export default function StockPiezasPage() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="relative w-64">
           <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Referencia, nombre, proveedor..." className="pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <Input placeholder="Referencia, nombre, marca, proveedor..." className="pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
         <Select value={categoria || "__todas__"} onValueChange={(v) => setCategoria(!v || v === "__todas__" ? "" : v)}>
           <SelectTrigger className="w-48">
