@@ -207,46 +207,42 @@ export default function StockPiezasPage() {
             {!cargando &&
               filtradas.map((p) => (
                 <TableRow key={p.referencia}>
-                  <TableCell>
+                  <TableCell className="py-1">
                     <Badge variant="outline" className="font-mono">{p.referencia}</Badge>
                   </TableCell>
-                  <TableCell className="max-w-[17rem] whitespace-normal">
-                    <div className="flex items-start gap-1.5">
-                      {p.nombreInternoProveedor ? (
-                        <span title={`Equivalente: tiene nombre interno (${p.nombreInternoProveedor}) y la IA de «Subir pedido con IA» la reconoce`} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"><TickCircle className="size-3.5" /></span>
-                      ) : (
-                        <span title="Sin nombre interno (proveedor): la IA de «Subir pedido con IA» no podrá reconocerla por nombre" className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"><Warning2 className="size-3.5" /></span>
-                      )}
-                      <div className="min-w-0">
-                        {p.nombre ? (
-                          <div className="font-medium leading-tight">{p.nombre}</div>
-                        ) : (
-                          <div className="font-medium leading-tight text-amber-600 dark:text-amber-400" title="Sin nombre comercial todavía — se muestra el nombre interno de proveedor">
-                            {p.nombreInternoProveedor || "(sin nombre)"}
-                          </div>
-                        )}
-                        {p.descripcion && <div className="text-xs leading-tight text-muted-foreground">{p.descripcion}</div>}
-                        {p.nombre && p.nombreInternoProveedor && (
-                          <div className="text-xs leading-tight text-sky-600 dark:text-sky-400" title="Nombre interno (proveedor)">
-                            {p.nombreInternoProveedor}
-                          </div>
-                        )}
-                        {p.categoria && <span className="mt-0.5 inline-block rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{p.categoria}</span>}
-                      </div>
-                    </div>
+                  <TableCell className="w-full max-w-0 py-1">
+                    {(() => {
+                      // Una sola línea por pieza: nombre + categoría + (si aporta algo distinto) descripción / nombre interno, recortados.
+                      const nombreVisible = p.nombre || p.nombreInternoProveedor || "(sin nombre)";
+                      const igual = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+                      const extras = [p.descripcion, p.nombre ? p.nombreInternoProveedor : ""].filter((x): x is string => !!x && !igual(x, nombreVisible));
+                      const unicos = extras.filter((x, k) => extras.findIndex((y) => igual(x, y)) === k);
+                      return (
+                        <div className="flex min-w-0 items-center gap-1.5" title={[nombreVisible, ...unicos].join(" · ")}>
+                          {p.nombreInternoProveedor ? (
+                            <span title={`Equivalente: tiene nombre interno (${p.nombreInternoProveedor}) y la IA de «Subir pedido con IA» la reconoce`} className="shrink-0 text-emerald-600 dark:text-emerald-400"><TickCircle className="size-3.5" /></span>
+                          ) : (
+                            <span title="Sin nombre interno (proveedor): la IA de «Subir pedido con IA» no podrá reconocerla por nombre" className="shrink-0 text-amber-600 dark:text-amber-400"><Warning2 className="size-3.5" /></span>
+                          )}
+                          <span className={`max-w-[65%] shrink-0 truncate font-medium ${p.nombre ? "" : "text-amber-600 dark:text-amber-400"}`}>{nombreVisible}</span>
+                          {p.categoria && <span className="shrink-0 rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{p.categoria}</span>}
+                          {unicos.length > 0 && <span className="min-w-0 truncate text-xs text-muted-foreground">{unicos.join(" · ")}</span>}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">{euros(p.costeInterno)}</TableCell>
-                  <TableCell className="text-right text-sm font-medium tabular-nums">{euros(p.precioCliente)}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums text-emerald-600 dark:text-emerald-400">{euros(p.manoObra)}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">
+                  <TableCell className="py-1 text-right text-sm tabular-nums">{euros(p.costeInterno)}</TableCell>
+                  <TableCell className="py-1 text-right text-sm font-medium tabular-nums">{euros(p.precioCliente)}</TableCell>
+                  <TableCell className="py-1 text-right text-sm tabular-nums text-emerald-600 dark:text-emerald-400">{euros(p.manoObra)}</TableCell>
+                  <TableCell className="py-1 text-right text-sm tabular-nums">
                     <span className="font-semibold text-primary">{euros(p.totalCliente)}</span>
                   </TableCell>
-                  <TableCell className={`text-right text-sm tabular-nums ${p.stockBajo ? "font-semibold text-destructive" : ""}`}>
+                  <TableCell className={`py-1 text-right text-sm tabular-nums ${p.stockBajo ? "font-semibold text-destructive" : ""}`}>
                     {p.stockDisponible}
                     {p.stockMinimo > 0 && <span className="text-xs text-muted-foreground" title="Stock mínimo"> / {p.stockMinimo}</span>}
                   </TableCell>
-                  <TableCell className="max-w-[7rem] truncate text-sm text-muted-foreground" title={p.proveedor || undefined}>{p.proveedor || "-"}</TableCell>
-                  <TableCell>
+                  <TableCell className="py-1 max-w-[7rem] truncate text-sm text-muted-foreground" title={p.proveedor || undefined}>{p.proveedor || "-"}</TableCell>
+                  <TableCell className="py-1">
                     <div className="flex justify-end gap-0.5">
                       <Button
                         size="icon-sm"
