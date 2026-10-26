@@ -23,6 +23,7 @@ import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import type { CompraFila } from "@/lib/compras";
 import type { PedidoStockBusqueda } from "@/app/api/stock-piezas/pedidos/buscar/route";
 import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route";
+import { VerificacionNifIva } from "./verificacion-nif-iva";
 import { ArticulosStockRevision, articulosEmparejadosAEditables, type ArticuloStockEditable } from "./articulos-stock-revision";
 import {
   FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
@@ -912,6 +913,14 @@ export function FacturaRecibidaFormDialog({
                   <div className="max-w-sm space-y-1.5">
                     <Label htmlFor="frNifIva">NIF-IVA comunitario del proveedor *</Label>
                     <Input id="frNifIva" value={datos.nifIvaProveedor} placeholder="Ej.: DE123456789" onChange={(e) => set("nifIvaProveedor", e.target.value.toUpperCase())} />
+                  </div>
+                )}
+                {(datos.tipoOperacion === "nacional" || datos.tipoOperacion === "intracomunitaria") && (
+                  <div className="max-w-2xl">
+                    <VerificacionNifIva
+                      tipo={datos.tipoOperacion}
+                      nif={datos.tipoOperacion === "nacional" ? (proveedores.find((p) => p.proveedorId === datos.proveedorId)?.dniCif ?? "") : datos.nifIvaProveedor}
+                    />
                   </div>
                 )}
                 {datos.tipoOperacion === "importacion" && (
