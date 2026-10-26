@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, Warning2, Add, Edit2, Trash, ScanBarcode, TickCircle } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Warning2, Add, Edit2, ScanBarcode, TickCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -102,19 +102,6 @@ export default function StockPiezasPage() {
   }, [piezas, busqueda, categoria, soloBajo]);
 
   const bajoStockCount = useMemo(() => piezas.filter((p) => p.stockBajo).length, [piezas]);
-
-  async function eliminar(p: StockPieza) {
-    if (!window.confirm(`¿Eliminar la pieza "${p.nombre}" (${p.referencia})?\nEsta acción no se puede deshacer.`)) return;
-    try {
-      const res = await fetch(`/api/stock-piezas/${encodeURIComponent(p.referencia)}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Pieza eliminada");
-      cargar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error desconocido");
-    }
-  }
 
   return (
     <div className="p-6">
@@ -285,11 +272,6 @@ export default function StockPiezasPage() {
                           aria-label="Imprimir etiqueta"
                         >
                           <ScanBarcode className="size-3.5" />
-                        </Button>
-                      )}
-                      {esSuperadmin && (
-                        <Button size="icon-sm" variant="ghost" className="h-7 w-7 text-destructive" title="Eliminar" aria-label="Eliminar" onClick={() => eliminar(p)}>
-                          <Trash className="size-3.5" />
                         </Button>
                       )}
                     </div>
