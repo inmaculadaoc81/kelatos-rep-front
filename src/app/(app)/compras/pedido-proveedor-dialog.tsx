@@ -630,7 +630,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada segundo (máx. 7 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; sinFactura?: boolean;
+        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; sinFactura?: boolean;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -664,6 +664,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       void buscarDuplicados(lineasNuevas);
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
       setProveedorIdSugerido(data.proveedorIdSugerido ?? null);
+      // El campo Proveedor pasa a mostrar el que se ha detectado de verdad (antes se quedaba con lo escrito, p. ej. ASWO, aunque fuera Wallapop).
+      if (data.proveedorNombreSugerido) setProveedorNombre(data.proveedorNombreSugerido);
       setProveedorCreado(!!data.proveedorCreado);
       setSinFactura(!!data.sinFactura);
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
@@ -1002,7 +1004,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
             {proveedorIdSugerido && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <TickCircle className="size-3.5 text-emerald-600" />
-                {proveedorCreado ? "Proveedor creado automáticamente" : "Proveedor encontrado"}
+                {proveedorCreado ? "Proveedor creado automáticamente" : "Proveedor encontrado"}: <strong className="font-medium text-foreground">{proveedorNombre}</strong>
               </span>
             )}
             {sinFactura && (

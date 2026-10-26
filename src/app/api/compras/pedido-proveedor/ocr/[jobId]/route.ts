@@ -29,6 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
       numeroPedidoGlobal?: string | null;
       lineas?: LineaPedidoProveedorLeida[];
       proveedorIdSugerido?: string | null;
+      proveedorNombreSugerido?: string | null;
       proveedorCreado?: boolean;
     }>(`/v1/compras/pedido-proveedor/ocr/${encodeURIComponent(jobId)}`);
 
@@ -39,6 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
         numeroPedidoGlobal: data.numeroPedidoGlobal ?? null,
         lineas: data.lineas || [],
         proveedorIdSugerido: data.proveedorIdSugerido ?? null,
+        proveedorNombreSugerido: data.proveedorNombreSugerido ?? null,
         proveedorCreado: !!data.proveedorCreado,
         sinFactura: !!data.sinFactura,
         plataforma: data.plataforma ?? null,
