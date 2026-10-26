@@ -100,20 +100,63 @@ const PANTALLAS: { claves: RegExp; ruta: string; nombre: string }[] = [
 ];
 
 const VERBO_ABRIR = /\b(abre|abrir|abreme|abrime|muestra|muestrame|ensename|ensena|ver|ve|ir|vamos|llevame|dame|busca|buscar|pon|ponme|saca|sacame|quiero ver|necesito ver)\b/;
+const VERBO_CIERRE = /\b(terminar|termina|finalizar|finaliza|cerrar|cierra|completar|completa)\b/;
 const VERBO_CREAR = /\b(crea|crear|creame|nuevo|nueva|hacer|haz|hazme|generar|genera|preparar|prepara|elaborar|elabora|redactar|redacta|anadir|anade|agregar|agrega|registrar|registra|quiero|necesito|pedir|pide)\b/;
 
 /** Interpreta una frase. Devuelve null si no es una orden (entonces es una pregunta para el asistente). */
 const MAX_FRASE = 500;
 
-/** La orden está en la primera parte de la frase: lo que sigue a «porque…» es la explicación y no se interpreta. */
-const cabeza = (t: string) => t.split(/\b(?:porque|ya que|es que|puesto que|dado que)\b/)[0].trim() || t;
+const EXPLICA = "porque|ya que|es que|puesto que|dado que";
+const CONCLUYE = "entonces|por eso|por ello|asi que|por lo tanto|por tanto|de modo que|total que|en consecuencia";
+const CONECTOR = new RegExp(`\\b(${EXPLICA}|${CONCLUYE}|pues)\\b`);
+const ES_CONCLUSION = new RegExp(`^(${CONCLUYE})$`);
+const ES_EXPLICACION = new RegExp(`^(${EXPLICA})$`);
+
+/**
+ * Una frase larga mezcla contexto y orden, y la orden puede ir al principio («necesito registrar un formulario porque un
+ * cliente…») o al final («un cliente quiere saber… entonces, por eso crea un resguardo»). Se parte por los conectores y se
+ * devuelven los trozos por prioridad: primero lo que sigue a «entonces / por eso / así que» (el último primero), luego el
+ * resto en el orden dicho y, al final, las explicaciones («porque…»).
+ */
+function segmentos(t: string): string[] {
+  const partes = t.split(CONECTOR);
+  const conclusion: string[] = [];
+  const normales: string[] = [];
+  const explicaciones: string[] = [];
+  let previo = "";
+  partes.forEach((parte, i) => {
+    if (i % 2 === 1) {
+      previo = parte;
+      return;
+    }
+    const trozo = parte.trim();
+    if (!trozo) return;
+    if (ES_CONCLUSION.test(previo)) conclusion.unshift(trozo);
+    else if (ES_EXPLICACION.test(previo)) explicaciones.push(trozo);
+    else normales.push(trozo);
+  });
+  const todos = [...conclusion, ...normales, ...explicaciones];
+  return todos.length ? todos : [t];
+}
 
 export function interpretar(texto: string): Comando | null {
-  const t = cabeza(normalizar(texto));
-  if (!t || t.length > MAX_FRASE) return null;
+  return interpretarConTrozo(texto)?.comando ?? null;
+}
+
+function interpretarConTrozo(texto: string): { comando: Comando; trozo: string } | null {
+  const completo = normalizar(texto);
+  if (!completo || completo.length > MAX_FRASE) return null;
+  for (const trozo of segmentos(completo)) {
+    const comando = interpretarTrozo(trozo, texto);
+    if (comando) return { comando, trozo };
+  }
+  return null;
+}
+
+function interpretarTrozo(t: string, texto: string): Comando | null {
   const numero = extraerNumero(t);
   // Una pregunta («¿qué estado tiene el 19538?», «cuándo se generó…») no es una orden.
-  if (/^(que|cual|cuales|cuando|cuanto|cuantos|quien|como|por que|donde)\b/.test(t) && !VERBO_ABRIR.test(t) && !VERBO_CREAR.test(t)) return null;
+  if (/^(que|cual|cuales|cuando|cuanto|cuantos|quien|como|por que|donde)\b/.test(t) && !VERBO_ABRIR.test(t) && !VERBO_CREAR.test(t) && !VERBO_CIERRE.test(t)) return null;
 
   const dicePresupuesto = /\b(presupuesto|presupuestos|ppto|pptos|ppt|pto|presu)\b/.test(t);
   const diceReparacion = /\b(resguardo|reparacion|equipo|numero|n)\b/.test(t) || /\bnº\b/.test(texto.toLowerCase());
@@ -204,16 +247,18 @@ export function pantallaCoincide(ruta: string, texto: string): boolean {
 
 const FRASE_AYUDA = /^(ayuda|ayudame|que puedes hacer|que sabes hacer|que ordenes|que comandos|que acciones|lista de ordenes|lista de acciones|lista de comandos|para que sirves)\b/;
 const NO_ES_ORDEN = /\b(saber|significa|explica|explicame|funciona|funcionan|sirve|diferencia|por que)\b/;
+const esPregunta = (t: string) => /^(que|cual|cuales|cuando|cuanto|cuantos|quien|como|por que|donde)\b/.test(t) || NO_ES_ORDEN.test(t);
 
 /** Como `interpretar`, pero devuelve también cuándo falta un dato, cuándo hay que aclarar y cuándo piden ayuda. */
 export function analizar(texto: string): Analisis | null {
   const completo = normalizar(texto);
-  const t = cabeza(completo);
-  if (!t || completo.length > MAX_FRASE) return null;
-  if (FRASE_AYUDA.test(t)) return { tipo: "ayuda" };
+  if (!completo || completo.length > MAX_FRASE) return null;
+  const trozos = segmentos(completo);
+  if (FRASE_AYUDA.test(completo)) return { tipo: "ayuda" };
 
-  const comando = interpretar(texto);
-  if (comando) {
+  const hallado = interpretarConTrozo(texto);
+  if (hallado) {
+    const { comando, trozo: t } = hallado;
     // Dos pantallas distintas en la misma frase: no se adivina.
     if (comando.tipo === "ir") {
       const resto = t.replace(PANTALLAS.find((p) => p.ruta === comando.ruta)?.claves ?? /^$/, " ");
@@ -228,15 +273,14 @@ export function analizar(texto: string): Analisis | null {
     }
     return { tipo: "comando", comando };
   }
-  if (/^(que|cual|cuales|cuando|cuanto|cuantos|quien|como|por que|donde)\b/.test(t) || NO_ES_ORDEN.test(t)) return null;
-
-  const numero = extraerNumero(t);
-  const hayCifras = /\d/.test(palabrasANumeros(t));
-  const dicePresupuesto = /\b(presupuesto|presupuestos|ppto|pptos|ppt|pto|presu)\b/.test(t);
-  const diceResguardo = /\b(resguardo|reparacion)\b/.test(t);
-
   // Entiendo la orden pero falta (o no he entendido bien) el número del resguardo.
-  if (!numero) {
+  for (const t of trozos) {
+    if (esPregunta(t)) continue;
+    const numero = extraerNumero(t);
+    if (numero) continue;
+    const hayCifras = /\d/.test(palabrasANumeros(t));
+    const dicePresupuesto = /\b(presupuesto|presupuestos|ppto|pptos|ppt|pto|presu)\b/.test(t);
+    const diceResguardo = /\b(resguardo|reparacion)\b/.test(t);
     const pregunta = hayCifras
       ? "No he entendido bien el número del resguardo. Dímelo despacio, cifra a cifra (por ejemplo «uno nueve cinco tres ocho»)."
       : "¿Para qué resguardo? Dime el número.";
@@ -253,7 +297,13 @@ export function analizar(texto: string): Analisis | null {
     return { tipo: "comando", comando: { tipo: "nueva_reparacion" }, preguntar: "Entiendo que ha llegado un equipo. ¿Abro el formulario de nueva reparación para darlo de alta?" };
   }
   // Parece una orden pero no sé cuál: se pide más detalle en vez de adivinar.
-  if ((VERBO_CREAR.test(t) || VERBO_ABRIR.test(t)) && (dicePresupuesto || diceResguardo || /\b(pedido|pieza|piezas|factura|cliente)\b/.test(t))) {
+  const parece = trozos.find(
+    (t) =>
+      !esPregunta(t) &&
+      (VERBO_CREAR.test(t) || VERBO_ABRIR.test(t)) &&
+      (/\b(presupuesto|presupuestos|ppto|pptos|ppt|pto|presu|resguardo|reparacion|pedido|pieza|piezas|factura|cliente)\b/.test(t))
+  );
+  if (parece) {
     return { tipo: "aclarar", pregunta: "No estoy seguro de qué quieres que haga. Dime, por ejemplo: «abre el resguardo 19538», «crea un presupuesto para el 19538» o «ve a Compras». Si quieres ver todo lo que sé hacer, di «qué puedes hacer»." };
   }
   return null;
