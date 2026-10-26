@@ -82,6 +82,12 @@ export function AnaliticaRedes({ dias }: { dias: number }) {
         <Vacio titulo="Instagram no está configurado para esta organización" texto="Añade la cuenta y el token en Integraciones para ver aquí sus métricas." />
       ) : datos && !datos.sincronizado ? (
         <Vacio titulo="Todavía no hay datos" texto="Los datos se leen una vez al día. Pulsa «Actualizar ahora» para traerlos ya." />
+      ) : datos && datos.error && datos.cuenta?.seguidores === null ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <p className="font-medium">No se pudo leer el Instagram de esta organización</p>
+          <p className="mt-0.5">La cuenta que está configurada no existe o el token no tiene acceso a ella. Revisa la cuenta y el token en Integraciones (la cuenta debe ser profesional y estar vinculada a la página de Facebook del token).</p>
+          <p className="mt-1 text-xs text-red-800/80">Detalle de Meta: {datos.error.slice(0, 160)}</p>
+        </div>
       ) : datos && datos.cuenta && datos.periodo ? (
         <>
           {datos.error && <div className="mb-3"><ErrorCaja mensaje={`La última lectura de Instagram falló: ${datos.error}`} /></div>}
