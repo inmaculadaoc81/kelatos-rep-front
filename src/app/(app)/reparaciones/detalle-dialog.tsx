@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { AnadirFotosRecogida } from "./anadir-fotos-recogida";
 import { useConfirm } from "@/components/confirm-provider";
 import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
@@ -851,10 +852,12 @@ export function DetalleReparacionDialog({
                       {/* Firma y fotos del equipo tomadas por el cliente en el
                           formulario público "Confirmar recogida" (formulario-
                           recogida/page.tsx) — solo aparece si ya se completó. */}
-                      {(detalle.firmaRecogidaUrl || detalle.fotosRecogida.length > 0) && (
+                      {(detalle.firmaRecogidaUrl || detalle.fotosRecogida.length > 0 || reparacionCerrada) && (
                         <div className="mt-4">
                           <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">
                             <Gallery className="size-4" /> Recogida
+                            <span className="text-xs font-normal text-muted-foreground">· {detalle.fotosRecogida.length} foto{detalle.fotosRecogida.length !== 1 ? "s" : ""}</span>
+                            {reparacionCerrada && <span className="ml-auto"><AnadirFotosRecogida resguardo={detalle.resguardo} onAnadidas={actualizarTodo} /></span>}
                           </h4>
                           <div className="flex flex-wrap gap-2 rounded-xl border p-3">
                             {detalle.firmaRecogidaUrl && (

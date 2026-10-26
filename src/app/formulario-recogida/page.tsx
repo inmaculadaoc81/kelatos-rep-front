@@ -41,6 +41,7 @@ function FormularioRecogidaInterno() {
   const [procesandoFoto, setProcesandoFoto] = useState(false);
   const [errorFoto, setErrorFoto] = useState("");
   const fotoInputRef = useRef<HTMLInputElement>(null);
+  const camaraInputRef = useRef<HTMLInputElement>(null);
 
   async function onSeleccionarFotos(e: React.ChangeEvent<HTMLInputElement>) {
     const archivos = Array.from(e.target.files || []).filter(
@@ -243,27 +244,24 @@ function FormularioRecogidaInterno() {
             <label style={estilos.label}>
               Fotos del equipo <span style={{ color: "#6b7280", fontWeight: "normal" }}>(opcional)</span>
             </label>
-            <button
-              type="button"
-              onClick={() => fotoInputRef.current?.click()}
-              disabled={procesandoFoto}
-              style={estilos.btnFoto}
-            >
-              <input
-                ref={fotoInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onSeleccionarFotos}
-                style={{ display: "none" }}
-                disabled={procesandoFoto}
-              />
-              {procesandoFoto
-                ? "Procesando foto…"
-                : fotos.length === 0
-                  ? "Toca para hacer o seleccionar una foto"
-                  : `${fotos.length} foto${fotos.length !== 1 ? "s" : ""} seleccionada${fotos.length !== 1 ? "s" : ""}`}
-            </button>
+            <p style={{ fontSize: ".8rem", color: "#6b7280", margin: "0 0 8px" }}>
+              Puede añadir las fotos que quiera: una o varias. Cada vez que haga una foto, vuelva a pulsar para añadir otra.
+            </p>
+            <input ref={camaraInputRef} type="file" accept="image/*" capture="environment" onChange={onSeleccionarFotos} style={{ display: "none" }} disabled={procesandoFoto} />
+            <input ref={fotoInputRef} type="file" accept="image/*" multiple onChange={onSeleccionarFotos} style={{ display: "none" }} disabled={procesandoFoto} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => camaraInputRef.current?.click()} disabled={procesandoFoto} style={{ ...estilos.btnFoto, flex: 1 }}>
+                {procesandoFoto ? "Procesando foto…" : fotos.length === 0 ? "📷 Hacer una foto" : "📷 Hacer otra foto"}
+              </button>
+              <button type="button" onClick={() => fotoInputRef.current?.click()} disabled={procesandoFoto} style={{ ...estilos.btnFoto, flex: 1 }}>
+                🖼 Elegir de la galería
+              </button>
+            </div>
+            {fotos.length > 0 && (
+              <p style={{ fontSize: ".85rem", fontWeight: "bold", color: "#15803d", margin: "8px 0 0" }}>
+                {fotos.length} foto{fotos.length !== 1 ? "s" : ""} lista{fotos.length !== 1 ? "s" : ""} para enviar
+              </p>
+            )}
             {errorFoto && <p style={{ color: "#dc2626", fontSize: ".8rem", marginTop: 6 }}>{errorFoto}</p>}
             {fotos.length > 0 && (
               <div style={estilos.fotosGrid}>
