@@ -12,7 +12,7 @@ function Contenido() {
   const { organizaciones, organizacionId, seleccionar } = useOrganizacion();
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Redes sociales</h1>
           <p className="text-sm text-muted-foreground">Cómo van las publicaciones de Instagram de cada organización y qué funciona mejor. Solo lectura.</p>
