@@ -326,7 +326,13 @@ export function AsistenteFlotante() {
    *  · una orden clara y comprobada se ejecuta directamente (más rápido); solo se pregunta si hay dudas, es decir, si el
    *    reconocimiento de voz no estaba seguro (confianza baja) o no se pudo comprobar el dato.
    */
-  async function decidir(comando: Comando, frase: string, porVoz: boolean, confianza: number | null, respuestaUsuario?: string) {
+  async function decidir(comando: Comando, frase: string, porVoz: boolean, confianza: number | null, respuestaUsuario?: string, preguntar?: string) {
+    // Orden deducida (no dicha): siempre se pregunta antes de abrir.
+    if (preguntar) {
+      decir(frase, preguntar, porVoz, respuestaUsuario);
+      setPendiente({ tipo: "confirmar", comando, frase, intentos: 0 });
+      return;
+    }
     const seguro = !porVoz || confianza === null || confianza >= CONFIANZA_MINIMA;
     const numero = comando.tipo === "abrir_resguardo" || comando.tipo === "accion_resguardo" ? comando.resguardo : null;
     const intencion: IntencionIncompleta | null = comando.tipo === "abrir_resguardo" ? "abrir_resguardo" : comando.tipo === "accion_resguardo" ? comando.accion : null;
@@ -497,7 +503,7 @@ export function AsistenteFlotante() {
       setPendiente({ tipo: "completar", intencion: analisis.intencion, frase: texto, intentos: 0 });
       return true;
     }
-    await decidir(analisis.comando, texto, porVoz, confianza);
+    await decidir(analisis.comando, texto, porVoz, confianza, undefined, analisis.preguntar);
     return true;
   }
 

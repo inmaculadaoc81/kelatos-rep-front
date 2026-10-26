@@ -103,9 +103,14 @@ const VERBO_ABRIR = /\b(abre|abrir|abreme|abrime|muestra|muestrame|ensename|ense
 const VERBO_CREAR = /\b(crea|crear|creame|nuevo|nueva|hacer|haz|hazme|generar|genera|preparar|prepara|elaborar|elabora|redactar|redacta|anadir|anade|agregar|agrega|registrar|registra|quiero|necesito|pedir|pide)\b/;
 
 /** Interpreta una frase. Devuelve null si no es una orden (entonces es una pregunta para el asistente). */
+const MAX_FRASE = 500;
+
+/** La orden está en la primera parte de la frase: lo que sigue a «porque…» es la explicación y no se interpreta. */
+const cabeza = (t: string) => t.split(/\b(?:porque|ya que|es que|puesto que|dado que)\b/)[0].trim() || t;
+
 export function interpretar(texto: string): Comando | null {
-  const t = normalizar(texto);
-  if (!t || t.length > 160) return null;
+  const t = cabeza(normalizar(texto));
+  if (!t || t.length > MAX_FRASE) return null;
   const numero = extraerNumero(t);
   // Una pregunta («¿qué estado tiene el 19538?», «cuándo se generó…») no es una orden.
   if (/^(que|cual|cuales|cuando|cuanto|cuantos|quien|como|por que|donde)\b/.test(t) && !VERBO_ABRIR.test(t) && !VERBO_CREAR.test(t)) return null;
@@ -121,7 +126,7 @@ export function interpretar(texto: string): Comando | null {
   if (numero && (VERBO_ABRIR.test(t) || diceReparacion)) {
     if (VERBO_ABRIR.test(t) || /\b(resguardo|reparacion)\b/.test(t)) return { tipo: "abrir_resguardo", resguardo: numero };
   }
-  if (!numero && VERBO_CREAR.test(t) && /\b(reparacion|resguardo|recepcion|equipo)\b/.test(t) && /\b(nueva|nuevo|crear|crea|alta|registrar|registra|dar de alta)\b/.test(t)) {
+  if (!numero && VERBO_CREAR.test(t) && /\b(reparacion|resguardo|recepcion|equipo|formulario|ficha|alta)\b/.test(t) && /\b(nueva|nuevo|crear|crea|alta|registrar|registra|dar de alta)\b/.test(t)) {
     return { tipo: "nueva_reparacion" };
   }
   if (!numero && VERBO_ABRIR.test(t)) {
@@ -151,7 +156,8 @@ export function resolver(c: Comando): { url: string; mensaje: string } {
 export type IntencionIncompleta = "abrir_resguardo" | AccionResguardo;
 
 export type Analisis =
-  | { tipo: "comando"; comando: Comando }
+  /** `preguntar`: la orden se ha deducido, no dicho: se pregunta antes de abrir. */
+  | { tipo: "comando"; comando: Comando; preguntar?: string }
   | { tipo: "faltan"; intencion: IntencionIncompleta; pregunta: string }
   | { tipo: "aclarar"; pregunta: string }
   | { tipo: "elegir_pantalla"; pregunta: string; opciones: { ruta: string; nombre: string }[] }
@@ -201,8 +207,9 @@ const NO_ES_ORDEN = /\b(saber|significa|explica|explicame|funciona|funcionan|sir
 
 /** Como `interpretar`, pero devuelve también cuándo falta un dato, cuándo hay que aclarar y cuándo piden ayuda. */
 export function analizar(texto: string): Analisis | null {
-  const t = normalizar(texto);
-  if (!t || t.length > 160) return null;
+  const completo = normalizar(texto);
+  const t = cabeza(completo);
+  if (!t || completo.length > MAX_FRASE) return null;
   if (FRASE_AYUDA.test(t)) return { tipo: "ayuda" };
 
   const comando = interpretar(texto);
@@ -237,6 +244,13 @@ export function analizar(texto: string): Analisis | null {
     if (/\b(pedido|pedidos)\b/.test(t) && VERBO_CREAR.test(t)) return { tipo: "faltan", intencion: "pedido", pregunta: hayCifras ? pregunta : "¿Para qué resguardo es el pedido de pieza? Dime el número." };
     if (/\b(terminar|termina|terminada|finalizar|finaliza|finalizada|reparado|reparada|completar|completa|cerrar|cierra)\b/.test(t) && diceResguardo) return { tipo: "faltan", intencion: "finalizar", pregunta: hayCifras ? pregunta : "¿Qué reparación quieres terminar? Dime el número del resguardo." };
     if (diceResguardo && VERBO_ABRIR.test(t)) return { tipo: "faltan", intencion: "abrir_resguardo", pregunta: hayCifras ? pregunta : "¿Qué resguardo abro? Dime el número." };
+  }
+  // «Un cliente ha traído un portátil…»: no es una orden, pero lo normal es dar de alta la reparación. Se propone y se pregunta.
+  if (
+    /\b(ha traido|me ha traido|nos ha traido|ha dejado|me ha dejado|nos ha dejado|viene a dejar|vino a dejar|ha venido a dejar|ha llegado con|acaba de traer)\b/.test(completo) &&
+    /\b(portatil|ordenador|equipo|aspirador|dyson|thermomix|movil|tablet|impresora|monitor|pc|laptop|robot|cafetera|batidora|secador)\b/.test(completo)
+  ) {
+    return { tipo: "comando", comando: { tipo: "nueva_reparacion" }, preguntar: "Entiendo que ha llegado un equipo. ¿Abro el formulario de nueva reparación para darlo de alta?" };
   }
   // Parece una orden pero no sé cuál: se pide más detalle en vez de adivinar.
   if ((VERBO_CREAR.test(t) || VERBO_ABRIR.test(t)) && (dicePresupuesto || diceResguardo || /\b(pedido|pieza|piezas|factura|cliente)\b/.test(t))) {
