@@ -8,19 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ESTADOS_PROPUESTA, eur, imprimirPropuesta, type Propuesta, type EstadoPropuesta, type PrecioPropuesta, type SeccionesPropuesta } from "@/lib/propuestas";
+import { ESTADOS_PROPUESTA, LEGAL_VACIO, eur, imprimirPropuesta, type DatosLegales, type Propuesta, type EstadoPropuesta, type PrecioPropuesta, type SeccionesPropuesta } from "@/lib/propuestas";
 
 const SELECT = "h-9 w-full rounded-md border bg-background px-2 text-sm";
 const aLineas = (l?: string[]) => (l ?? []).join("\n");
 const deLineas = (t: string) => t.split("\n").map((x) => x.trim()).filter(Boolean);
 
-type Borrador = { titulo: string; cliente: string; contacto: string; email: string; resumen: string; diagnostico: string; solucion: string; alcance: string; plazos: string; pasos: string; precios: PrecioPropuesta[]; estado: EstadoPropuesta };
+type Borrador = { titulo: string; cliente: string; contacto: string; email: string; resumen: string; diagnostico: string; solucion: string; alcance: string; plazos: string; pasos: string; precios: PrecioPropuesta[]; estado: EstadoPropuesta; legal: DatosLegales };
 
 function aBorrador(p: Propuesta): Borrador {
   const s = p.secciones;
   return {
     titulo: p.titulo ?? "", cliente: p.cliente, contacto: p.contacto ?? "", email: p.email ?? "", resumen: s.resumen ?? "", diagnostico: s.diagnostico ?? "",
-    solucion: aLineas(s.solucion), alcance: aLineas(s.alcance), plazos: s.plazos ?? "", pasos: aLineas(s.siguientes_pasos), precios: p.precios, estado: p.estado,
+    solucion: aLineas(s.solucion), alcance: aLineas(s.alcance), plazos: s.plazos ?? "", pasos: aLineas(s.siguientes_pasos), precios: p.precios, estado: p.estado, legal: { ...LEGAL_VACIO, ...p.legal },
   };
 }
 
@@ -53,6 +53,7 @@ export function PropuestaDialog({ id, onCerrar, onCambio }: { id: number; onCerr
   }, [id, tick]);
 
   const poner = <K extends keyof Borrador>(k: K, v: Borrador[K]) => setB((x) => (x ? { ...x, [k]: v } : x));
+  const ponerLegal = <K extends keyof DatosLegales>(k: K, v: DatosLegales[K]) => setB((x) => (x ? { ...x, legal: { ...x.legal, [k]: v } } : x));
   const cambiarPrecio = (i: number, parche: Partial<PrecioPropuesta>) => b && poner("precios", b.precios.map((x, j) => (j === i ? { ...x, ...parche } : x)));
 
   const totales = useCallback(() => {
@@ -69,7 +70,7 @@ export function PropuestaDialog({ id, onCerrar, onCambio }: { id: number; onCerr
       const res = await fetch(`/api/crm/propuestas/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo: b.titulo, cliente: b.cliente, contacto: b.contacto, email: b.email, secciones, precios: b.precios, estado: b.estado === "error" ? "borrador" : b.estado }),
+        body: JSON.stringify({ titulo: b.titulo, cliente: b.cliente, contacto: b.contacto, email: b.email, secciones, precios: b.precios, legal: b.legal, estado: b.estado === "error" ? "borrador" : b.estado }),
       });
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "Error desconocido");
@@ -131,6 +132,19 @@ export function PropuestaDialog({ id, onCerrar, onCambio }: { id: number; onCerr
         {b && p && (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
             <div className="space-y-4">
+              {p.avisos && p.avisos.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                  <p className="font-medium">Revisión antes de enviar <span className="font-normal text-amber-800">(se actualiza al guardar)</span></p>
+                  <ul className="mt-1.5 space-y-1">
+                    {p.avisos.map((a, i) => (
+                      <li key={i} className="flex gap-2">
+                        <span className={`mt-0.5 h-fit shrink-0 rounded px-1.5 text-[10px] font-semibold uppercase ${a.nivel === "falta" ? "bg-red-600 text-white" : "bg-amber-200 text-amber-900"}`}>{a.nivel === "falta" ? "Falta" : "Revisar"}</span>
+                        <span>{a.texto}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="space-y-1.5"><Label htmlFor="pTit">Título</Label><Input id="pTit" value={b.titulo} maxLength={160} onChange={(e) => poner("titulo", e.target.value)} /></div>
               <div className="space-y-1.5"><Label htmlFor="pRes">Resumen</Label><Textarea id="pRes" rows={3} value={b.resumen} onChange={(e) => poner("resumen", e.target.value)} /></div>
               <div className="space-y-1.5"><Label htmlFor="pDia">Situación y necesidad</Label><Textarea id="pDia" rows={5} value={b.diagnostico} onChange={(e) => poner("diagnostico", e.target.value)} /></div>
@@ -138,11 +152,18 @@ export function PropuestaDialog({ id, onCerrar, onCambio }: { id: number; onCerr
               <div className="space-y-1.5"><Label htmlFor="pAlc">Alcance <span className="font-normal text-muted-foreground">(un punto por línea)</span></Label><Textarea id="pAlc" rows={5} value={b.alcance} onChange={(e) => poner("alcance", e.target.value)} /></div>
               <div className="space-y-1.5"><Label htmlFor="pPla">Plazos y organización</Label><Textarea id="pPla" rows={3} value={b.plazos} onChange={(e) => poner("plazos", e.target.value)} /></div>
               <div className="space-y-1.5"><Label htmlFor="pPas">Siguientes pasos <span className="font-normal text-muted-foreground">(uno por línea)</span></Label><Textarea id="pPas" rows={3} value={b.pasos} onChange={(e) => poner("pasos", e.target.value)} /></div>
+              <details className="rounded-lg border p-3 text-sm">
+                <summary className="cursor-pointer font-medium">Condiciones legales (modelo tipo) · {p.clausulas?.length ?? 0} cláusulas</summary>
+                <p className="mt-2 text-xs text-muted-foreground">Se generan según los servicios y los datos legales de la derecha, y salen en el PDF con las firmas. Revísalas con un abogado.</p>
+                <ol className="mt-2 list-decimal space-y-2 pl-5">
+                  {(p.clausulas ?? []).map((c, i) => <li key={i}><strong>{c.titulo}.</strong> {c.texto}</li>)}
+                </ol>
+              </details>
+              <div className="space-y-1.5"><Label htmlFor="pExt">Condiciones adicionales <span className="font-normal text-muted-foreground">(opcional)</span></Label><Textarea id="pExt" rows={3} value={b.legal.condiciones_extra} onChange={(e) => ponerLegal("condiciones_extra", e.target.value)} /></div>
             </div>
 
             <aside className="space-y-4 lg:sticky lg:top-0 lg:self-start">
               <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
-                <div className="space-y-1.5"><Label htmlFor="pCli">Cliente</Label><Input id="pCli" value={b.cliente} maxLength={160} onChange={(e) => poner("cliente", e.target.value)} /></div>
                 <div className="space-y-1.5"><Label htmlFor="pCon">Contacto</Label><Input id="pCon" value={b.contacto} maxLength={120} onChange={(e) => poner("contacto", e.target.value)} /></div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pEst">Estado</Label>
@@ -150,6 +171,29 @@ export function PropuestaDialog({ id, onCerrar, onCambio }: { id: number; onCerr
                     {ESTADOS_PROPUESTA.filter((e) => e.id !== "generando" && e.id !== "error").map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border p-3">
+                <Label>Datos legales</Label>
+                <div className="grid grid-cols-[1fr_7rem] gap-2">
+                  <Input value={b.legal.prestador_nombre} placeholder="Prestador: razón social" maxLength={160} onChange={(e) => ponerLegal("prestador_nombre", e.target.value)} />
+                  <Input value={b.legal.prestador_nif} placeholder="NIF/CIF" maxLength={20} onChange={(e) => ponerLegal("prestador_nif", e.target.value)} />
+                </div>
+                <div className="grid grid-cols-[1fr_7rem] gap-2">
+                  <Input value={b.cliente} placeholder="Cliente" maxLength={160} onChange={(e) => poner("cliente", e.target.value)} />
+                  <Input value={b.legal.cliente_nif} placeholder="NIF/CIF" maxLength={20} onChange={(e) => ponerLegal("cliente_nif", e.target.value)} />
+                </div>
+                <Input value={b.legal.cliente_direccion} placeholder="Dirección fiscal del cliente" maxLength={240} onChange={(e) => ponerLegal("cliente_direccion", e.target.value)} />
+                <div className="grid grid-cols-[6rem_1fr] items-center gap-2">
+                  <Input type="number" min={1} max={365} value={b.legal.validez_dias} placeholder="Validez" onChange={(e) => ponerLegal("validez_dias", e.target.value)} title="Validez de la oferta en días" />
+                  <span className="text-xs text-muted-foreground">días de validez</span>
+                </div>
+                <Textarea rows={2} value={b.legal.forma_pago} placeholder="Forma de pago (ej.: 50 % al inicio, 50 % a la entrega; transferencia)" maxLength={600} onChange={(e) => ponerLegal("forma_pago", e.target.value)} />
+                <Textarea rows={2} value={b.legal.duracion} placeholder="Duración y baja (ej.: 12 meses, baja con 30 días de aviso)" maxLength={600} onChange={(e) => ponerLegal("duracion", e.target.value)} />
+                <label className="flex items-start gap-2 text-xs">
+                  <input type="checkbox" className="mt-0.5" checked={b.legal.dpa_acordado} onChange={(e) => ponerLegal("dpa_acordado", e.target.checked)} />
+                  <span>Contrato de encargo de tratamiento de datos (art. 28 RGPD) acordado</span>
+                </label>
               </div>
 
               <div className="space-y-2 rounded-lg border p-3">

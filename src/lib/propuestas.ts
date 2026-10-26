@@ -15,6 +15,23 @@ export interface SeccionesPropuesta {
   siguientes_pasos: string[];
 }
 
+export interface DatosLegales {
+  prestador_nombre: string;
+  prestador_nif: string;
+  cliente_nif: string;
+  cliente_direccion: string;
+  validez_dias: string;
+  forma_pago: string;
+  duracion: string;
+  condiciones_extra: string;
+  dpa_acordado: boolean;
+}
+
+export const LEGAL_VACIO: DatosLegales = { prestador_nombre: "", prestador_nif: "", cliente_nif: "", cliente_direccion: "", validez_dias: "", forma_pago: "", duracion: "", condiciones_extra: "", dpa_acordado: false };
+
+export interface ClausulaPropuesta { titulo: string; texto: string }
+export interface AvisoPropuesta { nivel: "falta" | "revisar"; texto: string }
+
 export type EstadoPropuesta = "generando" | "borrador" | "enviada" | "aceptada" | "rechazada" | "error";
 
 export interface Propuesta {
@@ -23,7 +40,7 @@ export interface Propuesta {
   contacto: string | null;
   email: string | null;
   sector: string | null;
-  catalogo: "agencia" | "reparacion";
+  catalogo: "agencia";
   servicios: string[];
   contexto: string | null;
   titulo: string | null;
@@ -34,6 +51,10 @@ export interface Propuesta {
   creado_por: string;
   creado_en: string;
   totales: { base: number; iva: number; total: number };
+  legal: Partial<DatosLegales>;
+  /** Cláusulas tipo y avisos de lo que falta: los calcula el servidor al leer o guardar. */
+  clausulas?: ClausulaPropuesta[];
+  avisos?: AvisoPropuesta[];
 }
 
 export interface ServicioCatalogo {
@@ -45,8 +66,7 @@ export interface ServicioCatalogo {
 export interface CatalogoPropuestas {
   ok: boolean;
   iva: number;
-  tarifasAlquiler: Record<"normal" | "gamer", { dia: number; semana: number; mes: number; fianza: number }>;
-  catalogos: { id: "agencia" | "reparacion"; nombre: string; servicios: ServicioCatalogo[] }[];
+  catalogos: { id: "agencia"; nombre: string; servicios: ServicioCatalogo[] }[];
 }
 
 export const ESTADOS_PROPUESTA: { id: EstadoPropuesta; nombre: string; chip: string }[] = [
@@ -67,6 +87,7 @@ const vinetas = (l?: string[]) => (l && l.length ? `<ul>${l.map((x) => `<li>${es
 /** Abre la propuesta en una ventana lista para imprimir; el navegador permite «Guardar como PDF». */
 export function imprimirPropuesta(p: Propuesta): boolean {
   const s = p.secciones;
+  const l = p.legal ?? {};
   const filas = p.precios
     .map((x) => `<tr><td>${esc(x.concepto)}</td><td class="n">${x.cantidad}</td><td class="n">${eur(x.precio)}</td><td class="n">${eur(x.cantidad * x.precio)}</td></tr>`)
     .join("");
@@ -79,6 +100,7 @@ export function imprimirPropuesta(p: Propuesta): boolean {
     img{height:42px} h1{font-size:24px;margin:18px 0 4px} h2{font-size:16px;margin:22px 0 6px;color:#0f172a;border-bottom:1px solid #e5e7eb;padding-bottom:4px}
     .sub{color:#6b7280;margin:0 0 14px} table{width:100%;border-collapse:collapse;margin-top:6px} th,td{padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:left}
     .n{text-align:right} .tot{width:50%;margin-left:auto} .g td{font-weight:bold;border-top:2px solid #111827} ul{padding-left:20px} li{margin:3px 0}
+    .cl li{margin:5px 0;font-size:12px} .firma td{height:90px;vertical-align:top;border:0;width:50%}
     @media print{body{margin:0}}</style></head><body>
     <img src="${window.location.origin}/logos/kelatos.png" alt="Kelatos">
     <h1>${esc(p.titulo || "Propuesta comercial")}</h1>
@@ -90,6 +112,14 @@ export function imprimirPropuesta(p: Propuesta): boolean {
     ${s.plazos ? `<h2>Plazos y organización</h2>${parrafos(s.plazos)}` : ""}
     ${precios}
     ${s.siguientes_pasos?.length ? `<h2>Siguientes pasos</h2>${vinetas(s.siguientes_pasos)}` : ""}
+    <h2>Partes</h2>
+    <table><tr><td><strong>Prestador</strong><br>${esc(l.prestador_nombre || "[a definir]")}<br>NIF/CIF: ${esc(l.prestador_nif || "[a definir]")}</td>
+    <td><strong>Cliente</strong><br>${esc(p.cliente)}<br>NIF/CIF: ${esc(l.cliente_nif || "[a definir]")}<br>${esc(l.cliente_direccion || "")}</td></tr></table>
+    ${p.clausulas?.length ? `<h2>Condiciones</h2><ol class="cl">${p.clausulas.map((c) => `<li><strong>${esc(c.titulo)}.</strong> ${esc(c.texto)}</li>`).join("")}</ol>` : ""}
+    ${l.condiciones_extra ? `<h2>Condiciones adicionales</h2>${parrafos(l.condiciones_extra)}` : ""}
+    <h2>Aceptación</h2>
+    <p>Con su firma, el cliente acepta esta propuesta y sus condiciones.</p>
+    <table class="firma"><tr><td>Por el prestador<br><br><br>Fdo.:</td><td>Por el cliente<br><br><br>Fdo.:<br>Fecha:</td></tr></table>
     </body></html>`;
   const w = window.open("", "_blank");
   if (!w) return false;

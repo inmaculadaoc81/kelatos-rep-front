@@ -9,11 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CatalogoPropuestas, PrecioPropuesta } from "@/lib/propuestas";
 
-const SELECT = "h-9 w-full rounded-md border bg-background px-2 text-sm";
-
 /** Datos del cliente + servicios + contexto → la IA redacta el texto (tarda ~1 min); los precios los pones tú. */
 export function NuevaPropuestaDialog({ catalogo, onCerrar, onCreada }: { catalogo: CatalogoPropuestas; onCerrar: () => void; onCreada: (id: number) => void }) {
-  const [cat, setCat] = useState<"agencia" | "reparacion">("agencia");
   const [cliente, setCliente] = useState("");
   const [contacto, setContacto] = useState("");
   const [email, setEmail] = useState("");
@@ -23,10 +20,9 @@ export function NuevaPropuestaDialog({ catalogo, onCerrar, onCreada }: { catalog
   const [precios, setPrecios] = useState<PrecioPropuesta[]>([]);
   const [enviando, setEnviando] = useState(false);
 
-  const servicioss = catalogo.catalogos.find((c) => c.id === cat)?.servicios ?? [];
+  const servicioss = catalogo.catalogos[0]?.servicios ?? [];
   const alternar = (id: string) => setServicios((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const cambiarPrecio = (i: number, parche: Partial<PrecioPropuesta>) => setPrecios((l) => l.map((p, j) => (j === i ? { ...p, ...parche } : p)));
-  const t = catalogo.tarifasAlquiler;
 
   async function generar() {
     if (!cliente.trim()) { toast.error("Escribe el nombre del cliente"); return; }
@@ -36,7 +32,7 @@ export function NuevaPropuestaDialog({ catalogo, onCerrar, onCreada }: { catalog
       const res = await fetch("/api/crm/propuestas/generar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catalogo: cat, cliente, contacto, email, sector, servicios, contexto, precios }),
+        body: JSON.stringify({ cliente, contacto, email, sector, servicios, contexto, precios }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -52,15 +48,9 @@ export function NuevaPropuestaDialog({ catalogo, onCerrar, onCreada }: { catalog
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Nueva propuesta</DialogTitle>
-          <DialogDescription>La IA redacta el texto con lo que cuentes; los precios los pones tú (la IA no inventa cifras). Después puedes editarlo todo.</DialogDescription>
+          <DialogDescription>Propuesta de automatización e IA. La IA redacta el texto con lo que cuentes; los precios los pones tú (no inventa cifras) y la parte legal se revisa después.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="npCat">¿Qué ofreces?</Label>
-            <select id="npCat" className={SELECT} value={cat} onChange={(e) => { setCat(e.target.value as "agencia" | "reparacion"); setServicios([]); }}>
-              {catalogo.catalogos.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5"><Label htmlFor="npCli">Cliente / empresa *</Label><Input id="npCli" value={cliente} maxLength={160} onChange={(e) => setCliente(e.target.value)} /></div>
             <div className="space-y-1.5"><Label htmlFor="npSec">Sector</Label><Input id="npSec" value={sector} maxLength={120} placeholder="Clínica dental, peluquería…" onChange={(e) => setSector(e.target.value)} /></div>
@@ -86,12 +76,6 @@ export function NuevaPropuestaDialog({ catalogo, onCerrar, onCreada }: { catalog
             <div className="flex items-center justify-between">
               <Label>Precios (sin IVA)</Label>
               <div className="flex gap-1.5">
-                {cat === "reparacion" && servicios.includes("alquiler") && (
-                  <>
-                    <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => setPrecios((l) => [...l, { concepto: "Alquiler portátil (por mes)", cantidad: 1, precio: t.normal.mes }, { concepto: "Fianza portátil (reembolsable)", cantidad: 1, precio: t.normal.fianza }])}>Tarifa portátil normal</Button>
-                    <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => setPrecios((l) => [...l, { concepto: "Alquiler portátil gamer (por mes)", cantidad: 1, precio: t.gamer.mes }, { concepto: "Fianza portátil gamer (reembolsable)", cantidad: 1, precio: t.gamer.fianza }])}>Tarifa gamer</Button>
-                  </>
-                )}
                 <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => setPrecios((l) => [...l, { concepto: "", cantidad: 1, precio: 0 }])}>+ Línea</Button>
               </div>
             </div>
