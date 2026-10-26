@@ -168,7 +168,7 @@ export default function EquiposPage() {
     }
     setImprimiendo(e.id);
     try {
-      const ok = await imprimirEtiquetaEquipo(e.id, `${e.marca} ${e.modelo}`.trim(), e.serie);
+      const ok = await imprimirEtiquetaEquipo(e.id, `${e.marca} ${e.modelo}`.trim());
       if (ok) toast.success(`Etiqueta de ${e.id} enviada a la impresora`);
       else toast.error("No se pudo imprimir — comprueba que el puente de impresión esté corriendo en este PC");
     } finally {
