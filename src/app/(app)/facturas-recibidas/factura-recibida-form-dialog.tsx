@@ -327,6 +327,8 @@ export function FacturaRecibidaFormDialog({
   // se sube justo después de que guardar() cree la factura (ver más abajo).
   const [archivoPendiente, setArchivoPendiente] = useState<File | null>(null);
   const inputArchivo = useRef<HTMLInputElement>(null);
+  /** Importes que había antes de elegir «Sin cuota de IVA» (que los pone a 0), para restaurarlos al elegir otro estado. */
+  const ivaAntesDeSinCuota = useRef<{ tipoIva: number; cuotaIvaSoportado: number; importeTotal: number } | null>(null);
   // Independiente del "Adjuntar archivo" (Drive) — leer con IA es solo una
   // lectura para precargar el formulario, no implica guardar ni subir nada.
   const [leyendoOcr, setLeyendoOcr] = useState(false);
@@ -453,8 +455,14 @@ export function FacturaRecibidaFormDialog({
 
   function cambiarEstadoIva(estado: EstadoIvaFactura) {
     setIvaDeducidoDelPdf(null);
-    if (estado === "sin_cuota") aplicarIva({ estadoIva: estado, tipoIva: 0, cuotaIvaSoportado: 0, importeTotal: datos.baseImponible });
-    else aplicarIva({ estadoIva: estado });
+    if (estado === "sin_cuota") {
+      // «Sin cuota» pone IVA 0 y total = base; se guardan los importes leídos para devolverlos si la persona se arrepiente.
+      if (datos.estadoIva !== "sin_cuota" && datos.cuotaIvaSoportado > 0) ivaAntesDeSinCuota.current = { tipoIva: datos.tipoIva, cuotaIvaSoportado: datos.cuotaIvaSoportado, importeTotal: datos.importeTotal };
+      aplicarIva({ estadoIva: estado, tipoIva: 0, cuotaIvaSoportado: 0, importeTotal: datos.baseImponible });
+    } else if (datos.estadoIva === "sin_cuota" && ivaAntesDeSinCuota.current) {
+      aplicarIva({ estadoIva: estado, ...ivaAntesDeSinCuota.current });
+      ivaAntesDeSinCuota.current = null;
+    } else aplicarIva({ estadoIva: estado });
   }
 
   async function guardar() {
