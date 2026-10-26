@@ -11,6 +11,28 @@ export type CategoriaFactura = "repuestos" | "mercancias" | "suministros" | "ser
 export type AlmacenFactura = "servicio" | "stock";
 export type EstadoPagoFactura = "pendiente" | "parcial" | "pagada";
 export type EstadoRevisionFactura = "pendiente" | "validada";
+/** De dónde viene la compra: decide qué datos se piden y se validan. */
+export type TipoOperacionFactura = "nacional" | "intracomunitaria" | "importacion";
+/** Si la cuota de IVA está justificada y se puede deducir (un recibo puede mencionar IVA sin documentación que lo acredite). */
+export type EstadoIvaFactura = "pendiente_justificar" | "deducible" | "parcial" | "no_deducible" | "sin_cuota";
+
+export const TIPOS_OPERACION: { id: TipoOperacionFactura; nombre: string; descripcion: string }[] = [
+  { id: "nacional", nombre: "Compra nacional", descripcion: "Proveedor en España, con IVA español en la factura." },
+  { id: "intracomunitaria", nombre: "Compra intracomunitaria", descripcion: "Proveedor de otro país de la UE: la factura no lleva IVA (se autorrepercute) y hace falta su NIF-IVA." },
+  { id: "importacion", nombre: "Importación desde fuera de la UE", descripcion: "Proveedor de fuera de la UE (p. ej. AliExpress desde China): el IVA se acredita con el documento aduanero (DUA) o el justificante de importación." },
+];
+export const ETIQUETA_TIPO_OPERACION: Record<TipoOperacionFactura, string> = {
+  nacional: "Nacional", intracomunitaria: "Intracomunitaria", importacion: "Importación",
+};
+
+export const ESTADOS_IVA: { id: EstadoIvaFactura; nombre: string; descripcion: string; estilo: string }[] = [
+  { id: "pendiente_justificar", nombre: "Pendiente de justificar", descripcion: "El recibo menciona IVA, pero falta documentación para identificar y acreditar la cuota. No se deduce hasta justificarlo.", estilo: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  { id: "deducible", nombre: "Deducible", descripcion: "La cuota de IVA está justificada y se deduce entera.", estilo: "bg-green-500/10 text-green-700 dark:text-green-400" },
+  { id: "parcial", nombre: "Parcialmente deducible", descripcion: "Solo una parte de la cuota se puede deducir (p. ej. uso mixto). Indica la parte deducible; el resto se considera no deducible.", estilo: "bg-sky-500/10 text-sky-700 dark:text-sky-400" },
+  { id: "no_deducible", nombre: "No deducible", descripcion: "El IVA soportado no se puede deducir (p. ej. gasto no afecto a la actividad).", estilo: "bg-red-500/10 text-red-700 dark:text-red-400" },
+  { id: "sin_cuota", nombre: "Sin cuota de IVA acreditada", descripcion: "No hay una cuota de IVA identificable en el documento (exenta, no sujeta, intracomunitaria sin IVA…).", estilo: "bg-muted text-muted-foreground" },
+];
+export const ETIQUETA_ESTADO_IVA: Record<EstadoIvaFactura, string> = Object.fromEntries(ESTADOS_IVA.map((e) => [e.id, e.nombre])) as Record<EstadoIvaFactura, string>;
 
 /** Enlace factura ↔ pedido (migración 119): una factura puede cubrir varios. */
 export interface EnlaceFactura {
@@ -52,6 +74,12 @@ export interface FacturaRecibida {
   inversionSujetoPasivo: boolean;
   adquisicionIntracomunitaria: boolean;
   regimenCriterioCaja: boolean;
+  tipoOperacion: TipoOperacionFactura;
+  estadoIva: EstadoIvaFactura;
+  /** Nº de DUA / justificante de importación (importaciones). */
+  documentoAduanero: string;
+  /** NIF-IVA comunitario del proveedor (compras intracomunitarias). */
+  nifIvaProveedor: string;
 
   formaPago: string;
   fechaVencimiento: string | null;
@@ -110,6 +138,10 @@ interface FilaFacturaSql {
   inversion_sujeto_pasivo: boolean;
   adquisicion_intracomunitaria: boolean;
   regimen_criterio_caja: boolean;
+  tipo_operacion?: string | null;
+  estado_iva?: string | null;
+  documento_aduanero?: string | null;
+  nif_iva_proveedor?: string | null;
   forma_pago: string | null;
   fecha_vencimiento: string | null;
   estado_pago: string;
@@ -174,6 +206,10 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     inversionSujetoPasivo: !!f.inversion_sujeto_pasivo,
     adquisicionIntracomunitaria: !!f.adquisicion_intracomunitaria,
     regimenCriterioCaja: !!f.regimen_criterio_caja,
+    tipoOperacion: (f.tipo_operacion as TipoOperacionFactura) || (f.adquisicion_intracomunitaria ? "intracomunitaria" : "nacional"),
+    estadoIva: (f.estado_iva as EstadoIvaFactura) || "pendiente_justificar",
+    documentoAduanero: f.documento_aduanero || "",
+    nifIvaProveedor: f.nif_iva_proveedor || "",
     formaPago: f.forma_pago || "",
     fechaVencimiento: f.fecha_vencimiento,
     estadoPago: (f.estado_pago as EstadoPagoFactura) || "pendiente",

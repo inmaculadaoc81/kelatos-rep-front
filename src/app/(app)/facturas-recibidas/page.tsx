@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   FacturaRecibida, AlmacenFactura, EstadoPagoFactura, ETIQUETA_ALMACEN, COLOR_ALMACEN,
-  ETIQUETA_ESTADO_PAGO, COLOR_ESTADO_PAGO, euros,
+  ETIQUETA_ESTADO_PAGO, COLOR_ESTADO_PAGO, euros, ETIQUETA_TIPO_OPERACION, ETIQUETA_ESTADO_IVA, ESTADOS_IVA,
 } from "@/lib/facturas-recibidas";
 import { generarCsvLibroCompras, descargarCsv } from "@/lib/libro-compras-csv";
 import { InfoVista } from "../contabilidad/_ui";
@@ -296,7 +296,10 @@ export default function FacturasRecibidasPage() {
                 <TableRow key={f.id} className="cursor-pointer hover:bg-muted/40" onClick={() => { setEditando(f); setFormAbierto(true); }}>
                   <TableCell>
                     <span className="block truncate font-medium">{f.proveedorNombre}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{f.numeroRecepcion}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {f.numeroRecepcion}
+                      {f.tipoOperacion !== "nacional" && <span className="ml-1.5 rounded bg-indigo-500/10 px-1 text-[10px] font-medium text-indigo-700 dark:text-indigo-400">{ETIQUETA_TIPO_OPERACION[f.tipoOperacion]}</span>}
+                    </span>
                   </TableCell>
                   <TableCell className="text-sm">
                     {f.numeroFacturaProveedor}
@@ -310,7 +313,10 @@ export default function FacturasRecibidasPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">{euros(f.baseImponible)}</TableCell>
+                  <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
+                    {euros(f.baseImponible)}
+                    <span className={`mt-0.5 block text-[10px] font-medium ${ESTADOS_IVA.find((e) => e.id === f.estadoIva)?.estilo.split(" ").filter((c) => c.startsWith("text-")).join(" ")}`}>IVA: {ETIQUETA_ESTADO_IVA[f.estadoIva]}</span>
+                  </TableCell>
                   <TableCell className="whitespace-nowrap text-right text-sm font-medium tabular-nums">{euros(f.importeTotal)}</TableCell>
                   <TableCell>
                     <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${COLOR_ESTADO_PAGO[f.estadoPago]}`}>{ETIQUETA_ESTADO_PAGO[f.estadoPago]}</span>

@@ -26,6 +26,7 @@ import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route"
 import { ArticulosStockRevision, articulosEmparejadosAEditables, type ArticuloStockEditable } from "./articulos-stock-revision";
 import {
   FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
+  TipoOperacionFactura, EstadoIvaFactura, TIPOS_OPERACION, ESTADOS_IVA,
   ETIQUETA_TIPO_DOCUMENTO, ETIQUETA_CATEGORIA, euros,
 } from "@/lib/facturas-recibidas";
 
@@ -59,7 +60,10 @@ interface Formulario {
   moneda: string;
   operacionExenta: boolean;
   inversionSujetoPasivo: boolean;
-  adquisicionIntracomunitaria: boolean;
+  tipoOperacion: TipoOperacionFactura;
+  estadoIva: EstadoIvaFactura;
+  documentoAduanero: string;
+  nifIvaProveedor: string;
   formaPago: string;
   fechaVencimiento: string;
   estadoPago: EstadoPagoFactura;
@@ -80,7 +84,8 @@ function vacio(borrador?: BorradorFactura): Formulario {
     fechaRecepcion: new Date().toISOString().slice(0, 10), tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
     baseImponible: borrador?.baseImponible || 0, tipoIva: 21, cuotaIvaSoportado: 0,
     cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR",
-    operacionExenta: false, inversionSujetoPasivo: false, adquisicionIntracomunitaria: false,
+    operacionExenta: false, inversionSujetoPasivo: false,
+    tipoOperacion: "nacional", estadoIva: "pendiente_justificar", documentoAduanero: "", nifIvaProveedor: "",
     formaPago: "", fechaVencimiento: "", estadoPago: "pendiente", referenciaBancaria: "",
     categoria: "", almacen: borrador ? "servicio" : "", pedidoId: borrador?.pedidoId || "", stockPedidoId: "",
     estadoRevision: "pendiente", duplicadoConfirmado: false, observacionesInternas: "",
@@ -96,12 +101,39 @@ function desdeExistente(f: FacturaRecibida): Formulario {
     cuotaIvaSoportado: f.cuotaIvaSoportado ?? 0, cuotaIvaDeducible: f.cuotaIvaDeducible, ivaNoDeducible: f.ivaNoDeducible ?? 0,
     importeTotal: f.importeTotal, moneda: f.moneda,
     operacionExenta: f.operacionExenta, inversionSujetoPasivo: f.inversionSujetoPasivo,
-    adquisicionIntracomunitaria: f.adquisicionIntracomunitaria, formaPago: f.formaPago,
+    tipoOperacion: f.tipoOperacion, estadoIva: f.estadoIva, documentoAduanero: f.documentoAduanero, nifIvaProveedor: f.nifIvaProveedor, formaPago: f.formaPago,
     fechaVencimiento: f.fechaVencimiento || "", estadoPago: f.estadoPago, referenciaBancaria: f.referenciaBancaria,
     categoria: f.categoria || "", almacen: f.almacen || "", pedidoId: f.pedidoId || "",
     stockPedidoId: f.stockPedidoId ? String(f.stockPedidoId) : "",
     estadoRevision: f.estadoRevision, duplicadoConfirmado: f.duplicadoConfirmado, observacionesInternas: f.observacionesInternas,
   };
+}
+
+/** Cuota deducible / no deducible que corresponde al estado del IVA (la parcial conserva la parte deducible que se indique). */
+function repartoIva(estado: EstadoIvaFactura, cuota: number, deducible: number): { cuotaIvaDeducible: number; ivaNoDeducible: number } {
+  const r = (n: number) => Math.round(n * 100) / 100;
+  if (estado === "deducible") return { cuotaIvaDeducible: cuota, ivaNoDeducible: 0 };
+  if (estado === "no_deducible") return { cuotaIvaDeducible: 0, ivaNoDeducible: cuota };
+  if (estado === "parcial") return { cuotaIvaDeducible: deducible, ivaNoDeducible: Math.max(0, r(cuota - deducible)) };
+  return { cuotaIvaDeducible: 0, ivaNoDeducible: 0 };
+}
+
+/** Lo que falta para dar por buena la factura según su tipo de operación y el estado del IVA (el servidor aplica las mismas reglas:
+    si falta algo, la factura se guarda igualmente pero queda «pendiente de revisión»). */
+function faltantesFiscales(d: Formulario): string[] {
+  const f: string[] = [];
+  if (d.tipoOperacion === "intracomunitaria") {
+    const nif = d.nifIvaProveedor.replace(/[\s.-]/g, "").toUpperCase();
+    if (!nif) f.push("el NIF-IVA comunitario del proveedor");
+    else if (!/^[A-Z]{2}[A-Z0-9]{2,12}$/.test(nif) || nif.startsWith("ES")) f.push("un NIF-IVA comunitario válido (código de otro país de la UE, p. ej. DE123456789)");
+    if (d.cuotaIvaSoportado > 0) f.push("revisar: una factura intracomunitaria no debería llevar IVA (se autorrepercute)");
+  }
+  if (d.tipoOperacion === "importacion") {
+    if ((d.estadoIva === "deducible" || d.estadoIva === "parcial") && !d.documentoAduanero.trim()) f.push("el documento aduanero (DUA) o justificante de importación que acredite el IVA");
+    if (d.moneda.trim() && d.moneda.trim() !== "EUR") f.push("el tipo de cambio (la factura no está en euros)");
+  }
+  if (d.estadoIva === "pendiente_justificar") f.push("justificar el IVA (estado «pendiente de justificar»)");
+  return f;
 }
 
 function leerBase64(archivo: File): Promise<string> {
@@ -249,13 +281,6 @@ export function FacturaRecibidaFormDialog({
   borrador?: BorradorFactura;
 }) {
   const [datos, setDatos] = useState<Formulario>(() => (facturaExistente ? desdeExistente(facturaExistente) : vacio(borrador)));
-  // Desglose de IVA (deducible/no deducible) colapsado por defecto — en el
-  // caso normal (totalmente deducible) solo molesta repetir el mismo
-  // importe 3 veces. Se fuerza visible solo si el usuario lo pide a mano
-  // (este estado) o si los datos YA cargados tienen una deducción parcial
-  // real (ver mostrarDesgloseIva más abajo) — nunca se oculta un dato ya
-  // distinto sin que el usuario lo pida.
-  const [desgloseIvaForzado, setDesgloseIvaForzado] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [nuevoProveedorAbierto, setNuevoProveedorAbierto] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -371,6 +396,26 @@ export function FacturaRecibidaFormDialog({
     setDatos((prev) => ({ ...prev, [campo]: valor }));
   }
 
+  /** Cambia datos del IVA y recalcula la cuota deducible / no deducible según el estado del IVA. */
+  function aplicarIva(cambios: Partial<Formulario>) {
+    setDatos((prev) => {
+      const n = { ...prev, ...cambios };
+      return { ...n, ...repartoIva(n.estadoIva, n.cuotaIvaSoportado, n.cuotaIvaDeducible) };
+    });
+  }
+
+  /** Al cambiar el tipo de operación se propone el estado de IVA habitual (se puede cambiar después). */
+  function cambiarTipoOperacion(tipo: TipoOperacionFactura) {
+    if (tipo === "intracomunitaria") aplicarIva({ tipoOperacion: tipo, estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0, importeTotal: datos.baseImponible });
+    else if (tipo === "importacion") aplicarIva({ tipoOperacion: tipo, estadoIva: "pendiente_justificar" });
+    else aplicarIva({ tipoOperacion: tipo });
+  }
+
+  function cambiarEstadoIva(estado: EstadoIvaFactura) {
+    if (estado === "sin_cuota") aplicarIva({ estadoIva: estado, tipoIva: 0, cuotaIvaSoportado: 0, importeTotal: datos.baseImponible });
+    else aplicarIva({ estadoIva: estado });
+  }
+
   async function guardar() {
     if (!datos.proveedorId) return toast.error("Selecciona el proveedor");
     if (!datos.numeroFacturaProveedor.trim()) return toast.error("El número de factura del proveedor es obligatorio");
@@ -378,6 +423,12 @@ export function FacturaRecibidaFormDialog({
     if (!datos.fechaExpedicion) return toast.error("La fecha de expedición es obligatoria");
     if (!datos.baseImponible) return toast.error("La base imponible es obligatoria");
     if (!datos.importeTotal) return toast.error("El importe total es obligatorio");
+    if (["deducible", "parcial", "no_deducible"].includes(datos.estadoIva) && !(datos.cuotaIvaSoportado > 0)) {
+      return toast.error("Indica la cuota de IVA soportado (si la factura no tiene cuota de IVA acreditada, elige «Sin cuota de IVA acreditada»)");
+    }
+    if (datos.estadoIva === "parcial" && !(datos.cuotaIvaDeducible > 0 && datos.cuotaIvaDeducible < datos.cuotaIvaSoportado)) {
+      return toast.error("En un IVA parcialmente deducible, la parte deducible debe ser mayor que 0 y menor que la cuota soportada");
+    }
     if (resumenOcr && resumenOcr.extraido.advertencias.length > 0 && !advertenciasVistas) {
       return toast.error("La IA marcó datos que no está segura de haber leído bien — revísalos y marca la casilla del aviso antes de registrar");
     }
@@ -389,10 +440,10 @@ export function FacturaRecibidaFormDialog({
         fechaExpedicion: datos.fechaExpedicion, fechaOperacion: datos.fechaOperacion || undefined, fechaRecepcion: datos.fechaRecepcion || undefined,
         tipoDocumento: datos.tipoDocumento || undefined, facturaRectificadaId: datos.facturaRectificadaId,
         descripcion: datos.descripcion.trim(), baseImponible: datos.baseImponible,
-        tipoIva: datos.tipoIva || undefined, cuotaIvaSoportado: datos.cuotaIvaSoportado || undefined, cuotaIvaDeducible: datos.cuotaIvaDeducible,
+        tipoIva: datos.estadoIva === "sin_cuota" ? undefined : datos.tipoIva || undefined, cuotaIvaSoportado: datos.cuotaIvaSoportado || undefined, cuotaIvaDeducible: datos.cuotaIvaDeducible,
         ivaNoDeducible: datos.ivaNoDeducible || undefined, importeTotal: datos.importeTotal, moneda: datos.moneda.trim() || "EUR",
         operacionExenta: datos.operacionExenta, inversionSujetoPasivo: datos.inversionSujetoPasivo,
-        adquisicionIntracomunitaria: datos.adquisicionIntracomunitaria,
+        tipoOperacion: datos.tipoOperacion, estadoIva: datos.estadoIva, documentoAduanero: datos.documentoAduanero.trim(), nifIvaProveedor: datos.nifIvaProveedor.trim(),
         formaPago: datos.formaPago.trim(), fechaVencimiento: datos.fechaVencimiento || undefined, estadoPago: datos.estadoPago,
         referenciaBancaria: datos.referenciaBancaria.trim(), categoria: datos.categoria || undefined, almacen: datos.almacen || undefined,
         // Se envían siempre (incluso vacíos) en vez de "|| undefined": un
@@ -544,8 +595,7 @@ export function FacturaRecibidaFormDialog({
       if (e.fechaExpedicion) set("fechaExpedicion", e.fechaExpedicion);
       if (e.baseImponible !== null) set("baseImponible", e.baseImponible);
       if (e.tipoIva !== null) set("tipoIva", e.tipoIva);
-      if (e.cuotaIvaSoportado !== null) set("cuotaIvaSoportado", e.cuotaIvaSoportado);
-      if (e.cuotaIvaSoportado !== null) set("cuotaIvaDeducible", e.cuotaIvaSoportado);
+      if (e.cuotaIvaSoportado !== null) aplicarIva({ cuotaIvaSoportado: e.cuotaIvaSoportado });
       if (e.importeTotal !== null) set("importeTotal", e.importeTotal);
       if (e.moneda) set("moneda", e.moneda);
       if (e.descripcion) set("descripcion", e.descripcion);
@@ -630,13 +680,7 @@ export function FacturaRecibidaFormDialog({
   const totalEsperado = Math.round((datos.baseImponible + datos.cuotaIvaSoportado) * 100) / 100;
   const totalCuadra = Math.abs(totalEsperado - datos.importeTotal) < TOLERANCIA_CUADRE;
 
-  // Desglose deducible/no deducible — colapsado salvo que de verdad haya
-  // una deducción parcial (o el usuario pida ajustarla a mano): repetir el
-  // mismo importe en 2 campos más cuando todo es deducible no aporta nada,
-  // petición del usuario. "Normal" = deducible igual que soportado y nada
-  // marcado como no deducible.
-  const esDeduccionParcialReal = Math.abs(datos.cuotaIvaDeducible - datos.cuotaIvaSoportado) >= TOLERANCIA_CUADRE || datos.ivaNoDeducible >= TOLERANCIA_CUADRE;
-  const mostrarDesgloseIva = desgloseIvaForzado || esDeduccionParcialReal;
+  const faltantes = faltantesFiscales(datos);
 
   return (
     <>
@@ -832,6 +876,29 @@ export function FacturaRecibidaFormDialog({
             </Seccion>
 
             <Seccion titulo="Importes e impuestos" icono={MoneyRecive} acento>
+              <div className="mb-4 space-y-2">
+                <Label>Tipo de operación *</Label>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {TIPOS_OPERACION.map((t) => (
+                    <label key={t.id} className={cn("flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm transition-colors", datos.tipoOperacion === t.id ? "border-primary bg-primary/5" : "hover:bg-muted/40")}>
+                      <input type="radio" name="frTipoOperacion" className="mt-1" checked={datos.tipoOperacion === t.id} onChange={() => cambiarTipoOperacion(t.id)} />
+                      <span><span className="block font-medium">{t.nombre}</span><span className="block text-xs text-muted-foreground">{t.descripcion}</span></span>
+                    </label>
+                  ))}
+                </div>
+                {datos.tipoOperacion === "intracomunitaria" && (
+                  <div className="max-w-sm space-y-1.5">
+                    <Label htmlFor="frNifIva">NIF-IVA comunitario del proveedor *</Label>
+                    <Input id="frNifIva" value={datos.nifIvaProveedor} placeholder="Ej.: DE123456789" onChange={(e) => set("nifIvaProveedor", e.target.value.toUpperCase())} />
+                  </div>
+                )}
+                {datos.tipoOperacion === "importacion" && (
+                  <div className="max-w-sm space-y-1.5">
+                    <Label htmlFor="frDua">Documento aduanero (DUA) / justificante de importación</Label>
+                    <Input id="frDua" value={datos.documentoAduanero} placeholder="Nº del DUA o del justificante" onChange={(e) => set("documentoAduanero", e.target.value)} />
+                  </div>
+                )}
+              </div>
               {borrador && !esEdicion && (
                 <div className="mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300">
                   Precargado desde Compras (costo: {euros(borrador.importeTotal)}) — revisa y separa base imponible / IVA antes de registrar.
@@ -845,11 +912,8 @@ export function FacturaRecibidaFormDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="frTipoIva">% IVA</Label>
                   <DecimalInput id="frTipoIva" className={CLASE_IMPORTE} value={datos.tipoIva} onChange={(n) => {
-                    set("tipoIva", n);
                     const cuota = Math.round(datos.baseImponible * n) / 100;
-                    set("cuotaIvaSoportado", cuota);
-                    if (!mostrarDesgloseIva) { set("cuotaIvaDeducible", cuota); set("ivaNoDeducible", 0); }
-                    set("importeTotal", Math.round((datos.baseImponible + cuota) * 100) / 100);
+                    aplicarIva({ tipoIva: n, cuotaIvaSoportado: cuota, importeTotal: Math.round((datos.baseImponible + cuota) * 100) / 100 });
                   }} />
                 </div>
                 <div className="space-y-1.5">
@@ -861,10 +925,7 @@ export function FacturaRecibidaFormDialog({
                       <Warning2 className="size-3.5 text-amber-600 dark:text-amber-400" />
                     )}
                   </Label>
-                  <DecimalInput id="frCuotaSoportado" className={CLASE_IMPORTE} value={datos.cuotaIvaSoportado} onChange={(n) => {
-                    set("cuotaIvaSoportado", n);
-                    if (!mostrarDesgloseIva) { set("cuotaIvaDeducible", n); set("ivaNoDeducible", 0); }
-                  }} />
+                  <DecimalInput id="frCuotaSoportado" className={CLASE_IMPORTE} value={datos.cuotaIvaSoportado} onChange={(n) => aplicarIva({ cuotaIvaSoportado: n })} />
                   {!cuotaCuadra && (
                     <p className="text-[11px] text-amber-600 dark:text-amber-400">Con {datos.tipoIva}% de {euros(datos.baseImponible)} esperaríamos {euros(cuotaEsperada)}</p>
                   )}
@@ -879,36 +940,36 @@ export function FacturaRecibidaFormDialog({
                 </div>
               </div>
 
-              {/* Deducible/no deducible — colapsado al caso normal (todo
-                  deducible) para no repetir el mismo importe 3 veces;
-                  petición del usuario, 2026-10-07: "solo ponga doble check
-                  o un puntito verde si está bien". Se expande solo (y queda
-                  expandido) si los datos YA tienen una deducción parcial
-                  real, o si el usuario lo pide con el enlace de abajo. */}
-              {mostrarDesgloseIva ? (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="frCuotaDeducible">Cuota de IVA deducible (€) *</Label>
-                    <DecimalInput id="frCuotaDeducible" className={CLASE_IMPORTE} value={datos.cuotaIvaDeducible} onChange={(n) => set("cuotaIvaDeducible", n)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="frIvaNoDeducible">IVA no deducible (€)</Label>
-                    <DecimalInput id="frIvaNoDeducible" className={CLASE_IMPORTE} value={datos.ivaNoDeducible} onChange={(n) => set("ivaNoDeducible", n)} />
-                  </div>
-                  <div className="flex items-end pb-1.5 sm:col-span-2 lg:col-span-2">
-                    <button type="button" className="text-xs text-primary hover:underline" onClick={() => { setDesgloseIvaForzado(false); set("cuotaIvaDeducible", datos.cuotaIvaSoportado); set("ivaNoDeducible", 0); }}>
-                      Es totalmente deducible, ocultar este desglose
-                    </button>
-                  </div>
+              <div className="mt-4 space-y-2">
+                <Label>Estado del IVA *</Label>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                  {ESTADOS_IVA.map((e) => (
+                    <label key={e.id} title={e.descripcion} className={cn("flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 text-sm transition-colors", datos.estadoIva === e.id ? "border-primary bg-primary/5" : "hover:bg-muted/40")}>
+                      <input type="radio" name="frEstadoIva" className="mt-1" checked={datos.estadoIva === e.id} onChange={() => cambiarEstadoIva(e.id)} />
+                      <span className="font-medium leading-tight">{e.nombre}</span>
+                    </label>
+                  ))}
                 </div>
-              ) : (
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
-                  <TickCircle className="size-3.5" /> Totalmente deducible
-                  <button type="button" className="ml-2 text-primary hover:underline" onClick={() => setDesgloseIvaForzado(true)}>
-                    ¿Deducción parcial?
-                  </button>
-                </div>
-              )}
+                <p className="text-xs text-muted-foreground">{ESTADOS_IVA.find((e) => e.id === datos.estadoIva)?.descripcion}</p>
+                {datos.estadoIva === "parcial" && (
+                  <div className="grid max-w-md gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="frCuotaDeducible">Parte deducible (€) *</Label>
+                      <DecimalInput id="frCuotaDeducible" className={CLASE_IMPORTE} value={datos.cuotaIvaDeducible} onChange={(n) => aplicarIva({ cuotaIvaDeducible: n })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>IVA no deducible (€)</Label>
+                      <Input value={datos.ivaNoDeducible.toFixed(2)} disabled />
+                    </div>
+                  </div>
+                )}
+                {faltantes.length > 0 && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                    <p className="font-medium">La factura se guardará, pero quedará «pendiente de revisión» hasta aportar:</p>
+                    <ul className="mt-1 list-disc pl-4">{faltantes.map((x) => <li key={x}>{x}</li>)}</ul>
+                  </div>
+                )}
+              </div>
 
               <div className={cn(
                 "mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm",
@@ -939,9 +1000,6 @@ export function FacturaRecibidaFormDialog({
                   </label>
                   <label className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Checkbox checked={datos.inversionSujetoPasivo} onCheckedChange={(v) => set("inversionSujetoPasivo", v === true)} /> Inversión del sujeto pasivo
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Checkbox checked={datos.adquisicionIntracomunitaria} onCheckedChange={(v) => set("adquisicionIntracomunitaria", v === true)} /> Adquisición intracomunitaria / importación
                   </label>
                 </div>
               </div>
