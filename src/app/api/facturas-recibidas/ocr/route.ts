@@ -50,22 +50,10 @@ export async function POST(req: Request) {
   if (!body.base64 || !body.mimeType) return NextResponse.json({ ok: false, error: "Faltan datos del archivo" }, { status: 400 });
 
   try {
-    const data = await kelatosApiPost<{
-      ok: boolean;
-      extraido: FacturaOcrExtraido | null;
-      proveedorIdSugerido: string | null;
-      proveedorCreado?: boolean;
-      textoOcr: string;
-      articulosEmparejados?: ArticuloFacturaEmparejado[];
-    }>("/v1/facturas-recibidas/ocr", body);
-    return NextResponse.json({
-      ok: true,
-      extraido: data.extraido,
-      proveedorIdSugerido: data.proveedorIdSugerido,
-      proveedorCreado: !!data.proveedorCreado,
-      textoOcr: data.textoOcr,
-      articulosEmparejados: data.articulosEmparejados || [],
-    });
+    // La IA tarda más de lo que aguanta una petición (el servidor corta a ~60 s): la lectura corre en segundo plano y la pantalla
+    // consulta el resultado en GET /api/facturas-recibidas/ocr/:jobId.
+    const inicio = await kelatosApiPost<{ ok: boolean; jobId: string }>("/v1/facturas-recibidas/ocr", { ...body, async: true });
+    return NextResponse.json({ ok: true, jobId: inicio.jobId });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "No se pudo leer la factura" }, { status: 502 });
   }

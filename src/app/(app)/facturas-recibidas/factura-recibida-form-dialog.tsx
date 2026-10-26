@@ -593,9 +593,22 @@ export function FacturaRecibidaFormDialog({
         body: JSON.stringify({ base64, mimeType: archivo.type || "application/octet-stream" }),
         signal: controller.signal,
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Error desconocido");
-      const e = data.extraido as FacturaOcrExtraido | null;
+      const envio = await res.json();
+      if (!envio.ok || !envio.jobId) throw new Error(envio.error || "No se pudo iniciar la lectura");
+      // La lectura corre en segundo plano (la IA puede tardar un minuto): se consulta cada 1,5 s, hasta 4 minutos.
+      let data: { extraido: FacturaOcrExtraido | null; proveedorIdSugerido?: string | null; proveedorCreado?: boolean; articulosEmparejados?: Parameters<typeof articulosEmparejadosAEditables>[0] } | null = null;
+      const inicioLectura = Date.now();
+      while (Date.now() - inicioLectura < 240_000) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (controller.signal.aborted) return;
+        const rr = await fetch(`/api/facturas-recibidas/ocr/${encodeURIComponent(envio.jobId)}`, { signal: controller.signal });
+        const d = await rr.json();
+        if (!d.ok) throw new Error(d.error || "No se pudo consultar la lectura");
+        if (d.estado === "error") throw new Error(d.error || "No se pudo leer la factura");
+        if (d.estado === "listo") { data = d; break; }
+      }
+      if (!data) throw new Error("La lectura está tardando demasiado. Inténtalo de nuevo o rellena la factura a mano.");
+      const e = data.extraido;
       if (!e) {
         toast.warning("No se pudo leer ningún dato de la factura — rellénala a mano");
         setResumenOcr(null);
