@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase, type ItemNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { ClipboardText, Chart, Category, Message, Call, Global, Sms, Send2, Profile2User } from "@/lib/icons";
+import { ClipboardText, Chart, Category, Message, Call, Global, Sms, Send2, Profile2User, DocumentText } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 // Mismo patrón que Reparaciones: un grupo con varios hijos se despliega; con uno solo es un enlace directo.
@@ -32,6 +32,7 @@ const GRUPO_LEADS: GrupoNavegacionBase = {
   ],
 };
 const CORREOS: ItemNavegacionBase = { label: "Envío de correos", href: "/crm/correos", icon: Send2 };
+const PROPUESTAS: ItemNavegacionBase = { label: "Propuestas", href: "/crm/propuestas", icon: DocumentText };
 const METRICAS: ItemNavegacionBase = { label: "Métricas", href: "/crm/metricas", icon: Chart };
 const AYUDA: ItemNavegacionBase = { label: "Cómo funciona", href: "/crm/como-funciona", icon: BookOpen };
 
@@ -60,6 +61,7 @@ export function CrmSidebar({ session }: { session: Session | null }) {
               <ItemDirecto item={PANEL} pathname={pathname} />
               <GrupoColapsable titulo={GRUPO_LEADS.titulo} icon={GRUPO_LEADS.icon} items={GRUPO_LEADS.items} pathname={pathname} />
               <ItemDirecto item={CORREOS} pathname={pathname} />
+              <ItemDirecto item={PROPUESTAS} pathname={pathname} />
               <ItemDirecto item={METRICAS} pathname={pathname} />
               <ItemDirecto item={AYUDA} pathname={pathname} />
             </SidebarMenu>
