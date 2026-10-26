@@ -22,6 +22,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
       ok: boolean;
       estado: "procesando" | "listo" | "error";
       segundos?: number;
+      fase?: "leyendo" | "ia" | "terminando";
+      sinFactura?: boolean;
+      plataforma?: string | null;
       error?: string;
       numeroPedidoGlobal?: string | null;
       lineas?: LineaPedidoProveedorLeida[];
@@ -37,10 +40,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
         lineas: data.lineas || [],
         proveedorIdSugerido: data.proveedorIdSugerido ?? null,
         proveedorCreado: !!data.proveedorCreado,
+        sinFactura: !!data.sinFactura,
+        plataforma: data.plataforma ?? null,
       });
     }
     if (data.estado === "error") return NextResponse.json({ ok: true, estado: "error", error: data.error || "No se pudo leer el pedido" });
-    return NextResponse.json({ ok: true, estado: "procesando", segundos: data.segundos ?? 0 });
+    return NextResponse.json({ ok: true, estado: "procesando", fase: data.fase ?? "leyendo", segundos: data.segundos ?? 0 });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "No se pudo consultar el análisis" }, { status: 502 });
   }

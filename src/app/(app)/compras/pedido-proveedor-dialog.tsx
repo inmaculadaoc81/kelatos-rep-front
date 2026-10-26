@@ -296,19 +296,29 @@ function BuscadorClienteLinea({ textoInicial, onElegir }: { textoInicial: string
  * Pieza"). Nunca toca el stock ni el presupuesto de un cliente solo por leer
  * el pantallazo. Petición del usuario, 2026-10-09/10.
  */
-const FRASES_ANALISIS = ["Analizando…", "Leyendo la imagen…", "Identificando artículos…", "Detectando precios…", "Reconociendo el proveedor…", "Ordenando las líneas…", "Casi listo…"];
+type FaseAnalisis = "leyendo" | "ia" | "terminando";
+const FRASES_ANALISIS: Record<FaseAnalisis, string[]> = {
+  leyendo: ["Leyendo la imagen…", "Reconociendo el texto…"],
+  ia: ["Analizando…", "Identificando artículos…", "Detectando precios…", "Reconociendo el proveedor…", "Ordenando las líneas…", "Casi listo…"],
+  terminando: ["Comprobando el stock…"],
+};
+// Tramo de la barra que ocupa cada fase: [desde %, hasta %, segundos típicos de la fase].
+const TRAMO_FASE: Record<FaseAnalisis, [number, number, number]> = { leyendo: [0, 25, 3], ia: [25, 92, 20], terminando: [92, 97, 2] };
 
 /** Barra de progreso del análisis con IA: fina, pegada al borde inferior del encabezado, con porcentaje y una frase que va cambiando.
-    No se sabe cuánto tarda la IA, así que el porcentaje es una estimación que se frena hacia el 95 % hasta que llega el resultado. */
-function BarraAnalisis() {
-  const [segundos, setSegundos] = useState(0);
+    La fase (leyendo / IA / terminando) la informa el servidor; dentro de cada fase el avance es una estimación que se frena
+    antes del final del tramo hasta que llega la siguiente fase o el resultado. */
+function BarraAnalisis({ fase, desde }: { fase: FaseAnalisis; desde: number }) {
+  const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
-    const inicio = Date.now();
-    const id = setInterval(() => setSegundos((Date.now() - inicio) / 1000), 250);
+    const id = setInterval(() => setAhora(Date.now()), 250);
     return () => clearInterval(id);
   }, []);
-  const porcentaje = Math.round(95 * (1 - Math.exp(-segundos / 30)));
-  const frase = FRASES_ANALISIS[Math.min(Math.floor(segundos / 4), FRASES_ANALISIS.length - 1)];
+  const segundos = Math.max(0, (ahora - desde) / 1000);
+  const [ini, fin, tipico] = TRAMO_FASE[fase];
+  const porcentaje = Math.round(ini + (fin - ini) * (1 - Math.exp(-segundos / tipico)));
+  const frases = FRASES_ANALISIS[fase];
+  const frase = frases[Math.min(Math.floor(segundos / 4), frases.length - 1)];
   return (
     <>
       <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400" aria-live="polite">
@@ -344,6 +354,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [archivos, setArchivos] = useState<ArchivoPedido[]>([]);
   const [preparando, setPreparando] = useState(false);
   const [segundosAnalisis, setSegundosAnalisis] = useState(0);
+  const [faseAnalisis, setFaseAnalisis] = useState<{ fase: FaseAnalisis; desde: number }>({ fase: "leyendo", desde: 0 });
   /** true cuando se cierra el diálogo: corta la consulta periódica del análisis. */
   const cancelarAnalisis = useRef(false);
 
@@ -596,6 +607,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     setLeyendoOcr(true);
     setSegundosAnalisis(0);
     const inicio = Date.now();
+    setFaseAnalisis({ fase: "leyendo", desde: inicio });
     try {
       // 1) Se envían los archivos y el servidor responde al instante con un identificador
       //    (la IA es lenta y el proxy corta a los 60 s, por eso el análisis corre en segundo plano).
@@ -615,14 +627,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       const envio = await res.json();
       if (!envio.ok || !envio.jobId) throw new Error(envio.error || "No se pudo iniciar el análisis");
 
-      // 2) Se consulta el resultado cada pocos segundos (máx. 4 minutos).
+      // 2) Se consulta el resultado cada segundo (máx. 7 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
         proveedorIdSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; sinFactura?: boolean;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
-        await new Promise((r) => setTimeout(r, 2500));
+        await new Promise((r) => setTimeout(r, 1000));
         if (cancelarAnalisis.current) return;
         setSegundosAnalisis(Math.round((Date.now() - inicio) / 1000));
         const r = await fetch(`/api/compras/pedido-proveedor/ocr/${encodeURIComponent(envio.jobId)}`);
@@ -630,6 +642,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         if (!d.ok) throw new Error(d.error || "No se pudo consultar el análisis");
         if (d.estado === "error") throw new Error(d.error || "No se pudo leer el pedido");
         if (d.estado === "listo") { data = d; break; }
+        if (d.fase) setFaseAnalisis((a) => (a.fase === d.fase ? a : { fase: d.fase, desde: Date.now() }));
       }
       if (!data) throw new Error("El análisis está tardando demasiado. Inténtalo de nuevo con menos archivos.");
       if (!data.lineas?.length) {
@@ -956,7 +969,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-2xl lg:max-w-3xl">
         <div className="relative flex items-center justify-between gap-3 border-b px-4 py-3 pr-12">
           <DialogTitle className="flex items-center gap-1.5"><DocumentUpload className="size-5" /> Subir pedido con IA</DialogTitle>
-          {leyendoOcr && <BarraAnalisis />}
+          {leyendoOcr && <BarraAnalisis fase={faseAnalisis.fase} desde={faseAnalisis.desde} />}
         </div>
 
         <div className="flex min-h-0 flex-1">
