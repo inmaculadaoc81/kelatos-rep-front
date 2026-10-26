@@ -182,28 +182,26 @@ export default function StockPiezasPage() {
         {!cargando && <span className="ml-auto text-sm text-muted-foreground">{filtradas.length} de {piezas.length} piezas</span>}
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Referencia</TableHead>
+              <TableHead>Ref.</TableHead>
               <TableHead>Nombre</TableHead>
-              <TableHead title="Si tiene puesto el nombre interno (proveedor), para que la IA la reconozca">Equivalente</TableHead>
-              <TableHead>Categoría</TableHead>
               <TableHead className="text-right">Coste</TableHead>
-              <TableHead className="text-right">Precio cliente</TableHead>
-              <TableHead className="text-right">Mano de obra</TableHead>
-              <TableHead className="text-right">Total cliente</TableHead>
+              <TableHead className="text-right" title="Precio cliente (sin IVA)">Precio</TableHead>
+              <TableHead className="text-right">M. obra</TableHead>
+              <TableHead className="text-right" title="Total cliente, con IVA incluido">Total</TableHead>
               <TableHead className="text-right">Stock</TableHead>
               <TableHead>Proveedor</TableHead>
-              <TableHead>Acciones</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 11 }).map((__, j) => (
+                  {Array.from({ length: 9 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -213,7 +211,7 @@ export default function StockPiezasPage() {
 
             {!cargando && filtradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   Sin resultados
                 </TableCell>
               </TableRow>
@@ -225,73 +223,73 @@ export default function StockPiezasPage() {
                   <TableCell>
                     <Badge variant="outline" className="font-mono">{p.referencia}</Badge>
                   </TableCell>
-                  <TableCell>
-                    {p.nombre ? (
-                      <div className="font-medium">{p.nombre}</div>
-                    ) : (
-                      <div className="font-medium text-amber-600 dark:text-amber-400" title="Sin nombre comercial todavía — se muestra el nombre interno de proveedor">
-                        {p.nombreInternoProveedor || "(sin nombre)"}
+                  <TableCell className="max-w-[17rem] whitespace-normal">
+                    <div className="flex items-start gap-1.5">
+                      {p.nombreInternoProveedor ? (
+                        <span title={`Equivalente: tiene nombre interno (${p.nombreInternoProveedor}) y la IA de «Subir pedido con IA» la reconoce`} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"><TickCircle className="size-3.5" /></span>
+                      ) : (
+                        <span title="Sin nombre interno (proveedor): la IA de «Subir pedido con IA» no podrá reconocerla por nombre" className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"><Warning2 className="size-3.5" /></span>
+                      )}
+                      <div className="min-w-0">
+                        {p.nombre ? (
+                          <div className="font-medium leading-tight">{p.nombre}</div>
+                        ) : (
+                          <div className="font-medium leading-tight text-amber-600 dark:text-amber-400" title="Sin nombre comercial todavía — se muestra el nombre interno de proveedor">
+                            {p.nombreInternoProveedor || "(sin nombre)"}
+                          </div>
+                        )}
+                        {p.descripcion && <div className="text-xs leading-tight text-muted-foreground">{p.descripcion}</div>}
+                        {p.nombre && p.nombreInternoProveedor && (
+                          <div className="text-xs leading-tight text-sky-600 dark:text-sky-400" title="Nombre interno (proveedor)">
+                            {p.nombreInternoProveedor}
+                          </div>
+                        )}
+                        {p.categoria && <span className="mt-0.5 inline-block rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{p.categoria}</span>}
                       </div>
-                    )}
-                    {p.descripcion && <div className="text-xs text-muted-foreground">{p.descripcion}</div>}
-                    {p.nombre && p.nombreInternoProveedor && (
-                      <div className="text-xs text-sky-600 dark:text-sky-400" title="Nombre interno (proveedor)">
-                        {p.nombreInternoProveedor}
-                      </div>
-                    )}
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    {p.nombreInternoProveedor ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400" title={p.nombreInternoProveedor}>
-                        <TickCircle className="size-3" /> Sí
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400" title="Sin nombre interno (proveedor) — la IA de Subir pedido con IA no podrá reconocerla por nombre">
-                        <Warning2 className="size-3" /> No
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{p.categoria || "-"}</TableCell>
                   <TableCell className="text-right text-sm tabular-nums">{euros(p.costeInterno)}</TableCell>
                   <TableCell className="text-right text-sm font-medium tabular-nums">{euros(p.precioCliente)}</TableCell>
                   <TableCell className="text-right text-sm tabular-nums text-emerald-600 dark:text-emerald-400">{euros(p.manoObra)}</TableCell>
                   <TableCell className="text-right text-sm tabular-nums">
                     <span className="font-semibold text-primary">{euros(p.totalCliente)}</span>
-                    <span className="ml-1 text-[10px] text-muted-foreground">IVA inc.</span>
                   </TableCell>
                   <TableCell className={`text-right text-sm tabular-nums ${p.stockBajo ? "font-semibold text-destructive" : ""}`}>
                     {p.stockDisponible}
-                    {p.stockMinimo > 0 && <span className="text-xs text-muted-foreground"> / min {p.stockMinimo}</span>}
+                    {p.stockMinimo > 0 && <span className="text-xs text-muted-foreground" title="Stock mínimo"> / {p.stockMinimo}</span>}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{p.proveedor || "-"}</TableCell>
+                  <TableCell className="max-w-[7rem] truncate text-sm text-muted-foreground" title={p.proveedor || undefined}>{p.proveedor || "-"}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    <div className="flex justify-end gap-0.5">
                       <Button
-                        size="sm"
+                        size="icon-sm"
                         variant="ghost"
-                        className="h-7 gap-1"
+                        className="h-7 w-7"
+                        title={esSuperadmin ? "Editar" : "Ver"}
+                        aria-label={esSuperadmin ? "Editar" : "Ver"}
                         onClick={() => {
                           setEditando(p);
                           setFormAbierto(true);
                         }}
                       >
-                        <Edit2 className="size-3.5" /> {esSuperadmin ? "Editar" : "Ver"}
+                        <Edit2 className="size-3.5" />
                       </Button>
                       {p.categoria === "CARGADOR" && (
                         <Button
-                          size="sm"
+                          size="icon-sm"
                           variant="ghost"
-                          className="h-7 gap-1"
+                          className="h-7 w-7"
                           disabled={imprimiendoEtiqueta === p.referencia}
                           onClick={() => imprimirEtiqueta(p)}
-                          title="Imprimir etiqueta con código de barras para pegar en el cargador"
+                          title={imprimiendoEtiqueta === p.referencia ? "Imprimiendo..." : "Imprimir etiqueta con código de barras para pegar en el cargador"}
+                          aria-label="Imprimir etiqueta"
                         >
-                          <ScanBarcode className="size-3.5" /> {imprimiendoEtiqueta === p.referencia ? "Imprimiendo..." : "Etiqueta"}
+                          <ScanBarcode className="size-3.5" />
                         </Button>
                       )}
                       {esSuperadmin && (
-                        <Button size="sm" variant="ghost" className="h-7 gap-1 text-destructive" onClick={() => eliminar(p)}>
-                          <Trash className="size-3.5" /> Eliminar
+                        <Button size="icon-sm" variant="ghost" className="h-7 w-7 text-destructive" title="Eliminar" aria-label="Eliminar" onClick={() => eliminar(p)}>
+                          <Trash className="size-3.5" />
                         </Button>
                       )}
                     </div>
