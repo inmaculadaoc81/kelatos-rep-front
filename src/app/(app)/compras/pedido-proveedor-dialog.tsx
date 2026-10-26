@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { DocumentUpload, MagicStar, Refresh2, SearchNormal1, TickCircle, Box1, Profile2User, Add, CloseCircle, DocumentText, Gallery } from "@/lib/icons";
+import { DocumentUpload, MagicStar, Refresh2, SearchNormal1, TickCircle, Box1, Profile2User, Add, CloseCircle, DocumentText, Gallery, Warning2 } from "@/lib/icons";
 import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import type { LineaPedidoProveedorLeida } from "@/app/api/compras/pedido-proveedor/ocr/route";
 import type { Empleado } from "@/app/api/empleados/route";
@@ -122,6 +122,8 @@ interface LineaPedidoEditable {
   fuente: string;
   buscandoRecepcion: boolean;
   candidatosRecepcion: CandidatoRecepcion[];
+  /** Pedidos ya registrados (a mano o antes) que parecen ser este mismo: la línea se desmarca para no duplicarlo. */
+  posiblesDuplicados: CandidatoRecepcion[];
   recibirIds: string[];
   clienteElegido: string;
   equipoElegido: string;
@@ -181,6 +183,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     fuente: "",
     buscandoRecepcion: !!l.recibido,
     candidatosRecepcion: [],
+    posiblesDuplicados: [],
     recibirIds: [],
   };
 }
@@ -492,6 +495,49 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     );
   }
 
+  /** Para las líneas que NO son «ya llegó»: ¿ese pedido ya está registrado? Se busca por nº de pedido (mismo número y una pieza
+      parecida) en Compras (reparaciones y ventas) y, en tienda, por pedidos de stock pendientes de la misma referencia y cantidad.
+      Si aparece, la línea se desmarca (no se registra otra vez) y se avisa; el empleado puede volver a marcarla si es otro pedido. */
+  async function buscarDuplicados(nuevas: LineaPedidoEditable[]) {
+    const normal = (x: string) => x.toLowerCase().replace(/[\s-]/g, "");
+    await Promise.all(
+      nuevas.map(async (l, i) => {
+        if (l.recibido || l.soloRecepcion) return;
+        const encontrados = new Map<string, CandidatoRecepcion>();
+        try {
+          const num = (l.numeroPedidoLinea || "").trim();
+          if (num.length >= 5 && /\d/.test(num)) {
+            const r = await fetch(`/api/compras?busqueda=${encodeURIComponent(num)}&porPagina=50`).then((x) => x.json()).catch(() => null);
+            const buscadas = palabrasDe(l.nombre);
+            for (const c of (r?.ok ? r.compras : []) as { origen: "reparacion" | "venta"; pedidoId: string; resguardo: string; clienteNombre: string; numeroPedido: string; descripcion: string; estado: string; costo: number | null }[]) {
+              if (normal(c.numeroPedido || "") !== normal(num) || String(c.estado).toLowerCase() === "cancelado") continue;
+              if (c.descripcion && ![...palabrasDe(c.descripcion)].some((w) => buscadas.has(w))) continue;
+              const clave = `${c.origen}-${c.pedidoId}`;
+              encontrados.set(clave, {
+                clave, origen: c.origen, id: c.pedidoId, titulo: c.descripcion || "Pieza",
+                detalle: `${c.origen === "venta" ? `Venta ${c.resguardo}` : `Resguardo ${c.resguardo}`} · ${c.clienteNombre || "—"} · pedido ${c.numeroPedido || "—"}`,
+                estado: c.estado, costo: c.costo ?? null, numeroPedido: c.numeroPedido || "",
+              });
+            }
+          }
+          if (l.destino === "tienda" && l.referencia) {
+            const r = await fetch(`/api/stock-piezas/pedidos/buscar?q=${encodeURIComponent(l.referencia)}`).then((x) => x.json()).catch(() => null);
+            for (const sp of (r?.ok ? r.pedidos : []) as { id: number; referencia: string; proveedor: string | null; cantidad: number; estado: string }[]) {
+              if (String(sp.estado).toLowerCase() !== "pendiente" || sp.referencia !== l.referencia || sp.cantidad !== l.cantidad) continue;
+              const clave = `stock-${sp.id}`;
+              encontrados.set(clave, { clave, origen: "stock", id: String(sp.id), titulo: sp.referencia, detalle: `Stock · ${sp.proveedor || "—"} · ${sp.cantidad} uds`, estado: sp.estado, costo: null, numeroPedido: "" });
+            }
+          }
+        } catch {
+          /* sin coincidencias */
+        }
+        const lista = [...encontrados.values()];
+        if (lista.length === 0) return;
+        setLineas((prev) => prev.map((x, idx) => (idx !== i || x.recibido ? x : { ...x, posiblesDuplicados: lista, aplicar: false })));
+      })
+    );
+  }
+
   /** Analiza TODOS los archivos juntos, solo cuando se pulsa el botón (así no
       se empieza a leer la primera captura antes de adjuntar las demás). */
   async function analizar() {
@@ -554,6 +600,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         toast.info("Parece una factura o albarán. Si la mercancía ya llegó al local, marca «Ya llegó» en las líneas (o en la casilla de arriba).");
       }
       void buscarRecepciones(lineasNuevas);
+      void buscarDuplicados(lineasNuevas);
       setNumeroPedidoGlobal(data.numeroPedidoGlobal || null);
       setProveedorIdSugerido(data.proveedorIdSugerido ?? null);
       setProveedorCreado(!!data.proveedorCreado);
@@ -1002,6 +1049,16 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                               </SelectContent>
                             </Select>
                           </div>
+
+                          {l.posiblesDuplicados.length > 0 && !l.recibido && (
+                            <div className="space-y-1 rounded-md border border-amber-400/60 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                              <p className="flex items-center gap-1.5 font-medium"><Warning2 className="size-3.5" /> Posible duplicado: este pedido ya parece estar registrado</p>
+                              <ul className="list-disc pl-5">
+                                {l.posiblesDuplicados.map((c) => <li key={c.clave}>{c.id} · {c.titulo} · {c.detalle} · {c.estado}</li>)}
+                              </ul>
+                              <p>Por eso la línea quedó desmarcada y no se registrará. Si es un pedido distinto, vuelve a marcar la casilla de la izquierda.</p>
+                            </div>
+                          )}
 
                           {(l.recibido || l.soloRecepcion) && (
                             <div className="space-y-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2">
