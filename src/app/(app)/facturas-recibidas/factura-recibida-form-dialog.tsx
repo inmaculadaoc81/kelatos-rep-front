@@ -245,12 +245,21 @@ const DATOS_EMPRESA = {
   direccion: "Blasco de Garay 63 BJ 2, 28015 Madrid",
 };
 
-function DatosEmpresaReceptora() {
+/** La gestoría solo recibe PDF: las facturas se cargan únicamente en ese formato. */
+const MENSAJE_SOLO_PDF = "Las facturas solo se pueden cargar en PDF (la gestoría solo recibe PDF). Conviértela a PDF y vuelve a subirla.";
+const esPdf = (a: File) => a.type === "application/pdf" || /\.pdf$/i.test(a.name);
+
+function DatosEmpresaReceptora({ noCoincide }: { noCoincide?: boolean }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-dashed bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
+    <div className={cn("flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-dashed px-4 py-2.5 text-xs text-muted-foreground", noCoincide ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20" : "bg-muted/30")}>
       <span className="flex items-center gap-1.5 font-medium text-foreground">
         <Building className="size-3.5" /> Receptor (siempre el mismo)
       </span>
+      {noCoincide && (
+        <span className="flex w-full items-center gap-1.5 font-medium text-amber-800 dark:text-amber-300">
+          <Warning2 className="size-3.5 shrink-0" /> Esta factura no muestra los datos de Affirma (ni el CIF ni el nombre): puede no estar a nombre de la empresa. Compruébalo con el archivo antes de registrarla.
+        </span>
+      )}
       <span>{DATOS_EMPRESA.razonSocial} <span className="text-muted-foreground/70">({DATOS_EMPRESA.nombreComercial})</span></span>
       <span>CIF: {DATOS_EMPRESA.cif}</span>
       <span>{DATOS_EMPRESA.direccion}</span>
@@ -515,6 +524,11 @@ export function FacturaRecibidaFormDialog({
 
   async function manejarArchivoSeleccionado(archivo: File | undefined) {
     if (!archivo) return;
+    if (!esPdf(archivo)) {
+      toast.error(MENSAJE_SOLO_PDF);
+      if (inputArchivo.current) inputArchivo.current.value = "";
+      return;
+    }
     if (archivo.size > 8 * 1024 * 1024) {
       toast.error("El archivo no puede superar 8 MB");
       if (inputArchivo.current) inputArchivo.current.value = "";
@@ -541,6 +555,11 @@ export function FacturaRecibidaFormDialog({
 
   async function leerConIA(archivo: File | undefined) {
     if (!archivo) return;
+    if (!esPdf(archivo)) {
+      toast.error(MENSAJE_SOLO_PDF);
+      if (inputOcr.current) inputOcr.current.value = "";
+      return;
+    }
     if (archivo.size > 8 * 1024 * 1024) {
       toast.error("El archivo no puede superar 8 MB");
       if (inputOcr.current) inputOcr.current.value = "";
@@ -698,7 +717,7 @@ export function FacturaRecibidaFormDialog({
           <div className="flex min-h-0 flex-1">
           <ScrollArea className="min-h-0 min-w-0 flex-1">
           <div className="space-y-4 p-4">
-            <DatosEmpresaReceptora />
+            <DatosEmpresaReceptora noCoincide={resumenOcr?.extraido.receptorCoincide === false} />
 
             {mostrarAvisoDuplicado && (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
@@ -721,12 +740,12 @@ export function FacturaRecibidaFormDialog({
 
             <Seccion titulo="Archivo" icono={DocumentUpload}>
               <div className="flex flex-wrap items-center gap-2">
-                <input ref={inputArchivo} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => manejarArchivoSeleccionado(e.target.files?.[0])} />
+                <input ref={inputArchivo} type="file" accept="application/pdf" className="hidden" onChange={(e) => manejarArchivoSeleccionado(e.target.files?.[0])} />
                 <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={subiendoArchivo} onClick={() => inputArchivo.current?.click()}>
                   <DocumentUpload className="size-4" /> {subiendoArchivo ? "Subiendo…" : esEdicion ? "Subir archivo" : archivoPendiente ? "Cambiar archivo" : "Adjuntar archivo"}
                 </Button>
 
-                <input ref={inputOcr} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => leerConIA(e.target.files?.[0])} />
+                <input ref={inputOcr} type="file" accept="application/pdf" className="hidden" onChange={(e) => leerConIA(e.target.files?.[0])} />
                 <Button type="button" variant="outline" size="sm" className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40" disabled={leyendoOcr} onClick={() => inputOcr.current?.click()}>
                   {leyendoOcr ? <Refresh2 className="size-4 animate-spin" /> : <MagicStar className="size-4" />}
                   {leyendoOcr ? `Leyendo… (${segundosLecturaOcr}s)` : "Leer con IA (beta)"}
@@ -799,6 +818,9 @@ export function FacturaRecibidaFormDialog({
                     <CampoResumen etiqueta="% IVA" valor={resumenOcr.extraido.tipoIva !== null ? `${resumenOcr.extraido.tipoIva}%` : null} incierto={resumenOcr.extraido.advertencias.includes("tipoIva")} />
                     <CampoResumen etiqueta="Cuota de IVA" valor={resumenOcr.extraido.cuotaIvaSoportado !== null ? euros(resumenOcr.extraido.cuotaIvaSoportado) : null} incierto={resumenOcr.extraido.advertencias.includes("cuotaIvaSoportado")} />
                     <CampoResumen etiqueta="Importe total" valor={resumenOcr.extraido.importeTotal !== null ? euros(resumenOcr.extraido.importeTotal) : null} incierto={resumenOcr.extraido.advertencias.includes("importeTotal")} />
+                    {resumenOcr.extraido.receptorCoincide === false && (
+                      <CampoResumen etiqueta="Receptor (Affirma)" valor="No aparece en la factura" incierto />
+                    )}
                     <CampoResumen etiqueta="Descripción" valor={resumenOcr.extraido.descripcion} incierto={resumenOcr.extraido.advertencias.includes("descripcion")} />
                   </div>
                   <p className="mt-2 text-[11px] text-muted-foreground">Revisa y corrige estos datos en el formulario antes de registrar — la lectura automática puede equivocarse.</p>

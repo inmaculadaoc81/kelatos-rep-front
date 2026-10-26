@@ -19,6 +19,8 @@ export interface FacturaOcrExtraido {
       cuadre base+IVA=total) marcó como posiblemente mal leídos — el
       formulario debe mostrarlos con aviso, no como si fueran seguros. */
   advertencias: string[];
+  /** ¿Aparecen en el documento los datos de Affirma (CIF o nombre)? false = la factura puede no estar a nombre de la empresa. */
+  receptorCoincide?: boolean;
 }
 
 /** Un artículo detectado en la factura (p. ej. "CARGADOR ORIGINAL DYSON
