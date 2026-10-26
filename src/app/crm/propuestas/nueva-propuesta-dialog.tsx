@@ -49,7 +49,7 @@ export function NuevaPropuestaDialog({ catalogo, onCerrar, onCreada }: { catalog
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !enviando) onCerrar(); }}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Nueva propuesta</DialogTitle>
           <DialogDescription>La IA redacta el texto con lo que cuentes; los precios los pones tú (la IA no inventa cifras). Después puedes editarlo todo.</DialogDescription>

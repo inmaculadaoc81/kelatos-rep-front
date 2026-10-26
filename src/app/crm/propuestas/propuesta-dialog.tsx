@@ -105,9 +105,9 @@ export function PropuestaDialog({ id, onCerrar, onCambio }: { id: number; onCerr
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !guardando) onCerrar(); }}>
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>{p?.titulo || (p ? `Propuesta para ${p.cliente}` : "Propuesta")}</DialogTitle>
+          <DialogTitle className="pr-8 text-base">{p?.titulo || (p ? `Propuesta para ${p.cliente}` : "Propuesta")}</DialogTitle>
           <DialogDescription>{p ? `${p.cliente} · creada por ${p.creado_por}` : "Cargando…"}</DialogDescription>
         </DialogHeader>
 
@@ -129,53 +129,60 @@ export function PropuestaDialog({ id, onCerrar, onCambio }: { id: number; onCerr
         )}
 
         {b && p && (
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="pTit">Título</Label><Input id="pTit" value={b.titulo} maxLength={160} onChange={(e) => poner("titulo", e.target.value)} /></div>
-              <div className="space-y-1.5"><Label htmlFor="pCli">Cliente</Label><Input id="pCli" value={b.cliente} maxLength={160} onChange={(e) => poner("cliente", e.target.value)} /></div>
-              <div className="space-y-1.5"><Label htmlFor="pCon">Contacto</Label><Input id="pCon" value={b.contacto} maxLength={120} onChange={(e) => poner("contacto", e.target.value)} /></div>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
+            <div className="space-y-4">
+              <div className="space-y-1.5"><Label htmlFor="pTit">Título</Label><Input id="pTit" value={b.titulo} maxLength={160} onChange={(e) => poner("titulo", e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="pRes">Resumen</Label><Textarea id="pRes" rows={3} value={b.resumen} onChange={(e) => poner("resumen", e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="pDia">Situación y necesidad</Label><Textarea id="pDia" rows={5} value={b.diagnostico} onChange={(e) => poner("diagnostico", e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="pSol">Nuestra propuesta <span className="font-normal text-muted-foreground">(un punto por línea)</span></Label><Textarea id="pSol" rows={6} value={b.solucion} onChange={(e) => poner("solucion", e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="pAlc">Alcance <span className="font-normal text-muted-foreground">(un punto por línea)</span></Label><Textarea id="pAlc" rows={5} value={b.alcance} onChange={(e) => poner("alcance", e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="pPla">Plazos y organización</Label><Textarea id="pPla" rows={3} value={b.plazos} onChange={(e) => poner("plazos", e.target.value)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="pPas">Siguientes pasos <span className="font-normal text-muted-foreground">(uno por línea)</span></Label><Textarea id="pPas" rows={3} value={b.pasos} onChange={(e) => poner("pasos", e.target.value)} /></div>
             </div>
-            <div className="space-y-1.5"><Label htmlFor="pRes">Resumen</Label><Textarea id="pRes" rows={3} value={b.resumen} onChange={(e) => poner("resumen", e.target.value)} /></div>
-            <div className="space-y-1.5"><Label htmlFor="pDia">Situación y necesidad</Label><Textarea id="pDia" rows={5} value={b.diagnostico} onChange={(e) => poner("diagnostico", e.target.value)} /></div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5"><Label htmlFor="pSol">Nuestra propuesta (un punto por línea)</Label><Textarea id="pSol" rows={7} value={b.solucion} onChange={(e) => poner("solucion", e.target.value)} /></div>
-              <div className="space-y-1.5"><Label htmlFor="pAlc">Alcance (un punto por línea)</Label><Textarea id="pAlc" rows={7} value={b.alcance} onChange={(e) => poner("alcance", e.target.value)} /></div>
-            </div>
-            <div className="space-y-1.5"><Label htmlFor="pPla">Plazos y organización</Label><Textarea id="pPla" rows={3} value={b.plazos} onChange={(e) => poner("plazos", e.target.value)} /></div>
-            <div className="space-y-1.5"><Label htmlFor="pPas">Siguientes pasos (uno por línea)</Label><Textarea id="pPas" rows={3} value={b.pasos} onChange={(e) => poner("pasos", e.target.value)} /></div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label>Precios (sin IVA)</Label>
-                <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => poner("precios", [...b.precios, { concepto: "", cantidad: 1, precio: 0 }])}>+ Línea</Button>
-              </div>
-              {b.precios.length === 0 && <p className="text-xs text-muted-foreground">Sin precios todavía: añade las líneas que quieras ver en la propuesta.</p>}
-              {b.precios.map((x, i) => (
-                <div key={i} className="grid grid-cols-[1fr_5rem_6rem_2rem] gap-2">
-                  <Input value={x.concepto} placeholder="Concepto" onChange={(e) => cambiarPrecio(i, { concepto: e.target.value })} />
-                  <Input type="number" min={0} step="any" value={x.cantidad} onChange={(e) => cambiarPrecio(i, { cantidad: Number(e.target.value) })} aria-label="Cantidad" />
-                  <Input type="number" min={0} step="any" value={x.precio} onChange={(e) => cambiarPrecio(i, { precio: Number(e.target.value) })} aria-label="Precio" />
-                  <Button type="button" variant="ghost" size="icon" className="size-9" onClick={() => poner("precios", b.precios.filter((_, j) => j !== i))} aria-label="Quitar línea">×</Button>
+            <aside className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <div className="space-y-1.5"><Label htmlFor="pCli">Cliente</Label><Input id="pCli" value={b.cliente} maxLength={160} onChange={(e) => poner("cliente", e.target.value)} /></div>
+                <div className="space-y-1.5"><Label htmlFor="pCon">Contacto</Label><Input id="pCon" value={b.contacto} maxLength={120} onChange={(e) => poner("contacto", e.target.value)} /></div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pEst">Estado</Label>
+                  <select id="pEst" className={SELECT} value={b.estado === "error" ? "borrador" : b.estado} onChange={(e) => poner("estado", e.target.value as EstadoPropuesta)}>
+                    {ESTADOS_PROPUESTA.filter((e) => e.id !== "generando" && e.id !== "error").map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                  </select>
                 </div>
-              ))}
-              {b.precios.length > 0 && (
-                <p className="text-right text-sm tabular-nums text-muted-foreground">Base {eur(totales.base)} · IVA 21 % {eur(totales.iva)} · <strong className="text-foreground">Total {eur(totales.total)}</strong></p>
-              )}
-            </div>
+              </div>
 
-            <div className="flex flex-wrap items-end justify-between gap-3 border-t pt-3">
-              <div className="w-44 space-y-1.5">
-                <Label htmlFor="pEst">Estado</Label>
-                <select id="pEst" className={SELECT} value={b.estado === "error" ? "borrador" : b.estado} onChange={(e) => poner("estado", e.target.value as EstadoPropuesta)}>
-                  {ESTADOS_PROPUESTA.filter((e) => e.id !== "generando" && e.id !== "error").map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-                </select>
+              <div className="space-y-2 rounded-lg border p-3">
+                <div className="flex items-center justify-between">
+                  <Label>Precios <span className="font-normal text-muted-foreground">(sin IVA)</span></Label>
+                  <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => poner("precios", [...b.precios, { concepto: "", cantidad: 1, precio: 0 }])}>+ Línea</Button>
+                </div>
+                {b.precios.length === 0 && <p className="text-xs text-muted-foreground">Sin precios todavía: añade las líneas que quieras ver en la propuesta.</p>}
+                {b.precios.map((x, i) => (
+                  <div key={i} className="space-y-1.5 rounded-md bg-muted/40 p-2">
+                    <Input value={x.concepto} placeholder="Concepto" onChange={(e) => cambiarPrecio(i, { concepto: e.target.value })} />
+                    <div className="grid grid-cols-[1fr_1fr_2rem] items-center gap-2">
+                      <Input type="number" min={0} step="any" value={x.cantidad} onChange={(e) => cambiarPrecio(i, { cantidad: Number(e.target.value) })} aria-label="Cantidad" title="Cantidad" />
+                      <Input type="number" min={0} step="any" value={x.precio} onChange={(e) => cambiarPrecio(i, { precio: Number(e.target.value) })} aria-label="Precio unitario" title="Precio unitario (€)" />
+                      <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => poner("precios", b.precios.filter((_, j) => j !== i))} aria-label="Quitar línea">×</Button>
+                    </div>
+                  </div>
+                ))}
+                {b.precios.length > 0 && (
+                  <dl className="space-y-0.5 border-t pt-2 text-sm tabular-nums">
+                    <div className="flex justify-between text-muted-foreground"><dt>Base</dt><dd>{eur(totales.base)}</dd></div>
+                    <div className="flex justify-between text-muted-foreground"><dt>IVA 21 %</dt><dd>{eur(totales.iva)}</dd></div>
+                    <div className="flex justify-between text-base font-semibold"><dt>Total</dt><dd>{eur(totales.total)}</dd></div>
+                  </dl>
+                )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={regenerar} disabled={guardando}>Redactar de nuevo con IA</Button>
-                <Button variant="outline" onClick={pdf} disabled={guardando}>Descargar PDF</Button>
+
+              <div className="flex flex-col gap-2">
                 <Button onClick={() => guardar()} disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button>
+                <Button variant="outline" onClick={pdf} disabled={guardando}>Descargar PDF</Button>
+                <Button variant="ghost" onClick={regenerar} disabled={guardando}>Redactar de nuevo con IA</Button>
               </div>
-            </div>
+            </aside>
           </div>
         )}
       </DialogContent>
