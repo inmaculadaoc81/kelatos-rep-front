@@ -1,7 +1,7 @@
 "use client";
 
 import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
-import { esProveedorOtro } from "@/lib/formato-pedido";
+import { esProveedorOtro, formatoPedidoDe } from "@/lib/formato-pedido";
 import { useEffect, useState } from "react";
 import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket, ScanBarcode } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -95,6 +95,7 @@ export function DetalleVentaDialog({
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
 
   const [itemEditando, setItemEditando] = useState<string | null>(null);
+  const [editProveedorOtro, setEditProveedorOtro] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editCosto, setEditCosto] = useState(0);
   const [editPrecio, setEditPrecio] = useState(0);
@@ -116,6 +117,11 @@ export function DetalleVentaDialog({
 
   /** "Otro" (catálogo id 10, mismo criterio que Compras): cuando se elige
       este proveedor hay que indicar a mano qué plataforma es de verdad. */
+  /** Formato del número de pedido según la plataforma elegida (AliExpress, eBay, Amazon; el resto es libre). */
+  function formatoDe(proveedorId: string) {
+    return formatoPedidoDe(proveedores.find((p) => p.proveedorId === proveedorId)?.nombre);
+  }
+
   function esOtro(proveedorId: string): boolean {
     return esProveedorOtro(proveedores.find((p) => p.proveedorId === proveedorId)?.nombre);
   }
@@ -172,18 +178,22 @@ export function DetalleVentaDialog({
     setEditDesc(item.descripcion);
     setEditCosto(item.costo);
     setEditPrecio(item.precio);
+    setEditProveedorOtro(item.proveedorOtro || "");
   }
 
   async function guardarEdicion() {
     if (!itemEditando) return;
     if (!editDesc.trim()) return toast.error("La descripción es obligatoria");
     if (editPrecio <= 0) return toast.error("El precio debe ser mayor a 0");
+    const itemOtro = venta?.items.find((i) => i.itemId === itemEditando);
+    const pideOtro = !!itemOtro && esOtro(itemOtro.proveedorId);
+    if (pideOtro && !editProveedorOtro.trim()) return toast.error("Indica qué plataforma es");
     setEnviando(true);
     try {
       const res = await fetch(`/api/items-venta/${itemEditando}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descripcion: editDesc.trim(), costo: editCosto, precio: editPrecio }),
+        body: JSON.stringify({ descripcion: editDesc.trim(), costo: editCosto, precio: editPrecio, ...(pideOtro ? { proveedorOtro: editProveedorOtro.trim() } : {}) }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -214,6 +224,9 @@ export function DetalleVentaDialog({
     if (esOtro(pedProveedor) && !pedProveedorOtro.trim()) return toast.error("Indica qué plataforma es");
     if (!pedNumero.trim()) return toast.error("El Nº de pedido es obligatorio");
     if (numeroPedidoEsEnlace(pedNumero)) return toast.error(MENSAJE_NUMERO_PEDIDO_ENLACE);
+    const f = formatoDe(pedProveedor);
+    // Se normaliza antes de validar (guiones de eBay/Amazon): un número sin guiones se acepta y se guarda bien formateado.
+    if (f && !f.esValido(f.formatear(pedNumero))) return toast.error(`El número de pedido de ${f.nombre} no es válido (${f.descripcion}, p. ej. ${f.ejemplo})`);
     if (!pedFecha) return toast.error("La fecha estimada es obligatoria");
     if (!pedEnlace.trim()) return toast.error("El enlace es obligatorio");
     setEnviando(true);
@@ -224,7 +237,7 @@ export function DetalleVentaDialog({
         body: JSON.stringify({
           proveedorId: pedProveedor,
           proveedorOtro: esOtro(pedProveedor) ? pedProveedorOtro.trim() : "",
-          numeroPedido: pedNumero.trim(), fechaEstimada: pedFecha, enlace: pedEnlace.trim(),
+          numeroPedido: formatoDe(pedProveedor)?.formatear(pedNumero) ?? pedNumero.trim(), fechaEstimada: pedFecha, enlace: pedEnlace.trim(),
         }),
       });
       const data = await res.json();
@@ -479,6 +492,12 @@ export function DetalleVentaDialog({
                   <DecimalInput placeholder="Costo" value={editCosto} onChange={setEditCosto} />
                   <DecimalInput placeholder="Precio" value={editPrecio} onChange={setEditPrecio} />
                 </div>
+                {(() => {
+                  const it = venta?.items.find((i) => i.itemId === itemEditando);
+                  return it && esOtro(it.proveedorId) ? (
+                    <Input placeholder="¿Qué plataforma? * (el proveedor es «Otro»)" value={editProveedorOtro} onChange={(e) => setEditProveedorOtro(e.target.value)} />
+                  ) : null;
+                })()}
                 <div className="flex gap-2">
                   <Button size="sm" className="gap-1.5 bg-amber-500 text-white hover:bg-amber-600" onClick={guardarEdicion} disabled={enviando}>Guardar</Button>
                   <Button size="sm" variant="secondary" onClick={() => setItemEditando(null)} disabled={enviando}>Cancelar</Button>
@@ -490,18 +509,28 @@ export function DetalleVentaDialog({
               <div className="space-y-2 rounded-lg border border-sky-500/40 bg-sky-500/5 p-3">
                 <p className="text-xs font-semibold">Registrar Pedido</p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  <Select value={pedProveedor} onValueChange={(v) => { setPedProveedor(v || ""); setPedProveedorOtro(""); }}>
+                  <Select value={pedProveedor} onValueChange={(v) => { setPedProveedor(v || ""); setPedProveedorOtro(""); const nf = formatoDe(v || ""); if (nf) setPedNumero((n) => nf.formatear(n)); }}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Proveedor *" /></SelectTrigger>
                     <SelectContent>
                       {proveedores.map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Input placeholder="Nº Pedido *" value={pedNumero} onChange={(e) => setPedNumero(e.target.value)} />
+                  <Input placeholder="Nº Pedido *" value={pedNumero} inputMode={formatoDe(pedProveedor) ? "numeric" : undefined} maxLength={formatoDe(pedProveedor)?.maxLength} onChange={(e) => { const nf = formatoDe(pedProveedor); setPedNumero(nf ? nf.formatear(e.target.value) : e.target.value); }} />
                   <Input type="date" placeholder="Fecha estimada *" min={new Date().toISOString().slice(0, 10)} value={pedFecha} onChange={(e) => setPedFecha(e.target.value)} />
                 </div>
                 {esOtro(pedProveedor) && (
                   <Input placeholder="¿Qué plataforma? *" value={pedProveedorOtro} onChange={(e) => setPedProveedorOtro(e.target.value)} />
                 )}
+                {(() => {
+                  const nf = formatoDe(pedProveedor);
+                  if (!nf) return null;
+                  const invalido = !!pedNumero && !nf.esValido(nf.formatear(pedNumero));
+                  return (
+                    <p className={`text-xs ${invalido ? "text-destructive" : "text-muted-foreground"}`}>
+                      {invalido ? "Número incompleto o no válido. " : ""}Formato {nf.nombre}: {nf.descripcion}. Ej.: <span className="font-medium">{nf.ejemplo}</span>
+                    </p>
+                  );
+                })()}
                 <Input placeholder="Enlace *" value={pedEnlace} onChange={(e) => setPedEnlace(e.target.value)} />
                 <div className="flex gap-2">
                   <Button size="sm" className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700" onClick={confirmarPedido} disabled={enviando}>
@@ -541,7 +570,12 @@ export function DetalleVentaDialog({
                         <TableCell className="text-sm">{item.descripcion || "-"}</TableCell>
                         <TableCell className="text-sm">{euros(item.costo)}</TableCell>
                         <TableCell className="text-sm">{euros(item.precio)}</TableCell>
-                        <TableCell className="text-sm">{item.proveedorNombre || "-"}</TableCell>
+                        <TableCell className="text-sm">
+                          {item.proveedorNombre || "-"}
+                          {esOtro(item.proveedorId) && !item.proveedorOtro && (
+                            <button type="button" className="block text-xs text-amber-700 underline" onClick={() => abrirEditar(item)} title="Este pedido es anterior a la regla: indica qué plataforma es">falta la plataforma</button>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm">{item.numeroPedido || "-"}</TableCell>
                         <TableCell className="text-sm">{item.fechaPedido ? formatearFecha(item.fechaPedido) : "-"}</TableCell>
                         <TableCell className="text-sm">{item.fechaRecepcion ? formatearFecha(item.fechaRecepcion) : "-"}</TableCell>

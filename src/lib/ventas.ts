@@ -304,6 +304,8 @@ export interface DatosEditarItem {
   descripcion: string;
   costo: number;
   precio: number;
+  /** Plataforma cuando el proveedor de la pieza es «Otro» (obligatoria en ese caso). */
+  proveedorOtro?: string;
 }
 
 export interface DatosRegistrarPedido {

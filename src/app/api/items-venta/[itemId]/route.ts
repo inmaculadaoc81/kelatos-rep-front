@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearItem, DatosEditarItem } from "@/lib/ventas";
 
-/** Reproduce guardarEdicionItemUI() — solo descripción/costo/precio, igual que el original. */
+/** Reproduce guardarEdicionItemUI() — descripción/costo/precio y, si el proveedor es «Otro», su plataforma. */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ itemId: string }> }
@@ -24,7 +24,10 @@ export async function PATCH(
       {
         requestId: crypto.randomUUID(),
         usuario,
-        cambios: { descripcion: datos.descripcion.trim(), costo: datos.costo, precio: datos.precio },
+        cambios: {
+          descripcion: datos.descripcion.trim(), costo: datos.costo, precio: datos.precio,
+          ...(typeof datos.proveedorOtro === "string" ? { proveedor_otro: datos.proveedorOtro.trim() } : {}),
+        },
       },
       "PATCH"
     );
