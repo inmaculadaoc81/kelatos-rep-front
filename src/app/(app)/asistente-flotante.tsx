@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Streamdown } from "streamdown";
 import { Send2, CloseCircle, Refresh2, Copy, TickCircle, Book1, SearchNormal1, Microphone, VolumeHigh, VolumeSlash, Clock } from "@/lib/icons";
 import { useVoz } from "@/lib/asistente/use-voz";
-import { interpretar, resolver } from "@/lib/asistente/comandos-voz";
+import { analizar, AYUDA_COMANDOS, completar, describir, resolver, respuestaSiNo, extraerNumero, type Comando, type IntencionIncompleta } from "@/lib/asistente/comandos-voz";
 import { contextoPantallaActual } from "@/lib/asistente/contexto";
 
 interface Mensaje {
@@ -22,18 +22,37 @@ const CLAVE_ACCIONES = "kelatos-asistente-acciones";
 interface AccionEjecutada {
   fecha: string;
   frase: string;
+  /** Lo que el asistente entendió que había que hacer. */
+  entendido: string;
   resultado: string;
+  /** Dirección que se abrió (vacía si la orden se canceló o no se entendió). */
   url: string;
   porVoz: boolean;
+  /** directa = se ejecutó al instante · confirmada = tras pedir confirmación · cancelada = la persona dijo que no · sin_entender = no se llegó a entender. */
+  confirmacion: "directa" | "confirmada" | "cancelada" | "sin_entender";
 }
 
-function horaLegible(iso: string): string {
-  const d = new Date(iso);
-  const hoy = new Date();
-  const mismoDia = d.toDateString() === hoy.toDateString();
-  const hora = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-  return mismoDia ? `hoy ${hora}` : `${d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })} ${hora}`;
+const ETIQUETA_CONFIRMACION: Record<AccionEjecutada["confirmacion"], { texto: string; clase: string }> = {
+  directa: { texto: "Ejecutada", clase: "bg-emerald-500/15 text-emerald-700" },
+  confirmada: { texto: "Confirmada y ejecutada", clase: "bg-emerald-500/15 text-emerald-700" },
+  cancelada: { texto: "Cancelada", clase: "bg-muted text-muted-foreground" },
+  sin_entender: { texto: "No se entendió", clase: "bg-amber-500/15 text-amber-700" },
+};
+
+/** Orden a medias: o espera un «sí/no», o espera el dato que faltaba (el número de resguardo). */
+type Pendiente =
+  | { tipo: "confirmar"; comando: Comando; frase: string; intentos: number }
+  | { tipo: "completar"; intencion: IntencionIncompleta; frase: string; intentos: number };
+
+const MAX_INTENTOS = 2;
+
+/** Una frase larga o con interrogación no es un «sí/no»: es otra pregunta para el asistente. */
+const pareceOtraPregunta = (texto: string) => /[?¿]/.test(texto) || texto.trim().split(/\s+/).length > 7;
+
+function fechaHoraCompleta(iso: string): string {
+  return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
+
 interface Sugerencia {
   pregunta: string;
   /** "guia" = explica cómo funciona algo; "datos" = consulta datos reales. */
@@ -222,6 +241,7 @@ export function AsistenteFlotante() {
     }
   });
   const [verHistorial, setVerHistorial] = useState(false);
+  const [pendiente, setPendiente] = useState<Pendiente | null>(null);
   const guardarAcciones = (lista: AccionEjecutada[]) => {
     setAcciones(lista);
     try {
@@ -266,25 +286,141 @@ export function AsistenteFlotante() {
     });
   }, []);
 
+  /** Añade al chat lo dicho por la persona y la respuesta del asistente (y la lee en voz alta si procede). */
+  function dialogo(usuario: string, asistente: string, porVoz: boolean) {
+    setEntrada("");
+    setMensajes((m) => [...m, { rol: "usuario", texto: usuario }, { rol: "asistente", texto: asistente }]);
+    if (porVoz || leerRespuestas) voz.hablar(asistente);
+  }
+
+  function anotar(a: Omit<AccionEjecutada, "fecha">) {
+    guardarAcciones([{ fecha: new Date().toISOString(), ...a }, ...acciones].slice(0, 50));
+  }
+
+  function ejecutar(comando: Comando, frase: string, porVoz: boolean, confirmacion: "directa" | "confirmada", respuestaUsuario?: string) {
+    const { url, mensaje } = resolver(comando);
+    if (respuestaUsuario !== undefined) {
+      // La frase original ya está en el chat: aquí solo se añade la respuesta de la persona y el resultado.
+      setMensajes((m) => [...m, { rol: "usuario", texto: respuestaUsuario }, { rol: "asistente", texto: mensaje }]);
+      if (porVoz || leerRespuestas) voz.hablar(mensaje);
+    } else {
+      dialogo(frase, mensaje, porVoz);
+    }
+    anotar({ frase, entendido: describir(comando), resultado: mensaje, url, porVoz, confirmacion });
+    setPendiente(null);
+    router.push(url);
+    setAbierto(false);
+  }
+
+  /** Devuelve true si el texto era una orden (o la respuesta a una pregunta pendiente) y ya se ha tratado. */
+  function gestionarOrden(texto: string, porVoz: boolean): boolean {
+    // 1) Hay algo a medias: esto es la respuesta.
+    if (pendiente) {
+      const dicho = respuestaSiNo(texto);
+      if (pendiente.tipo === "confirmar") {
+        if (dicho === "si") {
+          ejecutar(pendiente.comando, pendiente.frase, porVoz, "confirmada", texto);
+          return true;
+        }
+        if (dicho === "no") {
+          dialogo(texto, "Vale, no hago nada. Dime qué necesitas.", porVoz);
+          anotar({ frase: pendiente.frase, entendido: describir(pendiente.comando), resultado: "La persona canceló la orden.", url: "", porVoz, confirmacion: "cancelada" });
+          setPendiente(null);
+          return true;
+        }
+        // Ni sí ni no: puede ser una corrección («no, el 19583», «el resguardo 19583»).
+        const corregida = analizar(texto);
+        if (corregida?.tipo === "comando") {
+          dialogo(texto, `Entendido, entonces: ${describir(corregida.comando)}. ¿Lo hago? Responde sí o no.`, porVoz);
+          setPendiente({ tipo: "confirmar", comando: corregida.comando, frase: texto, intentos: 0 });
+          return true;
+        }
+        if (pareceOtraPregunta(texto)) {
+          anotar({ frase: pendiente.frase, entendido: describir(pendiente.comando), resultado: "Se hizo otra pregunta antes de confirmar; la orden se dejó sin ejecutar.", url: "", porVoz, confirmacion: "cancelada" });
+          setPendiente(null);
+          return false;
+        }
+        if (pendiente.intentos + 1 >= MAX_INTENTOS) {
+          dialogo(texto, "No he entendido tu respuesta, así que no hago nada. Cuéntame con más detalle qué quieres hacer, por ejemplo: «abre el resguardo 19538».", porVoz);
+          anotar({ frase: pendiente.frase, entendido: describir(pendiente.comando), resultado: "No se entendió la confirmación; no se ejecutó nada.", url: "", porVoz, confirmacion: "sin_entender" });
+          setPendiente(null);
+          return true;
+        }
+        dialogo(texto, `No te he entendido. ¿Lo hago? (${describir(pendiente.comando)}). Responde sí o no.`, porVoz);
+        setPendiente({ ...pendiente, intentos: pendiente.intentos + 1 });
+        return true;
+      }
+      // pendiente.tipo === "completar": se esperaba el número del resguardo.
+      if (dicho === "no") {
+        dialogo(texto, "Vale, lo dejamos. Dime qué necesitas.", porVoz);
+        anotar({ frase: pendiente.frase, entendido: `Orden incompleta (${pendiente.intencion})`, resultado: "La persona canceló la orden.", url: "", porVoz, confirmacion: "cancelada" });
+        setPendiente(null);
+        return true;
+      }
+      const numero = extraerNumero(texto);
+      if (numero) {
+        const comando = completar(pendiente.intencion, numero);
+        if (porVoz) {
+          dialogo(texto, `Entendí: ${describir(comando)}. ¿Lo hago? Responde sí o no.`, porVoz);
+          setPendiente({ tipo: "confirmar", comando, frase: pendiente.frase, intentos: 0 });
+        } else {
+          ejecutar(comando, pendiente.frase, porVoz, "directa");
+        }
+        return true;
+      }
+      if (pareceOtraPregunta(texto)) {
+        anotar({ frase: pendiente.frase, entendido: `Orden incompleta (${pendiente.intencion})`, resultado: "Se hizo otra pregunta antes de completar la orden; se dejó sin ejecutar.", url: "", porVoz, confirmacion: "cancelada" });
+        setPendiente(null);
+        return false;
+      }
+      if (pendiente.intentos + 1 >= MAX_INTENTOS) {
+        dialogo(texto, "No he conseguido el número del resguardo, así que no hago nada. Cuando lo tengas, dime por ejemplo «crea un presupuesto para el resguardo 19538».", porVoz);
+        anotar({ frase: pendiente.frase, entendido: `Orden incompleta (${pendiente.intencion})`, resultado: "No se obtuvo el número de resguardo; no se ejecutó nada.", url: "", porVoz, confirmacion: "sin_entender" });
+        setPendiente(null);
+        return true;
+      }
+      dialogo(texto, "No he entendido el número. Dímelo despacio, cifra a cifra, por ejemplo «uno nueve cinco tres ocho».", porVoz);
+      setPendiente({ ...pendiente, intentos: pendiente.intentos + 1 });
+      return true;
+    }
+
+    // 2) Frase nueva: ¿es una orden?
+    const analisis = analizar(texto);
+    if (!analisis) return false;
+    if (analisis.tipo === "ayuda") {
+      dialogo(texto, AYUDA_COMANDOS, false);
+      return true;
+    }
+    if (analisis.tipo === "aclarar") {
+      dialogo(texto, analisis.pregunta, porVoz);
+      anotar({ frase: texto, entendido: "Orden poco clara: se pidió más detalle", resultado: analisis.pregunta, url: "", porVoz, confirmacion: "sin_entender" });
+      return true;
+    }
+    if (analisis.tipo === "faltan") {
+      dialogo(texto, analisis.pregunta, porVoz);
+      setPendiente({ tipo: "completar", intencion: analisis.intencion, frase: texto, intentos: 0 });
+      return true;
+    }
+    // Orden clara. Dictada por voz: se confirma antes; escrita: se ejecuta.
+    if (porVoz) {
+      dialogo(texto, `Entendí: ${describir(analisis.comando)}. ¿Lo hago? Responde sí o no.`, porVoz);
+      setPendiente({ tipo: "confirmar", comando: analisis.comando, frase: texto, intentos: 0 });
+    } else {
+      ejecutar(analisis.comando, texto, porVoz, "directa");
+    }
+    return true;
+  }
+
   async function enviar(textoPregunta: string) {
     const pregunta = textoPregunta.trim();
     const porVoz = dictadoRef.current;
     dictadoRef.current = false;
     if (!pregunta || enviandoRef.current) return;
     voz.callar();
-    // Órdenes («abre el resguardo 19538», «crea un presupuesto para el 19538», «ve a Compras»): se ejecutan al instante, sin IA.
-    // Solo abren pantallas y formularios; la persona revisa y guarda.
-    const orden = interpretar(pregunta);
-    if (orden) {
-      const { url, mensaje } = resolver(orden);
-      setEntrada("");
-      setMensajes((m) => [...m, { rol: "usuario", texto: pregunta }, { rol: "asistente", texto: mensaje }]);
-      guardarAcciones([{ fecha: new Date().toISOString(), frase: pregunta, resultado: mensaje, url, porVoz }, ...acciones].slice(0, 50));
-      if (porVoz || leerRespuestas) voz.hablar(mensaje);
-      router.push(url);
-      setAbierto(false);
-      return;
-    }
+    // Órdenes (abrir resguardos, formularios y pantallas): se resuelven al instante, sin IA, y NUNCA se ejecutan sin estar seguros:
+    //  · lo dictado por voz se confirma antes (los números son lo que más se oye mal);
+    //  · si falta un dato (p. ej. el resguardo) se pregunta; si tras repreguntar sigue sin entenderse, se pide más detalle y no se hace nada.
+    if (gestionarOrden(pregunta, porVoz)) return;
     enviandoRef.current = true;
     cancelarRef.current = false;
     setFase("");
@@ -434,19 +570,33 @@ export function AsistenteFlotante() {
                       <li key={`${a.fecha}-${i}`} className="rounded-xl border bg-card px-3 py-2.5 shadow-sm">
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-[13px] font-medium leading-snug">«{a.frase}»</p>
-                          <span className="shrink-0 text-[10.5px] text-muted-foreground">{horaLegible(a.fecha)}{a.porVoz ? " · 🎤" : ""}</span>
+                          <span className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${(ETIQUETA_CONFIRMACION[a.confirmacion] ?? ETIQUETA_CONFIRMACION.directa).clase}`}>
+                            {(ETIQUETA_CONFIRMACION[a.confirmacion] ?? ETIQUETA_CONFIRMACION.directa).texto}
+                          </span>
                         </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{a.resultado}</p>
-                        <button
-                          type="button"
-                          className="mt-1.5 text-xs font-medium text-primary underline"
-                          onClick={() => {
-                            router.push(a.url);
-                            setAbierto(false);
-                          }}
-                        >
-                          Volver a abrir
-                        </button>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{fechaHoraCompleta(a.fecha)}{a.porVoz ? " · 🎤 por voz" : " · escrita"}</p>
+                        <details className="mt-1 text-xs">
+                          <summary className="cursor-pointer font-medium text-primary">Ver detalle</summary>
+                          <dl className="mt-1.5 space-y-1 rounded-lg bg-muted/60 p-2 text-[11.5px] leading-snug">
+                            <div><dt className="inline font-semibold">Lo que dijiste: </dt><dd className="inline">«{a.frase}»</dd></div>
+                            <div><dt className="inline font-semibold">Lo que entendí: </dt><dd className="inline">{a.entendido || "—"}</dd></div>
+                            <div><dt className="inline font-semibold">Resultado: </dt><dd className="inline">{a.resultado}</dd></div>
+                            <div><dt className="inline font-semibold">Pantalla abierta: </dt><dd className="inline">{a.url || "ninguna"}</dd></div>
+                            <div><dt className="inline font-semibold">Cómo se hizo: </dt><dd className="inline">{a.porVoz ? "dictado por voz" : "escrita a mano"}{a.confirmacion === "confirmada" ? ", con confirmación" : ""}</dd></div>
+                          </dl>
+                        </details>
+                        {a.url && (
+                          <button
+                            type="button"
+                            className="mt-1.5 text-xs font-medium text-primary underline"
+                            onClick={() => {
+                              router.push(a.url);
+                              setAbierto(false);
+                            }}
+                          >
+                            Volver a abrir
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -515,6 +665,16 @@ export function AsistenteFlotante() {
                       )}
                     </div>
                     {!m.error && m.texto && !(respondiendo && i === ultimo) && <BotonCopiar texto={m.texto} />}
+                    {pendiente?.tipo === "confirmar" && i === ultimo && (
+                      <div className="mt-2 flex gap-2">
+                        <button type="button" onClick={() => gestionarOrden("sí", false)} className="rounded-xl bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:brightness-110">
+                          Sí, hazlo
+                        </button>
+                        <button type="button" onClick={() => gestionarOrden("no", false)} className="rounded-xl border bg-card px-3.5 py-1.5 text-xs font-semibold shadow-sm hover:bg-accent">
+                          No
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
