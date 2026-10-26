@@ -932,6 +932,7 @@ export function FacturaRecibidaFormDialog({
                   <div className="max-w-2xl">
                     <VerificacionNifIva
                       tipo={datos.tipoOperacion}
+                      nifFactura={resumenOcr?.extraido.proveedorDniCif}
                       nif={datos.tipoOperacion === "nacional" ? (proveedores.find((p) => p.proveedorId === datos.proveedorId)?.dniCif ?? "") : datos.nifIvaProveedor}
                     />
                   </div>
