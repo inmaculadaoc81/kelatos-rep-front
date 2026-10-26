@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ETIQUETA_ESTADO, ETIQUETA_PRIORIDAD, type EstadoTarea, type PrioridadTarea, type Tarea } from "@/lib/tareas";
 import { useTareas } from "./use-tareas";
-import { TarjetaTarea } from "./tarjeta-tarea";
+import { ANTIGUEDAD, TarjetaTarea } from "./tarjeta-tarea";
 import { NuevaTareaDialog } from "./nueva-tarea-dialog";
 import { TareaDetalleDialog } from "./tarea-detalle-dialog";
 
@@ -62,6 +62,12 @@ export default function TareasPage() {
         <div>
           <h1 className="text-lg font-semibold">Tablero</h1>
           <p className="text-sm text-muted-foreground">Qué se ha asignado, a quién, y en qué va.</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <span>Color por fecha de inicio:</span>
+            {ANTIGUEDAD.map((a) => (
+              <span key={a.id} className="flex items-center gap-1"><span className={cn("size-2 rounded-full", a.punto)} />{a.etiqueta}</span>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={cargar} disabled={cargando}>
