@@ -817,6 +817,37 @@ export function DetalleReparacionDialog({
                           <TarjetaResena resguardo={detalle.resguardo} resena={detalle.resena} onActualizado={actualizarTodo} />
                         </div>
                       )}
+                      {/* Firma y fotos del equipo al dejarlo (formulario de recepción, foto_url / firma_url): todas las
+                          que se subieron, no solo la primera. */}
+                      {(detalle.firmaIngresoUrl || detalle.fotosIngreso.length > 0) && (
+                        <div className="mt-4">
+                          <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                            <Gallery className="size-4" /> Ingreso
+                            <span className="text-xs font-normal text-muted-foreground">· {detalle.fotosIngreso.length} foto{detalle.fotosIngreso.length !== 1 ? "s" : ""}</span>
+                          </h4>
+                          <div className="flex flex-wrap gap-2 rounded-xl border p-3">
+                            {detalle.firmaIngresoUrl && (
+                              <a href={`/api/formulario-cliente/archivo/${detalle.firmaIngresoUrl}`} target="_blank" rel="noreferrer" className="block">
+                                <img
+                                  src={`/api/formulario-cliente/archivo/${detalle.firmaIngresoUrl}`}
+                                  alt="Firma de recepción"
+                                  title="Firma de recepción"
+                                  className="h-20 w-32 rounded-md border bg-white object-contain"
+                                />
+                              </a>
+                            )}
+                            {detalle.fotosIngreso.map((id) => (
+                              <a key={id} href={`/api/formulario-cliente/archivo/${id}`} target="_blank" rel="noreferrer" className="block">
+                                <img
+                                  src={`/api/formulario-cliente/archivo/${id}`}
+                                  alt="Foto del equipo (ingreso)"
+                                  className="size-20 rounded-md border object-cover"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {/* Firma y fotos del equipo tomadas por el cliente en el
                           formulario público "Confirmar recogida" (formulario-
                           recogida/page.tsx) — solo aparece si ya se completó. */}
