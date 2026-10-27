@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { PestanaAnalitica, PestanaEstrategia, PestanaHorario } from "./bloques-departamento";
 import { Actividad } from "./seo-actividad";
 import { ListaTemas } from "./seo-tab";
+import { PalabrasClaveGsc } from "./seo-palabras-clave";
 import { SeoAgentes, describirHorario, proximaOcurrencia } from "./seo-vision";
 import { useSeo, type Tema } from "./use-seo";
 
@@ -243,12 +244,14 @@ export function SeoPanel({ d, recargar, cabecera }: { d: DetalleDepartamento; re
         <Tabs value={izquierda} onValueChange={(v) => setIzquierda(String(v))}>
           <TabsList variant="line" className="mb-3">
             <TabsTrigger value="temas">Temas</TabsTrigger>
+            <TabsTrigger value="palabras">Palabras clave</TabsTrigger>
             <TabsTrigger value="horario">Horario</TabsTrigger>
             <TabsTrigger value="estrategia">Estrategia</TabsTrigger>
           </TabsList>
             <TabsContent value="temas">
               <ListaTemas temas={seo.temas} counts={seo.counts} cargando={seo.cargandoTemas} error={seo.errorTemas} onCambiar={seo.cambiarTema} />
             </TabsContent>
+            <TabsContent value="palabras"><PalabrasClaveGsc /></TabsContent>
             <TabsContent value="horario"><PestanaHorario d={d} recargar={recargar} /></TabsContent>
             <TabsContent value="estrategia"><PestanaEstrategia key={d.settings.version} d={d} recargar={recargar} modo="seo" /></TabsContent>
           </Tabs>
