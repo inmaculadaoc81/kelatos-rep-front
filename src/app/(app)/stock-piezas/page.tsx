@@ -93,7 +93,7 @@ export default function StockPiezasPage() {
     if (palabras.length) {
       lista = lista.filter((p) => {
         const campos = sinAcentos([
-          p.referencia, p.nombre, p.categoria, p.nombreInternoProveedor, ...p.nombresInternoProveedorAlt, p.codigoProveedor, p.idPedidoProveedor, p.descripcion, p.proveedor,
+          p.referencia, p.nombre, p.categoria, p.nombreInternoProveedor, ...p.nombresInternoProveedorAlt, ...p.codigosInternoProveedorAlt, p.codigoProveedor, p.idPedidoProveedor, p.descripcion, p.proveedor,
         ].join(" "));
         return palabras.every((w) => campos.includes(w));
       });

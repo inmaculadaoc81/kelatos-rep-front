@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
-import { mapearStockPieza, DatosStockPiezaForm } from "@/lib/stock-piezas";
+import { mapearStockPieza, alternativosParaApi, DatosStockPiezaForm } from "@/lib/stock-piezas";
 import { esSuperadmin } from "@/lib/superadmin";
 
 /** Reproduce actualizarStockPieza() (backend/StockPiezas.js) — la referencia
@@ -16,6 +16,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ refere
   const datos = (await req.json()) as DatosStockPiezaForm;
   const nombre = datos.nombre?.trim();
   const nombreInternoProveedor = datos.nombreInternoProveedor?.trim();
+  const alternativos = alternativosParaApi(datos.nombresInternoProveedorAlt, datos.codigosInternoProveedorAlt);
   if (!nombre && !nombreInternoProveedor) {
     return NextResponse.json({ ok: false, error: "El nombre (comercial o interno de proveedor) es obligatorio" }, { status: 400 });
   }
@@ -26,7 +27,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ refere
       {
         nombre: nombre || "",
         nombre_interno_proveedor: nombreInternoProveedor || "",
-        nombres_interno_proveedor_alt: Array.isArray(datos.nombresInternoProveedorAlt) ? datos.nombresInternoProveedorAlt.map((n) => n.trim()).filter(Boolean) : [],
+        nombres_interno_proveedor_alt: alternativos.nombres,
+        codigos_interno_proveedor_alt: alternativos.codigos,
         codigo_proveedor: (datos.codigoProveedor || "").trim(),
         id_pedido_proveedor: (datos.idPedidoProveedor || "").trim(),
         descripcion: (datos.descripcion || "").trim(),

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
-import { mapearStockPieza, DatosStockPiezaForm } from "@/lib/stock-piezas";
+import { mapearStockPieza, alternativosParaApi, DatosStockPiezaForm } from "@/lib/stock-piezas";
 
 interface RespuestaStockPiezas {
   ok: boolean;
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   const referencia = datos.referencia?.trim().toUpperCase();
   const nombre = datos.nombre?.trim();
   const nombreInternoProveedor = datos.nombreInternoProveedor?.trim();
+  const alternativos = alternativosParaApi(datos.nombresInternoProveedorAlt, datos.codigosInternoProveedorAlt);
   if (!referencia) return NextResponse.json({ ok: false, error: "La referencia es obligatoria" }, { status: 400 });
   if (!nombre && !nombreInternoProveedor) {
     return NextResponse.json({ ok: false, error: "El nombre (comercial o interno de proveedor) es obligatorio" }, { status: 400 });
@@ -44,7 +45,8 @@ export async function POST(req: Request) {
       referencia,
       nombre: nombre || "",
       nombre_interno_proveedor: nombreInternoProveedor || "",
-      nombres_interno_proveedor_alt: Array.isArray(datos.nombresInternoProveedorAlt) ? datos.nombresInternoProveedorAlt.map((n) => n.trim()).filter(Boolean) : [],
+      nombres_interno_proveedor_alt: alternativos.nombres,
+      codigos_interno_proveedor_alt: alternativos.codigos,
       codigo_proveedor: (datos.codigoProveedor || "").trim(),
       id_pedido_proveedor: (datos.idPedidoProveedor || "").trim(),
       descripcion: (datos.descripcion || "").trim(),

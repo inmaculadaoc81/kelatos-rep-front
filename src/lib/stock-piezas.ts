@@ -16,6 +16,8 @@ interface FilaStockPiezaSql {
       distinto según el proveedor que la venda. Petición del usuario,
       2026-10-12. */
   nombres_interno_proveedor_alt: string[] | null;
+  /** Código de proveedor de cada nombre alternativo (misma posición que en nombres_interno_proveedor_alt; '' si no tiene). */
+  codigos_interno_proveedor_alt?: string[] | null;
   /** Código/ID del artículo en el catálogo del proveedor (si se conoce) —
       otra forma de identificarlo, aparte del nombre. */
   codigo_proveedor: string | null;
@@ -43,6 +45,8 @@ export interface StockPieza {
   nombre: string;
   nombreInternoProveedor: string;
   nombresInternoProveedorAlt: string[];
+  /** Código de proveedor de cada nombre alternativo, en el mismo orden (siempre mide lo mismo que nombresInternoProveedorAlt). */
+  codigosInternoProveedorAlt: string[];
   codigoProveedor: string;
   idPedidoProveedor: string;
   descripcion: string;
@@ -64,6 +68,7 @@ export interface DatosStockPiezaForm {
   nombre: string;
   nombreInternoProveedor: string;
   nombresInternoProveedorAlt: string[];
+  codigosInternoProveedorAlt?: string[];
   codigoProveedor: string;
   idPedidoProveedor: string;
   descripcion: string;
@@ -136,6 +141,27 @@ interface FilaPedidoStockSql {
   usuario: string | null;
 }
 
+/** Cada nombre alternativo lleva su código de proveedor en la misma posición: se rellena con '' lo que falte y se recorta lo que sobre. */
+export function alinearCodigos(nombres: string[] | null | undefined, codigos: string[] | null | undefined): string[] {
+  const n = Array.isArray(nombres) ? nombres : [];
+  const c = Array.isArray(codigos) ? codigos : [];
+  return n.map((_, i) => String(c[i] ?? ""));
+}
+
+/** Nombres y códigos alternativos listos para la API: se quitan juntos los pares con el nombre vacío, así siguen alineados. */
+export function alternativosParaApi(nombres: string[] | undefined, codigos: string[] | undefined): { nombres: string[]; codigos: string[] } {
+  const n = Array.isArray(nombres) ? nombres : [];
+  const c = alinearCodigos(n, codigos);
+  const salida = { nombres: [] as string[], codigos: [] as string[] };
+  n.forEach((nombre, i) => {
+    const limpio = String(nombre || "").trim();
+    if (!limpio) return;
+    salida.nombres.push(limpio);
+    salida.codigos.push(c[i].trim());
+  });
+  return salida;
+}
+
 export function mapearEnlaceCompra(row: FilaEnlaceCompraSql): EnlaceCompra {
   return {
     id: row.id,
@@ -175,6 +201,7 @@ export function mapearStockPieza(row: FilaStockPiezaSql): StockPieza {
     nombre: row.nombre || "",
     nombreInternoProveedor: row.nombre_interno_proveedor || "",
     nombresInternoProveedorAlt: Array.isArray(row.nombres_interno_proveedor_alt) ? row.nombres_interno_proveedor_alt : [],
+    codigosInternoProveedorAlt: alinearCodigos(row.nombres_interno_proveedor_alt, row.codigos_interno_proveedor_alt),
     codigoProveedor: row.codigo_proveedor || "",
     idPedidoProveedor: row.id_pedido_proveedor || "",
     descripcion: row.descripcion || "",

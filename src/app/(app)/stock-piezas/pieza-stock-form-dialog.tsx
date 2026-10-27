@@ -14,10 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock, mapearEnlaceCompra, mapearPedidoStock } from "@/lib/stock-piezas";
+import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock, alinearCodigos, mapearEnlaceCompra, mapearPedidoStock } from "@/lib/stock-piezas";
 
 function vacio(): DatosStockPiezaForm {
-  return { referencia: "", nombre: "", nombreInternoProveedor: "", nombresInternoProveedorAlt: [], codigoProveedor: "", idPedidoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
+  return { referencia: "", nombre: "", nombreInternoProveedor: "", nombresInternoProveedorAlt: [], codigosInternoProveedorAlt: [], codigoProveedor: "", idPedidoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
 }
 
 function desdeExistente(p: StockPieza): DatosStockPiezaForm {
@@ -26,6 +26,7 @@ function desdeExistente(p: StockPieza): DatosStockPiezaForm {
     nombre: p.nombre,
     nombreInternoProveedor: p.nombreInternoProveedor,
     nombresInternoProveedorAlt: p.nombresInternoProveedorAlt,
+    codigosInternoProveedorAlt: p.codigosInternoProveedorAlt,
     codigoProveedor: p.codigoProveedor,
     idPedidoProveedor: p.idPedidoProveedor,
     descripcion: p.descripcion,
@@ -77,6 +78,7 @@ export function PiezaStockFormDialog({
   const [datos, setDatos] = useState<DatosStockPiezaForm>(() => (piezaExistente ? desdeExistente(piezaExistente) : { ...vacio(), ...valoresIniciales }));
   const [enviando, setEnviando] = useState(false);
   const [nuevoNombreAlt, setNuevoNombreAlt] = useState("");
+  const [nuevoCodigoAlt, setNuevoCodigoAlt] = useState("");
   const esEdicion = piezaExistente !== null;
 
   const [historial, setHistorial] = useState<{ id: number; fecha_hora: string; usuario: string | null; descripcion: string }[]>([]);
@@ -140,19 +142,42 @@ export function PiezaStockFormDialog({
   // en la propia fila (no es una tabla aparte como "Enlaces de compra"),
   // así que solo se tocan en local y se mandan juntas al Guardar/Crear.
   // Petición del usuario, 2026-10-12.
+  // Cada nombre alternativo lleva su propio código de proveedor (cada proveedor usa su código): las dos listas van siempre
+  // en el mismo orden y miden lo mismo. Petición del usuario, 2026-10-27.
+  const codigosAlt = alinearCodigos(datos.nombresInternoProveedorAlt, datos.codigosInternoProveedorAlt);
+
   function agregarNombreAlt() {
     const n = nuevoNombreAlt.trim();
+    const c = nuevoCodigoAlt.trim();
     if (!n) return;
     if (datos.nombresInternoProveedorAlt.some((x) => x.toLowerCase() === n.toLowerCase())) {
       setNuevoNombreAlt("");
+      setNuevoCodigoAlt("");
       return;
     }
-    actualizar("nombresInternoProveedorAlt", [...datos.nombresInternoProveedorAlt, n]);
+    setDatos((d) => ({
+      ...d,
+      nombresInternoProveedorAlt: [...d.nombresInternoProveedorAlt, n],
+      codigosInternoProveedorAlt: [...alinearCodigos(d.nombresInternoProveedorAlt, d.codigosInternoProveedorAlt), c],
+    }));
     setNuevoNombreAlt("");
+    setNuevoCodigoAlt("");
   }
 
-  function quitarNombreAlt(nombre: string) {
-    actualizar("nombresInternoProveedorAlt", datos.nombresInternoProveedorAlt.filter((n) => n !== nombre));
+  function quitarNombreAlt(indice: number) {
+    setDatos((d) => ({
+      ...d,
+      nombresInternoProveedorAlt: d.nombresInternoProveedorAlt.filter((_, i) => i !== indice),
+      codigosInternoProveedorAlt: alinearCodigos(d.nombresInternoProveedorAlt, d.codigosInternoProveedorAlt).filter((_, i) => i !== indice),
+    }));
+  }
+
+  /** Cambia el código de un nombre alternativo ya añadido. */
+  function cambiarCodigoAlt(indice: number, codigo: string) {
+    setDatos((d) => ({
+      ...d,
+      codigosInternoProveedorAlt: alinearCodigos(d.nombresInternoProveedorAlt, d.codigosInternoProveedorAlt).map((c, i) => (i === indice ? codigo : c)),
+    }));
   }
 
   async function guardar() {
@@ -328,32 +353,51 @@ export function PiezaStockFormDialog({
               <p className="text-[11px] text-muted-foreground">Lo usa la IA de &quot;Subir pedido con IA&quot; para reconocer esta pieza — obligatorio si no hay nombre comercial.</p>
 
               {datos.nombresInternoProveedorAlt.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {datos.nombresInternoProveedorAlt.map((n) => (
-                    <span key={n} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
-                      {n}
+                <div className="space-y-1 pt-1">
+                  {datos.nombresInternoProveedorAlt.map((n, i) => (
+                    <div key={`${n}-${i}`} className="flex items-center gap-1.5">
+                      <span className="min-w-0 flex-1 truncate rounded-md bg-muted px-2 py-1 text-xs" title={n}>{n}</span>
+                      <Input
+                        className="h-7 w-36 shrink-0 text-xs"
+                        placeholder="Código de proveedor"
+                        value={codigosAlt[i]}
+                        disabled={soloLecturaCatalogo}
+                        onChange={(e) => cambiarCodigoAlt(i, e.target.value)}
+                        aria-label={`Código de proveedor de «${n}»`}
+                      />
                       {!soloLecturaCatalogo && (
-                        <button type="button" className="text-muted-foreground hover:text-destructive" title="Quitar" onClick={() => quitarNombreAlt(n)}>
-                          <Trash className="size-3" />
+                        <button type="button" className="shrink-0 text-muted-foreground hover:text-destructive" title="Quitar este nombre alternativo" onClick={() => quitarNombreAlt(i)}>
+                          <Trash className="size-3.5" />
                         </button>
                       )}
-                    </span>
+                    </div>
                   ))}
                 </div>
               )}
               {!soloLecturaCatalogo && (
                 <div className="flex items-center gap-1.5 pt-1">
                   <Input
-                    className="h-7 text-xs"
+                    className="h-7 min-w-0 flex-1 text-xs"
                     placeholder="Otro nombre con el que algún proveedor la llame…"
                     value={nuevoNombreAlt}
                     onChange={(e) => setNuevoNombreAlt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); agregarNombreAlt(); } }}
                   />
-                  <Button size="icon-sm" variant="outline" className="h-7 w-7 shrink-0" onClick={agregarNombreAlt} title="Añadir nombre alternativo">
+                  <Input
+                    className="h-7 w-36 shrink-0 text-xs"
+                    placeholder="Su código (opcional)"
+                    value={nuevoCodigoAlt}
+                    onChange={(e) => setNuevoCodigoAlt(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); agregarNombreAlt(); } }}
+                    aria-label="Código de proveedor del nombre alternativo"
+                  />
+                  <Button size="icon-sm" variant="outline" className="h-7 w-7 shrink-0" onClick={agregarNombreAlt} title="Añadir nombre alternativo con su código">
                     <AddCircle className="size-3.5" />
                   </Button>
                 </div>
+              )}
+              {datos.nombresInternoProveedorAlt.length === 0 && !soloLecturaCatalogo && (
+                <p className="text-[11px] text-muted-foreground">Si otro proveedor usa otro nombre y otro código para la misma pieza, añádelos aquí: la IA también los reconocerá.</p>
               )}
             </div>
             <div className="space-y-1.5">
