@@ -733,6 +733,24 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...cambios } : l)));
   }
 
+  /** Una línea con varias unidades puede repartirse entre cliente y tienda (p. ej. 2 uds.: una para la reparación de un cliente y otra para el
+      stock de la tienda): separa 1 unidad en una línea nueva con el OTRO destino (se puede repetir) y deja la original con las restantes. */
+  function dividirLinea(i: number) {
+    setLineas((prev) => {
+      const l = prev[i];
+      if (!l || l.cantidad < 2 || l.accion !== "registrar") return prev;
+      const otro: "tienda" | "cliente" = l.destino === "tienda" ? "cliente" : "tienda";
+      const nueva: LineaPedidoEditable = {
+        ...l, cantidad: 1, destino: otro, aplicar: true,
+        // Los datos del destino anterior no valen para el nuevo: el empleado elige el cliente (o la pieza de stock) de esta unidad.
+        origenCliente: "reparacion", resguardo: "", ventaId: "", ventaItems: [], itemIds: [], nuevaPieza: false, clienteElegido: "", equipoElegido: "",
+        posiblesDuplicados: [], candidatosRecepcion: [], recibirIds: [],
+      };
+      const resto: LineaPedidoEditable = { ...l, cantidad: l.cantidad - 1, itemIds: l.itemIds.slice(0, l.cantidad - 1) };
+      return [...prev.slice(0, i), resto, nueva, ...prev.slice(i + 1)];
+    });
+  }
+
   function lineaListaParaRegistrar(l: LineaPedidoEditable): boolean {
     if (!l.aplicar) return true; // no bloquea el registro de las demás
     if (l.accion === "recibir" || l.accion === "vincular") return l.recibirIds.length > 0;
@@ -1137,6 +1155,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-medium">{l.nombre}</span>
                             <span className="text-xs text-muted-foreground">cant. {l.cantidad}{l.textoPedido ? ` · "${l.textoPedido}"` : ""}</span>
+                            {l.cantidad >= 2 && l.accion === "registrar" && !l.soloRecepcion && (
+                              <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-xs" title="Reparte las unidades: separa 1 en una línea nueva con el otro destino" onClick={() => dividirLinea(i)}>
+                                Separar 1 ud. para {l.destino === "tienda" ? "un cliente" : "la tienda"}
+                              </Button>
+                            )}
                             {l.fuente && <span className="max-w-40 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={l.fuente}>de: {l.fuente}</span>}
                             <label className="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs" title="Marca si esta mercancía ya llegó al local; desmárcala si aún está en camino">
                               <Checkbox checked={l.recibido} onCheckedChange={(v) => cambiarRecibidoLinea(i, v === true)} />
