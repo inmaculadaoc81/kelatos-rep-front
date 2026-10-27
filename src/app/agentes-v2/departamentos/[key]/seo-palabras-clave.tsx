@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Refresh2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { useOrganizacion } from "@/app/agentes-v2/organizacion-context";
 import type { FilaConsulta, ResumenGsc } from "@/app/api/seo/gsc/resumen/route";
+import type { RespuestaSitiosGsc } from "@/app/api/seo/gsc/sitios/route";
 
 const nombreSitio = (s: string) => s.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/\/$/, "");
 const fechaHora = (iso: string | null) => (iso ? new Date(iso).toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "nunca");
@@ -48,42 +50,91 @@ function Tabla({ titulo, ayuda, filas, vacio }: { titulo: string; ayuda: string;
   );
 }
 
-/** Palabras clave reales de Google Search Console (consultas con las que la gente llega a la web), descargadas solas cada 6 horas. */
+/** Pide asignar a esta organización una propiedad de Search Console que la cuenta de servicio ya ve y todavía no pertenece a nadie. */
+function AsignarPropiedad({ datos, organizacionId, nombreOrganizacion, alAsignar }: { datos: RespuestaSitiosGsc; organizacionId: string; nombreOrganizacion: string; alAsignar: () => void }) {
+  const [asignando, setAsignando] = useState<string | null>(null);
+  const libres = datos.visibles.filter((v) => !datos.sitios.some((s) => s.site === v.site && s.organizacion_id !== null));
+
+  async function asignar(site: string) {
+    setAsignando(site);
+    try {
+      const r = await fetch("/api/seo/gsc/sitios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site, organizacionId }) });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "Error desconocido");
+      toast.success(`${nombreSitio(site)} asignada a ${nombreOrganizacion} (${d.filas} filas descargadas)`);
+      alAsignar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo asignar");
+    } finally {
+      setAsignando(null);
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-md border border-dashed p-4 text-sm">
+      <p className="font-medium">{nombreOrganizacion} todavía no tiene una web de Search Console asignada.</p>
+      {libres.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">Propiedades a las que Kelatos ya tiene acceso y que no pertenecen a ninguna organización:</p>
+          {libres.map((v) => (
+            <div key={v.site} className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2">
+              <span className="truncate text-sm">{nombreSitio(v.site)}</span>
+              <Button type="button" size="sm" disabled={asignando !== null} onClick={() => asignar(v.site)}>
+                {asignando === v.site ? "Asignando…" : `Asignar a ${nombreOrganizacion}`}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <p>¿No aparece la web? En Google Search Console → Ajustes → Usuarios y permisos → Añadir usuario, añade este correo con permiso <strong className="font-medium">Restringido</strong>:</p>
+        {datos.cuentaServicio && <p className="select-all rounded bg-muted px-2 py-1 font-mono text-[11px] text-foreground">{datos.cuentaServicio}</p>}
+        <p>Después vuelve aquí y recarga la página: aparecerá arriba para asignarla.</p>
+      </div>
+    </div>
+  );
+}
+
+/** Palabras clave reales de Google Search Console (consultas con las que la gente llega a la web de la organización activa), descargadas solas cada 6 horas. */
 export function PalabrasClaveGsc() {
-  const [sitios, setSitios] = useState<{ site: string; activo: boolean; ultima_sync: string | null }[] | null>(null);
-  const [configurado, setConfigurado] = useState(true);
+  const { organizacionId, organizacion } = useOrganizacion();
+  const [datosSitios, setDatosSitios] = useState<RespuestaSitiosGsc | null>(null);
   const [site, setSite] = useState("");
   const [dias, setDias] = useState(28);
   const [resumen, setResumen] = useState<{ clave: string; datos: ResumenGsc | null } | null>(null);
   const [actualizando, setActualizando] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/seo/gsc/sitios").then((r) => r.json()).then((d) => {
-      if (!d.ok) { setSitios([]); return; }
-      setConfigurado(d.configurado);
-      const activos = (d.sitios as { site: string; activo: boolean; ultima_sync: string | null }[]).filter((s) => s.activo);
-      setSitios(activos);
-      if (activos[0]) setSite(activos[0].site);
-    }).catch(() => setSitios([]));
+  const cargarSitios = useCallback(() => {
+    fetch("/api/seo/gsc/sitios").then((r) => r.json())
+      .then((d) => setDatosSitios(d.ok ? (d as RespuestaSitiosGsc) : { configurado: false, cuentaServicio: null, visibles: [], sitios: [] }))
+      .catch(() => setDatosSitios({ configurado: false, cuentaServicio: null, visibles: [], sitios: [] }));
   }, []);
+  useEffect(() => { cargarSitios(); }, [cargarSitios]);
 
-  const clave = `${site}|${dias}`;
-  const cargar = useCallback(() => {
-    if (!site) return;
-    fetch(`/api/seo/gsc/resumen?site=${encodeURIComponent(site)}&dias=${dias}`).then((r) => r.json())
-      .then((d) => setResumen({ clave: `${site}|${dias}`, datos: d.ok ? d.resumen : null }))
-      .catch(() => setResumen({ clave: `${site}|${dias}`, datos: null }));
-  }, [site, dias]);
-  useEffect(() => { cargar(); }, [cargar]);
+  // Solo las propiedades de la organización activa.
+  const sitios = (datosSitios?.sitios ?? []).filter((s) => s.activo && organizacionId !== null && String(s.organizacion_id) === organizacionId);
+  const siteActual = sitios.some((s) => s.site === site) ? site : (sitios[0]?.site ?? "");
+
+  // `version` se incrementa para volver a pedir el resumen (p. ej. tras «Actualizar ahora»).
+  const [version, setVersion] = useState(0);
+  const clave = `${siteActual}|${dias}|${version}`;
+  useEffect(() => {
+    if (!siteActual) return;
+    let vigente = true;
+    fetch(`/api/seo/gsc/resumen?site=${encodeURIComponent(siteActual)}&dias=${dias}`).then((r) => r.json())
+      .then((d) => { if (vigente) setResumen({ clave, datos: d.ok ? d.resumen : null }); })
+      .catch(() => { if (vigente) setResumen({ clave, datos: null }); });
+    return () => { vigente = false; };
+  }, [siteActual, dias, clave]);
 
   async function actualizarAhora() {
     setActualizando(true);
     try {
-      const r = await fetch("/api/seo/gsc/sincronizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site, dias: 10 }) });
+      const r = await fetch("/api/seo/gsc/sincronizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site: siteActual, dias: 10 }) });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || "Error desconocido");
       toast.success(`Descargadas ${d.filas} filas de Search Console (${d.desde} a ${d.hasta})`);
-      cargar();
+      setVersion((v) => v + 1);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo actualizar");
     } finally {
@@ -91,9 +142,12 @@ export function PalabrasClaveGsc() {
     }
   }
 
-  if (sitios === null) return <p className="text-sm text-muted-foreground">Cargando…</p>;
-  if (!configurado || sitios.length === 0) {
-    return <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Search Console todavía no está conectado a ninguna web.</p>;
+  if (datosSitios === null || organizacionId === null) return <p className="text-sm text-muted-foreground">Cargando…</p>;
+  if (!datosSitios.configurado) {
+    return <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Search Console todavía no está conectado en el servidor.</p>;
+  }
+  if (sitios.length === 0) {
+    return <AsignarPropiedad datos={datosSitios} organizacionId={organizacionId} nombreOrganizacion={organizacion?.name ?? "esta organización"} alAsignar={cargarSitios} />;
   }
   const datos = resumen?.clave === clave ? resumen.datos : undefined;
 
@@ -101,11 +155,11 @@ export function PalabrasClaveGsc() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         {sitios.length > 1 ? (
-          <select className="h-8 rounded-md border bg-background px-2 text-sm" value={site} onChange={(e) => setSite(e.target.value)}>
+          <select className="h-8 rounded-md border bg-background px-2 text-sm" value={siteActual} onChange={(e) => setSite(e.target.value)}>
             {sitios.map((s) => <option key={s.site} value={s.site}>{nombreSitio(s.site)}</option>)}
           </select>
         ) : (
-          <span className="text-sm font-medium">{nombreSitio(site)}</span>
+          <span className="text-sm font-medium">{nombreSitio(siteActual)}</span>
         )}
         <div className="inline-flex rounded-lg border bg-card p-0.5">
           {[7, 28, 90].map((d) => (
