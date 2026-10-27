@@ -159,9 +159,10 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     nombreInternoProveedor: l.nombre,
     nombreComercial: "",
     categoria: l.categoriaSugerida || categoriaPorNombre(l.nombre),
-    // Si el documento trae el precio realmente pagado (facturas con PVP y precio unitario), ese es el coste.
-    costeInterno: l.precioPagado ?? 0,
-    precioCliente: l.precioClienteSugerido ?? l.precioUnitario ?? 0,
+    // El precio que trae el documento es lo que COSTÓ la compra: va a coste interno (si hay PVP y precio pagado, el pagado).
+    // El precio al cliente no sale del documento: solo se propone el de una pieza ya existente; si no, lo escribe quien registra.
+    costeInterno: l.precioPagado ?? l.precioUnitario ?? 0,
+    precioCliente: l.precioClienteSugerido ?? 0,
     origenCliente: "reparacion",
     resguardo: l.resguardo || "",
     ventaId: "",

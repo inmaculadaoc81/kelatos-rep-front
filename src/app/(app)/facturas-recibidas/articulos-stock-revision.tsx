@@ -36,7 +36,8 @@ export function articulosEmparejadosAEditables(articulos: ArticuloFacturaEmparej
     referencia: a.referenciaSugerida || "",
     nombrePiezaSugerida: a.nombrePiezaSugerida,
     categoria: a.categoriaSugerida || "CARGADOR",
-    costeInterno: 0,
+    // El precio de la factura es lo que costó (coste interno); el precio al cliente lo pone quien registra.
+    costeInterno: a.precioUnitario ?? 0,
     precioCliente: a.precioClienteSugerido || 0,
     codigoProveedor: a.codigoProveedor || "",
     idPedidoProveedor: a.idPedidoProveedor || "",
