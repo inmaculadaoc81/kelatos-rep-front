@@ -38,10 +38,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { referencia } = await params;
-  const { enlaceId, cantidad, fechaEstimadaLlegada } = (await req.json()) as {
+  const { enlaceId, cantidad, fechaEstimadaLlegada, proveedor, enlace, numeroPedido, costo } = (await req.json()) as {
     enlaceId?: number | null;
     cantidad: number;
     fechaEstimadaLlegada?: string;
+    proveedor?: string;
+    enlace?: string;
+    numeroPedido?: string;
+    costo?: number;
   };
   if (!Number.isFinite(cantidad) || cantidad <= 0) {
     return NextResponse.json({ ok: false, error: "La cantidad debe ser mayor que 0" }, { status: 400 });
@@ -50,7 +54,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
   try {
     const resultado = await kelatosApiPost<{ ok: boolean; pedido: FilaPedidoSql }>(
       `/v1/stock-piezas/${encodeURIComponent(referencia)}/pedidos`,
-      { enlaceId: enlaceId ?? null, cantidad, fechaEstimadaLlegada: fechaEstimadaLlegada || null, usuario }
+      { enlaceId: enlaceId ?? null, cantidad, fechaEstimadaLlegada: fechaEstimadaLlegada || null, proveedor, enlace, numeroPedido, costo, usuario }
     );
     return NextResponse.json({ ok: true, pedido: resultado.pedido });
   } catch (error) {

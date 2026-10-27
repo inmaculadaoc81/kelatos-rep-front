@@ -623,7 +623,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
             ...sueltos.map((t) => ({ texto: t.texto.trim() })),
           ],
           // Sin imágenes, el proveedor lo dice el propio texto ("Asus 1184556 …"), no el campo del diálogo.
-          nombreProveedor: archivos.length > 0 ? proveedorNombre : "",
+          // Si el campo sigue con el valor por defecto (ASWO), el servidor intenta detectar el proveedor por el remitente del documento (p. ej. Dyson).
+          nombreProveedor: archivos.length > 0 && proveedorNombre.trim().toUpperCase() !== "ASWO" ? proveedorNombre : "",
         }),
       });
       const envio = await res.json();
@@ -854,7 +855,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const resPedido = await fetch(`/api/stock-piezas/${encodeURIComponent(referencia)}/pedidos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cantidad: l.cantidad, fechaEstimadaLlegada: null }),
+            body: JSON.stringify({
+              cantidad: l.cantidad,
+              fechaEstimadaLlegada: fechaEstimadaEfectiva(l) || null,
+              proveedor: (l.proveedorTexto || proveedorNombre).trim() || undefined,
+              enlace: enlaceEfectivo(l) || undefined,
+              numeroPedido: l.numeroPedido.trim() && l.numeroPedido.trim() !== "No informado" ? l.numeroPedido.trim() : undefined,
+              costo: (l.costo > 0 ? l.costo : l.costeInterno > 0 ? l.costeInterno : undefined),
+            }),
           });
           const dataPedido = await resPedido.json();
           if (!dataPedido.ok) throw new Error(dataPedido.error || "No se pudo crear el pedido de stock");
@@ -1276,6 +1284,25 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   <Label className="text-xs text-muted-foreground">Referencia de Stock (vacío = pieza nueva)</Label>
                                   <Input className="h-8" placeholder="Vacío = crear pieza nueva" value={l.referencia}
                                     onChange={(e) => actualizar(i, { referencia: e.target.value, nombrePiezaSugerida: null })} />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <div className="space-y-1 sm:col-span-2">
+                                  <Label className="text-xs text-muted-foreground">Enlace (del pedido en {proveedorNombre || "el proveedor"})</Label>
+                                  <Input className="h-8" placeholder="https://… (opcional)" value={l.enlace} onChange={(e) => actualizar(i, { enlace: e.target.value })} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Nº de pedido</Label>
+                                  <Input className="h-8" value={l.numeroPedido === "No informado" ? "" : l.numeroPedido} onChange={(e) => actualizar(i, { numeroPedido: e.target.value })} />
+                                  {numeroPedidoEsEnlace(l.numeroPedido) && <p className="text-[11px] text-destructive">{MENSAJE_NUMERO_PEDIDO_ENLACE}</p>}
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Fecha estimada</Label>
+                                  <Input type="date" className="h-8" value={l.fechaEstimada} onChange={(e) => actualizar(i, { fechaEstimada: e.target.value })} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Precio de compra por unidad (€)</Label>
+                                  <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: n })} />
                                 </div>
                               </div>
                               {l.referencia && l.nombrePiezaSugerida && (
