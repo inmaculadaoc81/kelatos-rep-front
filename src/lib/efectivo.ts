@@ -2,8 +2,7 @@
  * Vista "Efectivo" (Facturación). Libro de caja de efectivo derivado de los
  * documentos ya existentes — no se duplica ningún cobro en otra tabla:
  *  - cobro: factura/ticket Cobrado con forma de pago Efectivo → suma.
- *  - devolución: rectificativa de un documento pagado en efectivo → resta
- *    (siempre en negativo, aunque el total venga guardado en positivo).
+ *  - las rectificativas NO aparecen (petición del usuario, 2026-10-27).
  *  - retirada: salida de caja registrada por un superadmin
  *    (kelatos_app.efectivo_retiradas) → resta.
  * Petición del usuario, 2026-09-21.
@@ -126,6 +125,9 @@ export function movimientosDeFacturas(facturas: FacturaCliente[]): MovimientoEfe
     // sumando de más en "Cobrado" y ausentes de "Devuelto").
     const esDevolucionManualNegativa = esDevolucionNegativa(f);
     const esRectificativa = f.tipo === "rectificativa" || esDevolucionManualNegativa;
+    // Las rectificativas (y los negativos manuales) no entran en el libro de
+    // caja de efectivo. Petición del usuario, 2026-10-27.
+    if (esRectificativa) continue;
     // Un documento Pendiente/Anulado aún no ha movido dinero; una
     // rectificativa sí, siempre (es la devolución del cobro original).
     if (!esRectificativa && estadoFacturaDerivado(f) !== "Cobrada") continue;
