@@ -88,7 +88,8 @@ function vacio(borrador?: BorradorFactura): Formulario {
     cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR",
     operacionExenta: false, inversionSujetoPasivo: false,
     tipoOperacion: "nacional", estadoIva: "pendiente_justificar", documentoAduanero: "", nifIvaProveedor: "",
-    formaPago: "", fechaVencimiento: "", estadoPago: "pendiente", referenciaBancaria: "",
+    // Por ahora toda factura nueva se da por pagada con tarjeta bancaria, con vencimiento el día de la factura, hasta que se pueda sincronizar con el pago real.
+    formaPago: "Tarjeta bancaria", fechaVencimiento: new Date().toISOString().slice(0, 10), estadoPago: "pagada", referenciaBancaria: "",
     categoria: "", almacen: borrador ? "servicio" : "", pedidoId: borrador?.pedidoId || "", stockPedidoId: "",
     estadoRevision: "pendiente", duplicadoConfirmado: false, observacionesInternas: "",
   };
@@ -333,6 +334,8 @@ export function FacturaRecibidaFormDialog({
   // Independiente del "Adjuntar archivo" (Drive) — leer con IA es solo una
   // lectura para precargar el formulario, no implica guardar ni subir nada.
   const [leyendoOcr, setLeyendoOcr] = useState(false);
+  /** true cuando la persona ha escrito el vencimiento a mano: deja de seguir a la fecha de la factura. */
+  const [vencimientoManual, setVencimientoManual] = useState(false);
   /** Aviso cuando la lectura detecta un proveedor de la UE y marca sola «Compra intracomunitaria». */
   const [avisoIntra, setAvisoIntra] = useState<{ texto: string; conIva: boolean } | null>(null);
   const [segundosLecturaOcr, setSegundosLecturaOcr] = useState(0);
@@ -398,6 +401,7 @@ export function FacturaRecibidaFormDialog({
       setOrigenAutomatico(false);
       setResumenOcr(null);
       setAvisoIntra(null);
+      setVencimientoManual(false);
       setAdvertenciasVistas(false);
       setEnlaces(facturaExistente?.enlaces ?? []);
     } else {
@@ -423,7 +427,9 @@ export function FacturaRecibidaFormDialog({
   }, [open]);
 
   function set<K extends keyof Formulario>(campo: K, valor: Formulario[K]) {
-    setDatos((prev) => ({ ...prev, [campo]: valor }));
+    // En una factura nueva, el vencimiento es la fecha de la factura mientras nadie lo cambie a mano.
+    const sigueVencimiento = campo === "fechaExpedicion" && !esEdicion && !vencimientoManual;
+    setDatos((prev) => ({ ...prev, [campo]: valor, ...(sigueVencimiento ? { fechaVencimiento: valor as string } : {}) }));
   }
 
   /** Cambia datos del IVA y recalcula la cuota deducible / no deducible según el estado del IVA. */
@@ -1149,7 +1155,7 @@ export function FacturaRecibidaFormDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frVencimiento">Fecha de vencimiento</Label>
-                  <Input id="frVencimiento" type="date" value={datos.fechaVencimiento} onChange={(e) => set("fechaVencimiento", e.target.value)} />
+                  <Input id="frVencimiento" type="date" value={datos.fechaVencimiento} onChange={(e) => { setVencimientoManual(true); set("fechaVencimiento", e.target.value); }} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="frRefBancaria">Referencia bancaria / justificante</Label>
