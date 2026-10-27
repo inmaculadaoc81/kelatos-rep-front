@@ -684,6 +684,8 @@ export function FacturaRecibidaFormDialog({
       // Solo se pisan campos que la IA de verdad leyó — un valor no
       // encontrado (null) no debe borrar algo que el usuario ya escribió.
       if (data.proveedorIdSugerido) set("proveedorId", data.proveedorIdSugerido);
+      // Un proveedor recién creado por la lectura aún no está en la lista cargada: se recarga para que el desplegable muestre su nombre, no su identificador interno.
+      if (data.proveedorCreado) cargarProveedores();
       if (e.numeroFacturaProveedor) set("numeroFacturaProveedor", e.numeroFacturaProveedor);
       // Bug real reportado, 2026-10-07: la IA sí lee la serie (se ve en el
       // resumen, "Serie: ...") pero nunca se copiaba al campo real del
@@ -938,7 +940,7 @@ export function FacturaRecibidaFormDialog({
                     {/* Select.Value no resuelve la etiqueta de un valor precargado (p.ej. al
                         editar una factura existente) salvo que se le indique explícitamente. */}
                     <SelectTrigger className="w-full max-w-sm">
-                      <SelectValue>{(v: string) => (v ? proveedores.find((p) => p.proveedorId === v)?.nombre || v : "— Selecciona —")}</SelectValue>
+                      <SelectValue>{(v: string) => (v ? proveedores.find((p) => p.proveedorId === v)?.nombre || (resumenOcr?.proveedorCreado ? resumenOcr.extraido.proveedorNombre : null) || v : "— Selecciona —")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {proveedores.map((p) => (
