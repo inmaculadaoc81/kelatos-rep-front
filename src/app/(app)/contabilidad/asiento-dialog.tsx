@@ -28,6 +28,20 @@ export function AsientoDialog({ id, onClose, onCambio, onEditar }: { id: number 
   const [motivo, setMotivo] = useState("");
   const [fechaRev, setFechaRev] = useState(hoyISO());
   const [verEvento, setVerEvento] = useState(false);
+  const [verDatos, setVerDatos] = useState(false);
+  const [documento, setDocumento] = useState<{ numero: string; url: string } | null | undefined>(undefined);
+
+  const numeroOrigen = (d?.evento?.payload as { numero?: unknown } | null | undefined)?.numero;
+  useEffect(() => {
+    setDocumento(undefined);
+    if (!verEvento || typeof numeroOrigen !== "string" || !numeroOrigen) return;
+    let vigente = true;
+    fetch(`/api/contabilidad-documento?numero=${encodeURIComponent(numeroOrigen)}`)
+      .then((r) => r.json())
+      .then((j) => { if (vigente) setDocumento(j.ok ? j.documento : null); })
+      .catch(() => { if (vigente) setDocumento(null); });
+    return () => { vigente = false; };
+  }, [verEvento, numeroOrigen]);
 
   const cargar = useCallback(async () => {
     if (id == null) return;
@@ -44,6 +58,7 @@ export function AsientoDialog({ id, onClose, onCambio, onEditar }: { id: number 
     setRevirtiendo(false);
     setMotivo("");
     setVerEvento(false);
+    setVerDatos(false);
     cargar();
   }, [cargar]);
 
@@ -137,7 +152,29 @@ export function AsientoDialog({ id, onClose, onCambio, onEditar }: { id: number 
                 )}
               </p>
             )}
-            {verEvento && d.evento && <pre className="max-h-56 overflow-auto rounded-md bg-muted p-3 text-xs">{JSON.stringify(d.evento.payload, null, 2)}</pre>}
+            {verEvento && d.evento && (
+              <div className="space-y-2">
+                {documento === undefined && typeof numeroOrigen === "string" && <Skeleton className="h-64 w-full" />}
+                {documento && (
+                  <>
+                    <iframe
+                      title={`Documento ${documento.numero}`}
+                      src={(() => {
+                        const m = /[?&]id=([a-zA-Z0-9_-]+)/.exec(documento.url);
+                        return m ? `https://drive.google.com/file/d/${m[1]}/preview` : documento.url;
+                      })()}
+                      className="h-96 w-full rounded-md border bg-muted"
+                    />
+                    <a href={documento.url} target="_blank" rel="noreferrer" className="text-xs underline underline-offset-2">Abrir {documento.numero} en otra pestaña</a>
+                  </>
+                )}
+                {documento === null && <p className="text-xs text-muted-foreground">No se ha encontrado el PDF de este documento.</p>}
+                <button type="button" className="block text-xs text-muted-foreground underline underline-offset-2" onClick={() => setVerDatos((v) => !v)}>
+                  {verDatos ? "Ocultar" : "Ver"} datos técnicos
+                </button>
+                {verDatos && <pre className="max-h-56 overflow-auto rounded-md bg-muted p-3 text-xs">{JSON.stringify(d.evento.payload, null, 2)}</pre>}
+              </div>
+            )}
 
             {d.auditoria.length > 0 && (
               <div className="space-y-0.5 text-xs text-muted-foreground">
