@@ -43,6 +43,7 @@ interface FilaTicketManualRaw {
   cliente_email: string | null;
   forma_pago_ticket: string | null;
   banco_ticket: string | null;
+  motivo_ticket_negativo?: string | null;
 }
 
 export interface TicketManualDetalle {
@@ -56,6 +57,8 @@ export interface TicketManualDetalle {
   notas: string;
   rectificativa: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   motivoRectificativa: string;
+  /** Motivo escrito al crear un ticket de importe negativo (devolución). */
+  motivoNegativo: string;
   corregida: { numeroFactura: string; urlFactura: string; totalFactura: number; fechaFactura: string | null } | null;
   clienteNombre: string;
   clienteDireccion: string;
@@ -100,6 +103,7 @@ export function mapTicketManualDetalle(row: FilaTicketManualRaw): TicketManualDe
       ? { numeroFactura: row.numero_ticket_rectificativa, urlFactura: row.url_ticket_rectificativa || "", totalFactura: numero(row.total_ticket_rectificativa), fechaFactura: fecha(row.fecha_ticket_rectificativa) }
       : null,
     motivoRectificativa: row.motivo_ticket_rectificativa || "",
+    motivoNegativo: row.motivo_ticket_negativo || "",
     corregida: row.numero_ticket_corregida
       ? { numeroFactura: row.numero_ticket_corregida, urlFactura: row.url_ticket_corregida || "", totalFactura: numero(row.total_ticket_corregida), fechaFactura: fecha(row.fecha_ticket_corregida) }
       : null,
