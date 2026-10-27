@@ -758,7 +758,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // Pieza nueva (sin referencia existente): el nombre interno de
       // proveedor es obligatorio — es lo único con lo que la IA podrá
       // reconocerla la próxima vez.
-      return l.referencia.trim() !== "" || l.nombreInternoProveedor.trim() !== "";
+      // Con al menos 2 letras o cifras: un «+» suelto de una tabla mal leída no es un nombre y creaba una pieza vacía.
+      return l.referencia.trim() !== "" || l.nombreInternoProveedor.replace(/[^\p{L}\p{N}]/gu, "").length >= 2;
     }
     if (l.origenCliente === "venta") {
       if (!l.ventaId || (l.itemIds.length === 0 && !l.nuevaPieza) || !proveedorIdSugerido) return false;
