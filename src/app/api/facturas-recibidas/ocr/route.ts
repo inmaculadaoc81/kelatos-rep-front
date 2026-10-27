@@ -37,6 +37,9 @@ export interface ArticuloFacturaEmparejado {
       dar de alta una pieza nueva. */
   codigoProveedor?: string | null;
   idPedidoProveedor?: string | null;
+  /** Precio de una unidad y importe de la línea, antes de impuestos y en la moneda de la factura. */
+  precioUnitario?: number | null;
+  importe?: number | null;
   referenciaSugerida: string | null;
   nombrePiezaSugerida: string | null;
   categoriaSugerida: string | null;

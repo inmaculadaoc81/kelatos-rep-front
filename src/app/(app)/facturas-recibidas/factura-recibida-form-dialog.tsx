@@ -26,6 +26,7 @@ import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route"
 import { VerificacionNifIva } from "./verificacion-nif-iva";
 import { detectarCompraIntracomunitaria, detectarProveedorFueraUE } from "@/lib/facturas-recibidas";
 import { ArticulosStockRevision, articulosEmparejadosAEditables, type ArticuloStockEditable } from "./articulos-stock-revision";
+import { LineasFactura, articulosALineas, lineaApiAEditable, type LineaEditable, type LineaApi } from "./lineas-factura";
 import {
   FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
   TipoOperacionFactura, EstadoIvaFactura, TIPOS_OPERACION, ESTADOS_IVA,
@@ -352,6 +353,10 @@ export function FacturaRecibidaFormDialog({
   // vistazo sin tener que rastrear cada campo del formulario uno a uno.
   const [resumenOcr, setResumenOcr] = useState<{ extraido: FacturaOcrExtraido; proveedorEncontrado: boolean; proveedorCreado: boolean } | null>(null);
   const [articulosStock, setArticulosStock] = useState<ArticuloStockEditable[]>([]);
+  /** Artículos (líneas) de la factura, cada uno registrado por separado. */
+  const [lineas, setLineas] = useState<LineaEditable[]>([]);
+  /** En una edición, las líneas guardadas ya se han cargado (si no, no se envían: no se pisan las existentes). */
+  const [lineasCargadas, setLineasCargadas] = useState(true);
   // Si la IA marcó campos como inciertos, exige un vistazo explícito del
   // usuario antes de dejar registrar — así una lectura mal hecha no se
   // convierte en un registro real sin que nadie la haya comprobado.
@@ -412,6 +417,14 @@ export function FacturaRecibidaFormDialog({
       setVencimientoManual(false);
       setAdvertenciasVistas(false);
       setEnlaces(facturaExistente?.enlaces ?? []);
+      setLineas([]);
+      setLineasCargadas(!facturaExistente);
+      if (facturaExistente) {
+        fetch(`/api/facturas-recibidas/${facturaExistente.id}/lineas`)
+          .then((r) => r.json())
+          .then((d) => { if (d.ok) { setLineas((d.lineas as LineaApi[]).map(lineaApiAEditable)); setLineasCargadas(true); } })
+          .catch(() => {});
+      }
     } else {
       // Cancela cualquier lectura de IA en curso — ver comentario de ocrAbortRef.
       ocrAbortRef.current?.abort();
@@ -423,6 +436,18 @@ export function FacturaRecibidaFormDialog({
 
   // Cancela también si el componente se desmonta de verdad (no solo se cierra el diálogo).
   useEffect(() => () => { ocrAbortRef.current?.abort(); }, []);
+
+  /** Líneas listas para guardar: con el importe en euros (convertido con el tipo de cambio si la factura no está en euros). */
+  function lineasParaGuardar() {
+    const conCambio = datos.moneda.trim() && datos.moneda.trim().toUpperCase() !== "EUR";
+    return lineas
+      .filter((l) => l.descripcion.trim())
+      .map((l) => ({
+        descripcion: l.descripcion.trim(), cantidad: l.cantidad, precioUnitario: l.precioUnitario || undefined, importe: l.importe || undefined,
+        importeEur: conCambio ? (datos.tipoCambio && datos.tipoCambio > 0 ? Math.round((l.importe / datos.tipoCambio) * 100) / 100 : undefined) : l.importe || undefined,
+        codigoProveedor: l.codigoProveedor.trim() || undefined, idPedidoProveedor: l.idPedidoProveedor.trim() || undefined, referenciaPieza: l.referenciaPieza.trim() || undefined,
+      }));
+  }
 
   function cargarProveedores() {
     fetch("/api/proveedores")
@@ -581,6 +606,8 @@ export function FacturaRecibidaFormDialog({
         origen: !esEdicion && origenAutomatico ? "automatico" : undefined,
         // Solo al CREAR — reaplicar en una edición duplicaría el stock ya
         // sumado la primera vez.
+        // Cada artículo de la factura se registra por separado (en una edición solo si se cargaron las existentes).
+        lineas: !esEdicion || lineasCargadas ? lineasParaGuardar() : undefined,
         articulosStock: !esEdicion
           ? articulosStock
               .filter((a) => a.aplicar && a.cantidad > 0)
@@ -791,6 +818,7 @@ export function FacturaRecibidaFormDialog({
       }
       setOrigenAutomatico(true);
       setArticulosStock(articulosEmparejadosAEditables(data.articulosEmparejados || []));
+      setLineas(articulosALineas(data.articulosEmparejados || []));
 
       if (e.advertencias.length > 0) {
         toast.warning(`La IA no está segura de ${e.advertencias.length} dato(s) — revísalos en el resumen antes de registrar`);
@@ -1278,6 +1306,15 @@ export function FacturaRecibidaFormDialog({
                   </label>
                 </div>
               </div>
+            </Seccion>
+
+            <Seccion titulo="Artículos de la factura" icono={Category}>
+              <LineasFactura
+                lineas={lineas}
+                onCambiar={setLineas}
+                moneda={datos.moneda.trim().toUpperCase() || "EUR"}
+                baseImponible={datos.moneda.trim() && datos.moneda.trim().toUpperCase() !== "EUR" ? datos.baseMonedaOriginal : datos.baseImponible}
+              />
             </Seccion>
 
             <Seccion titulo="Pagos" icono={Wallet}>
