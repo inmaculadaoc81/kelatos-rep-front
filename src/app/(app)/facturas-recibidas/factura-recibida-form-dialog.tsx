@@ -24,6 +24,7 @@ import type { CompraFila } from "@/lib/compras";
 import type { PedidoStockBusqueda } from "@/app/api/stock-piezas/pedidos/buscar/route";
 import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route";
 import { VerificacionNifIva } from "./verificacion-nif-iva";
+import { detectarCompraIntracomunitaria } from "@/lib/facturas-recibidas";
 import { ArticulosStockRevision, articulosEmparejadosAEditables, type ArticuloStockEditable } from "./articulos-stock-revision";
 import {
   FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
@@ -127,7 +128,7 @@ function faltantesFiscales(d: Formulario): string[] {
     const nif = d.nifIvaProveedor.replace(/[\s.-]/g, "").toUpperCase();
     if (!nif) f.push("el NIF-IVA comunitario del proveedor");
     else if (!/^[A-Z]{2}[A-Z0-9]{2,12}$/.test(nif) || nif.startsWith("ES")) f.push("un NIF-IVA comunitario válido (código de otro país de la UE, p. ej. DE123456789)");
-    if (d.cuotaIvaSoportado > 0) f.push("revisar: una factura intracomunitaria no debería llevar IVA (se autorrepercute)");
+    if (d.cuotaIvaSoportado > 0) f.push(`revisar: la factura cobra ${d.cuotaIvaSoportado.toFixed(2)} € de IVA y una compra intracomunitaria no debería llevarlo (se autorrepercute); pide una factura sin IVA al proveedor`);
   }
   if (d.tipoOperacion === "importacion") {
     if ((d.estadoIva === "deducible" || d.estadoIva === "parcial") && !d.documentoAduanero.trim()) f.push("el documento aduanero (DUA) o justificante de importación que acredite el IVA");
@@ -332,6 +333,8 @@ export function FacturaRecibidaFormDialog({
   // Independiente del "Adjuntar archivo" (Drive) — leer con IA es solo una
   // lectura para precargar el formulario, no implica guardar ni subir nada.
   const [leyendoOcr, setLeyendoOcr] = useState(false);
+  /** Aviso cuando la lectura detecta un proveedor de la UE y marca sola «Compra intracomunitaria». */
+  const [avisoIntra, setAvisoIntra] = useState<{ texto: string; conIva: boolean } | null>(null);
   const [segundosLecturaOcr, setSegundosLecturaOcr] = useState(0);
   const [origenAutomatico, setOrigenAutomatico] = useState(false);
   // Recap de lo que la IA encontró en la última lectura — para verlo de un
@@ -394,6 +397,7 @@ export function FacturaRecibidaFormDialog({
       setFacturaRectificadaLabel(null);
       setOrigenAutomatico(false);
       setResumenOcr(null);
+      setAvisoIntra(null);
       setAdvertenciasVistas(false);
       setEnlaces(facturaExistente?.enlaces ?? []);
     } else {
@@ -673,7 +677,22 @@ export function FacturaRecibidaFormDialog({
       if (e.descripcion) set("descripcion", e.descripcion);
       // El estado del IVA se deduce del PDF solo en compra nacional y si la persona no había elegido otro todavía.
       setIvaDeducidoDelPdf(null);
-      const iva = datos.tipoOperacion === "nacional" && datos.estadoIva === "pendiente_justificar" ? deducirEstadoIva(e) : null;
+      // Proveedor de otro país de la UE (por el prefijo de su NIF-IVA o por su dirección): compra intracomunitaria, sin IVA, con NIF-IVA comprobado en VIES.
+      setAvisoIntra(null);
+      const ue = datos.tipoOperacion === "nacional" ? detectarCompraIntracomunitaria(e.proveedorDniCif, e.proveedorPais) : null;
+      if (ue) {
+        const cuotaLeida = e.cuotaIvaSoportado ?? 0;
+        const conIva = cuotaLeida > 0;
+        if (conIva) aplicarIva({ tipoOperacion: "intracomunitaria", nifIvaProveedor: ue.nifIva, estadoIva: "pendiente_justificar" });
+        else aplicarIva({ tipoOperacion: "intracomunitaria", nifIvaProveedor: ue.nifIva, estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0 });
+        setAvisoIntra({
+          texto: conIva
+            ? `Proveedor de ${ue.nombrePais} (${ue.nifIva || "sin NIF-IVA"}): marcada como compra intracomunitaria. Pero la factura cobra IVA (${cuotaLeida.toFixed(2)} €), y en una compra intracomunitaria con NIF-IVA válido no corresponde: pide al proveedor una factura sin IVA (o rectificada) antes de contabilizarla.`
+            : `Proveedor de ${ue.nombrePais} (${ue.nifIva || "sin NIF-IVA"}): marcada como compra intracomunitaria; la factura no cobra IVA, como corresponde. Revisa que el NIF-IVA sea válido en VIES.`,
+          conIva,
+        });
+      }
+      const iva = datos.tipoOperacion === "nacional" && datos.estadoIva === "pendiente_justificar" && !ue ? deducirEstadoIva(e) : null;
       if (iva) {
         if (iva.estado === "sin_cuota") aplicarIva({ estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0 });
         else aplicarIva({ estadoIva: iva.estado });
@@ -974,6 +993,11 @@ export function FacturaRecibidaFormDialog({
                     <Label htmlFor="frNifIva">NIF-IVA comunitario del proveedor *</Label>
                     <Input id="frNifIva" value={datos.nifIvaProveedor} placeholder="Ej.: DE123456789" onChange={(e) => set("nifIvaProveedor", e.target.value.toUpperCase())} />
                   </div>
+                )}
+                {avisoIntra && datos.tipoOperacion === "intracomunitaria" && (
+                  <p className={cn("flex max-w-2xl items-start gap-1.5 rounded-md border px-2.5 py-1.5 text-xs", avisoIntra.conIva ? "border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300" : "border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300")}>
+                    <Warning2 className="mt-0.5 size-3.5 shrink-0" /> <span>{avisoIntra.texto}</span>
+                  </p>
                 )}
                 {(datos.tipoOperacion === "nacional" || datos.tipoOperacion === "intracomunitaria") && (
                   <div className="max-w-2xl">

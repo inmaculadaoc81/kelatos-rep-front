@@ -274,3 +274,25 @@ export const COLOR_ESTADO_PAGO: Record<EstadoPagoFactura, string> = {
 export function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
+
+/** Países de la UE distintos de España (prefijo del NIF-IVA: Grecia usa EL; XI = Irlanda del Norte, mercancías). */
+const PAISES_UE: Record<string, string> = {
+  AT: "Austria", BE: "Bélgica", BG: "Bulgaria", HR: "Croacia", CY: "Chipre", CZ: "Chequia", DK: "Dinamarca", EE: "Estonia", FI: "Finlandia",
+  FR: "Francia", DE: "Alemania", EL: "Grecia", HU: "Hungría", IE: "Irlanda", IT: "Italia", LV: "Letonia", LT: "Lituania", LU: "Luxemburgo",
+  MT: "Malta", NL: "Países Bajos", PL: "Polonia", PT: "Portugal", RO: "Rumanía", SK: "Eslovaquia", SI: "Eslovenia", SE: "Suecia", XI: "Irlanda del Norte",
+};
+
+/** ¿La factura es de un proveedor de otro país de la UE? Se decide por el prefijo del NIF-IVA leído (FR22841722127…) o, si no hay,
+    por el país que la IA leyó en la dirección del proveedor. Devuelve el país y el NIF-IVA listo para validar en VIES; null si no lo es
+    (España, fuera de la UE o sin datos). */
+export function detectarCompraIntracomunitaria(nifLeido: string | null | undefined, paisLeido: string | null | undefined): { pais: string; nombrePais: string; nifIva: string } | null {
+  const nif = (nifLeido || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const prefijo = /^([A-Z]{2})[A-Z0-9]{2,12}$/.exec(nif)?.[1];
+  if (prefijo && /\d/.test(nif) && PAISES_UE[prefijo]) return { pais: prefijo, nombrePais: PAISES_UE[prefijo], nifIva: nif };
+  const pais = (paisLeido || "").toUpperCase() === "GR" ? "EL" : (paisLeido || "").toUpperCase();
+  if (PAISES_UE[pais]) {
+    // Sin prefijo en el NIF: se propone el NIF-IVA con el código del país (se ve en el formulario y VIES lo comprueba).
+    return { pais, nombrePais: PAISES_UE[pais], nifIva: nif && !/^[A-Z]{2}/.test(nif) ? `${pais}${nif}` : nif };
+  }
+  return null;
+}

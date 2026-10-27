@@ -5,6 +5,8 @@ import type { TipoDocumentoFactura } from "@/lib/facturas-recibidas";
 export interface FacturaOcrExtraido {
   proveedorNombre: string | null;
   proveedorDniCif: string | null;
+  /** País del proveedor (ISO 3166-1 alfa-2) leído por la IA, o null. */
+  proveedorPais?: string | null;
   numeroFacturaProveedor: string | null;
   serieProveedor: string | null;
   tipoDocumento: TipoDocumentoFactura | null;
