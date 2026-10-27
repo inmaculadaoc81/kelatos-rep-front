@@ -751,30 +751,38 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     });
   }
 
-  function lineaListaParaRegistrar(l: LineaPedidoEditable): boolean {
-    if (!l.aplicar) return true; // no bloquea el registro de las demás
-    if (l.accion === "recibir" || l.accion === "vincular") return l.recibirIds.length > 0;
+  /** Lo que le falta a una línea para poder registrarse (vacío = lista). Es lo que habilita el botón «Registrar pedidos» y lo que se muestra al lado. */
+  function faltantesLinea(l: LineaPedidoEditable): string[] {
+    if (!l.aplicar) return []; // no bloquea el registro de las demás
+    if (l.accion === "recibir" || l.accion === "vincular") return l.recibirIds.length > 0 ? [] : ["elegir el pedido que se marca como recibido"];
     if (l.destino === "tienda") {
-      // Pieza nueva (sin referencia existente): el nombre interno de
-      // proveedor es obligatorio — es lo único con lo que la IA podrá
-      // reconocerla la próxima vez.
-      // Con al menos 2 letras o cifras: un «+» suelto de una tabla mal leída no es un nombre y creaba una pieza vacía.
-      return l.referencia.trim() !== "" || l.nombreInternoProveedor.replace(/[^\p{L}\p{N}]/gu, "").length >= 2;
+      // Pieza nueva (sin referencia existente): el nombre interno de proveedor es obligatorio — es lo único con lo que la IA podrá
+      // reconocerla la próxima vez. Con al menos 2 letras o cifras: un «+» suelto de una tabla mal leída no es un nombre.
+      return l.referencia.trim() !== "" || l.nombreInternoProveedor.replace(/[^\p{L}\p{N}]/gu, "").length >= 2 ? [] : ["nombre del proveedor de la pieza (o elegir una pieza existente)"];
     }
+    const f: string[] = [];
     if (l.origenCliente === "venta") {
-      if (!l.ventaId || (l.itemIds.length === 0 && !l.nuevaPieza) || !proveedorIdSugerido) return false;
-      if (l.nuevaPieza && (!(l.costo > 0) || !(l.precioNuevaPieza > 0))) return false;
-    } else if (!l.resguardo) return false;
+      if (!l.ventaId) f.push("elegir la venta del cliente");
+      else if (l.itemIds.length === 0 && !l.nuevaPieza) f.push("elegir la pieza de la venta");
+      if (!proveedorIdSugerido) f.push("proveedor del pedido");
+      if (l.nuevaPieza && (!(l.costo > 0) || !(l.precioNuevaPieza > 0))) f.push("coste y precio de la pieza nueva");
+    } else if (!l.resguardo) f.push("elegir el cliente (resguardo)");
     // Piezas de una venta que ya se recibieron: solo se vincula el pedido (nº de pedido); el enlace y la fecha
     // estimada solo hacen falta para piezas aún sin recibir o nuevas.
     const soloVincular = l.origenCliente === "venta" && !l.nuevaPieza && l.itemIds.every((id) => l.ventaItems.find((it) => it.itemId === id)?.estadoPedido === "Pieza Recibida");
-    if (!l.numeroPedido.trim()) return false;
+    if (!l.numeroPedido.trim()) f.push("nº de pedido");
+    else if (numeroPedidoEsEnlace(l.numeroPedido)) f.push("nº de pedido (parece un enlace; escribe el número)");
     // Si ya llegó (factura/albarán o aviso de recibido) no hay enlace ni fecha estimada que exigir: se rellenan solos.
-    if (!soloVincular && !l.recibido && (!l.enlace.trim() || !l.fechaEstimada)) return false;
+    if (!soloVincular && !l.recibido) {
+      if (!l.enlace.trim()) f.push("enlace del pedido");
+      if (!l.fechaEstimada) f.push("fecha estimada de llegada");
+    }
     // El coste de las piezas de una venta ya está en la propia venta; el de una reparación se guarda con el pedido.
-    if (l.origenCliente !== "venta" && !(l.costo > 0)) return false;
-    if (numeroPedidoEsEnlace(l.numeroPedido)) return false;
-    return true;
+    if (l.origenCliente !== "venta" && !(l.costo > 0)) f.push("coste");
+    return f;
+  }
+  function lineaListaParaRegistrar(l: LineaPedidoEditable): boolean {
+    return faltantesLinea(l).length === 0;
   }
 
   const itemsVentaUsados = lineas.filter((l) => l.aplicar && l.accion === "registrar" && l.destino === "cliente" && l.origenCliente === "venta").flatMap((l) => l.itemIds);
@@ -1421,6 +1429,17 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
         <div className="flex flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:flex-row sm:justify-end">
           {hayItemRepetido && <p className="text-xs text-destructive sm:mr-auto sm:self-center">Dos líneas tienen marcada la misma pieza de una venta: asigna cada pieza a una sola línea.</p>}
+          {hayAlgoAplicado && !todoListo && !hayItemRepetido && (
+            <div className="max-h-28 overflow-y-auto text-xs text-amber-800 sm:mr-auto sm:max-w-[60%] dark:text-amber-300">
+              <p className="font-medium">Para poder registrar falta:</p>
+              <ul className="list-disc pl-4">
+                {lineas.map((l, i) => ({ l, i, f: faltantesLinea(l) })).filter((x) => x.f.length > 0).map((x) => (
+                  <li key={x.i}>{x.l.nombre}: {x.f.join(", ")}</li>
+                ))}
+                {lineas.some((l) => l.aplicar && l.accion === "registrar" && l.destino === "cliente" && l.origenCliente !== "venta") && !compradoPor.trim() && <li>«Comprado por» (arriba)</li>}
+              </ul>
+            </div>
+          )}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
           <Button type="button" disabled={!hayAlgoAplicado || !todoListo || registrando} onClick={registrar}>
             {registrando ? <Refresh2 className="size-4 animate-spin" /> : null}
