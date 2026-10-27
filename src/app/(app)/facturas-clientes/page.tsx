@@ -841,8 +841,8 @@ export default function FacturasClientesPage() {
                           <TableCell>
                             <SerieBadge numero={f.numero} />
                           </TableCell>
-                          <TableCell className="text-sm">
-                            {f.cliente || "—"}
+                          <TableCell className="max-w-[260px] truncate text-sm">
+                            <span className="block truncate" title={f.cliente}>{f.cliente || "—"}</span>
                             {f.motivo && (
                               <span className="block max-w-[260px] truncate text-[11px] font-medium text-amber-700 dark:text-amber-400" title={f.motivo}>
                                 Motivo: {f.motivo}
