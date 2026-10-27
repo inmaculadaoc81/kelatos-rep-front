@@ -33,6 +33,10 @@ type Fila = {
   revision: Revision;
   error: string | null;
   mensaje_inicio: string | null;
+  envio_estado: "enviando" | "enviado" | "omitido" | "error" | null;
+  envio_detalle: string | null;
+  enviado_a: string | null;
+  enviado_en: string | null;
 };
 
 type Kpis = {
@@ -53,7 +57,10 @@ const POR_PAGINA = 25;
 const humano = (s: string | null) => (s ? s.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase()) : "—");
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)} %` : "—");
 
-function ClasificacionBadge({ c, estado }: { c: Clasificacion; estado: string }) {
+function ClasificacionBadge({ c, estado, envio }: { c: Clasificacion; estado: string; envio?: Fila["envio_estado"] }) {
+  if (c === "responder" && envio === "enviado") return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Respuesta enviada</Badge>;
+  if (c === "responder" && envio === "omitido") return <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">No enviada</Badge>;
+  if (c === "responder" && envio === "error") return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Fallo al enviar</Badge>;
   if (estado === "error") return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Error</Badge>;
   if (c === "responder") return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Respondería sola</Badge>;
   if (c === "atencion_humana") return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Responder a mano</Badge>;
@@ -136,7 +143,7 @@ export default function RespuestasFormulariosPage() {
           <div>
             <h1 className="text-lg font-semibold">Respuestas a formularios</h1>
             <p className="text-xs text-muted-foreground">
-              Formularios de las webs que llegan a soporte. {modo === "sombra" ? "Modo sombra: prepara el borrador y avisa, pero no envía nada al cliente." : modo ? `Modo: ${modo}.` : ""}
+              Formularios de las webs que llegan a soporte. {modo === "sombra" ? "Modo sombra: prepara el borrador y avisa, pero no envía nada al cliente." : modo === "activo" ? "Modo activo: responde solo a las consultas que clasifica como «Respondería sola» (formularios posteriores a la activación); lo demás lo avisa para responder a mano." : modo ? `Modo: ${modo}.` : ""}
             </p>
           </div>
         </div>
@@ -209,7 +216,7 @@ export default function RespuestasFormulariosPage() {
                       <p className="truncate text-xs text-muted-foreground">{f.email_cliente}</p>
                     </TableCell>
                     <TableCell>
-                      <ClasificacionBadge c={f.clasificacion} estado={f.estado} />
+                      <ClasificacionBadge c={f.clasificacion} estado={f.estado} envio={f.envio_estado} />
                       {f.clasificacion === "atencion_humana" && f.motivo_humano && (
                         <p className="mt-0.5 text-xs text-muted-foreground">{humano(f.motivo_humano)}</p>
                       )}
@@ -307,7 +314,7 @@ function DetalleDialog({ id, onClose, onCambio }: { id: number | null; onClose: 
         {d && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <ClasificacionBadge c={d.clasificacion} estado={d.estado} />
+              <ClasificacionBadge c={d.clasificacion} estado={d.estado} envio={d.envio_estado} />
               {d.notificacion_id && <Badge variant="outline">Avisado en notificaciones ({d.notificacion_id})</Badge>}
             </div>
 
@@ -333,7 +340,7 @@ function DetalleDialog({ id, onClose, onCambio }: { id: number | null; onClose: 
             {d.borrador && (
               <section>
                 <h3 className="mb-1 text-sm font-semibold">
-                  {d.clasificacion === "atencion_humana" ? "Borrador sugerido (no se envía)" : "Respuesta que enviaría (no se envía en modo sombra)"}
+                  {d.clasificacion === "atencion_humana" ? "Borrador sugerido (no se envía)" : d.envio_estado === "enviado" ? `Respuesta enviada a ${d.enviado_a ?? ""}${d.enviado_en ? ` el ${new Date(d.enviado_en).toLocaleString("es-ES")}` : ""}` : d.envio_estado ? `Respuesta no enviada: ${d.envio_detalle ?? d.envio_estado}` : "Respuesta que enviaría (no se envía en modo sombra)"}
                 </h3>
                 <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md border bg-white p-3 text-sm">{d.borrador}</pre>
               </section>

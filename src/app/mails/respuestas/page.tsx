@@ -162,7 +162,7 @@ export default function RespuestasPresupuestoPage() {
             <h1 className="text-lg font-semibold">Respuestas a presupuestos</h1>
             <p className="text-xs text-muted-foreground">
               Lo que la automatización entendió de cada respuesta de cliente.{" "}
-              {modo === "sombra" ? "Modo sombra: solo registra, no acepta ni avisa." : modo ? `Modo: ${modo}.` : ""}
+              {modo === "sombra" ? "Modo sombra: solo registra, no acepta ni avisa." : modo === "activo" ? "Modo activo: acepta los presupuestos y crea los avisos de verdad (solo respuestas posteriores a la activación)." : modo ? `Modo: ${modo}.` : ""}
             </p>
           </div>
         </div>
