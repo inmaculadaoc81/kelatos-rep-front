@@ -24,6 +24,13 @@ function fechaCorta(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+/** Fecha y hora (Madrid) en que se registró la factura en el sistema. */
+function fechaRegistro(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" });
+}
+
 export default function FacturasRecibidasPage() {
   const [facturas, setFacturas] = useState<FacturaRecibida[]>([]);
   const [total, setTotal] = useState(0);
@@ -270,6 +277,7 @@ export default function FacturasRecibidasPage() {
               <TableHead>Proveedor</TableHead>
               <TableHead>Nº factura</TableHead>
               <TableHead>Fecha</TableHead>
+              <TableHead>Registrada</TableHead>
               <TableHead>Almacén</TableHead>
               <TableHead className="text-right">Base</TableHead>
               <TableHead className="text-right">Total</TableHead>
@@ -281,14 +289,14 @@ export default function FacturasRecibidasPage() {
             {cargando &&
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
+                  {Array.from({ length: 9 }).map((__, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))}
             {!cargando && facturas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Ninguna factura coincide con los filtros</TableCell>
+                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">Ninguna factura coincide con los filtros</TableCell>
               </TableRow>
             )}
             {!cargando &&
@@ -306,6 +314,7 @@ export default function FacturasRecibidasPage() {
                     {f.posibleDuplicado && !f.duplicadoConfirmado && <Warning2 className="ml-1 inline size-3.5 text-red-500" />}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fechaCorta(f.fechaExpedicion)}</TableCell>
+                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{fechaRegistro(f.creadoEn)}</TableCell>
                   <TableCell>
                     {f.almacen ? (
                       <span className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${COLOR_ALMACEN[f.almacen]}`}>{ETIQUETA_ALMACEN[f.almacen]}</span>

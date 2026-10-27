@@ -17,6 +17,12 @@ function fechaCsv(iso: string | null): string {
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : "";
 }
 
+/** Fecha y hora (Madrid) del registro de la factura, p. ej. 27/10/2026 21:11. */
+function fechaRegistroCsv(iso: string | null | undefined): string {
+  const d = iso ? new Date(iso) : null;
+  return d && !Number.isNaN(d.getTime()) ? d.toLocaleString("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }) : "";
+}
+
 function celdaCsv(valor: string | number): string {
   const s = String(valor);
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -35,7 +41,7 @@ export function generarCsvLibroCompras(
   filas.push("");
 
   fila(
-    "Fecha expedición", "Nº recepción", "Proveedor", "NIF/CIF", "Nº factura proveedor", "Serie", "Tipo documento",
+    "Fecha expedición", "Fecha de registro", "Nº recepción", "Proveedor", "NIF/CIF", "Nº factura proveedor", "Serie", "Tipo documento",
     "Base imponible", "% IVA", "Cuota IVA soportado", "Cuota IVA deducible", "IVA no deducible", "Total",
     "Categoría", "Almacén", "Estado de pago", "Estado de revisión", "Tipo de operación", "Estado del IVA", "Documento aduanero", "NIF-IVA proveedor"
   );
@@ -46,7 +52,7 @@ export function generarCsvLibroCompras(
   let totTotal = 0;
   for (const f of facturas) {
     fila(
-      fechaCsv(f.fechaExpedicion), f.numeroRecepcion, f.proveedorNombre, f.proveedorDniCif, f.numeroFacturaProveedor, f.serieProveedor,
+      fechaCsv(f.fechaExpedicion), fechaRegistroCsv(f.creadoEn), f.numeroRecepcion, f.proveedorNombre, f.proveedorDniCif, f.numeroFacturaProveedor, f.serieProveedor,
       f.tipoDocumento || "", numeroCsv(f.baseImponible), f.tipoIva !== null ? numeroCsv(f.tipoIva) : "",
       numeroCsv(f.cuotaIvaSoportado || 0), numeroCsv(f.cuotaIvaDeducible), numeroCsv(f.ivaNoDeducible || 0), numeroCsv(f.importeTotal),
       f.categoria ? ETIQUETA_CATEGORIA[f.categoria] : "", f.almacen ? ETIQUETA_ALMACEN[f.almacen] : "",
@@ -61,7 +67,7 @@ export function generarCsvLibroCompras(
 
   filas.push("");
   fila(
-    "", "", "", "", "", "", "TOTALES",
+    "", "", "", "", "", "", "", "TOTALES",
     numeroCsv(totBase), "", numeroCsv(totCuotaSoportado), numeroCsv(totCuotaDeducible), "", numeroCsv(totTotal),
     "", "", "", `${facturas.length} factura${facturas.length !== 1 ? "s" : ""}`, "", "", "", ""
   );
