@@ -12,17 +12,18 @@ export type AlmacenFactura = "servicio" | "stock";
 export type EstadoPagoFactura = "pendiente" | "parcial" | "pagada";
 export type EstadoRevisionFactura = "pendiente" | "validada";
 /** De dónde viene la compra: decide qué datos se piden y se validan. */
-export type TipoOperacionFactura = "nacional" | "intracomunitaria" | "importacion";
+export type TipoOperacionFactura = "nacional" | "intracomunitaria" | "importacion" | "servicio_extracomunitario";
 /** Si la cuota de IVA está justificada y se puede deducir (un recibo puede mencionar IVA sin documentación que lo acredite). */
 export type EstadoIvaFactura = "pendiente_justificar" | "deducible" | "parcial" | "no_deducible" | "sin_cuota";
 
 export const TIPOS_OPERACION: { id: TipoOperacionFactura; nombre: string; descripcion: string }[] = [
   { id: "nacional", nombre: "Compra nacional", descripcion: "Proveedor en España, con IVA español en la factura." },
   { id: "intracomunitaria", nombre: "Compra intracomunitaria", descripcion: "Proveedor de otro país de la UE: la factura no lleva IVA (se autorrepercute) y hace falta su NIF-IVA." },
-  { id: "importacion", nombre: "Importación desde fuera de la UE", descripcion: "Proveedor de fuera de la UE (p. ej. AliExpress desde China): el IVA se acredita con el documento aduanero (DUA) o el justificante de importación." },
+  { id: "importacion", nombre: "Importación de mercancía desde fuera de la UE", descripcion: "Mercancía de un proveedor de fuera de la UE (p. ej. AliExpress desde China): el IVA se acredita con el documento aduanero (DUA) o el justificante de importación." },
+  { id: "servicio_extracomunitario", nombre: "Servicio de un proveedor de fuera de la UE", descripcion: "Servicios o software de EE. UU., Reino Unido, etc. (p. ej. Retell, OpenAI): la factura no lleva IVA español y se autorrepercute el 21 % (inversión del sujeto pasivo). Si no está en euros, se convierte." },
 ];
 export const ETIQUETA_TIPO_OPERACION: Record<TipoOperacionFactura, string> = {
-  nacional: "Nacional", intracomunitaria: "Intracomunitaria", importacion: "Importación",
+  nacional: "Nacional", intracomunitaria: "Intracomunitaria", importacion: "Importación", servicio_extracomunitario: "Servicio fuera de la UE",
 };
 
 export const ESTADOS_IVA: { id: EstadoIvaFactura; nombre: string; descripcion: string; estilo: string }[] = [
@@ -70,6 +71,9 @@ export interface FacturaRecibida {
   moneda: string;
   tipoCambio: number | null;
   importeConvertidoEur: number | null;
+  /** Con moneda distinta de EUR: importes originales (base e importe total ya están convertidos a euros). */
+  baseMonedaOriginal: number | null;
+  totalMonedaOriginal: number | null;
   operacionExenta: boolean;
   inversionSujetoPasivo: boolean;
   adquisicionIntracomunitaria: boolean;
@@ -134,6 +138,8 @@ interface FilaFacturaSql {
   moneda: string;
   tipo_cambio: string | number | null;
   importe_convertido_eur: string | number | null;
+  base_moneda_original?: string | number | null;
+  total_moneda_original?: string | number | null;
   operacion_exenta: boolean;
   inversion_sujeto_pasivo: boolean;
   adquisicion_intracomunitaria: boolean;
@@ -202,6 +208,8 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     moneda: f.moneda || "EUR",
     tipoCambio: numOrNull(f.tipo_cambio),
     importeConvertidoEur: numOrNull(f.importe_convertido_eur),
+    baseMonedaOriginal: numOrNull(f.base_moneda_original),
+    totalMonedaOriginal: numOrNull(f.total_moneda_original),
     operacionExenta: !!f.operacion_exenta,
     inversionSujetoPasivo: !!f.inversion_sujeto_pasivo,
     adquisicionIntracomunitaria: !!f.adquisicion_intracomunitaria,
@@ -294,5 +302,17 @@ export function detectarCompraIntracomunitaria(nifLeido: string | null | undefin
     // Sin prefijo en el NIF: se propone el NIF-IVA con el código del país (se ve en el formulario y VIES lo comprueba).
     return { pais, nombrePais: PAISES_UE[pais], nifIva: nif && !/^[A-Z]{2}/.test(nif) ? `${pais}${nif}` : nif };
   }
+  return null;
+}
+
+/** Proveedor de FUERA de la UE (ni España ni un país de la UE): por el país leído de su dirección o, si no hay, por una factura en moneda
+    distinta del euro con un NIF que no tiene formato español. Devuelve el país (código ISO) o "" si solo se sabe que es de fuera; null si no lo es. */
+export function detectarProveedorFueraUE(paisLeido: string | null | undefined, nifLeido: string | null | undefined, moneda: string | null | undefined): { pais: string } | null {
+  const pais = (paisLeido || "").trim().toUpperCase();
+  if (pais && pais !== "ES" && !PAISES_UE[pais === "GR" ? "EL" : pais]) return { pais };
+  const nif = (nifLeido || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const esNifEspanol = /^(ES)?([ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])$/.test(nif);
+  const m = (moneda || "").toUpperCase();
+  if (!pais && m && m !== "EUR" && !esNifEspanol && !detectarCompraIntracomunitaria(nifLeido, null)) return { pais: "" };
   return null;
 }

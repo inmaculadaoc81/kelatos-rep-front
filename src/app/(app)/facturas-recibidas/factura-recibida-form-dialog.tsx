@@ -24,7 +24,7 @@ import type { CompraFila } from "@/lib/compras";
 import type { PedidoStockBusqueda } from "@/app/api/stock-piezas/pedidos/buscar/route";
 import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route";
 import { VerificacionNifIva } from "./verificacion-nif-iva";
-import { detectarCompraIntracomunitaria } from "@/lib/facturas-recibidas";
+import { detectarCompraIntracomunitaria, detectarProveedorFueraUE } from "@/lib/facturas-recibidas";
 import { ArticulosStockRevision, articulosEmparejadosAEditables, type ArticuloStockEditable } from "./articulos-stock-revision";
 import {
   FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
@@ -60,6 +60,11 @@ interface Formulario {
   ivaNoDeducible: number;
   importeTotal: number;
   moneda: string;
+  /** Unidades de la moneda por 1 euro (BCE). Solo con moneda distinta de EUR. */
+  tipoCambio: number | null;
+  /** Importes en la moneda original; base imponible e importe total del formulario son siempre euros. */
+  baseMonedaOriginal: number;
+  totalMonedaOriginal: number;
   operacionExenta: boolean;
   inversionSujetoPasivo: boolean;
   tipoOperacion: TipoOperacionFactura;
@@ -85,7 +90,7 @@ function vacio(borrador?: BorradorFactura): Formulario {
     fechaExpedicion: new Date().toISOString().slice(0, 10), fechaOperacion: "",
     fechaRecepcion: new Date().toISOString().slice(0, 10), tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
     baseImponible: borrador?.baseImponible || 0, tipoIva: 21, cuotaIvaSoportado: 0,
-    cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR",
+    cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR", tipoCambio: null, baseMonedaOriginal: 0, totalMonedaOriginal: 0,
     operacionExenta: false, inversionSujetoPasivo: false,
     tipoOperacion: "nacional", estadoIva: "pendiente_justificar", documentoAduanero: "", nifIvaProveedor: "",
     // Por ahora toda factura nueva se da por pagada con tarjeta bancaria, con vencimiento el día de la factura, hasta que se pueda sincronizar con el pago real.
@@ -102,7 +107,7 @@ function desdeExistente(f: FacturaRecibida): Formulario {
     tipoDocumento: f.tipoDocumento || "", facturaRectificadaId: f.facturaRectificadaId, descripcion: f.descripcion,
     baseImponible: f.baseImponible, tipoIva: f.tipoIva ?? 21,
     cuotaIvaSoportado: f.cuotaIvaSoportado ?? 0, cuotaIvaDeducible: f.cuotaIvaDeducible, ivaNoDeducible: f.ivaNoDeducible ?? 0,
-    importeTotal: f.importeTotal, moneda: f.moneda,
+    importeTotal: f.importeTotal, moneda: f.moneda, tipoCambio: f.tipoCambio, baseMonedaOriginal: f.baseMonedaOriginal ?? 0, totalMonedaOriginal: f.totalMonedaOriginal ?? 0,
     operacionExenta: f.operacionExenta, inversionSujetoPasivo: f.inversionSujetoPasivo,
     tipoOperacion: f.tipoOperacion, estadoIva: f.estadoIva, documentoAduanero: f.documentoAduanero, nifIvaProveedor: f.nifIvaProveedor, formaPago: f.formaPago,
     fechaVencimiento: f.fechaVencimiento || "", estadoPago: f.estadoPago, referenciaBancaria: f.referenciaBancaria,
@@ -133,8 +138,8 @@ function faltantesFiscales(d: Formulario): string[] {
   }
   if (d.tipoOperacion === "importacion") {
     if ((d.estadoIva === "deducible" || d.estadoIva === "parcial") && !d.documentoAduanero.trim()) f.push("el documento aduanero (DUA) o justificante de importación que acredite el IVA");
-    if (d.moneda.trim() && d.moneda.trim() !== "EUR") f.push("el tipo de cambio (la factura no está en euros)");
   }
+  if (d.moneda.trim() && d.moneda.trim().toUpperCase() !== "EUR" && !(d.tipoCambio && d.tipoCambio > 0)) f.push("el tipo de cambio para convertir la factura a euros");
   if (d.estadoIva === "pendiente_justificar") f.push("justificar el IVA (estado «pendiente de justificar»)");
   return f;
 }
@@ -334,6 +339,9 @@ export function FacturaRecibidaFormDialog({
   // Independiente del "Adjuntar archivo" (Drive) — leer con IA es solo una
   // lectura para precargar el formulario, no implica guardar ni subir nada.
   const [leyendoOcr, setLeyendoOcr] = useState(false);
+  /** Cotización usada en la última consulta del tipo de cambio (BCE). */
+  const [infoCambio, setInfoCambio] = useState<{ fechaTipo: string; fuente: string } | null>(null);
+  const [consultandoCambio, setConsultandoCambio] = useState(false);
   /** true cuando la persona ha escrito el vencimiento a mano: deja de seguir a la fecha de la factura. */
   const [vencimientoManual, setVencimientoManual] = useState(false);
   /** Aviso cuando la lectura detecta un proveedor de la UE y marca sola «Compra intracomunitaria». */
@@ -432,6 +440,43 @@ export function FacturaRecibidaFormDialog({
     setDatos((prev) => ({ ...prev, [campo]: valor, ...(sigueVencimiento ? { fechaVencimiento: valor as string } : {}) }));
   }
 
+  /** Con moneda distinta de EUR: pasa a euros la base y el importe total originales con el tipo de cambio (unidades de moneda por 1 €). */
+  function recalcularEuros(d: Formulario): Formulario {
+    if (!d.moneda.trim() || d.moneda.trim().toUpperCase() === "EUR" || !(d.tipoCambio && d.tipoCambio > 0)) return d;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const base = r2(d.baseMonedaOriginal / d.tipoCambio);
+    const totalOrig = d.totalMonedaOriginal || d.baseMonedaOriginal;
+    // En compras que se autorrepercuten el IVA no figura en la factura: el total son los mismos euros que la base.
+    const autorrepercutida = d.tipoOperacion === "intracomunitaria" || d.tipoOperacion === "servicio_extracomunitario";
+    const total = autorrepercutida ? base : r2(totalOrig / d.tipoCambio);
+    const n = { ...d, baseImponible: base, importeTotal: total, cuotaIvaSoportado: autorrepercutida ? 0 : Math.max(0, r2(total - base)) };
+    return { ...n, ...repartoIva(n.estadoIva, n.cuotaIvaSoportado, n.cuotaIvaDeducible) };
+  }
+
+  function setOriginal(campo: "baseMonedaOriginal" | "totalMonedaOriginal" | "tipoCambio", valor: number | null) {
+    setDatos((prev) => recalcularEuros({ ...prev, [campo]: valor } as Formulario));
+  }
+
+  /** Consulta el tipo de cambio del BCE (el que usa el conversor del Banco de España) para la moneda y la fecha de la factura y convierte a euros. */
+  async function consultarTipoCambio(moneda: string, fecha: string) {
+    const m = moneda.trim().toUpperCase();
+    if (!m || m === "EUR") return;
+    if (!fecha) return toast.error("Indica la fecha de expedición para consultar el tipo de cambio");
+    setConsultandoCambio(true);
+    try {
+      const res = await fetch(`/api/facturas-recibidas/tipo-cambio?moneda=${encodeURIComponent(m)}&fecha=${encodeURIComponent(fecha)}`);
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "No se pudo consultar el tipo de cambio");
+      setInfoCambio({ fechaTipo: d.cambio.fechaTipo, fuente: d.cambio.fuente });
+      setDatos((prev) => recalcularEuros({ ...prev, tipoCambio: d.cambio.tipo }));
+      toast.success(`Tipo de cambio ${m}: ${d.cambio.tipo} por euro (BCE, ${d.cambio.fechaTipo.split("-").reverse().join("/")})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo consultar el tipo de cambio — introdúcelo a mano");
+    } finally {
+      setConsultandoCambio(false);
+    }
+  }
+
   /** Cambia datos del IVA y recalcula la cuota deducible / no deducible según el estado del IVA. */
   function aplicarIva(cambios: Partial<Formulario>) {
     setDatos((prev) => {
@@ -442,7 +487,10 @@ export function FacturaRecibidaFormDialog({
 
   /** Al cambiar el tipo de operación se propone el estado de IVA habitual (se puede cambiar después). */
   function cambiarTipoOperacion(tipo: TipoOperacionFactura) {
-    if (tipo === "intracomunitaria") aplicarIva({ tipoOperacion: tipo, estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0, importeTotal: datos.baseImponible });
+    if (tipo === "intracomunitaria" || tipo === "servicio_extracomunitario") {
+      aplicarIva({ tipoOperacion: tipo, estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0, importeTotal: datos.baseImponible });
+      setDatos((prev) => recalcularEuros(prev));
+    }
     else if (tipo === "importacion") aplicarIva({ tipoOperacion: tipo, estadoIva: "pendiente_justificar" });
     else aplicarIva({ tipoOperacion: tipo });
   }
@@ -517,6 +565,9 @@ export function FacturaRecibidaFormDialog({
         descripcion: datos.descripcion.trim(), baseImponible: datos.baseImponible,
         tipoIva: datos.estadoIva === "sin_cuota" ? undefined : datos.tipoIva || undefined, cuotaIvaSoportado: datos.cuotaIvaSoportado || undefined, cuotaIvaDeducible: datos.cuotaIvaDeducible,
         ivaNoDeducible: datos.ivaNoDeducible || undefined, importeTotal: datos.importeTotal, moneda: datos.moneda.trim() || "EUR",
+        tipoCambio: datos.moneda.trim() && datos.moneda.trim() !== "EUR" ? datos.tipoCambio ?? undefined : undefined,
+        baseMonedaOriginal: datos.moneda.trim() && datos.moneda.trim() !== "EUR" ? datos.baseMonedaOriginal : undefined,
+        totalMonedaOriginal: datos.moneda.trim() && datos.moneda.trim() !== "EUR" ? datos.totalMonedaOriginal : undefined,
         operacionExenta: datos.operacionExenta, inversionSujetoPasivo: datos.inversionSujetoPasivo,
         tipoOperacion: datos.tipoOperacion, estadoIva: datos.estadoIva, documentoAduanero: datos.documentoAduanero.trim(), nifIvaProveedor: datos.nifIvaProveedor.trim(),
         formaPago: datos.formaPago.trim(), fechaVencimiento: datos.fechaVencimiento || undefined, estadoPago: datos.estadoPago,
@@ -693,11 +744,17 @@ export function FacturaRecibidaFormDialog({
       if (e.serieProveedor) set("serieProveedor", e.serieProveedor);
       if (e.tipoDocumento) set("tipoDocumento", e.tipoDocumento);
       if (e.fechaExpedicion) set("fechaExpedicion", e.fechaExpedicion);
-      if (e.baseImponible !== null) set("baseImponible", e.baseImponible);
-      if (e.tipoIva !== null) set("tipoIva", e.tipoIva);
-      if (e.cuotaIvaSoportado !== null) aplicarIva({ cuotaIvaSoportado: e.cuotaIvaSoportado });
-      if (e.importeTotal !== null) set("importeTotal", e.importeTotal);
-      if (e.moneda) set("moneda", e.moneda);
+      const otraMoneda = !!e.moneda && e.moneda.trim().toUpperCase() !== "EUR";
+      if (otraMoneda) {
+        // Factura en otra moneda: los importes leídos son los ORIGINALES; los euros se calculan con el tipo de cambio del BCE.
+        setDatos((prev) => ({ ...prev, moneda: e.moneda.trim().toUpperCase(), tipoCambio: null, baseMonedaOriginal: e.baseImponible ?? e.importeTotal ?? 0, totalMonedaOriginal: e.importeTotal ?? e.baseImponible ?? 0, baseImponible: 0, importeTotal: 0, cuotaIvaSoportado: 0 }));
+      } else {
+        if (e.baseImponible !== null) set("baseImponible", e.baseImponible);
+        if (e.tipoIva !== null) set("tipoIva", e.tipoIva);
+        if (e.cuotaIvaSoportado !== null) aplicarIva({ cuotaIvaSoportado: e.cuotaIvaSoportado });
+        if (e.importeTotal !== null) set("importeTotal", e.importeTotal);
+        if (e.moneda) set("moneda", e.moneda);
+      }
       if (e.descripcion) set("descripcion", e.descripcion);
       // El estado del IVA se deduce del PDF solo en compra nacional y si la persona no había elegido otro todavía.
       setIvaDeducidoDelPdf(null);
@@ -716,7 +773,17 @@ export function FacturaRecibidaFormDialog({
           conIva,
         });
       }
-      const iva = datos.tipoOperacion === "nacional" && datos.estadoIva === "pendiente_justificar" && !ue ? deducirEstadoIva(e) : null;
+      // Proveedor de FUERA de la UE (p. ej. EE. UU.): servicio con IVA autorrepercutido. Si en realidad es mercancía con DUA, se cambia a «Importación».
+      const fuera = !ue && datos.tipoOperacion === "nacional" && e.tipoDocumento !== "aduanero" ? detectarProveedorFueraUE(e.proveedorPais, e.proveedorDniCif, e.moneda) : null;
+      if (fuera) {
+        aplicarIva({ tipoOperacion: "servicio_extracomunitario", estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0 });
+        setAvisoIntra({
+          texto: `Proveedor de fuera de la UE${fuera.pais ? ` (${fuera.pais})` : ""}: marcada como servicio de un proveedor de fuera de la UE. La factura no lleva IVA español y se autorrepercute el 21 %. Si es una compra de mercancía con DUA, cámbiala a «Importación».`,
+          conIva: false,
+        });
+      }
+      if (otraMoneda) void consultarTipoCambio(e.moneda, e.fechaExpedicion || datos.fechaExpedicion);
+      const iva = datos.tipoOperacion === "nacional" && datos.estadoIva === "pendiente_justificar" && !ue && !fuera ? deducirEstadoIva(e) : null;
       if (iva) {
         if (iva.estado === "sin_cuota") aplicarIva({ estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0 });
         else aplicarIva({ estadoIva: iva.estado });
@@ -1039,7 +1106,7 @@ export function FacturaRecibidaFormDialog({
                     <Input id="frNifIva" value={datos.nifIvaProveedor} placeholder="Ej.: DE123456789" onChange={(e) => set("nifIvaProveedor", e.target.value.toUpperCase())} />
                   </div>
                 )}
-                {avisoIntra && datos.tipoOperacion === "intracomunitaria" && (
+                {avisoIntra && (datos.tipoOperacion === "intracomunitaria" || datos.tipoOperacion === "servicio_extracomunitario") && (
                   <p className={cn("flex max-w-2xl items-start gap-1.5 rounded-md border px-2.5 py-1.5 text-xs", avisoIntra.conIva ? "border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300" : "border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300")}>
                     <Warning2 className="mt-0.5 size-3.5 shrink-0" /> <span>{avisoIntra.texto}</span>
                   </p>
@@ -1101,6 +1168,46 @@ export function FacturaRecibidaFormDialog({
                   <Input id="frMoneda" value={datos.moneda} onChange={(e) => set("moneda", e.target.value.toUpperCase())} />
                 </div>
               </div>
+
+              {datos.moneda.trim() && datos.moneda.trim().toUpperCase() !== "EUR" && (
+                <div className="mt-4 space-y-3 rounded-lg border border-sky-300 bg-sky-50/60 p-3 dark:border-sky-900 dark:bg-sky-950/20">
+                  <p className="text-sm font-medium text-sky-900 dark:text-sky-200">Factura en {datos.moneda.trim().toUpperCase()}: conversión a euros</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="frBaseOrig">Base imponible ({datos.moneda.trim().toUpperCase()})</Label>
+                      <DecimalInput id="frBaseOrig" className={CLASE_IMPORTE} value={datos.baseMonedaOriginal} onChange={(n) => setOriginal("baseMonedaOriginal", n)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="frTotalOrig">Importe total ({datos.moneda.trim().toUpperCase()})</Label>
+                      <DecimalInput id="frTotalOrig" className={CLASE_IMPORTE} value={datos.totalMonedaOriginal} onChange={(n) => setOriginal("totalMonedaOriginal", n)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="frTipoCambio">Tipo de cambio ({datos.moneda.trim().toUpperCase()} por 1 €)</Label>
+                      <DecimalInput id="frTipoCambio" className={CLASE_IMPORTE} value={datos.tipoCambio ?? 0} onChange={(n) => setOriginal("tipoCambio", n > 0 ? n : null)} />
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={consultandoCambio} onClick={() => consultarTipoCambio(datos.moneda, datos.fechaExpedicion)}>
+                        {consultandoCambio ? <Refresh2 className="size-4 animate-spin" /> : <MoneyRecive className="size-4" />} Consultar tipo de cambio (BCE)
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-sky-900/80 dark:text-sky-300/80">
+                    {datos.tipoCambio && datos.tipoCambio > 0
+                      ? <>Con {datos.tipoCambio} {datos.moneda.trim().toUpperCase()} por euro: base <strong>{euros(datos.baseImponible)}</strong>, total <strong>{euros(datos.importeTotal)}</strong>.{" "}</>
+                      : <>Falta el tipo de cambio: consúltalo o introdúcelo a mano.{" "}</>}
+                    {infoCambio && <>Cotización del {infoCambio.fechaTipo.split("-").reverse().join("/")} · {infoCambio.fuente}.</>}
+                  </p>
+                </div>
+              )}
+
+              {(datos.tipoOperacion === "intracomunitaria" || datos.tipoOperacion === "servicio_extracomunitario") && datos.baseImponible > 0 && (
+                <p className="mt-3 flex max-w-3xl items-start gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-xs text-violet-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300">
+                  <MagicStar className="mt-0.5 size-3.5 shrink-0" />
+                  <span>
+                    IVA autorrepercutido (21 %): <strong className="font-medium">{euros(Math.round(datos.baseImponible * 21) / 100)}</strong> sobre {euros(datos.baseImponible)}. Se declara como devengado y soportado a la vez; no se paga al proveedor, que solo cobra {euros(datos.baseImponible)}.
+                  </span>
+                </p>
+              )}
 
               <div className="mt-4 space-y-2">
                 <Label>Estado del IVA *</Label>

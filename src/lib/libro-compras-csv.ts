@@ -43,7 +43,7 @@ export function generarCsvLibroCompras(
   fila(
     "Fecha expedición", "Fecha de registro", "Nº recepción", "Proveedor", "NIF/CIF", "Nº factura proveedor", "Serie", "Tipo documento",
     "Base imponible", "% IVA", "Cuota IVA soportado", "Cuota IVA deducible", "IVA no deducible", "Total",
-    "Categoría", "Almacén", "Estado de pago", "Estado de revisión", "Tipo de operación", "Estado del IVA", "Documento aduanero", "NIF-IVA proveedor"
+    "Categoría", "Almacén", "Estado de pago", "Estado de revisión", "Tipo de operación", "Estado del IVA", "Documento aduanero", "NIF-IVA proveedor", "Moneda", "Importe total en moneda original", "Tipo de cambio (por 1 €)"
   );
 
   let totBase = 0;
@@ -57,7 +57,8 @@ export function generarCsvLibroCompras(
       numeroCsv(f.cuotaIvaSoportado || 0), numeroCsv(f.cuotaIvaDeducible), numeroCsv(f.ivaNoDeducible || 0), numeroCsv(f.importeTotal),
       f.categoria ? ETIQUETA_CATEGORIA[f.categoria] : "", f.almacen ? ETIQUETA_ALMACEN[f.almacen] : "",
       ETIQUETA_ESTADO_PAGO[f.estadoPago], f.estadoRevision === "validada" ? "Validada" : "Pendiente",
-      ETIQUETA_TIPO_OPERACION[f.tipoOperacion], ETIQUETA_ESTADO_IVA[f.estadoIva], f.documentoAduanero, f.nifIvaProveedor
+      ETIQUETA_TIPO_OPERACION[f.tipoOperacion], ETIQUETA_ESTADO_IVA[f.estadoIva], f.documentoAduanero, f.nifIvaProveedor,
+      f.moneda || "EUR", f.moneda && f.moneda !== "EUR" && f.totalMonedaOriginal !== null ? numeroCsv(f.totalMonedaOriginal) : "", f.moneda && f.moneda !== "EUR" && f.tipoCambio ? String(f.tipoCambio).replace(".", ",") : ""
     );
     totBase += f.baseImponible;
     totCuotaSoportado += f.cuotaIvaSoportado || 0;
@@ -69,7 +70,7 @@ export function generarCsvLibroCompras(
   fila(
     "", "", "", "", "", "", "", "TOTALES",
     numeroCsv(totBase), "", numeroCsv(totCuotaSoportado), numeroCsv(totCuotaDeducible), "", numeroCsv(totTotal),
-    "", "", "", `${facturas.length} factura${facturas.length !== 1 ? "s" : ""}`, "", "", "", ""
+    "", "", "", `${facturas.length} factura${facturas.length !== 1 ? "s" : ""}`, "", "", "", "", "", "", ""
   );
 
   return `﻿${filas.join("\r\n")}`;
