@@ -463,6 +463,22 @@ export function FacturaRecibidaFormDialog({
     }
   }
 
+  /** Pone en la ficha del proveedor la razón social que trae la factura (el registro contable usa el nombre registrado para el CIF, no el comercial). */
+  async function usarRazonSocialDeLaFactura(nombre: string) {
+    const prov = proveedores.find((p) => p.proveedorId === datos.proveedorId);
+    if (!prov) return;
+    if (!window.confirm(`Se cambiará el nombre de la ficha de «${prov.nombre}» a «${nombre}» (razón social de la factura). ¿Continuar?`)) return;
+    try {
+      const res = await fetch(`/api/proveedores/${encodeURIComponent(prov.proveedorId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre }) });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "Error desconocido");
+      setProveedores((ps) => ps.map((p) => (p.proveedorId === prov.proveedorId ? { ...p, nombre } : p)));
+      toast.success(`Ficha actualizada: ${nombre}`);
+    } catch (e) {
+      toast.error(`No se pudo actualizar la ficha: ${e instanceof Error ? e.message : "error desconocido"}`);
+    }
+  }
+
   function cambiarEstadoIva(estado: EstadoIvaFactura) {
     setIvaDeducidoDelPdf(null);
     if (estado === "sin_cuota") {
@@ -932,6 +948,27 @@ export function FacturaRecibidaFormDialog({
                   </Select>
                   <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setNuevoProveedorAbierto(true)}>Nuevo proveedor</Button>
                 </div>
+                {(() => {
+                  const prov = proveedores.find((p) => p.proveedorId === datos.proveedorId);
+                  const nombreFactura = resumenOcr?.extraido.proveedorNombre?.trim();
+                  const canon = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+                  if (!prov || !nombreFactura || !canon(nombreFactura) || !canon(prov.nombre)) return null;
+                  if (canon(prov.nombre).includes(canon(nombreFactura)) || canon(nombreFactura).includes(canon(prov.nombre))) return null;
+                  return (
+                    <div className="mt-2 flex max-w-2xl flex-wrap items-start gap-x-3 gap-y-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                      <p className="flex min-w-0 flex-1 items-start gap-1.5">
+                        <Warning2 className="mt-0.5 size-3.5 shrink-0" />
+                        <span>
+                          La razón social de la factura (<strong className="font-medium">{nombreFactura}</strong>) no coincide con el nombre de la ficha (<strong className="font-medium">{prov.nombre}</strong>).
+                          El registro contable debe llevar la razón social registrada para el CIF, no un nombre comercial.
+                        </span>
+                      </p>
+                      <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 border-amber-400 bg-white text-amber-900 hover:bg-amber-100" onClick={() => usarRazonSocialDeLaFactura(nombreFactura)}>
+                        Usar la razón social de la factura
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2 lg:grid-cols-4">
