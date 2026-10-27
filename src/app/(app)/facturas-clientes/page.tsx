@@ -841,7 +841,14 @@ export default function FacturasClientesPage() {
                           <TableCell>
                             <SerieBadge numero={f.numero} />
                           </TableCell>
-                          <TableCell className="text-sm">{f.cliente || "—"}</TableCell>
+                          <TableCell className="text-sm">
+                            {f.cliente || "—"}
+                            {f.motivo && (
+                              <span className="block max-w-[260px] truncate text-[11px] font-medium text-amber-700 dark:text-amber-400" title={f.motivo}>
+                                Motivo: {f.motivo}
+                              </span>
+                            )}
+                          </TableCell>
                           <TableCell className="max-w-40 truncate text-sm text-muted-foreground">{f.equipo || "—"}</TableCell>
                           <TableCell className="max-w-32 truncate text-sm text-muted-foreground" title={f.suReferencia || undefined}>{f.suReferencia || "—"}</TableCell>
                           <TableCell className="text-sm whitespace-nowrap">{formatearFecha(f.fecha)}</TableCell>

@@ -93,6 +93,8 @@ export interface FacturaCliente {
       DetalleFacturaManualConTabs) y que la lista lo trate como standalone
       (sin botón "Ver reparación"). */
   esTicketManual?: boolean;
+  /** Motivo escrito al crear una rectificativa o un documento de importe negativo (devolución). */
+  motivo?: string;
   /** Ticket manual de importe negativo cuyo motivo dice que el ticket
       original nunca se cobró: anula el documento pero no devuelve dinero, así
       que no mueve caja ni TPV (TICKETMAN-4-000381, 2026-10-27). */
@@ -395,6 +397,10 @@ interface FilaReparacionFacturadaSql {
   total_ticket_rectificativa: string | number | null;
   fecha_ticket_rectificativa: string | null;
   motivo_ticket_rectificativa: string | null;
+  motivo_rectificativa: string | null;
+  motivo_ticket_negativo: string | null;
+  motivo_ticket_revision_rectificativa: string | null;
+  motivo_ticket_revision_negativo: string | null;
 
   numero_ticket_corregida: string | null;
   url_ticket_corregida: string | null;
@@ -515,6 +521,10 @@ export const COLUMNAS_REPARACION_FACTURADA = [
   "total_ticket_rectificativa",
   "fecha_ticket_rectificativa",
   "motivo_ticket_rectificativa",
+  "motivo_rectificativa",
+  "motivo_ticket_negativo",
+  "motivo_ticket_revision_rectificativa",
+  "motivo_ticket_revision_negativo",
   "numero_ticket_corregida",
   "url_ticket_corregida",
   "total_ticket_corregida",
@@ -728,6 +738,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       estadoFactura: texto(row.estado_factura_rectificativa),
       tipo: "rectificativa",
       tipoOriginal: "reparacion",
+      motivo: texto(row.motivo_rectificativa),
     });
   }
   const numRectRev = texto(row.numero_factura_rectificativa_revision);
@@ -749,6 +760,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       estadoFactura: texto(row.estado_factura_rectificativa),
       tipo: "rectificativa",
       tipoOriginal: "revision",
+      motivo: texto(row.motivo_rectificativa),
     });
   }
 
@@ -813,6 +825,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
         : null,
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
+      motivo: texto(row.motivo_ticket_negativo),
     });
   }
 
@@ -835,6 +848,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       estadoFactura: "Devolución",
       tipo: "rectificativa",
       tipoOriginal: "ticket",
+      motivo: texto(row.motivo_ticket_rectificativa),
     });
   }
 
@@ -874,6 +888,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       estadoFactura: row.estado_ticket_revision === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "revision",
       esTicket: true,
+      motivo: texto(row.motivo_ticket_revision_negativo),
     });
   }
 
@@ -893,6 +908,7 @@ export function expandirFacturas(row: FilaReparacionFacturadaSql): FacturaClient
       estadoFactura: "Devolución",
       tipo: "rectificativa",
       tipoOriginal: "ticket_revision",
+      motivo: texto(row.motivo_ticket_revision_rectificativa),
     });
   }
 
@@ -1050,6 +1066,7 @@ interface FilaAlquilerSql {
       perdió, no se puede reconstruir retroactivamente. */
   cliente_factura_anterior: ClienteFacturaJson | string | null;
   cliente_factura_inicial: ClienteFacturaJson | string | null;
+  motivo_rectificativa?: string | null;
 }
 
 export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<string, string> = {}): FacturaCliente[] {
@@ -1118,6 +1135,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
           : null,
         estadoFactura: "",
         tipo: "rectificativa",
+        motivo: texto(row.motivo_rectificativa),
       });
     }
   }
@@ -1171,6 +1189,7 @@ export function expandirAlquiler(row: FilaAlquilerSql, fechasFactura: Record<str
       banco: texto(row.banco),
       estadoFactura: "",
       tipo: "rectificativa",
+      motivo: texto(row.motivo_rectificativa),
     });
   }
 
@@ -1233,6 +1252,7 @@ interface FilaFacturaManualSql {
   url_factura_rectificativa: string | null;
   total_factura_rectificativa: string | number | null;
   fecha_factura_rectificativa: string | null;
+  motivo_rectificativa?: string | null;
   numero_factura_corregida: string | null;
   url_factura_corregida: string | null;
   total_factura_corregida: string | number | null;
@@ -1276,6 +1296,7 @@ export function expandirManuales(filas: FilaFacturaManualSql[]): FacturaCliente[
         : null,
       estadoFactura: texto(row.estado_factura),
       tipo: "manual",
+      motivo: totalM < 0 ? texto(row.motivo_rectificativa) : undefined,
     });
 
     const numRectM = texto(row.num_factura_rectificativa);
@@ -1294,6 +1315,7 @@ export function expandirManuales(filas: FilaFacturaManualSql[]): FacturaCliente[
           : null,
         estadoFactura: "Devolución",
         tipo: "rectificativa",
+        motivo: texto(row.motivo_rectificativa),
       });
     }
 
@@ -1350,6 +1372,7 @@ interface FilaTicketManualSql {
   cliente_nombre: string | null;
   cliente_email: string | null;
   motivo_ticket_negativo?: string | null;
+  motivo_ticket_rectificativa?: string | null;
 }
 
 /** Documento de importe negativo que no lleva número de rectificativa: una
@@ -1393,6 +1416,7 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
       banco: texto(row.banco_ticket),
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
+      motivo: texto(row.motivo_ticket_negativo),
       sinMovimientoCaja: totalT < 0 && /no se cobr/i.test(texto(row.motivo_ticket_negativo)) ? true : undefined,
     });
 
@@ -1409,6 +1433,7 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
         estadoFactura: "Devolución",
         tipo: "rectificativa",
         tipoOriginal: "ticket",
+        motivo: texto(row.motivo_ticket_rectificativa),
       });
     }
 
@@ -1459,6 +1484,7 @@ interface FilaVentaSql {
   url_factura_rectificativa: string | null;
   total_factura_rectificativa: string | number | null;
   fecha_factura_rectificativa: string | null;
+  motivo_factura_rectificativa?: string | null;
   numero_factura_corregida: string | null;
   url_factura_corregida: string | null;
   total_factura_corregida: string | number | null;
@@ -1482,6 +1508,8 @@ interface FilaVentaSql {
   url_ticket_rectificativa: string | null;
   total_ticket_rectificativa: string | number | null;
   fecha_ticket_rectificativa: string | null;
+  motivo_ticket_rectificativa?: string | null;
+  motivo_ticket_negativo?: string | null;
 
   numero_ticket_corregida: string | null;
   url_ticket_corregida: string | null;
@@ -1529,6 +1557,7 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
         estadoFactura: "Devolución",
         tipo: "rectificativa",
         tipoOriginal: "venta",
+        motivo: texto(row.motivo_factura_rectificativa),
       });
     }
 
@@ -1561,6 +1590,7 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
       banco: texto(row.banco_ticket),
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
+      motivo: texto(row.motivo_ticket_negativo),
     });
 
     const numTRect = texto(row.numero_ticket_rectificativa);
@@ -1576,6 +1606,7 @@ export function expandirVenta(row: FilaVentaSql): FacturaCliente[] {
         estadoFactura: "Devolución",
         tipo: "rectificativa",
         tipoOriginal: "venta_ticket",
+        motivo: texto(row.motivo_ticket_rectificativa),
       });
     }
 
