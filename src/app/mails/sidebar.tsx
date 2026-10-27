@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { Sms, Setting2, Building, CloseCircle, Send2, Magicpen } from "@/lib/icons";
+import { Sms, Setting2, Building, CloseCircle, Send2, Magicpen, Flash } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const GRUPOS: GrupoNavegacionBase[] = [
@@ -24,6 +24,7 @@ const GRUPOS: GrupoNavegacionBase[] = [
     items: [
       { label: "Centro de mails", href: "/mails/bandeja", icon: Sms },
       { label: "Buzones", href: "/mails/buzones", icon: Setting2 },
+      { label: "Respuestas a presupuestos", href: "/mails/respuestas", icon: Flash },
     ],
   },
   {
