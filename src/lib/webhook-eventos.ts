@@ -59,6 +59,7 @@ export const MOTIVO_LABELS: Record<string, string> = {
   APLAZAMIENTO: "El cliente pide aplazar su decisión",
   ERROR_CLASIFICACION_IA: "Error al clasificar la respuesta automáticamente",
   ACEPTACION_CONDICIONADA: "Acepta el presupuesto de forma condicionada",
+  FORMULARIO_REQUIERE_RESPUESTA_MANUAL: "Consulta de un formulario web: debe responderse manualmente",
 };
 
 /** Motivos en los que el cliente formuló una pregunta junto a su respuesta
