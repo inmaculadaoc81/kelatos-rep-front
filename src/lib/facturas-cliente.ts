@@ -93,6 +93,10 @@ export interface FacturaCliente {
       DetalleFacturaManualConTabs) y que la lista lo trate como standalone
       (sin botón "Ver reparación"). */
   esTicketManual?: boolean;
+  /** Ticket manual de importe negativo cuyo motivo dice que el ticket
+      original nunca se cobró: anula el documento pero no devuelve dinero, así
+      que no mueve caja ni TPV (TICKETMAN-4-000381, 2026-10-27). */
+  sinMovimientoCaja?: boolean;
   /** true = viene de kelatos_app.ventas (pedido de piezas) — el
       "resguardo" de estas filas es en realidad el venta_id, de una
       secuencia independiente de la de reparaciones.resguardo. Decide que
@@ -1345,6 +1349,13 @@ interface FilaTicketManualSql {
   estado_ticket_corregida: string | null;
   cliente_nombre: string | null;
   cliente_email: string | null;
+  motivo_ticket_negativo?: string | null;
+}
+
+/** Documento de importe negativo que no lleva número de rectificativa: una
+    factura manual o un ticket manual negativo. Es una devolución, no un cobro. */
+export function esDevolucionNegativa(f: Pick<FacturaCliente, "tipo" | "total" | "esTicketManual">): boolean {
+  return f.total < 0 && (f.tipo === "manual" || (f.tipo === "ticket" && !!f.esTicketManual));
 }
 
 export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCliente[] {
@@ -1382,6 +1393,7 @@ export function expandirTicketsManuales(filas: FilaTicketManualSql[]): FacturaCl
       banco: texto(row.banco_ticket),
       estadoFactura: row.estado_ticket === "Pendiente" ? "Pendiente" : "Cobrada",
       tipo: "ticket",
+      sinMovimientoCaja: totalT < 0 && /no se cobr/i.test(texto(row.motivo_ticket_negativo)) ? true : undefined,
     });
 
     const numRectT = texto(row.numero_ticket_rectificativa);

@@ -8,7 +8,7 @@
  *    (kelatos_app.efectivo_retiradas) → resta.
  * Petición del usuario, 2026-09-21.
  */
-import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConIva } from "@/lib/facturas-cliente";
+import { esDevolucionNegativa, FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConIva } from "@/lib/facturas-cliente";
 
 /** La caja de efectivo empieza a contarse este día (AAAA-MM-DD, hora de
     Madrid): lo cobrado antes no entra en el saldo salvo que se elija
@@ -111,6 +111,7 @@ function redondear(n: number): number {
 export function movimientosDeFacturas(facturas: FacturaCliente[]): MovimientoEfectivo[] {
   const out: MovimientoEfectivo[] = [];
   for (const f of facturas) {
+    if (f.sinMovimientoCaja) continue;
     const esMultiforma = (f.formaPago || "").trim().toLowerCase() === "multiforma";
     const montoEfectivoMulti = esMultiforma ? montoEfectivoDesglose(f.formaPagoDesglose) : 0;
     if (!esFormaPagoEfectivo(f.formaPago) && !(esMultiforma && montoEfectivoMulti > 0)) continue;
@@ -123,7 +124,7 @@ export function movimientosDeFacturas(facturas: FacturaCliente[]): MovimientoEfe
     // absoluto como un COBRO de caja en vez de una devolución (bug real
     // encontrado, 2026-10-06: MANUAL-3-000127/136/139, -200€/-45,29€/-150€
     // sumando de más en "Cobrado" y ausentes de "Devuelto").
-    const esDevolucionManualNegativa = f.tipo === "manual" && f.total < 0;
+    const esDevolucionManualNegativa = esDevolucionNegativa(f);
     const esRectificativa = f.tipo === "rectificativa" || esDevolucionManualNegativa;
     // Un documento Pendiente/Anulado aún no ha movido dinero; una
     // rectificativa sí, siempre (es la devolución del cobro original).

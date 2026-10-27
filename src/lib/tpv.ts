@@ -11,7 +11,7 @@
  * de caja; esto es solo una fila más de reconciliación aquí. Petición del
  * usuario, 2026-10-09/12.
  */
-import { FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConIva } from "@/lib/facturas-cliente";
+import { esDevolucionNegativa, FacturaCliente, ETIQUETA_TIPO_FACTURA, estadoFacturaDerivado, montoConIva } from "@/lib/facturas-cliente";
 import { BANCOS } from "@/lib/bancos";
 
 export const METODOS_TPV = [
@@ -114,11 +114,12 @@ export function segunSistemaPorDia(facturas: FacturaCliente[]): Record<string, R
     const dia = diaMadrid(f.fecha);
     if (!dia) continue;
 
+    if (f.sinMovimientoCaja) continue;
     const esMultiforma = (f.formaPago || "").trim().toLowerCase() === "multiforma";
     // Misma excepción que lib/efectivo.ts: una "Nueva Factura Manual" con
     // total negativo es una devolución creada a mano, aunque no tenga
     // num_factura_rectificativa.
-    const esDevolucionManualNegativa = f.tipo === "manual" && f.total < 0;
+    const esDevolucionManualNegativa = esDevolucionNegativa(f);
     const esRectificativa = f.tipo === "rectificativa" || esDevolucionManualNegativa;
     if (!esRectificativa && estadoFacturaDerivado(f) !== "Cobrada") continue;
 
@@ -200,8 +201,9 @@ export function segunSistemaPorDiaDesglosado(facturas: FacturaCliente[]): Record
     const dia = diaMadrid(f.fecha);
     if (!dia) continue;
 
+    if (f.sinMovimientoCaja) continue;
     const esMultiforma = (f.formaPago || "").trim().toLowerCase() === "multiforma";
-    const esDevolucionManualNegativa = f.tipo === "manual" && f.total < 0;
+    const esDevolucionManualNegativa = esDevolucionNegativa(f);
     const esRectificativa = f.tipo === "rectificativa" || esDevolucionManualNegativa;
     if (!esRectificativa && estadoFacturaDerivado(f) !== "Cobrada") continue;
 
@@ -273,8 +275,9 @@ function conceptoDe(f: FacturaCliente): string {
 export function movimientosDeTpv(facturas: FacturaCliente[]): MovimientoTpv[] {
   const out: MovimientoTpv[] = [];
   for (const f of facturas) {
+    if (f.sinMovimientoCaja) continue;
     const esMultiforma = (f.formaPago || "").trim().toLowerCase() === "multiforma";
-    const esDevolucionManualNegativa = f.tipo === "manual" && f.total < 0;
+    const esDevolucionManualNegativa = esDevolucionNegativa(f);
     const esRectificativa = f.tipo === "rectificativa" || esDevolucionManualNegativa;
     if (!esRectificativa && estadoFacturaDerivado(f) !== "Cobrada") continue;
 
