@@ -205,6 +205,25 @@ export function AsistenteFlotante() {
   const ruta = usePathname();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
+  // Posición del botón (distancia a la esquina inferior derecha). Se arrastra manteniendo pulsado y se recuerda en este navegador.
+  const [pos, setPos] = useState<{ right: number; bottom: number }>({ right: 20, bottom: 20 });
+  const [vp, setVp] = useState({ w: 0, h: 0 });
+  const arrastre = useRef<{ x: number; y: number; right: number; bottom: number; movido: boolean } | null>(null);
+  const posRef = useRef(pos);
+  const ignorarClic = useRef(false);
+  useEffect(() => {
+    // La posición guardada se lee al montar (no en el estado inicial) para no desajustar el HTML del servidor.
+    try {
+      const g = JSON.parse(window.localStorage.getItem("asistente-posicion") || "null");
+      if (g && Number.isFinite(g.right) && Number.isFinite(g.bottom)) { posRef.current = { right: g.right, bottom: g.bottom }; setPos(posRef.current); }
+    } catch { /* sin almacenamiento: posición por defecto */ }
+  }, []);
+  useEffect(() => {
+    const medir = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, []);
   // La conversación se conserva mientras dure la pestaña (no entre sesiones). El panel arranca cerrado, así que
   // leerla al montar no provoca diferencias con el HTML del servidor.
   const [mensajes, setMensajes] = useState<Mensaje[]>(() => {
@@ -597,8 +616,29 @@ export function AsistenteFlotante() {
 
   const ultimo = mensajes.length - 1;
 
+  // Posición efectiva: el botón (48 px) nunca sale de la ventana y el chat se abre hacia donde haya sitio.
+  const BOTON = 48;
+  const limitar = (p: { right: number; bottom: number }) => ({
+    right: Math.min(Math.max(8, p.right), Math.max(8, (vp.w || 1200) - BOTON - 8)),
+    bottom: Math.min(Math.max(8, p.bottom), Math.max(8, (vp.h || 800) - BOTON - 8)),
+  });
+  const p = limitar(pos);
+  const panelAncho = Math.min(448, (vp.w || 1200) - 40);
+  const panelAlto = Math.min(672, (vp.h || 800) - 128);
+  const izq = (vp.w || 1200) - p.right - BOTON; // borde izquierdo del botón
+  const arriba = (vp.h || 800) - p.bottom - BOTON; // borde superior del botón
+  const alineadoIzquierda = abierto && izq + BOTON - panelAncho < 8;
+  const panelDebajo = abierto && arriba - panelAlto - 16 < 8;
+  const estiloContenedor: React.CSSProperties = {
+    ...(alineadoIzquierda ? { left: izq } : { right: p.right }),
+    ...(panelDebajo ? { top: arriba } : { bottom: p.bottom }),
+  };
+
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-4 print:hidden">
+    <div
+      style={estiloContenedor}
+      className={`fixed z-50 flex gap-4 print:hidden ${panelDebajo ? "flex-col-reverse" : "flex-col"} ${alineadoIzquierda ? "items-start" : "items-end"}`}
+    >
       {abierto && (
         <div
           role="dialog"
@@ -874,15 +914,42 @@ export function AsistenteFlotante() {
 
       <button
         type="button"
-        onClick={() => setAbierto((a) => !a)}
+        onClick={() => { if (ignorarClic.current) return; setAbierto((a) => !a); }}
+        onPointerDown={(e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          arrastre.current = { x: e.clientX, y: e.clientY, right: p.right, bottom: p.bottom, movido: false };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const a = arrastre.current;
+          if (!a) return;
+          const dx = e.clientX - a.x;
+          const dy = e.clientY - a.y;
+          if (!a.movido && Math.hypot(dx, dy) < 6) return;
+          a.movido = true;
+          const nueva = limitar({ right: a.right - dx, bottom: a.bottom - dy });
+          posRef.current = nueva;
+          setPos(nueva);
+        }}
+        onPointerUp={() => {
+          const a = arrastre.current;
+          arrastre.current = null;
+          if (!a?.movido) return;
+          // Tras arrastrar no debe contar como clic (abriría o cerraría el chat).
+          ignorarClic.current = true;
+          setTimeout(() => { ignorarClic.current = false; }, 0);
+          try { window.localStorage.setItem("asistente-posicion", JSON.stringify(posRef.current)); } catch { /* sin almacenamiento */ }
+        }}
+        onPointerCancel={() => { arrastre.current = null; }}
         aria-label={abierto ? "Cerrar el asistente" : "Abrir el asistente de ayuda"}
-        title="Asistente de ayuda"
+        title="Asistente de ayuda (mantén pulsado y arrastra para moverlo)"
         style={{
           boxShadow: "0 6px 20px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12)",
+          touchAction: "none",
         }}
-        className="flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform duration-200 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex size-12 cursor-grab items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:cursor-grabbing"
       >
-        {abierto ? <CloseCircle className="size-7" /> : <IconoDestellos className="size-7" />}
+        {abierto ? <CloseCircle className="size-6" /> : <IconoDestellos className="size-6" />}
       </button>
     </div>
   );
