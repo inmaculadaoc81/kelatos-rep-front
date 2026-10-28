@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2, Edit2, Star, Trash, Folder2, RotateLeft, Eye, Category, Forward, Copy } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2, Edit2, Star, Trash, Folder2, RotateLeft, Eye, Category, Forward, Copy, Danger } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +26,7 @@ const CARPETAS: { vista: Vista; etiqueta: string; icono: typeof Sms; contador: k
   { vista: "destacados", etiqueta: "Destacados", icono: Star, contador: "destacados", color: "from-amber-500 to-amber-600" },
   { vista: "enviados", etiqueta: "Enviados", icono: Send2, contador: "enviados", color: "from-indigo-500 to-indigo-600" },
   { vista: "archivo", etiqueta: "Archivo", icono: Folder2, contador: "archivo", color: "from-violet-500 to-violet-600" },
+  { vista: "spam", etiqueta: "Spam", icono: Danger, contador: "spam", color: "from-orange-500 to-orange-600" },
   { vista: "rebotes", etiqueta: "Rebotes", icono: CloseCircle, contador: "rebotes", color: "from-red-500 to-red-600" },
   { vista: "papelera", etiqueta: "Papelera", icono: Trash, contador: "papelera", color: "from-zinc-500 to-zinc-600" },
 ];
@@ -578,6 +579,14 @@ export default function CentroMailsPage() {
                       onClick={() => accionSeleccion(vista === "archivo" ? "desarchivar" : "archivar", vista === "archivo" ? "Devuelto a la bandeja" : "Archivado", true)}
                     >
                       <Folder2 className="size-3.5" /> {vista === "archivo" ? "Desarchivar" : "Archivar"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1"
+                      onClick={() => accionSeleccion(vista === "spam" ? "no_spam" : "spam", vista === "spam" ? "Devuelto a la bandeja (no es spam)" : "Marcado como spam", true)}
+                    >
+                      <Danger className="size-3.5" /> {vista === "spam" ? "No es spam" : "Spam"}
                     </Button>
                     <Button
                       size="sm"

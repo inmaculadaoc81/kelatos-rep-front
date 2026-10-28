@@ -45,7 +45,7 @@ export interface LeadVinculado {
 }
 
 /** Carpetas del Centro de mails. */
-export type Vista = "todos" | "entrada" | "destacados" | "enviados" | "archivo" | "rebotes" | "papelera";
+export type Vista = "todos" | "entrada" | "destacados" | "enviados" | "archivo" | "spam" | "rebotes" | "papelera";
 
 export interface AdjuntoMail {
   id: number;
@@ -121,11 +121,12 @@ export interface ContadoresMensajes {
   destacados: number;
   enviados: number;
   archivo: number;
+  spam: number;
   rebotes: number;
   papelera: number;
 }
 
-export const CONTADORES_VACIOS: ContadoresMensajes = { todos: 0, entrada: 0, sin_leer: 0, destacados: 0, enviados: 0, archivo: 0, rebotes: 0, papelera: 0 };
+export const CONTADORES_VACIOS: ContadoresMensajes = { todos: 0, entrada: 0, sin_leer: 0, destacados: 0, enviados: 0, archivo: 0, spam: 0, rebotes: 0, papelera: 0 };
 
 // ── Leads ────────────────────────────────────────────────────────────────
 
