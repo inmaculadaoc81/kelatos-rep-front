@@ -60,11 +60,12 @@ export const MOTIVO_LABELS: Record<string, string> = {
   ERROR_CLASIFICACION_IA: "Error al clasificar la respuesta automáticamente",
   ACEPTACION_CONDICIONADA: "Acepta el presupuesto de forma condicionada",
   FORMULARIO_REQUIERE_RESPUESTA_MANUAL: "Consulta de un formulario web: debe responderse manualmente",
+  CORREO_REQUIERE_RESPUESTA_MANUAL: "Correo de un cliente que el sistema no contesta solo: debe responderlo una persona",
 };
 
 /** Tipo de aviso: consulta de un formulario web (hay que contestarla) o respuesta de un cliente a un presupuesto de reparación. */
 export function tipoDeEvento(e: Pick<WebhookEvento, "motivo">): "consulta_web" | "presupuesto" {
-  return e.motivo === "FORMULARIO_REQUIERE_RESPUESTA_MANUAL" ? "consulta_web" : "presupuesto";
+  return e.motivo === "FORMULARIO_REQUIERE_RESPUESTA_MANUAL" || e.motivo === "CORREO_REQUIERE_RESPUESTA_MANUAL" ? "consulta_web" : "presupuesto";
 }
 
 /** Enlace al mensaje del cliente en el módulo Mails. Una consulta web llega desde el buzón del formulario, así que se busca por el email del cliente dentro del
