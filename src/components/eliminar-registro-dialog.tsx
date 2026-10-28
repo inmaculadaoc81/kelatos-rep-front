@@ -102,7 +102,7 @@ export function EliminarRegistroDialog({
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
+      <DialogContent className="w-full gap-0 overflow-hidden p-0 sm:max-w-lg [&>*]:min-w-0" showCloseButton={false}>
         <header className="flex items-center gap-2 rounded-t-xl bg-destructive px-4 py-3 text-destructive-foreground">
           <Trash className="size-4.5 shrink-0" />
           <DialogTitle className="text-sm font-semibold text-destructive-foreground">Eliminar {tipo}</DialogTitle>
@@ -111,7 +111,7 @@ export function EliminarRegistroDialog({
           </Button>
         </header>
 
-        <div className="space-y-3 p-4">
+        <div className="min-w-0 space-y-3 overflow-x-hidden p-4">
           <p className="text-sm text-muted-foreground">
             Esto borra el registro <strong className="text-foreground">{id}</strong> de la base de datos de forma permanente. Queda registrado en la auditoría interna, pero no se puede deshacer desde aquí.
           </p>
@@ -136,18 +136,18 @@ export function EliminarRegistroDialog({
             )}
             {preview && filasConDatos.length > 0 && (
               <div className="overflow-hidden rounded-md border">
-                <Table>
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-8 text-xs">Tabla</TableHead>
-                      <TableHead className="h-8 text-right text-xs">Filas</TableHead>
+                      <TableHead className="h-8 w-16 text-right text-xs">Filas</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filasConDatos.map((f) => (
                       <TableRow key={f.tabla}>
-                        <TableCell className="py-1.5 text-sm capitalize">{f.tabla}</TableCell>
-                        <TableCell className="py-1.5 text-right text-sm tabular-nums">{f.cantidad}</TableCell>
+                        <TableCell className="whitespace-normal break-words py-1.5 text-sm first-letter:uppercase">{f.tabla}</TableCell>
+                        <TableCell className="w-16 py-1.5 text-right text-sm tabular-nums">{f.cantidad}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
