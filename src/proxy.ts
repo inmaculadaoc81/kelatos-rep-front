@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
+import { comprobarAccesoLocal } from "@/lib/acceso-local";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -11,12 +12,18 @@ import { esProgramadorContenido } from "@/lib/programador-contenido";
  * en el callback signIn de src/auth.ts; aquí solo se exige que exista
  * una sesión válida.
  */
-export default auth((req) => {
+export default auth(async (req) => {
   const isAuthed = !!req.auth?.user;
   if (!isAuthed) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     return NextResponse.redirect(loginUrl);
   }
+  // Acceso restringido al local: solo afecta a UNA cuenta configurada en el backend (hoy soporte@kelatos.com); administradores y
+  // superadmins quedan siempre exentos. Ver src/lib/acceso-local.ts (modo «observar» por defecto: no bloquea, solo anota la IP).
+  const bloqueoLocal = await comprobarAccesoLocal(
+    req, req.auth?.user?.email, req.auth?.user?.role === "admin" || esSuperadmin(req.auth?.user?.email)
+  );
+  if (bloqueoLocal) return bloqueoLocal;
   // Configuración (lista de usuarios) es solo para el Administrador.
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
