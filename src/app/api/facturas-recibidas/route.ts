@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearFacturaRecibida } from "@/lib/facturas-recibidas";
 
-const PARAMETROS = ["q", "proveedorId", "almacen", "estadoPago", "estadoRevision", "soloDuplicados", "desde", "hasta", "limit", "offset"];
+const PARAMETROS = ["q", "proveedorId", "almacen", "estadoPago", "estadoRevision", "soloDuplicados", "desde", "hasta", "limit", "offset", "proveedor", "numero", "regDesde", "regHasta", "baseMin", "baseMax", "totalMin", "totalMax"];
 
 export async function GET(req: Request) {
   try {

@@ -15,6 +15,33 @@ import {
 import { generarCsvLibroCompras, descargarCsv } from "@/lib/libro-compras-csv";
 import { InfoVista } from "../contabilidad/_ui";
 import { FacturaRecibidaFormDialog } from "./factura-recibida-form-dialog";
+import { ColumnaFiltroTexto, ColumnaFiltroFechas, ColumnaFiltroOpciones, type RangoFechas } from "./columna-filtro-simple";
+import { ColumnaFiltroRango, type RangoFiltro } from "../reporte-facturas/columna-filtro-rango";
+
+/** Filtros de las cabeceras de la tabla (Proveedor, Nº factura, Fecha, Registrada, Base, Total). */
+interface FiltrosColumna {
+  proveedor: string;
+  numero: string;
+  fecha: RangoFechas;
+  registrada: RangoFechas;
+  base: RangoFiltro | null;
+  total: RangoFiltro | null;
+}
+const SIN_FILTROS_COLUMNA: FiltrosColumna = { proveedor: "", numero: "", fecha: { desde: "", hasta: "" }, registrada: { desde: "", hasta: "" }, base: null, total: null };
+
+function paramsDeColumnas(p: URLSearchParams, f: FiltrosColumna) {
+  if (f.proveedor) p.set("proveedor", f.proveedor);
+  if (f.numero) p.set("numero", f.numero);
+  if (f.fecha.desde) p.set("desde", f.fecha.desde);
+  if (f.fecha.hasta) p.set("hasta", f.fecha.hasta);
+  if (f.registrada.desde) p.set("regDesde", f.registrada.desde);
+  if (f.registrada.hasta) p.set("regHasta", f.registrada.hasta);
+  if (f.base?.min != null) p.set("baseMin", String(f.base.min));
+  if (f.base?.max != null) p.set("baseMax", String(f.base.max));
+  if (f.total?.min != null) p.set("totalMin", String(f.total.min));
+  if (f.total?.max != null) p.set("totalMax", String(f.total.max));
+}
+const hayFiltrosColumna = (f: FiltrosColumna) => !!(f.proveedor || f.numero || f.fecha.desde || f.fecha.hasta || f.registrada.desde || f.registrada.hasta || f.base || f.total);
 
 const FILAS_POR_PAGINA_OPCIONES = ["15", "20", "30", "40", "50", "100"];
 
@@ -40,7 +67,10 @@ export default function FacturasRecibidasPage() {
   const [almacen, setAlmacen] = useState<AlmacenFactura | "">("");
   const [estadoPago, setEstadoPago] = useState<EstadoPagoFactura | "">("");
   const [soloDuplicados, setSoloDuplicados] = useState(false);
-  const [soloRevision, setSoloRevision] = useState(false);
+  const [estadoRevision, setEstadoRevision] = useState<"" | "pendiente" | "validada">("");
+  const soloRevision = estadoRevision === "pendiente";
+  const setSoloRevision = (v: boolean) => setEstadoRevision(v ? "pendiente" : "");
+  const [fc, setFc] = useState<FiltrosColumna>(SIN_FILTROS_COLUMNA);
   const [carpetasDrive, setCarpetasDrive] = useState<{ stock: { url: string }; servicio: { url: string } } | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
@@ -64,16 +94,17 @@ export default function FacturasRecibidasPage() {
       if (almacen) p.set("almacen", almacen);
       if (estadoPago) p.set("estadoPago", estadoPago);
       if (soloDuplicados) p.set("soloDuplicados", "true");
-      if (soloRevision) p.set("estadoRevision", "pendiente");
+      if (estadoRevision) p.set("estadoRevision", estadoRevision);
       if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
+      paramsDeColumnas(p, fc);
       return p.toString();
     },
-    [almacen, estadoPago, soloDuplicados, soloRevision, busquedaAplicada]
+    [almacen, estadoPago, soloDuplicados, estadoRevision, busquedaAplicada, fc]
   );
 
   useEffect(() => {
     setPagina(1);
-  }, [almacen, estadoPago, soloDuplicados, soloRevision, busquedaAplicada, filasPorPagina]);
+  }, [almacen, estadoPago, soloDuplicados, estadoRevision, busquedaAplicada, filasPorPagina, fc]);
 
   useEffect(() => {
     fetch("/api/facturas-recibidas/carpetas-drive").then((r) => r.json()).then((d) => { if (d.ok) setCarpetasDrive(d.carpetas); }).catch(() => {});
@@ -117,8 +148,9 @@ export default function FacturasRecibidasPage() {
         if (almacen) p.set("almacen", almacen);
         if (estadoPago) p.set("estadoPago", estadoPago);
         if (soloDuplicados) p.set("soloDuplicados", "true");
-        if (soloRevision) p.set("estadoRevision", "pendiente");
+        if (estadoRevision) p.set("estadoRevision", estadoRevision);
         if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
+        paramsDeColumnas(p, fc);
         const res = await fetch(`/api/facturas-recibidas?${p.toString()}`);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -141,7 +173,7 @@ export default function FacturasRecibidasPage() {
     }
   }
 
-  const hayFiltros = !!(almacen || estadoPago || soloDuplicados || soloRevision);
+  const hayFiltros = !!(almacen || estadoPago || soloDuplicados || estadoRevision) || hayFiltrosColumna(fc);
   const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
   const inicio = total === 0 ? 0 : (pagina - 1) * filasPorPagina;
   const fin = Math.min(inicio + filasPorPagina, total);
@@ -209,7 +241,7 @@ export default function FacturasRecibidasPage() {
         <button
           type="button"
           className="flex items-center gap-2.5 rounded-lg border bg-card p-2.5 text-left transition-colors hover:bg-muted/40"
-          onClick={() => setSoloRevision((v) => !v)}
+          onClick={() => setSoloRevision(!soloRevision)}
           aria-pressed={soloRevision}
           title="Filtrar las facturas pendientes de revisión manual"
         >
@@ -262,7 +294,7 @@ export default function FacturasRecibidasPage() {
           </SelectContent>
         </Select>
         {hayFiltros && (
-          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setAlmacen(""); setEstadoPago(""); setSoloDuplicados(false); setSoloRevision(false); }}>
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setAlmacen(""); setEstadoPago(""); setSoloDuplicados(false); setEstadoRevision(""); setFc(SIN_FILTROS_COLUMNA); }}>
             Quitar filtros
           </Button>
         )}
@@ -274,15 +306,15 @@ export default function FacturasRecibidasPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Proveedor</TableHead>
-              <TableHead>Nº factura</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Registrada</TableHead>
-              <TableHead>Almacén</TableHead>
-              <TableHead className="text-right">Base</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Estado de pago</TableHead>
-              <TableHead>Revisión</TableHead>
+              <TableHead>Proveedor<ColumnaFiltroTexto valor={fc.proveedor} placeholder="Nombre del proveedor…" onAplicar={(v) => setFc((x) => ({ ...x, proveedor: v }))} /></TableHead>
+              <TableHead>Nº factura<ColumnaFiltroTexto valor={fc.numero} placeholder="Nº de factura o REC-…" onAplicar={(v) => setFc((x) => ({ ...x, numero: v }))} /></TableHead>
+              <TableHead>Fecha<ColumnaFiltroFechas valor={fc.fecha} onAplicar={(r) => setFc((x) => ({ ...x, fecha: r }))} /></TableHead>
+              <TableHead>Registrada<ColumnaFiltroFechas valor={fc.registrada} onAplicar={(r) => setFc((x) => ({ ...x, registrada: r }))} /></TableHead>
+              <TableHead>Almacén<ColumnaFiltroOpciones valor={almacen} opciones={[{ id: "servicio", etiqueta: "Servicio" }, { id: "stock", etiqueta: "Stock" }]} onAplicar={(v) => setAlmacen(v === "servicio" || v === "stock" ? v : "")} /></TableHead>
+              <TableHead className="text-right">Base<ColumnaFiltroRango seleccion={fc.base} onAplicar={(r) => setFc((x) => ({ ...x, base: r }))} /></TableHead>
+              <TableHead className="text-right">Total<ColumnaFiltroRango seleccion={fc.total} onAplicar={(r) => setFc((x) => ({ ...x, total: r }))} /></TableHead>
+              <TableHead>Estado de pago<ColumnaFiltroOpciones valor={estadoPago} opciones={[{ id: "pendiente", etiqueta: "Pendiente" }, { id: "parcial", etiqueta: "Parcial" }, { id: "pagada", etiqueta: "Pagada" }]} onAplicar={(v) => setEstadoPago(v === "pendiente" || v === "parcial" || v === "pagada" ? v : "")} /></TableHead>
+              <TableHead>Revisión<ColumnaFiltroOpciones valor={estadoRevision} opciones={[{ id: "pendiente", etiqueta: "Pendiente de revisión" }, { id: "validada", etiqueta: "Validada" }]} onAplicar={(v) => setEstadoRevision(v === "pendiente" || v === "validada" ? v : "")} /></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
