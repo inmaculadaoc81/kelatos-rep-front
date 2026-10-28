@@ -239,6 +239,23 @@ export default function CentroMailsPage() {
     }
   }
 
+  /** Tras enviar una respuesta, vuelve a cargar la conversación abierta para que aparezca el mensaje nuevo (y desaparezca el borrador de la IA). */
+  async function recargarSeleccion() {
+    if (!seleccionado) return;
+    try {
+      const res = await fetch(`/api/mails/mensajes/${seleccionado.id}/hilo`);
+      const data = await res.json();
+      if (!data.ok) return;
+      const lista = data.mensajes as MensajeHilo[];
+      if (lista.length < 2) return;
+      setDetalle(null);
+      setHilo(lista);
+      setAbiertos(new Set([lista[lista.length - 1]?.id]));
+    } catch {
+      /* la lista se refresca sola cada minuto */
+    }
+  }
+
   async function abrir(m: MensajeLista) {
     setSeleccionado(m);
     setDetalle(null);
@@ -780,7 +797,7 @@ export default function CentroMailsPage() {
           borrador={redactar.borrador}
           open={redactar.abierto}
           onOpenChange={(o) => setRedactar((r) => ({ ...r, abierto: o }))}
-          onEnviado={() => { cargar(); cargarBuzones(); }}
+          onEnviado={() => { cargar(); cargarBuzones(); recargarSeleccion(); }}
         />
       )}
 
