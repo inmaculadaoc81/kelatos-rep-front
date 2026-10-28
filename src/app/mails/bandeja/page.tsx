@@ -625,14 +625,6 @@ export default function CentroMailsPage() {
                     >
                       <Danger className="size-3.5" /> {vista === "spam" ? "No es spam" : "Spam"}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 gap-1 text-destructive hover:text-destructive"
-                      onClick={() => accionSeleccion("papelera", "Enviado a la papelera (se puede restaurar)", true)}
-                    >
-                      <Trash className="size-3.5" /> Borrar
-                    </Button>
                   </>
                 )}
                 {enPapelera && (
