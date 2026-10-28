@@ -615,6 +615,29 @@ export default function CentroMailsPage() {
                 <span className="ml-auto text-[11px] text-muted-foreground">Solo cambia en el app; el buzón no se toca</span>
               </div>
 
+              {/* Borrador de la IA para un formulario web que aún no tiene respuesta */}
+              {(() => {
+                const msgs = hilo ?? (detalle ? [detalle] : []);
+                const conForm = msgs.find((x) => x.formulario?.borrador);
+                const f = conForm?.formulario;
+                if (!conForm || !f || !f.borrador || f.envio_estado === "enviado" || msgs.some((x) => x.direccion === "salida")) return null;
+                return (
+                  <div className="space-y-2 border-b bg-amber-50 p-3 text-sm dark:bg-amber-950/20">
+                    <p className="font-medium">
+                      Borrador de respuesta de la IA <span className="font-normal text-muted-foreground">· {f.clasificacion === "atencion_humana" ? "retenido para revisión manual" : "pendiente de envío"}</span>
+                    </p>
+                    {f.resumen && <p className="text-xs text-muted-foreground">{f.resumen}</p>}
+                    <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-md border bg-background p-2.5 font-sans text-sm">{f.borrador}</pre>
+                    <Button
+                      size="sm"
+                      onClick={() => abrirRedactar({ ...borradorRespuesta(conForm), para: f.email_cliente || conForm.remitente, texto: f.borrador as string })}
+                    >
+                      <Edit2 className="mr-1 size-3.5" /> Revisar y enviar al cliente
+                    </Button>
+                  </div>
+                );
+              })()}
+
               {/* Conversación */}
               {hilo && (
                 <div className="flex-1 overflow-y-auto">

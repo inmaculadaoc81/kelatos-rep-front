@@ -103,6 +103,8 @@ export interface MensajeHilo {
   eliminado_en: string | null;
   enviado_por: string | null;
   adjuntos: AdjuntoMail[];
+  /** Si es un formulario web: lo que decidió la IA (borrador de respuesta incluido). */
+  formulario?: { clasificacion: string | null; resumen: string | null; borrador: string | null; envio_estado: string | null; email_cliente: string | null; motivo: string | null } | null;
 }
 
 export interface MensajeDetalle extends MensajeHilo {
