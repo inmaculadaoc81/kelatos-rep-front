@@ -839,7 +839,7 @@ export function FacturaRecibidaFormDialog({
         setAvisoIntra({
           texto: conIva
             ? `Proveedor de ${ue.nombrePais} (${ue.nifIva || "sin NIF-IVA"}): marcada como compra intracomunitaria. Pero la factura cobra IVA (${cuotaLeida.toFixed(2)} €), y en una compra intracomunitaria con NIF-IVA válido no corresponde: pide al proveedor una factura sin IVA (o rectificada) antes de contabilizarla.`
-            : `Proveedor de ${ue.nombrePais} (${ue.nifIva || "sin NIF-IVA"}): marcada como compra intracomunitaria; la factura no cobra IVA, como corresponde. Revisa que el NIF-IVA sea válido en VIES.`,
+            : `Proveedor de ${ue.nombrePais} (${ue.nifIva || "sin NIF-IVA"}): marcada como compra intracomunitaria; la factura no cobra IVA, como corresponde.`,
           conIva,
         });
       }
