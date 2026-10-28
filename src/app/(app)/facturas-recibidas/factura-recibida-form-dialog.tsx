@@ -671,12 +671,23 @@ export function FacturaRecibidaFormDialog({
           : undefined,
       };
       const url = esEdicion ? `/api/facturas-recibidas/${facturaExistente!.id}` : "/api/facturas-recibidas";
-      const res = await fetch(url, {
-        method: esEdicion ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const enviar = async (confirmarDuplicado: boolean) => {
+        const r = await fetch(url, {
+          method: esEdicion ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(confirmarDuplicado ? { ...payload, confirmarDuplicado: true } : payload),
+        });
+        return r.json();
+      };
+      let data = await enviar(false);
+      // Mismo proveedor y número que otra factura ya registrada: se pide confirmación expresa antes de duplicarla (y de sumar su stock otra vez).
+      if (!data.ok && typeof data.error === "string" && data.error.startsWith("DUPLICADO:")) {
+        if (!window.confirm(`${data.error.replace(/^DUPLICADO:\s*/, "")}\n\n¿Registrarla igualmente?`)) {
+          setEnviando(false);
+          return;
+        }
+        data = await enviar(true);
+      }
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (data.factura.posibleDuplicado && !data.factura.duplicadoConfirmado) toast.warning(`Aviso: ya existe otra factura del mismo proveedor con el número "${datos.numeroFacturaProveedor}"`);
 
