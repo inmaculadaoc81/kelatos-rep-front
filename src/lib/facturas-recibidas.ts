@@ -49,8 +49,8 @@ export function motivoNombrePiezaInvalido(nombre: string, ref: { numeroFactura?:
   const n = (nombre || "").replace(/\s+/g, " ").trim();
   if (n.length < 5) return "el nombre es demasiado corto";
   if ((n.match(/\p{L}/gu) || []).length < 4) return "el nombre casi no tiene letras";
-  if (/^(art[ií]culos?|productos?|items?|pedidos?|compras?|facturas?|concepto|varios|sin nombre|desconocid[oa]|n\/a|test|prueba)/i.test(n)) return "es un nombre genérico, no el nombre del producto";
-  if (/(factura|pedido|order|invoice|albar[aá]n)/i.test(n) && /\d[\d-]{4,}/.test(n)) return "parece un número de factura o de pedido, no un producto";
+  if (/^(art[ií]culos?|productos?|items?|pedidos?|compras?|facturas?|concepto|varios|sin nombre|desconocid[oa]|n\/a|test|prueba)\b/i.test(n)) return "es un nombre genérico, no el nombre del producto";
+  if (/\b(factura|pedido|order|invoice|albar[aá]n)\b/i.test(n) && /\d[\d-]{4,}/.test(n)) return "parece un número de factura o de pedido, no un producto";
   const bajo = n.toLowerCase();
   for (const r of [ref.numeroFactura, ref.idPedido]) {
     const x = (r || "").trim().toLowerCase();
