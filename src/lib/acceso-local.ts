@@ -13,7 +13,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * (API caída, lenta) se deja pasar. Solo la cuenta restringida puede verse afectada por un error.
  */
 
-type ConfigAccesoLocal = { cuenta: string; modo: "apagado" | "observar" | "bloquear"; ips: string[] };
+type ConfigAccesoLocal = { cuenta: string; modo: "apagado" | "observar" | "bloquear"; ips: string[]; ipsDinamicas: string[] };
 
 const BASE_URL = process.env.KELATOS_API_BASE_URL;
 const TOKEN = process.env.KELATOS_API_TOKEN;
@@ -42,7 +42,7 @@ async function configVigente(): Promise<ConfigAccesoLocal | null> {
   if (ahora < cache.hasta) return cache.valor;
   try {
     const c = (await llamarApi("/v1/seguridad/acceso-local/config")) as { ok?: boolean } & Partial<ConfigAccesoLocal>;
-    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), modo: c.modo, ips: c.ips }, hasta: ahora + TTL_CONFIG_MS };
+    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), modo: c.modo, ips: c.ips, ipsDinamicas: Array.isArray(c.ipsDinamicas) ? c.ipsDinamicas : [] }, hasta: ahora + TTL_CONFIG_MS };
     else cache = { valor: cache.valor, hasta: ahora + REINTENTO_TRAS_FALLO_MS };
   } catch {
     // Sin poder leer la configuración se deja pasar (se conserva la última conocida).
@@ -82,7 +82,8 @@ export async function comprobarAccesoLocal(req: NextRequest, email: string | nul
   if (!cfg || cfg.modo === "apagado" || email.toLowerCase() !== cfg.cuenta) return null;
 
   const ip = ipDelCliente(req);
-  const dentro = cfg.ips.includes(ip);
+  // Dentro = IP fija de la lista o IP que el propio local ha anunciado hace poco (latido; el proveedor del local cambia la IP).
+  const dentro = cfg.ips.includes(ip) || cfg.ipsDinamicas.includes(ip);
   anotarVisita(email.toLowerCase(), ip, req, !dentro);
   if (cfg.modo !== "bloquear" || dentro) return null;
 
