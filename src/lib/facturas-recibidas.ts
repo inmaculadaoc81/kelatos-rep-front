@@ -50,6 +50,7 @@ export interface LecturaOcrGuardada {
     proveedorNombre: string | null; proveedorDniCif: string | null; numeroFacturaProveedor: string | null; serieProveedor: string | null;
     tipoDocumento: TipoDocumentoFactura | null; fechaExpedicion: string | null; baseImponible: number | null; tipoIva: number | null;
     cuotaIvaSoportado: number | null; importeTotal: number | null; descripcion: string | null; advertencias: string[]; receptorCoincide?: boolean;
+    receptorCifEncontrado?: boolean; receptorNombreEncontrado?: boolean;
   };
   proveedorEncontrado: boolean;
   proveedorCreado: boolean;

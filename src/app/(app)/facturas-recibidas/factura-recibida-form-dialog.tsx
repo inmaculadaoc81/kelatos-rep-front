@@ -285,7 +285,7 @@ function motivoSinDeducirIva(e: FacturaOcrExtraido): string {
 const MENSAJE_SOLO_PDF = "Las facturas solo se pueden cargar en PDF (la gestoría solo recibe PDF). Conviértela a PDF y vuelve a subirla.";
 const esPdf = (a: File) => a.type === "application/pdf" || /\.pdf$/i.test(a.name);
 
-function DatosEmpresaReceptora({ noCoincide }: { noCoincide?: boolean }) {
+function DatosEmpresaReceptora({ noCoincide, verificacion }: { noCoincide?: boolean; verificacion?: { cif: boolean; nombre: boolean } | null }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-dashed px-4 py-2.5 text-xs text-muted-foreground", noCoincide ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20" : "bg-muted/30")}>
       <span className="flex items-center gap-1.5 font-medium text-foreground">
@@ -295,6 +295,19 @@ function DatosEmpresaReceptora({ noCoincide }: { noCoincide?: boolean }) {
         <span className="flex w-full items-center gap-1.5 font-medium text-amber-800 dark:text-amber-300">
           <Warning2 className="size-3.5 shrink-0" /> Esta factura no muestra los datos de Affirma (ni el CIF ni el nombre): puede no estar a nombre de la empresa. Compruébalo con el archivo antes de registrarla.
         </span>
+      )}
+      {!noCoincide && verificacion && (verificacion.cif || verificacion.nombre) && (
+        <span className={cn("flex w-full items-center gap-1.5 font-medium", verificacion.cif && verificacion.nombre ? "text-emerald-700 dark:text-emerald-400" : "text-amber-800 dark:text-amber-300")}>
+          {verificacion.cif && verificacion.nombre ? <TickCircle className="size-3.5 shrink-0" /> : <Warning2 className="size-3.5 shrink-0" />}
+          {verificacion.cif && verificacion.nombre
+            ? "Verificado: el CIF y el nombre de Affirma aparecen en la factura."
+            : verificacion.cif
+              ? "Verificado el CIF de Affirma en la factura; el nombre no aparece tal cual (comprueba que es a nombre de la empresa)."
+              : "Aparece el nombre de Affirma pero no su CIF en la factura: comprueba que los datos fiscales son correctos."}
+        </span>
+      )}
+      {!noCoincide && !verificacion && (
+        <span className="flex w-full items-center gap-1.5 text-muted-foreground">Sin verificar: esta factura no se leyó con IA. Comprueba tú que aparecen los datos de Affirma.</span>
       )}
       <span>{DATOS_EMPRESA.razonSocial} <span className="text-muted-foreground/70">({DATOS_EMPRESA.nombreComercial})</span></span>
       <span>CIF: {DATOS_EMPRESA.cif}</span>
@@ -946,7 +959,10 @@ export function FacturaRecibidaFormDialog({
           <div className="flex min-h-0 flex-1">
           <ScrollArea className="min-h-0 min-w-0 flex-1">
           <div className="space-y-4 p-4">
-            <DatosEmpresaReceptora noCoincide={resumenOcr?.extraido.receptorCoincide === false} />
+            <DatosEmpresaReceptora
+              noCoincide={lecturaPanel?.extraido.receptorCoincide === false}
+              verificacion={lecturaPanel?.extraido.receptorCoincide === true ? { cif: lecturaPanel.extraido.receptorCifEncontrado ?? true, nombre: lecturaPanel.extraido.receptorNombreEncontrado ?? true } : null}
+            />
 
             {mostrarAvisoDuplicado && (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">

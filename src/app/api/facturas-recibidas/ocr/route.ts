@@ -23,6 +23,9 @@ export interface FacturaOcrExtraido {
   advertencias: string[];
   /** ¿Aparecen en el documento los datos de Affirma (CIF o nombre)? false = la factura puede no estar a nombre de la empresa. */
   receptorCoincide?: boolean;
+  /** Detalle de la comprobación: ¿aparece el CIF de Affirma? ¿y su nombre? */
+  receptorCifEncontrado?: boolean;
+  receptorNombreEncontrado?: boolean;
 }
 
 /** Un artículo detectado en la factura (p. ej. "CARGADOR ORIGINAL DYSON
