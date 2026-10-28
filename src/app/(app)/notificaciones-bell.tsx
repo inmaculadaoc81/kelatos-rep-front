@@ -15,7 +15,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { MOTIVO_LABELS, esConsultaCliente, type WebhookEvento } from "@/lib/webhook-eventos";
+import { MOTIVO_LABELS, esConsultaCliente, tipoDeEvento, type WebhookEvento } from "@/lib/webhook-eventos";
 import { limpiarRespuestaCliente } from "@/lib/texto";
 import { toast } from "sonner";
 import { useSondeoVisible } from "@/hooks/use-sondeo-visible";
@@ -27,7 +27,7 @@ interface PresupuestoPendiente {
 }
 
 type FiltroFecha = "todas" | "hoy" | "ayer" | "semana" | "mes" | "mes_anterior";
-type FiltroTipo = "todos" | "Aviso" | "Aceptado" | "Rechazado";
+type FiltroTipo = "todos" | "consulta_web" | "Aviso" | "Aceptado" | "Rechazado";
 
 // Apagado temporalmente a petición del usuario, 2026-09-05 — el backend
 // (POST /v1/webhook-eventos/:id/responder) sigue desplegado y probado,
@@ -45,9 +45,10 @@ const FILTROS_FECHA: { valor: FiltroFecha; label: string }[] = [
 
 const FILTROS_TIPO: { valor: FiltroTipo; label: string }[] = [
   { valor: "todos", label: "Todos los tipos" },
-  { valor: "Aviso", label: "Avisos (revisión manual)" },
-  { valor: "Aceptado", label: "Aceptados" },
-  { valor: "Rechazado", label: "Rechazados" },
+  { valor: "consulta_web", label: "Consultas web (por responder)" },
+  { valor: "Aviso", label: "Presupuestos: revisión manual" },
+  { valor: "Aceptado", label: "Presupuestos aceptados" },
+  { valor: "Rechazado", label: "Presupuestos rechazados" },
 ];
 
 // Mismo criterio que ya usa Fichajes/Facturas de Clientes: semana de lunes
@@ -96,7 +97,7 @@ export function NotificacionesBell() {
   const [seleccionado, setSeleccionado] = useState<WebhookEvento | null>(null);
 
   const eventosFiltrados = useMemo(
-    () => eventos.filter((e) => dentroDeRango(e.fecha, filtroFecha) && (filtroTipo === "todos" || e.estado === filtroTipo)),
+    () => eventos.filter((e) => dentroDeRango(e.fecha, filtroFecha) && (filtroTipo === "todos" || (filtroTipo === "consulta_web" ? tipoDeEvento(e) === "consulta_web" : tipoDeEvento(e) === "presupuesto" && e.estado === filtroTipo))),
     [eventos, filtroFecha, filtroTipo]
   );
   const filtroTipoLabel = FILTROS_TIPO.find((f) => f.valor === filtroTipo)?.label || "Todos los tipos";
@@ -112,7 +113,7 @@ export function NotificacionesBell() {
     }
     const esAviso = evento.estado === "Aviso";
     const motivoLabel = evento.motivo ? MOTIVO_LABELS[evento.motivo] || evento.motivo : null;
-    const titulo = esAviso ? "Revisión manual requerida" : `Presupuesto ${evento.estado?.toLowerCase()}`;
+    const titulo = tipoDeEvento(evento) === "consulta_web" ? "Consulta web por responder" : esAviso ? "Presupuesto: revisión manual requerida" : `Presupuesto ${evento.estado?.toLowerCase()}`;
     const detalle = [evento.nombre_cliente, esAviso ? motivoLabel : evento.numero_presupuesto].filter(Boolean).join(" — ");
     const resto = cuantasNuevas - 1;
 
@@ -298,7 +299,12 @@ function TarjetaEvento({ evento, onClick }: { evento: WebhookEvento; onClick: ()
         <Icono className={`mt-0.5 size-4 shrink-0 ${colorIcono}`} />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex min-w-0 items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-sm font-semibold">{esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "—"}</span>
+            <span className="min-w-0 truncate text-sm font-semibold">
+              <span className={`mr-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${tipoDeEvento(evento) === "consulta_web" ? "bg-sky-100 text-sky-800" : "bg-violet-100 text-violet-800"}`}>
+                {tipoDeEvento(evento) === "consulta_web" ? "Consulta web" : "Presupuesto"}
+              </span>
+              {esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "—"}
+            </span>
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${colorBadge}`}>{evento.estado}</span>
           </div>
 
@@ -374,6 +380,12 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
   const [hayMas, setHayMas] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
+  // Presupuesto rechazado: si es seguro que el cliente lo rechazó, se pregunta qué hacer con el equipo (Punto Limpio / reciclaje).
+  const [ofrecerReciclaje, setOfrecerReciclaje] = useState(false);
+  const [equipoPendiente, setEquipoPendiente] = useState<{ cargado: boolean; envio: boolean; pendiente: boolean }>({ cargado: false, envio: false, pendiente: false });
+  const [enviandoReciclaje, setEnviandoReciclaje] = useState(false);
+  const [reciclajeHecho, setReciclajeHecho] = useState(false);
+
   // Responder consulta — petición del usuario, 2026-09-04: cuando el
   // cliente responde a un presupuesto y de paso hace una pregunta (motivo
   // CONSULTA/ACEPTACION_CON_CONSULTA), poder contestarle por correo desde
@@ -390,6 +402,19 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
     setHayMas(false);
     setRespuestaTexto("");
     setRespuestaEnviada(false);
+    setOfrecerReciclaje(false);
+    setEquipoPendiente({ cargado: false, envio: false, pendiente: false });
+    setReciclajeHecho(false);
+    if (evento && evento.resguardo && (evento.estado === "Rechazado" || evento.estado === "Aviso")) {
+      fetch(`/api/reparaciones/${evento.resguardo}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.ok) return;
+          const entrega = String(data.detalle?.estadoEntrega || "").toUpperCase();
+          setEquipoPendiente({ cargado: true, envio: String(data.detalle?.tipoRecepcion || "LOCAL").toUpperCase() === "ENVIO", pendiente: !["RECICLAJE", "ENTREGADO", "ENVIO"].includes(entrega) });
+        })
+        .catch(() => {});
+    }
     if (!evento || evento.estado !== "Aviso" || !evento.resguardo) return;
     const resguardo = evento.resguardo;
     setCargandoPptos(true);
@@ -419,7 +444,7 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
       toast.success("Presupuesto rechazado");
       setMotivoAbierto(false);
       setMotivo("");
-      onClose();
+      setOfrecerReciclaje(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -450,6 +475,23 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function enviarAPuntoLimpio() {
+    if (!evento?.resguardo) return;
+    if (!window.confirm(`¿Confirmas que el equipo del resguardo ${evento.resguardo} se envía a Punto Limpio (reciclaje)?`)) return;
+    setEnviandoReciclaje(true);
+    try {
+      const res = await fetch(`/api/reparaciones/${evento.resguardo}/salidas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "punto_limpio" }) });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Equipo enviado a Punto Limpio");
+      setReciclajeHecho(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setEnviandoReciclaje(false);
     }
   }
 
@@ -542,6 +584,31 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
                     &quot;{limpiarRespuestaCliente(evento.respuesta_cliente)}&quot;
                   </div>
                 </div>
+              )}
+
+              {evento.resguardo && equipoPendiente.pendiente && !reciclajeHecho && (ofrecerReciclaje || (evento.estado === "Rechazado" && evento.motivo === "RECHAZO_EXPLICITO")) && (
+                <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+                  <p className="text-xs font-medium text-foreground">El presupuesto está rechazado. ¿Qué hacemos con el equipo?</p>
+                  <p className="text-xs text-muted-foreground">
+                    {equipoPendiente.envio
+                      ? "Llegó por mensajería: ábrelo en la reparación para registrar la salida (recogida y factura) y elige Punto Limpio allí."
+                      : "Puedes enviarlo a Punto Limpio (reciclaje) ahora, o dejarlo para que el cliente lo recoja."}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {!equipoPendiente.envio && (
+                      <Button size="sm" variant="destructive" onClick={enviarAPuntoLimpio} disabled={enviandoReciclaje}>
+                        {enviandoReciclaje ? "Enviando..." : "Enviar a Punto Limpio"}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => { window.location.href = `/reparaciones?resguardo=${encodeURIComponent(evento.resguardo as string)}`; }}>
+                      Abrir reparación
+                    </Button>
+                    {ofrecerReciclaje && <Button size="sm" variant="ghost" onClick={onClose}>Ahora no</Button>}
+                  </div>
+                </div>
+              )}
+              {reciclajeHecho && (
+                <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400"><TickCircle className="size-3.5" /> Equipo enviado a Punto Limpio</p>
               )}
 
               {RESPONDER_CONSULTA_HABILITADO && esConsultaCliente(evento.motivo) && evento.email_cliente && (

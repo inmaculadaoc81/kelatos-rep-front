@@ -62,6 +62,11 @@ export const MOTIVO_LABELS: Record<string, string> = {
   FORMULARIO_REQUIERE_RESPUESTA_MANUAL: "Consulta de un formulario web: debe responderse manualmente",
 };
 
+/** Tipo de aviso: consulta de un formulario web (hay que contestarla) o respuesta de un cliente a un presupuesto de reparación. */
+export function tipoDeEvento(e: Pick<WebhookEvento, "motivo">): "consulta_web" | "presupuesto" {
+  return e.motivo === "FORMULARIO_REQUIERE_RESPUESTA_MANUAL" ? "consulta_web" : "presupuesto";
+}
+
 /** Motivos en los que el cliente formuló una pregunta junto a su respuesta
     — habilitan el composer de "Responder consulta" en el panel. */
 export function esConsultaCliente(motivo: string | null): boolean {
