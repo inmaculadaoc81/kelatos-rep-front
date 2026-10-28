@@ -621,6 +621,10 @@ export function FacturaRecibidaFormDialog({
         pedidoId: datos.pedidoId.trim(), stockPedidoId: datos.stockPedidoId ? Number(datos.stockPedidoId) : null,
         estadoRevision: datos.estadoRevision, observacionesInternas: datos.observacionesInternas.trim(),
         origen: !esEdicion && origenAutomatico ? "automatico" : undefined,
+        // Lo que leyó la IA se guarda con la factura para poder consultarlo después (plegado en la ficha).
+        lecturaOcr: resumenOcr
+          ? { extraido: resumenOcr.extraido, proveedorEncontrado: resumenOcr.proveedorEncontrado, proveedorCreado: resumenOcr.proveedorCreado, ivaMotivo: ivaDeducidoDelPdf || ivaSinDeducirMotivo || null, ivaDeducidoSolo: !!ivaDeducidoDelPdf, leidoEn: new Date().toISOString() }
+          : undefined,
         // Solo al CREAR — reaplicar en una edición duplicaría el stock ya
         // sumado la primera vez.
         // Cada artículo de la factura se registra por separado (en una edición solo si se cargaron las existentes).
@@ -920,6 +924,12 @@ export function FacturaRecibidaFormDialog({
 
   const faltantes = faltantesFiscales(datos);
 
+  // Lectura mostrada: la recién hecha al cargar un PDF o, al abrir una factura ya registrada, la guardada con ella.
+  const lecturaEsNueva = !!resumenOcr;
+  const lecturaPanel = resumenOcr
+    ? { ...resumenOcr, ivaMotivo: ivaDeducidoDelPdf || ivaSinDeducirMotivo || null, ivaDeducidoSolo: !!ivaDeducidoDelPdf, leidoEn: "" }
+    : facturaExistente?.lecturaOcr ?? null;
+
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
@@ -989,25 +999,29 @@ export function FacturaRecibidaFormDialog({
                 )}
               </div>
 
-              {resumenOcr && (
+              {lecturaPanel && (
                 <div className={cn(
                   "mt-3 rounded-md border p-3",
-                  resumenOcr.extraido.advertencias.length > 0
+                  lecturaPanel.extraido.advertencias.length > 0
                     ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
                     : "border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/30"
                 )}>
                   <p className={cn(
                     "mb-2 flex items-center gap-1.5 text-xs font-semibold",
-                    resumenOcr.extraido.advertencias.length > 0 ? "text-amber-800 dark:text-amber-300" : "text-violet-800 dark:text-violet-300"
+                    lecturaPanel.extraido.advertencias.length > 0 ? "text-amber-800 dark:text-amber-300" : "text-violet-800 dark:text-violet-300"
                   )}>
-                    <MagicStar className="size-3.5" /> Resumen de lo que leyó la IA
+                    <MagicStar className="size-3.5" /> {lecturaEsNueva ? "Lectura de la IA" : "Lectura de la IA guardada con esta factura"}
+                  </p>
+                  <p className="mb-1 text-xs text-muted-foreground">
+                    {[lecturaPanel.extraido.proveedorNombre, lecturaPanel.extraido.numeroFacturaProveedor, lecturaPanel.extraido.importeTotal !== null ? euros(lecturaPanel.extraido.importeTotal) : null].filter(Boolean).join(" · ") || "Sin datos leídos"}
+                    {lecturaPanel.extraido.advertencias.length > 0 ? ` · ${lecturaPanel.extraido.advertencias.length} dato(s) dudoso(s)` : " · sin dudas"}
                   </p>
 
-                  {resumenOcr.extraido.advertencias.length > 0 && (
+                  {lecturaEsNueva && lecturaPanel.extraido.advertencias.length > 0 && (
                     <div className="mb-2.5 rounded border border-amber-300 bg-amber-100/60 p-2 dark:border-amber-800 dark:bg-amber-900/30">
                       <p className="flex items-start gap-1.5 text-xs text-amber-900 dark:text-amber-200">
                         <Warning2 className="mt-0.5 size-3.5 shrink-0" />
-                        La IA no está segura de {resumenOcr.extraido.advertencias.length === 1 ? "1 dato" : `${resumenOcr.extraido.advertencias.length} datos`} (marcados en ámbar abajo) — compáralos con el archivo original antes de registrar la factura.
+                        La IA no está segura de {lecturaPanel.extraido.advertencias.length === 1 ? "1 dato" : `${lecturaPanel.extraido.advertencias.length} datos`} (marcados en ámbar abajo) — compáralos con el archivo original antes de registrar la factura.
                       </p>
                       <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs font-medium text-amber-900 dark:text-amber-200">
                         <Checkbox checked={advertenciasVistas} onCheckedChange={(v) => setAdvertenciasVistas(v === true)} />
@@ -1016,33 +1030,39 @@ export function FacturaRecibidaFormDialog({
                     </div>
                   )}
 
-                  <div className="grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                  <details className="group">
+                    <summary className="cursor-pointer select-none text-xs font-medium text-primary hover:underline">Ver detalle de lo que leyó</summary>
+                  <div className="mt-2 grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
                     <CampoResumen
                       etiqueta="Proveedor"
-                      valor={resumenOcr.extraido.proveedorNombre}
-                      advertencia={resumenOcr.extraido.proveedorNombre && !resumenOcr.proveedorEncontrado && !resumenOcr.proveedorCreado ? "no coincide con ninguno dado de alta" : undefined}
-                      nota={resumenOcr.proveedorCreado ? "proveedor nuevo, registrado automáticamente" : undefined}
-                      incierto={resumenOcr.extraido.advertencias.includes("proveedorNombre")}
+                      valor={lecturaPanel.extraido.proveedorNombre}
+                      advertencia={lecturaPanel.extraido.proveedorNombre && !lecturaPanel.proveedorEncontrado && !lecturaPanel.proveedorCreado ? "no coincide con ninguno dado de alta" : undefined}
+                      nota={lecturaPanel.proveedorCreado ? "proveedor nuevo, registrado automáticamente" : undefined}
+                      incierto={lecturaPanel.extraido.advertencias.includes("proveedorNombre")}
                     />
-                    <CampoResumen etiqueta="NIF/CIF proveedor" valor={resumenOcr.extraido.proveedorDniCif} incierto={resumenOcr.extraido.advertencias.includes("proveedorDniCif")} />
-                    <CampoResumen etiqueta="Nº de factura" valor={resumenOcr.extraido.numeroFacturaProveedor} incierto={resumenOcr.extraido.advertencias.includes("numeroFacturaProveedor")} />
-                    <CampoResumen etiqueta="Serie" valor={resumenOcr.extraido.serieProveedor} incierto={resumenOcr.extraido.advertencias.includes("serieProveedor")} />
+                    <CampoResumen etiqueta="NIF/CIF proveedor" valor={lecturaPanel.extraido.proveedorDniCif} incierto={lecturaPanel.extraido.advertencias.includes("proveedorDniCif")} />
+                    <CampoResumen etiqueta="Nº de factura" valor={lecturaPanel.extraido.numeroFacturaProveedor} incierto={lecturaPanel.extraido.advertencias.includes("numeroFacturaProveedor")} />
+                    <CampoResumen etiqueta="Serie" valor={lecturaPanel.extraido.serieProveedor} incierto={lecturaPanel.extraido.advertencias.includes("serieProveedor")} />
                     <CampoResumen
                       etiqueta="Tipo de documento"
-                      valor={resumenOcr.extraido.tipoDocumento ? ETIQUETA_TIPO_DOCUMENTO[resumenOcr.extraido.tipoDocumento] : null}
-                      incierto={resumenOcr.extraido.advertencias.includes("tipoDocumento")}
+                      valor={lecturaPanel.extraido.tipoDocumento ? ETIQUETA_TIPO_DOCUMENTO[lecturaPanel.extraido.tipoDocumento] : null}
+                      incierto={lecturaPanel.extraido.advertencias.includes("tipoDocumento")}
                     />
-                    <CampoResumen etiqueta="Fecha de expedición" valor={resumenOcr.extraido.fechaExpedicion} incierto={resumenOcr.extraido.advertencias.includes("fechaExpedicion")} />
-                    <CampoResumen etiqueta="Base imponible" valor={resumenOcr.extraido.baseImponible !== null ? euros(resumenOcr.extraido.baseImponible) : null} incierto={resumenOcr.extraido.advertencias.includes("baseImponible")} />
-                    <CampoResumen etiqueta="% IVA" valor={resumenOcr.extraido.tipoIva !== null ? `${resumenOcr.extraido.tipoIva}%` : null} incierto={resumenOcr.extraido.advertencias.includes("tipoIva")} />
-                    <CampoResumen etiqueta="Cuota de IVA" valor={resumenOcr.extraido.cuotaIvaSoportado !== null ? euros(resumenOcr.extraido.cuotaIvaSoportado) : null} incierto={resumenOcr.extraido.advertencias.includes("cuotaIvaSoportado")} />
-                    <CampoResumen etiqueta="Importe total" valor={resumenOcr.extraido.importeTotal !== null ? euros(resumenOcr.extraido.importeTotal) : null} incierto={resumenOcr.extraido.advertencias.includes("importeTotal")} />
-                    {resumenOcr.extraido.receptorCoincide === false && (
+                    <CampoResumen etiqueta="Fecha de expedición" valor={lecturaPanel.extraido.fechaExpedicion} incierto={lecturaPanel.extraido.advertencias.includes("fechaExpedicion")} />
+                    <CampoResumen etiqueta="Base imponible" valor={lecturaPanel.extraido.baseImponible !== null ? euros(lecturaPanel.extraido.baseImponible) : null} incierto={lecturaPanel.extraido.advertencias.includes("baseImponible")} />
+                    <CampoResumen etiqueta="% IVA" valor={lecturaPanel.extraido.tipoIva !== null ? `${lecturaPanel.extraido.tipoIva}%` : null} incierto={lecturaPanel.extraido.advertencias.includes("tipoIva")} />
+                    <CampoResumen etiqueta="Cuota de IVA" valor={lecturaPanel.extraido.cuotaIvaSoportado !== null ? euros(lecturaPanel.extraido.cuotaIvaSoportado) : null} incierto={lecturaPanel.extraido.advertencias.includes("cuotaIvaSoportado")} />
+                    <CampoResumen etiqueta="Importe total" valor={lecturaPanel.extraido.importeTotal !== null ? euros(lecturaPanel.extraido.importeTotal) : null} incierto={lecturaPanel.extraido.advertencias.includes("importeTotal")} />
+                    {lecturaPanel.extraido.receptorCoincide === false && (
                       <CampoResumen etiqueta="Receptor (Affirma)" valor="No aparece en la factura" incierto />
                     )}
-                    <CampoResumen etiqueta="Descripción" valor={resumenOcr.extraido.descripcion} incierto={resumenOcr.extraido.advertencias.includes("descripcion")} />
+                    <CampoResumen etiqueta="Descripción" valor={lecturaPanel.extraido.descripcion} incierto={lecturaPanel.extraido.advertencias.includes("descripcion")} />
                   </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Revisa y corrige estos datos en el formulario antes de registrar — la lectura automática puede equivocarse.</p>
+                  {lecturaPanel.ivaMotivo && (
+                    <p className="mt-2 text-xs text-muted-foreground"><strong className="font-medium text-foreground">IVA:</strong> {lecturaPanel.ivaDeducidoSolo ? "marcado solo — " : "no se marcó solo como deducible — "}{lecturaPanel.ivaMotivo}</p>
+                  )}
+                  <p className="mt-2 text-[11px] text-muted-foreground">{lecturaEsNueva ? "Revisa y corrige estos datos en el formulario antes de registrar — la lectura automática puede equivocarse." : `Leído el ${lecturaPanel.leidoEn ? new Date(lecturaPanel.leidoEn).toLocaleString("es-ES") : "—"}.`}</p>
+                  </details>
                 </div>
               )}
             </Seccion>

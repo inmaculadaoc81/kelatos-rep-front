@@ -44,6 +44,20 @@ export interface EnlaceFactura {
   puntuacion: number | null;
 }
 
+/** Lectura automática guardada con la factura: campos leídos, dudas de la IA y por qué el IVA quedó como quedó. */
+export interface LecturaOcrGuardada {
+  extraido: {
+    proveedorNombre: string | null; proveedorDniCif: string | null; numeroFacturaProveedor: string | null; serieProveedor: string | null;
+    tipoDocumento: TipoDocumentoFactura | null; fechaExpedicion: string | null; baseImponible: number | null; tipoIva: number | null;
+    cuotaIvaSoportado: number | null; importeTotal: number | null; descripcion: string | null; advertencias: string[]; receptorCoincide?: boolean;
+  };
+  proveedorEncontrado: boolean;
+  proveedorCreado: boolean;
+  ivaMotivo: string | null;
+  ivaDeducidoSolo: boolean;
+  leidoEn: string;
+}
+
 export interface FacturaRecibida {
   id: number;
   numeroRecepcion: string;
@@ -105,6 +119,8 @@ export interface FacturaRecibida {
 
   /** Por qué la importación automática la dejó en revisión manual (null si no aplica). */
   revisionMotivo: string | null;
+  /** Lo que leyó la IA al cargar la factura (solo si se cargó con «Leer con IA»). */
+  lecturaOcr: LecturaOcrGuardada | null;
   enlaces: EnlaceFactura[];
 
   origen: "manual" | "automatico";
@@ -164,6 +180,7 @@ interface FilaFacturaSql {
   ejercicio_fiscal: number;
   drive_file_id: string | null;
   revision_motivo?: string | null;
+  lectura_ocr?: unknown;
   enlaces?: EnlaceFactura[] | null;
   origen: string;
   usuario_registro: string;
@@ -234,6 +251,7 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     ejercicioFiscal: f.ejercicio_fiscal,
     driveFileId: f.drive_file_id,
     revisionMotivo: f.revision_motivo || null,
+    lecturaOcr: (f.lectura_ocr as LecturaOcrGuardada | null) || null,
     enlaces: f.enlaces || [],
     origen: (f.origen as "manual" | "automatico") || "manual",
     usuarioRegistro: f.usuario_registro,
