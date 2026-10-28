@@ -33,7 +33,8 @@ export function articulosEmparejadosAEditables(articulos: ArticuloFacturaEmparej
   return articulos.map((a) => ({
     nombre: a.nombre,
     cantidad: a.cantidad,
-    aplicar: true,
+    // Transporte, envío y gastos de gestión no son piezas: empiezan desmarcados (se pueden marcar a mano).
+    aplicar: !/\b(transporte|env[ií]o|portes?|gastos?\b.*\b(admin|gesti[oó]n|env[ií]o)|shipping|handling|embalaje)\b/i.test(a.nombre) || !!a.referenciaSugerida,
     referencia: a.referenciaSugerida || "",
     nombrePiezaSugerida: a.nombrePiezaSugerida,
     categoria: a.categoriaSugerida || "",

@@ -603,11 +603,14 @@ export function FacturaRecibidaFormDialog({
     if (!datos.baseImponible) return toast.error("La base imponible es obligatoria");
     if (!datos.importeTotal) return toast.error("El importe total es obligatorio");
     if (!esEdicion) {
+      // Se revisan todas las piezas nuevas de una vez para avisar de todos los problemas juntos.
+      const problemas: string[] = [];
       for (const a of articulosStock.filter((x) => x.aplicar && x.cantidad > 0 && !x.referencia.trim())) {
         const motivo = motivoNombrePiezaInvalido(a.nombre, { numeroFactura: datos.numeroFacturaProveedor, idPedido: a.idPedidoProveedor });
-        if (motivo) return toast.error(`No se puede dar de alta la pieza «${a.nombre}» en Stock de Piezas: ${motivo}. Escribe el nombre real del producto o desmárcala.`);
-        if (!a.categoria) return toast.error(`Elige la categoría de la pieza nueva «${a.nombre}».`);
+        if (motivo) problemas.push(`«${a.nombre}»: ${motivo} (escribe el nombre real del producto o desmárcala)`);
+        else if (!a.categoria) problemas.push(`«${a.nombre}»: falta la categoría`);
       }
+      if (problemas.length) return toast.error(`Revisa las piezas nuevas de Stock antes de registrar:\n- ${problemas.join("\n- ")}`, { style: { whiteSpace: "pre-line" } });
     }
     if (["deducible", "parcial", "no_deducible"].includes(datos.estadoIva) && !(datos.cuotaIvaSoportado > 0)) {
       return toast.error("Indica la cuota de IVA soportado (si la factura no tiene cuota de IVA acreditada, elige «Sin cuota de IVA acreditada»)");
