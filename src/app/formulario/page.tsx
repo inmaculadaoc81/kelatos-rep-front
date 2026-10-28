@@ -12,6 +12,7 @@ import {
   PREFIJOS_TELEFONO_VALIDOS,
   TIPOS_CON_NUMERO_SERIE,
   TIPOS_CON_PIN,
+  TIPOS_ORDENADOR,
 } from "@/lib/formulario-cliente";
 import { categoriaDeCondiciones, CONDICIONES_POR_CATEGORIA } from "@/lib/condiciones-legales";
 import { esHeic, resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
@@ -128,6 +129,7 @@ const ETIQUETAS_CAMPO_AVISO: Record<string, string> = {
   golpe: "¿Ha sufrido golpe?",
   humedad: "¿Ha sufrido humedad?",
   reparacionAnterior: "¿Reparación anterior?",
+  datosImportantes: "¿Tiene datos importantes?",
   aceptaCondiciones: "Aceptar las condiciones",
   fotos: "Foto del equipo",
   firma: "Firma",
@@ -507,6 +509,7 @@ export default function FormularioClientePage() {
       if (!datos.golpe) err.golpe = "Selecciona una opción.";
       if (!datos.humedad) err.humedad = "Selecciona una opción.";
       if (!datos.reparacionAnterior) err.reparacionAnterior = "Selecciona una opción.";
+      if (TIPOS_ORDENADOR.includes(datos.tipoProducto) && !datos.datosImportantes) err.datosImportantes = "Selecciona una opción.";
     }
     if (paso === 6) {
       if (!datos.aceptaCondiciones) err.aceptaCondiciones = "Debes aceptar las condiciones del servicio.";
@@ -921,6 +924,11 @@ export default function FormularioClientePage() {
                     opciones={["Sí", "No"] as const}
                   />
                 </Campo>
+                {TIPOS_ORDENADOR.includes(datos.tipoProducto) && (
+                  <Campo label="¿Tiene datos importantes? (los programas no son datos)" required error={errores.datosImportantes}>
+                    <CampoOpciones value={datos.datosImportantes} onChange={(v) => actualizar("datosImportantes", v)} opciones={["Sí", "No"] as const} />
+                  </Campo>
+                )}
               </>
             )}
           </>

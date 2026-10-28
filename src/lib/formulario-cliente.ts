@@ -21,6 +21,10 @@ export const TIPOS_CON_NUMERO_SERIE = ["Portátil/Laptop", "Ordenador de sobreme
  * 2026-09-18. */
 export const TIPOS_CON_PIN = ["Portátil/Laptop", "Ordenador de sobremesa", "Consola"];
 
+/** Ordenadores (portátil y sobremesa): a estos se les pregunta siempre si tienen datos importantes. No incluye consolas, mandos ni
+ * electrodomésticos. Petición del usuario, 2026-10-28. */
+export const TIPOS_ORDENADOR = ["Portátil/Laptop", "Ordenador de sobremesa"];
+
 /** Reproduce el <select id="fTelPrefijo"> de FormularioCliente.html (original) — mismo orden, mismos grupos, misma lista completa de países. */
 export const PREFIJOS_TELEFONO_FORMULARIO: { grupo: string; opciones: { value: string; label: string }[] }[] = [
   { grupo: "España", opciones: [{ value: "+34", label: "🇪🇸 +34" }] },
@@ -173,6 +177,8 @@ export interface DatosFormularioCliente {
   golpe: SiNo | "";
   humedad: SiNo | "";
   reparacionAnterior: SiNo | "";
+  /** Solo ordenadores: ¿tiene datos importantes en el equipo? (los programas no son datos). */
+  datosImportantes: SiNo | "";
   aceptaCondiciones: boolean;
   aceptaMarketing: boolean;
   fotos: FotoFormulario[];
@@ -206,6 +212,7 @@ export function datosVacios(): DatosFormularioCliente {
     golpe: "",
     humedad: "",
     reparacionAnterior: "",
+    datosImportantes: "",
     aceptaCondiciones: false,
     aceptaMarketing: false,
     fotos: [],

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { kelatosApiPost } from "@/lib/kelatos-api";
-import { DatosFormularioCliente } from "@/lib/formulario-cliente";
+import { DatosFormularioCliente, TIPOS_ORDENADOR } from "@/lib/formulario-cliente";
 import { normalizarNumeroLocal } from "@/lib/telefono";
 import { corregirTypoDominioEmail } from "@/lib/validacion";
 
@@ -19,6 +19,8 @@ function construirSintoma(datos: DatosFormularioCliente, esCintas: boolean): str
     s += `\n¿Humedad?: ${datos.humedad || "No"}`;
     s += `\n¿Reparación anterior?: ${datos.reparacionAnterior || "No"}`;
   }
+  // Ordenadores: si el cliente dice que tiene datos importantes, el técnico debe saberlo antes de tocar el equipo.
+  if (TIPOS_ORDENADOR.includes(datos.tipoProducto) && datos.datosImportantes) s += `\n¿Datos importantes?: ${datos.datosImportantes}`;
   if (datos.serie.trim()) s += `\nNº Serie: ${datos.serie.trim()}`;
   return s;
 }
