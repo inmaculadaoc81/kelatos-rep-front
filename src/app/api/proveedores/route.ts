@@ -14,6 +14,7 @@ interface FilaProveedorSql {
   proveedor_id: string;
   nombre: string | null;
   dni_cif: string | null;
+  nif_iva?: string | null;
   direccion_fiscal: string | null;
   pais: string | null;
   telefono: string | null;
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
       proveedor_id: generarProveedorId(datos.nombre),
       nombre: datos.nombre.trim(),
       dni_cif: datos.dniCif?.trim() || null,
+      nif_iva: datos.nifIva?.trim().toUpperCase() || null,
       direccion_fiscal: datos.direccionFiscal?.trim() || null,
       pais: datos.pais?.trim() || null,
       telefono: datos.telefono?.trim() || null,

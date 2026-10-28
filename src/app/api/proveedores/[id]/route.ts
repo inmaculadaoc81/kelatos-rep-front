@@ -7,6 +7,7 @@ interface FilaProveedorSql {
   proveedor_id: string;
   nombre: string | null;
   dni_cif: string | null;
+  nif_iva?: string | null;
   direccion_fiscal: string | null;
   pais: string | null;
   telefono: string | null;
@@ -28,6 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const cambios: Record<string, unknown> = {};
   if (datos.nombre !== undefined) cambios.nombre = datos.nombre.trim();
   if (datos.dniCif !== undefined) cambios.dni_cif = datos.dniCif.trim() || null;
+  if (datos.nifIva !== undefined) cambios.nif_iva = datos.nifIva.trim().toUpperCase() || null;
   if (datos.direccionFiscal !== undefined) cambios.direccion_fiscal = datos.direccionFiscal.trim() || null;
   if (datos.pais !== undefined) cambios.pais = datos.pais.trim() || null;
   if (datos.telefono !== undefined) cambios.telefono = datos.telefono.trim() || null;

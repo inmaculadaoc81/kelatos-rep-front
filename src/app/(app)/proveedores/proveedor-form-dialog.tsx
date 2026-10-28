@@ -12,12 +12,12 @@ import { Proveedor, ProveedorFormData, normalizarMarcas } from "@/lib/proveedore
 import { esEmailValido } from "@/lib/validacion";
 
 function vacio(): ProveedorFormData {
-  return { nombre: "", dniCif: "", direccionFiscal: "", pais: "", telefono: "", email: "", codigoInterno: "", notas: "", marcas: "" };
+  return { nombre: "", dniCif: "", nifIva: "", direccionFiscal: "", pais: "", telefono: "", email: "", codigoInterno: "", notas: "", marcas: "" };
 }
 
 function desdeExistente(p: Proveedor): ProveedorFormData {
   return {
-    nombre: p.nombre, dniCif: p.dniCif, direccionFiscal: p.direccionFiscal, pais: p.pais,
+    nombre: p.nombre, dniCif: p.dniCif, nifIva: p.nifIva, direccionFiscal: p.direccionFiscal, pais: p.pais,
     telefono: p.telefono, email: p.email, codigoInterno: p.codigoInterno, notas: p.notas, marcas: p.marcas.join(", "),
   };
 }
@@ -105,6 +105,10 @@ export function ProveedorFormDialog({
             <div className="space-y-1.5">
               <Label htmlFor="pvDniCif">DNI / CIF</Label>
               <Input id="pvDniCif" value={datos.dniCif} onChange={(e) => actualizar("dniCif", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pvNifIva">NIF-IVA comunitario</Label>
+              <Input id="pvNifIva" value={datos.nifIva} placeholder="Ej.: IT05587220822" onChange={(e) => actualizar("nifIva", e.target.value.toUpperCase())} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="pvCodigoInterno">Código interno</Label>

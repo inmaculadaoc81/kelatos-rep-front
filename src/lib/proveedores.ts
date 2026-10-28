@@ -11,6 +11,8 @@ export interface Proveedor {
   proveedorId: string;
   nombre: string;
   dniCif: string;
+  /** NIF-IVA comunitario con el prefijo del país (p. ej. IT05587220822); se completa al registrar una compra intracomunitaria. */
+  nifIva: string;
   direccionFiscal: string;
   pais: string;
   telefono: string;
@@ -25,6 +27,7 @@ export interface Proveedor {
 export interface ProveedorFormData {
   nombre: string;
   dniCif: string;
+  nifIva: string;
   direccionFiscal: string;
   pais: string;
   telefono: string;
@@ -39,6 +42,7 @@ interface FilaProveedorSql {
   proveedor_id: string;
   nombre: string | null;
   dni_cif: string | null;
+  nif_iva?: string | null;
   direccion_fiscal: string | null;
   pais: string | null;
   telefono: string | null;
@@ -67,6 +71,7 @@ export function mapearProveedor(row: FilaProveedorSql): Proveedor {
     proveedorId: row.proveedor_id,
     nombre: row.nombre || "",
     dniCif: row.dni_cif || "",
+    nifIva: row.nif_iva || "",
     direccionFiscal: row.direccion_fiscal || "",
     pais: row.pais || "",
     telefono: row.telefono || "",
