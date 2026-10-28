@@ -258,7 +258,10 @@ const DATOS_EMPRESA = {
     cuadra con el total en una factura a nombre de Affirma (deducible). «Parcialmente deducible» y «No deducible» dependen del uso del gasto
     y no se pueden saber leyendo el PDF: nunca se deducen. */
 function deducirEstadoIva(e: FacturaOcrExtraido): { estado: EstadoIvaFactura; motivo: string } | null {
-  if (e.advertencias.length > 0 || e.receptorCoincide !== true) return null;
+  // Solo frenan la deducción las dudas de la IA sobre lo que decide el IVA (importes, tipo, moneda, tipo de documento, receptor): una duda sobre
+  // el nº de factura, la serie, el nombre del proveedor o la descripción no cambia si el IVA es deducible (esas se siguen avisando aparte).
+  const DUDAS_QUE_FRENAN = ["baseImponible", "tipoIva", "cuotaIvaSoportado", "importeTotal", "moneda", "tipoDocumento", "receptor"];
+  if (e.advertencias.some((x) => DUDAS_QUE_FRENAN.includes(x)) || e.receptorCoincide !== true) return null;
   const { baseImponible: base, cuotaIvaSoportado: cuota, importeTotal: total, tipoIva } = e;
   if (base === null || total === null) return null;
   if ((cuota === 0 || (cuota === null && tipoIva === 0)) && Math.abs(base - total) <= 0.5) return { estado: "sin_cuota", motivo: "la factura no lleva IVA" };
