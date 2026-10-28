@@ -269,6 +269,18 @@ function deducirEstadoIva(e: FacturaOcrExtraido): { estado: EstadoIvaFactura; mo
   return null;
 }
 
+/** Por qué NO se pudo marcar el IVA como deducible al leer el PDF (se enseña junto al estado para que se entienda que no «falta» ningún documento). */
+function motivoSinDeducirIva(e: FacturaOcrExtraido): string {
+  const NOMBRES: Record<string, string> = { baseImponible: "la base imponible", tipoIva: "el tipo de IVA", cuotaIvaSoportado: "la cuota de IVA", importeTotal: "el importe total", moneda: "la moneda", tipoDocumento: "el tipo de documento", receptor: "el destinatario" };
+  const dudas = e.advertencias.filter((x) => NOMBRES[x]).map((x) => NOMBRES[x]);
+  if (dudas.length) return `la IA no está segura de ${dudas.join(", ")}`;
+  if (e.receptorCoincide !== true) return "no se reconoce a Affirma como destinatario de la factura";
+  if (e.baseImponible === null || e.importeTotal === null) return "no se pudo leer la base imponible o el total";
+  const cuota = e.cuotaIvaSoportado ?? 0;
+  if (Math.abs(e.baseImponible + cuota - e.importeTotal) > 0.5) return `la base (${e.baseImponible.toFixed(2)} €) más el IVA (${cuota.toFixed(2)} €) no cuadra con el total (${e.importeTotal.toFixed(2)} €)`;
+  return "la factura tiene un caso que no se puede decidir solo leyendo el PDF";
+}
+
 /** La gestoría solo recibe PDF: las facturas se cargan únicamente en ese formato. */
 const MENSAJE_SOLO_PDF = "Las facturas solo se pueden cargar en PDF (la gestoría solo recibe PDF). Conviértela a PDF y vuelve a subirla.";
 const esPdf = (a: File) => a.type === "application/pdf" || /\.pdf$/i.test(a.name);
@@ -366,6 +378,7 @@ export function FacturaRecibidaFormDialog({
   const [advertenciasVistas, setAdvertenciasVistas] = useState(false);
   /** Motivo por el que el estado del IVA se marcó solo al leer el PDF (null = lo eligió la persona). */
   const [ivaDeducidoDelPdf, setIvaDeducidoDelPdf] = useState<string | null>(null);
+  const [ivaSinDeducirMotivo, setIvaSinDeducirMotivo] = useState<string | null>(null);
   const inputOcr = useRef<HTMLInputElement>(null);
   // Controlador de la petición de OCR en curso — sin esto, cerrar el
   // diálogo mientras "Leyendo con IA" seguía corriendo dejaba el fetch vivo
@@ -557,6 +570,7 @@ export function FacturaRecibidaFormDialog({
 
   function cambiarEstadoIva(estado: EstadoIvaFactura) {
     setIvaDeducidoDelPdf(null);
+    setIvaSinDeducirMotivo(null);
     if (estado === "sin_cuota") {
       // «Sin cuota» pone IVA 0 y total = base; se guardan los importes leídos para devolverlos si la persona se arrepiente.
       if (datos.estadoIva !== "sin_cuota" && datos.cuotaIvaSoportado > 0) ivaAntesDeSinCuota.current = { tipoIva: datos.tipoIva, cuotaIvaSoportado: datos.cuotaIvaSoportado, importeTotal: datos.importeTotal };
@@ -788,6 +802,7 @@ export function FacturaRecibidaFormDialog({
       if (e.descripcion) set("descripcion", e.descripcion);
       // El estado del IVA se deduce del PDF solo en compra nacional y si la persona no había elegido otro todavía.
       setIvaDeducidoDelPdf(null);
+      setIvaSinDeducirMotivo(null);
       // Proveedor de otro país de la UE (por el prefijo de su NIF-IVA o por su dirección): compra intracomunitaria, sin IVA, con NIF-IVA comprobado en VIES.
       setAvisoIntra(null);
       const ue = datos.tipoOperacion === "nacional" ? detectarCompraIntracomunitaria(e.proveedorDniCif, e.proveedorPais) : null;
@@ -818,6 +833,8 @@ export function FacturaRecibidaFormDialog({
         if (iva.estado === "sin_cuota") aplicarIva({ estadoIva: "sin_cuota", tipoIva: 0, cuotaIvaSoportado: 0 });
         else aplicarIva({ estadoIva: iva.estado });
         setIvaDeducidoDelPdf(`${ESTADOS_IVA.find((x) => x.id === iva.estado)?.nombre ?? iva.estado}: ${iva.motivo}`);
+      } else if (datos.tipoOperacion === "nacional" && datos.estadoIva === "pendiente_justificar" && !ue && !fuera) {
+        setIvaSinDeducirMotivo(motivoSinDeducirIva(e));
       }
       setOrigenAutomatico(true);
       setArticulosStock(articulosEmparejadosAEditables(data.articulosEmparejados || []));
@@ -1255,6 +1272,12 @@ export function FacturaRecibidaFormDialog({
                   <p className="flex items-start gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-xs text-violet-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300">
                     <MagicStar className="mt-0.5 size-3.5 shrink-0" />
                     <span>Marcado automáticamente al leer el PDF — <strong className="font-medium">{ivaDeducidoDelPdf}</strong>. Cámbialo si no es correcto.</span>
+                  </p>
+                )}
+                {ivaSinDeducirMotivo && datos.estadoIva === "pendiente_justificar" && (
+                  <p className="flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                    <Warning2 className="mt-0.5 size-3.5 shrink-0" />
+                    <span>No se marcó solo como deducible porque {ivaSinDeducirMotivo}. No falta ningún documento: si la factura es correcta, elige «Deducible».</span>
                   </p>
                 )}
                 {datos.estadoIva === "parcial" && (
