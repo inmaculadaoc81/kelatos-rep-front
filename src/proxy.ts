@@ -4,6 +4,7 @@ import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura } fro
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { comprobarAccesoLocal } from "@/lib/acceso-local";
+import { esUsuarioRedes, esRutaRedesSociales } from "@/lib/redes-sociales-acceso";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -77,11 +78,14 @@ export default auth(async (req) => {
   // layout reducido y el proxy /api/agentes-v2 (allowlist) acotan lo demás.
   const enProgramarContenido = ["/agentes-v2/programar", "/agentes-v2/carruseles"].some((r) => req.nextUrl.pathname === r || req.nextUrl.pathname.startsWith(`${r}/`));
   const programadorPermitido = esProgramadorContenido(req.auth?.user) && enProgramarContenido;
+  // Carlo, Cielo, Gean y Jeannie entran SOLO a /agentes/redes (analítica de Instagram); ninguna otra pantalla de Agentes.
+  const redesPermitido = esUsuarioRedes(req.auth?.user) && esRutaRedesSociales(req.nextUrl.pathname);
   if (
     req.nextUrl.pathname.startsWith("/agentes") &&
     req.auth?.user?.role !== "admin" &&
     !esSuperadmin(req.auth?.user?.email) &&
-    !programadorPermitido
+    !programadorPermitido &&
+    !redesPermitido
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
@@ -144,7 +148,12 @@ export default auth(async (req) => {
   const esSoloAsistencia = req.auth?.user?.asistenciaEmpleadoId != null &&
     !req.auth?.user?.accesoCompleto &&
     (req.auth?.user?.viaCredentials || !esDominioKelatos(req.auth?.user?.email || ""));
-  if (esSoloAsistencia && !enAsistencia && !(esProgramadorContenido(req.auth?.user) && (enProgramarContenido || req.nextUrl.pathname.startsWith("/api/agentes-v2/")))) {
+  if (
+    esSoloAsistencia &&
+    !enAsistencia &&
+    !(esProgramadorContenido(req.auth?.user) && (enProgramarContenido || req.nextUrl.pathname.startsWith("/api/agentes-v2/"))) &&
+    !(esUsuarioRedes(req.auth?.user) && (esRutaRedesSociales(req.nextUrl.pathname) || req.nextUrl.pathname.startsWith("/api/agentes-v2/")))
+  ) {
     return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));
   }
   if (enAsistenciaAdmin && req.auth?.user?.role !== "admin" && !esSuperadmin(req.auth?.user?.email)) {

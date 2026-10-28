@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { esSuperadmin } from "@/lib/superadmin";
 import { origenPropio } from "@/lib/publico-seguridad";
 import { esProgramadorContenido, rutaPermitidaProgramador } from "@/lib/programador-contenido";
+import { esUsuarioRedes, rutaPermitidaRedes } from "@/lib/redes-sociales-acceso";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +23,18 @@ async function manejar(req: Request, ctx: { params: Promise<{ ruta: string[] }> 
   const esAdmin = session?.user?.role === "admin" || esSuperadmin(email);
   // La community manager no es administradora: solo puede usar lo imprescindible para «Programar contenido».
   const esProgramador = !esAdmin && esProgramadorContenido(session?.user);
-  if (!email || (!esAdmin && !esProgramador)) {
+  // Carlo, Cielo, Gean y Jeannie: solo la analítica de «Redes sociales» (ver src/lib/redes-sociales-acceso.ts).
+  const esRedes = !esAdmin && esUsuarioRedes(session?.user);
+  if (!email || (!esAdmin && !esProgramador && !esRedes)) {
     return NextResponse.json({ ok: false, error: "Solo los administradores pueden acceder a Agentes V2" }, { status: 403 });
   }
   if (!BASE_URL || !TOKEN) return NextResponse.json({ ok: false, error: "API no configurada" }, { status: 500 });
 
   const { ruta } = await ctx.params;
-  if (esProgramador && !rutaPermitidaProgramador(req.method.toUpperCase(), ruta)) {
-    return NextResponse.json({ ok: false, error: "No tienes acceso a esta función" }, { status: 403 });
+  if (!esAdmin) {
+    const metodoPeticion = req.method.toUpperCase();
+    const permitida = (esProgramador && rutaPermitidaProgramador(metodoPeticion, ruta)) || (esRedes && rutaPermitidaRedes(metodoPeticion, ruta));
+    if (!permitida) return NextResponse.json({ ok: false, error: "No tienes acceso a esta función" }, { status: 403 });
   }
   if (!ruta.length || ruta.length > (ruta[0] === "social" ? 6 : 4) || !ruta.every((s) => /^[A-Za-z0-9_-]{1,60}$/.test(s)) || !RECURSOS.has(ruta[0])) {
     return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });

@@ -46,12 +46,17 @@ const ICONO_POR_TIPO: Record<string, ComponentType<IconProps>> = {
   pr_opportunities: Microphone,
 };
 
-export function AgentesSidebar({ session }: { session: Session | null }) {
+export function AgentesSidebar({ session, soloRedes = false }: { session: Session | null; soloRedes?: boolean }) {
   const pathname = usePathname();
   const [tipos, setTipos] = useState<AgentType[]>([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
+    // Quien solo ve «Redes sociales» no necesita (ni puede pedir) la lista de agentes.
+    if (soloRedes) {
+      setCargando(false);
+      return;
+    }
     fetch("/api/agentes/tipos")
       .then((r) => r.json())
       .then((data) => {
@@ -59,7 +64,7 @@ export function AgentesSidebar({ session }: { session: Session | null }) {
       })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, []);
+  }, [soloRedes]);
 
   return (
     <Sidebar collapsible="icon">

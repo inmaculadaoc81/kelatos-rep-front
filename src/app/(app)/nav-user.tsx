@@ -5,9 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2 } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2, Chart } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
+import { esUsuarioRedes } from "@/lib/redes-sociales-acceso";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -193,6 +194,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/agentes" />}>
                   <IconoDashboard icon={SecuritySafe} className="from-cyan-500 to-teal-600" />
                   Seguridad
+                </DropdownMenuItem>
+              )}
+              {esUsuarioRedes(session?.user) && !puedeVerAgentes && !enAgentes && (
+                <DropdownMenuItem render={<Link href="/agentes/redes" />}>
+                  <IconoDashboard icon={Chart} className="from-pink-500 to-rose-600" />
+                  Redes sociales
                 </DropdownMenuItem>
               )}
               {puedeVerAgentes && !enAgentesV2 && (
