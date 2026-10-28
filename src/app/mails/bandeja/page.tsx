@@ -108,6 +108,9 @@ export default function CentroMailsPage() {
   const [abiertos, setAbiertos] = useState<Set<number>>(new Set());
   const [seleccionarBuzonAbierto, setSeleccionarBuzonAbierto] = useState(false);
   const consulta = useRef(0);
+  const abrirPrimero = useRef(false); // llegó desde una notificación: abre solo el mensaje más reciente al cargar la lista
+  const abrirRef = useRef<((m: MensajeLista) => void) | null>(null);
+  abrirRef.current = abrir; // la función se declara más abajo (hoisting)
 
   useEffect(() => {
     const t = setTimeout(() => setBusquedaAplicada(busqueda), 350);
@@ -124,6 +127,9 @@ export default function CentroMailsPage() {
     if (v && CARPETAS.some((c) => c.vista === v)) setVista(v);
     else if (externoUrl.cliente || externoUrl.lead || externoUrl.email) setVista("todos");
     setExterno(externoUrl);
+    const q = p.get("q");
+    if (q) { setBusqueda(q); setBusquedaAplicada(q); }
+    abrirPrimero.current = p.get("abrir") === "1";
     setListo(true);
   }, []);
 
@@ -177,6 +183,11 @@ export default function CentroMailsPage() {
         setMensajes(data.mensajes as MensajeLista[]);
         setTotal(data.total as number);
         setContadores(data.contadores as ContadoresMensajes);
+        if (abrirPrimero.current) {
+          abrirPrimero.current = false;
+          const primero = (data.mensajes as MensajeLista[])[0];
+          if (primero) abrirRef.current?.(primero);
+        }
       } catch (e) {
         if (id === consulta.current && !silencioso) setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {

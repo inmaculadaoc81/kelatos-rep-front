@@ -15,7 +15,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { MOTIVO_LABELS, esConsultaCliente, tipoDeEvento, type WebhookEvento } from "@/lib/webhook-eventos";
+import { MOTIVO_LABELS, esConsultaCliente, tipoDeEvento, urlMensajeDeEvento, type WebhookEvento } from "@/lib/webhook-eventos";
 import { limpiarRespuestaCliente } from "@/lib/texto";
 import { toast } from "sonner";
 import { useSondeoVisible } from "@/hooks/use-sondeo-visible";
@@ -284,6 +284,7 @@ function TarjetaEvento({ evento, onClick }: { evento: WebhookEvento; onClick: ()
   const colorBadge = esAviso ? "bg-amber-100 text-amber-800" : esAceptado ? "bg-emerald-100 text-emerald-800" : "bg-destructive/10 text-destructive";
 
   const motivoLabel = evento.motivo ? MOTIVO_LABELS[evento.motivo] || evento.motivo : null;
+  const urlMensaje = urlMensajeDeEvento(evento);
 
   const fechaStr = evento.fecha
     ? new Date(evento.fecha).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -344,8 +345,17 @@ function TarjetaEvento({ evento, onClick }: { evento: WebhookEvento; onClick: ()
 
           {evento.respuesta_cliente && <p className="truncate text-xs text-muted-foreground italic">&quot;{limpiarRespuestaCliente(evento.respuesta_cliente)}&quot;</p>}
 
-          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Clock className="size-3 shrink-0" /> {fechaStr}
+          <p className="flex items-center justify-between gap-1 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1"><Clock className="size-3 shrink-0" /> {fechaStr}</span>
+            {urlMensaje && (
+              <span
+                role="link"
+                className="flex shrink-0 items-center gap-1 font-medium text-primary hover:underline"
+                onClick={(ev) => { ev.stopPropagation(); window.location.href = urlMensaje; }}
+              >
+                <Sms className="size-3" /> Ir al mensaje
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -685,6 +695,11 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
             </div>
 
             <DialogFooter>
+              {urlMensajeDeEvento(evento) && (
+                <Button variant="outline" size="sm" onClick={() => { window.location.href = urlMensajeDeEvento(evento) as string; }}>
+                  <Sms className="size-4" /> Ir al mensaje
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={onClose}>Cerrar</Button>
             </DialogFooter>
 

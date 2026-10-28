@@ -67,6 +67,16 @@ export function tipoDeEvento(e: Pick<WebhookEvento, "motivo">): "consulta_web" |
   return e.motivo === "FORMULARIO_REQUIERE_RESPUESTA_MANUAL" ? "consulta_web" : "presupuesto";
 }
 
+/** Enlace al mensaje del cliente en el módulo Mails. Una consulta web llega desde el buzón del formulario, así que se busca por el email del cliente dentro del
+    texto; una respuesta a un presupuesto llega desde el propio cliente, así que se filtra por su dirección. En los dos casos se abre solo el más reciente. */
+export function urlMensajeDeEvento(e: Pick<WebhookEvento, "motivo" | "email_cliente">): string | null {
+  const email = (e.email_cliente || "").trim();
+  if (!email) return null;
+  return tipoDeEvento(e) === "consulta_web"
+    ? `/mails/bandeja?vista=todos&q=${encodeURIComponent(email)}&abrir=1`
+    : `/mails/bandeja?email=${encodeURIComponent(email)}&abrir=1`;
+}
+
 /** Motivos en los que el cliente formuló una pregunta junto a su respuesta
     — habilitan el composer de "Responder consulta" en el panel. */
 export function esConsultaCliente(motivo: string | null): boolean {
