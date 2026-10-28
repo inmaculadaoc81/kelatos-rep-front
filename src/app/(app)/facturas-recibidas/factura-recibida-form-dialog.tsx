@@ -26,6 +26,7 @@ import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route"
 import { VerificacionNifIva } from "./verificacion-nif-iva";
 import { detectarCompraIntracomunitaria, detectarProveedorFueraUE } from "@/lib/facturas-recibidas";
 import { ArticulosStockRevision, articulosEmparejadosAEditables, type ArticuloStockEditable } from "./articulos-stock-revision";
+import { motivoNombrePiezaInvalido } from "@/lib/facturas-recibidas";
 import { LineasFactura, articulosALineas, lineaApiAEditable, type LineaEditable, type LineaApi } from "./lineas-factura";
 import {
   FacturaRecibida, EnlaceFactura, AlmacenFactura, TipoDocumentoFactura, CategoriaFactura, EstadoPagoFactura, EstadoRevisionFactura,
@@ -601,6 +602,13 @@ export function FacturaRecibidaFormDialog({
     if (!datos.fechaExpedicion) return toast.error("La fecha de expedición es obligatoria");
     if (!datos.baseImponible) return toast.error("La base imponible es obligatoria");
     if (!datos.importeTotal) return toast.error("El importe total es obligatorio");
+    if (!esEdicion) {
+      for (const a of articulosStock.filter((x) => x.aplicar && x.cantidad > 0 && !x.referencia.trim())) {
+        const motivo = motivoNombrePiezaInvalido(a.nombre, { numeroFactura: datos.numeroFacturaProveedor, idPedido: a.idPedidoProveedor });
+        if (motivo) return toast.error(`No se puede dar de alta la pieza «${a.nombre}» en Stock de Piezas: ${motivo}. Escribe el nombre real del producto o desmárcala.`);
+        if (!a.categoria) return toast.error(`Elige la categoría de la pieza nueva «${a.nombre}».`);
+      }
+    }
     if (["deducible", "parcial", "no_deducible"].includes(datos.estadoIva) && !(datos.cuotaIvaSoportado > 0)) {
       return toast.error("Indica la cuota de IVA soportado (si la factura no tiene cuota de IVA acreditada, elige «Sin cuota de IVA acreditada»)");
     }

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { Box1, TickCircle } from "@/lib/icons";
 import type { ArticuloFacturaEmparejado } from "@/app/api/facturas-recibidas/ocr/route";
+import { motivoNombrePiezaInvalido } from "@/lib/facturas-recibidas";
 
 export interface ArticuloStockEditable {
   nombre: string;
@@ -35,7 +36,7 @@ export function articulosEmparejadosAEditables(articulos: ArticuloFacturaEmparej
     aplicar: true,
     referencia: a.referenciaSugerida || "",
     nombrePiezaSugerida: a.nombrePiezaSugerida,
-    categoria: a.categoriaSugerida || "CARGADOR",
+    categoria: a.categoriaSugerida || "",
     // El precio de la factura es lo que costó (coste interno); el precio al cliente lo pone quien registra.
     costeInterno: a.precioUnitario ?? 0,
     precioCliente: a.precioClienteSugerido || 0,
@@ -79,7 +80,11 @@ export function ArticulosStockRevision({
               <Checkbox checked={a.aplicar} onCheckedChange={(v) => actualizar(i, { aplicar: v === true })} className="mt-1" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">{a.nombre}</span>
+                  {a.referencia ? (
+                    <span className="text-sm font-medium">{a.nombre}</span>
+                  ) : (
+                    <Input className="h-8 min-w-64 max-w-xl flex-1 text-sm font-medium" placeholder="Nombre real del producto" value={a.nombre} onChange={(e) => actualizar(i, { nombre: e.target.value })} />
+                  )}
                   {a.referencia && a.nombrePiezaSugerida && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       <TickCircle className="size-3" /> {a.nombrePiezaSugerida} (ref {a.referencia})
@@ -109,13 +114,16 @@ export function ArticulosStockRevision({
                   </div>
                 </div>
 
+                {!a.referencia && a.aplicar && motivoNombrePiezaInvalido(a.nombre, { idPedido: a.idPedidoProveedor }) && (
+                  <p className="text-xs font-medium text-destructive">No se puede dar de alta con este nombre: {motivoNombrePiezaInvalido(a.nombre, { idPedido: a.idPedidoProveedor })}. Escribe el nombre real del producto o desmárcalo.</p>
+                )}
                 {!a.referencia && (
                   <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/50 p-2 sm:grid-cols-4">
                     <div className="col-span-2 space-y-1 sm:col-span-1">
                       <Label className="text-xs text-muted-foreground">Categoría</Label>
                       <Select value={a.categoria} onValueChange={(v) => v && actualizar(i, { categoria: v })}>
                         <SelectTrigger className="h-8">
-                          <SelectValue>{(v: string) => v}</SelectValue>
+                          <SelectValue>{(v: string) => v || "— Elige categoría —"}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {CATEGORIAS_SUGERIDAS.map((c) => (

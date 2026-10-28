@@ -44,6 +44,21 @@ export interface EnlaceFactura {
   puntuacion: number | null;
 }
 
+/** Motivo por el que un texto no vale como nombre de una pieza nueva de Stock de Piezas (null si vale). Mismas reglas que el servidor (nombresPieza.js). */
+export function motivoNombrePiezaInvalido(nombre: string, ref: { numeroFactura?: string; idPedido?: string } = {}): string | null {
+  const n = (nombre || "").replace(/\s+/g, " ").trim();
+  if (n.length < 5) return "el nombre es demasiado corto";
+  if ((n.match(/\p{L}/gu) || []).length < 4) return "el nombre casi no tiene letras";
+  if (/^(art[ií]culos?|productos?|items?|pedidos?|compras?|facturas?|concepto|varios|sin nombre|desconocid[oa]|n\/a|test|prueba)/i.test(n)) return "es un nombre genérico, no el nombre del producto";
+  if (/(factura|pedido|order|invoice|albar[aá]n)/i.test(n) && /\d[\d-]{4,}/.test(n)) return "parece un número de factura o de pedido, no un producto";
+  const bajo = n.toLowerCase();
+  for (const r of [ref.numeroFactura, ref.idPedido]) {
+    const x = (r || "").trim().toLowerCase();
+    if (x.length >= 5 && bajo.includes(x)) return "contiene el número de factura o de pedido";
+  }
+  return null;
+}
+
 /** Lectura automática guardada con la factura: campos leídos, dudas de la IA y por qué el IVA quedó como quedó. */
 export interface LecturaOcrGuardada {
   extraido: {
