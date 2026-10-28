@@ -38,8 +38,8 @@ export async function POST(req: Request) {
       const origen = new URL(req.url).origin;
       return NextResponse.json({ ok: true, url: `${origen}/api/acceso-local/alta?codigo=${r.codigo}`, caduca_en: r.caduca_en });
     }
-    if (body.accion === "revocar" && /^\d{1,15}$/.test(String(body.id))) {
-      await kelatosApiPost(`/v1/seguridad/acceso-local/equipos/${body.id}/revocar`, {});
+    if (["revocar", "aprobar", "rechazar"].includes(String(body.accion)) && /^\d{1,15}$/.test(String(body.id))) {
+      await kelatosApiPost(`/v1/seguridad/acceso-local/equipos/${body.id}/${body.accion}`, { nombre: body.nombre });
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ ok: false, error: "Acción no válida" }, { status: 400 });

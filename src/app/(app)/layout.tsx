@@ -11,6 +11,7 @@ import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { CodigoAccesoProvider } from "./codigo-acceso-context";
 import { EscanerCodigoBarras } from "./escaner-codigo-barras";
 import { AsistenteFlotante } from "./asistente-flotante";
+import { SolicitudEquipoLocal } from "@/components/acceso-local/solicitud-equipo";
 
 // El redirect a /login ya lo hace proxy.ts a nivel de middleware para
 // todas las rutas de este grupo — aquí solo se lee la sesión para pasar
@@ -19,6 +20,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth();
   return (
     <CodigoAccesoProvider>
+      {/* Solo para la cuenta restringida al local: da (o anota) la marca de equipo de este navegador; no muestra nada. */}
+      {esCuentaEmpleadosRestringida(session?.user?.email) && <SolicitudEquipoLocal />}
       <EscanerCodigoBarras recepcionEquipos={!!session?.user?.email && !esCuentaEmpleadosRestringida(session.user.email)} />
       <SidebarProvider>
         <AppSidebar session={session} />

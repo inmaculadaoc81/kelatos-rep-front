@@ -60,10 +60,14 @@ async function configVigente(): Promise<ConfigAccesoLocal | null> {
 }
 
 /** IP real del cliente tal como la ve el servidor detrás del proxy de Hostinger (primer valor de X-Forwarded-For). */
-export function ipDelCliente(req: NextRequest): string {
+export function ipDelClienteDe(req: { headers: Headers }): string {
   const xff = req.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0].trim();
   return req.headers.get("x-real-ip")?.trim() || "desconocida";
+}
+
+export function ipDelCliente(req: NextRequest): string {
+  return ipDelClienteDe(req);
 }
 
 function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloqueado: boolean, equipoHash: string | null) {
@@ -85,7 +89,8 @@ function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloquea
 export async function comprobarAccesoLocal(req: NextRequest, email: string | null | undefined, exento: boolean): Promise<NextResponse | null> {
   if (exento || !email) return null;
   const ruta = req.nextUrl.pathname;
-  if (ruta.startsWith("/acceso-restringido")) return null;
+  // La pantalla de aviso y la solicitud de equipo deben poder abrirse siempre (si no, un equipo bloqueado no podría pedir autorización).
+  if (ruta.startsWith("/acceso-restringido") || ruta.startsWith("/api/acceso-local/solicitud")) return null;
   const cfg = await configVigente();
   if (!cfg || cfg.modo === "apagado" || email.toLowerCase() !== cfg.cuenta) return null;
 
