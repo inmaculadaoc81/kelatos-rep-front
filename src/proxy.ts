@@ -167,6 +167,6 @@ export const config = {
     // srcDoc (origen opaco), sin cookie de sesión (SameSite la bloquea) —
     // esa ruta hace su propia comprobación (sesión o token corto, ver
     // mails-image-token.ts) en vez de la cookie que exige este middleware.
-    "/((?!login|api/auth|api/mails/imagen|valoracion/|valoracion$|api/valoracion/|formulario|api/formulario-cliente|api/formulario-recogida|api/formulario-entrega-venta|api/acceso-local/latido|_next/static|_next/image|favicon.ico|robots.txt|logos).*)",
+    "/((?!login|api/auth|api/mails/imagen|valoracion/|valoracion$|api/valoracion/|formulario|api/formulario-cliente|api/formulario-recogida|api/formulario-entrega-venta|api/acceso-local/latido|api/acceso-local/alta|_next/static|_next/image|favicon.ico|robots.txt|logos).*)",
   ],
 };

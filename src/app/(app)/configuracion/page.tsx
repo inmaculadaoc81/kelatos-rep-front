@@ -48,6 +48,9 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="p-6">
+      <a href="/configuracion/equipos-local" className="mb-4 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50">
+        <ShieldTick className="size-4" /> Equipos del local (acceso restringido)
+      </a>
       <div className="mb-4 flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Setting2 className="size-5" />

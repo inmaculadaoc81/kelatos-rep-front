@@ -13,7 +13,15 @@ import { NextResponse, type NextRequest } from "next/server";
  * (API caída, lenta) se deja pasar. Solo la cuenta restringida puede verse afectada por un error.
  */
 
-type ConfigAccesoLocal = { cuenta: string; modo: "apagado" | "observar" | "bloquear"; ips: string[]; ipsDinamicas: string[] };
+type ConfigAccesoLocal = { cuenta: string; modo: "apagado" | "observar" | "bloquear"; ips: string[]; ipsDinamicas: string[]; equiposHash: string[] };
+
+/** Cookie que lleva el navegador de un equipo del local autorizado (ver /api/acceso-local/alta). Solo se compara su hash con el del servidor. */
+export const COOKIE_EQUIPO_LOCAL = "kelatos_equipo_local";
+
+async function hashHex(texto: string): Promise<string> {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 const BASE_URL = process.env.KELATOS_API_BASE_URL;
 const TOKEN = process.env.KELATOS_API_TOKEN;
@@ -42,7 +50,7 @@ async function configVigente(): Promise<ConfigAccesoLocal | null> {
   if (ahora < cache.hasta) return cache.valor;
   try {
     const c = (await llamarApi("/v1/seguridad/acceso-local/config")) as { ok?: boolean } & Partial<ConfigAccesoLocal>;
-    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), modo: c.modo, ips: c.ips, ipsDinamicas: Array.isArray(c.ipsDinamicas) ? c.ipsDinamicas : [] }, hasta: ahora + TTL_CONFIG_MS };
+    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), modo: c.modo, ips: c.ips, ipsDinamicas: Array.isArray(c.ipsDinamicas) ? c.ipsDinamicas : [], equiposHash: Array.isArray(c.equiposHash) ? c.equiposHash : [] }, hasta: ahora + TTL_CONFIG_MS };
     else cache = { valor: cache.valor, hasta: ahora + REINTENTO_TRAS_FALLO_MS };
   } catch {
     // Sin poder leer la configuración se deja pasar (se conserva la última conocida).
@@ -58,7 +66,7 @@ export function ipDelCliente(req: NextRequest): string {
   return req.headers.get("x-real-ip")?.trim() || "desconocida";
 }
 
-function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloqueado: boolean) {
+function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloqueado: boolean, equipoHash: string | null) {
   const clave = `${email}|${ip}|${habriaBloqueado}`;
   const ahora = Date.now();
   if (ahora - (anotados.get(clave) ?? 0) < ANOTAR_CADA_MS) return;
@@ -66,7 +74,7 @@ function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloquea
   if (anotados.size > 500) anotados.clear();
   // Sin await: anotar nunca retrasa ni rompe la petición.
   void llamarApi("/v1/seguridad/acceso-local/visto", {
-    email, ip, habriaBloqueado, ua: req.headers.get("user-agent") || "", ruta: req.nextUrl.pathname,
+    email, ip, habriaBloqueado, equipoHash, ua: req.headers.get("user-agent") || "", ruta: req.nextUrl.pathname,
   }).catch(() => {});
 }
 
@@ -82,9 +90,13 @@ export async function comprobarAccesoLocal(req: NextRequest, email: string | nul
   if (!cfg || cfg.modo === "apagado" || email.toLowerCase() !== cfg.cuenta) return null;
 
   const ip = ipDelCliente(req);
-  // Dentro = IP fija de la lista o IP que el propio local ha anunciado hace poco (latido; el proveedor del local cambia la IP).
-  const dentro = cfg.ips.includes(ip) || cfg.ipsDinamicas.includes(ip);
-  anotarVisita(email.toLowerCase(), ip, req, !dentro);
+  // Dentro = equipo autorizado (su navegador lleva la cookie de alta; sirve aunque cambie la IP), IP fija de la lista o IP que el propio
+  // local ha anunciado hace poco (latido).
+  const cookie = req.cookies.get(COOKIE_EQUIPO_LOCAL)?.value;
+  const equipoHash = cookie ? await hashHex(cookie) : null;
+  const equipoAutorizado = !!equipoHash && cfg.equiposHash.includes(equipoHash);
+  const dentro = equipoAutorizado || cfg.ips.includes(ip) || cfg.ipsDinamicas.includes(ip);
+  anotarVisita(email.toLowerCase(), ip, req, !dentro, equipoAutorizado ? equipoHash : null);
   if (cfg.modo !== "bloquear" || dentro) return null;
 
   return ruta.startsWith("/api/")
