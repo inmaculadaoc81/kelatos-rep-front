@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Add, ArrowLeft2, ArrowRight2, DocumentText, Refresh2, SearchNormal1 } from "@/lib/icons";
+import { Add, ArrowLeft2, ArrowRight2, DocumentDownload, DocumentText, Refresh2, SearchNormal1 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { descargarCsv } from "@/lib/reporte-facturas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, fechaCorta, num, type AsientoResumen, type DetalleAsiento, type EstadoAsiento, type EventoContable } from "@/lib/contabilidad";
@@ -14,7 +16,17 @@ import { AsientoDialog } from "../asiento-dialog";
 import { AsientoFormDialog } from "../asiento-form-dialog";
 import { SincronizarDialog } from "../sincronizar-dialog";
 
-const POR_PAGINA = 25;
+const OPCIONES_POR_PAGINA = [25, 50, 100, 200, 500];
+const ORIGENES: { valor: string; etiqueta: string }[] = [
+  { valor: "reparaciones", etiqueta: "Reparaciones" },
+  { valor: "tickets_manuales", etiqueta: "Tickets manuales" },
+  { valor: "facturas_manuales", etiqueta: "Facturas manuales" },
+  { valor: "ventas", etiqueta: "Ventas" },
+  { valor: "alquileres", etiqueta: "Alquileres" },
+  { valor: "facturas_recibidas", etiqueta: "Facturas recibidas" },
+  { valor: "importaciones", etiqueta: "Importaciones" },
+];
+const celdaCsv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 export default function AsientosPage() {
   const [pestana, setPestana] = useState("asientos");
@@ -25,6 +37,13 @@ export default function AsientosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(25);
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [origen, setOrigen] = useState("");
+  const [importeMin, setImporteMin] = useState("");
+  const [importeMax, setImporteMax] = useState("");
+  const [exportando, setExportando] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
@@ -41,7 +60,7 @@ export default function AsientosPage() {
     const t = setTimeout(() => setBusquedaAplicada(busqueda), 350);
     return () => clearTimeout(t);
   }, [busqueda]);
-  useEffect(() => setPagina(1), [estado, busquedaAplicada]);
+  useEffect(() => setPagina(1), [estado, busquedaAplicada, porPagina, desde, hasta, origen, importeMin, importeMax]);
 
   const cargar = useCallback(async () => {
     const id = ++consulta.current;
@@ -49,7 +68,7 @@ export default function AsientosPage() {
     setError(null);
     try {
       const d = await apiC<{ total: number; asientos: AsientoResumen[]; porEstado: Record<string, number> }>("asientos", {
-        query: { limit: POR_PAGINA, offset: (pagina - 1) * POR_PAGINA, estado, q: busquedaAplicada.trim() },
+        query: { limit: porPagina, offset: (pagina - 1) * porPagina, estado, q: busquedaAplicada.trim(), desde, hasta, origen, importeMin, importeMax },
       });
       if (id !== consulta.current) return;
       setFilas(d.asientos);
@@ -63,12 +82,38 @@ export default function AsientosPage() {
     } finally {
       if (id === consulta.current) setCargando(false);
     }
-  }, [pagina, estado, busquedaAplicada]);
+  }, [pagina, porPagina, estado, busquedaAplicada, desde, hasta, origen, importeMin, importeMax]);
   useEffect(() => {
     cargar();
   }, [cargar]);
 
-  const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+  const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
+  const hayFiltros = !!(estado || busquedaAplicada.trim() || desde || hasta || origen || importeMin || importeMax);
+  function quitarFiltros() {
+    setEstado(""); setBusqueda(""); setDesde(""); setHasta(""); setOrigen(""); setImporteMin(""); setImporteMax("");
+  }
+
+  // Exporta TODOS los asientos que cumplen los filtros activos (no solo la página), en bloques de 500, a un CSV que abre Excel (separador «;», coma decimal).
+  async function exportarCsv() {
+    setExportando(true);
+    try {
+      const todos: AsientoResumen[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const d = await apiC<{ asientos: AsientoResumen[] }>("asientos", { query: { limit: 500, offset, estado, q: busquedaAplicada.trim(), desde, hasta, origen, importeMin, importeMax } });
+        todos.push(...d.asientos);
+        if (d.asientos.length < 500) break;
+      }
+      if (todos.length === 0) return toast.error("No hay asientos que exportar con estos filtros");
+      const cab = ["Nº", "Fecha", "Concepto", "Tipo", "Estado", "Origen", "Referencia de origen", "Importe"];
+      const filasCsv = todos.map((f) => [f.numero || `#${f.id}`, f.fecha, f.concepto, f.tipo, f.estado, f.origen_tipo || "", f.origen_id || "", String(f.total ?? 0).replace(".", ",")]);
+      descargarCsv("\uFEFF" + [cab, ...filasCsv].map((r) => r.map(celdaCsv).join(";")).join("\r\n"), `asientos-${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success(`${todos.length} asiento${todos.length !== 1 ? "s" : ""} exportado${todos.length !== 1 ? "s" : ""}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al exportar");
+    } finally {
+      setExportando(false);
+    }
+  }
   const seleccionables = filas.filter((f) => f.estado === "BORRADOR" || f.estado === "VALIDADO");
 
   async function accionLote(accion: "validar" | "contabilizar") {
@@ -135,7 +180,25 @@ export default function AsientosPage() {
               <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar por concepto, número u origen…" className="h-8 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             </div>
-            {estado && <Button variant="ghost" size="sm" className="h-8" onClick={() => setEstado("")}>Quitar filtro</Button>}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              Desde <Input type="date" className="h-8 w-36" value={desde} onChange={(e) => setDesde(e.target.value)} />
+              hasta <Input type="date" className="h-8 w-36" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+            </div>
+            <Select value={origen || "todos"} onValueChange={(v) => setOrigen(!v || v === "todos" ? "" : v)}>
+              <SelectTrigger className="h-8 w-44"><SelectValue placeholder="Origen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Cualquier origen</SelectItem>
+                {ORIGENES.map((o) => <SelectItem key={o.valor} value={o.valor}>{o.etiqueta}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              Importe <Input type="number" min="0" step="0.01" placeholder="mín." className="h-8 w-24" value={importeMin} onChange={(e) => setImporteMin(e.target.value)} />
+              – <Input type="number" min="0" step="0.01" placeholder="máx." className="h-8 w-24" value={importeMax} onChange={(e) => setImporteMax(e.target.value)} />
+            </div>
+            {hayFiltros && <Button variant="ghost" size="sm" className="h-8" onClick={quitarFiltros}>Quitar filtros</Button>}
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" disabled={exportando || total === 0} onClick={exportarCsv} title="Descarga todos los asientos que cumplen los filtros actuales">
+              <DocumentDownload className="size-4" /> {exportando ? "Exportando…" : "Exportar CSV"}
+            </Button>
             {seleccion.size > 0 && (
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{seleccion.size} seleccionado(s)</span>
@@ -194,7 +257,18 @@ export default function AsientosPage() {
           </div>
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{total} asiento(s)</span>
+            <div className="flex items-center gap-3">
+              <span>{total} asiento(s)</span>
+              <label className="flex items-center gap-1.5 text-xs">
+                Filas por página
+                <Select value={String(porPagina)} onValueChange={(v) => setPorPagina(Number(v) || 25)}>
+                  <SelectTrigger className="h-8 w-20"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {OPCIONES_POR_PAGINA.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
             <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" className="size-8" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}><ArrowLeft2 className="size-4" /></Button>
               <span className="px-2 tabular-nums">{pagina} / {totalPaginas}</span>
