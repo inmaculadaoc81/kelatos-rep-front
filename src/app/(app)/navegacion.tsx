@@ -131,6 +131,7 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
     { label: "Inmovilizado", href: "/contabilidad/inmovilizado", icon: Box },
     { label: "Partidas pendientes", href: "/contabilidad/pendientes", icon: Wallet },
     { label: "Conciliación TPV", href: "/contabilidad/tpv", icon: CardPos },
+    { label: "Devoluciones", href: "/contabilidad/devoluciones", icon: MoneySend },
     { label: "Cierre de ejercicio", href: "/contabilidad/cierre", icon: Save2 },
     { label: "Efectivo y caja", href: "/contabilidad/efectivo", icon: Coin1 },
     { label: "Plan contable", href: "/contabilidad/plan", icon: Hierarchy },

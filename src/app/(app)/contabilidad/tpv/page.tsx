@@ -49,6 +49,9 @@ export default function TpvPage() {
   const [bancos, setBancos] = useState<{ id: number; nombre: string }[]>([]);
   const [activoDesde, setActivoDesde] = useState<string | null>(null);
   const [fechaActivar, setFechaActivar] = useState("");
+  const [pasarelaDesde, setPasarelaDesde] = useState<string | null>(null);
+  const [fechaPasarela, setFechaPasarela] = useState("");
+  const [pasarela, setPasarela] = useState<{ cuenta: string; cobros_pendientes: number; pendiente: number; saldo_contabilizado: number } | null>(null);
   const [movs, setMovs] = useState<Movimiento[]>([]);
   const [total, setTotal] = useState(0);
   const [porEstado, setPorEstado] = useState<Record<string, number>>({});
@@ -72,12 +75,14 @@ export default function TpvPage() {
     setError(null);
     try {
       const [a, m] = await Promise.all([
-        apiC<{ activo_desde: string | null; bancos: { id: number; nombre: string }[]; resumen: BancoRes[] }>("tpv"),
+        apiC<{ activo_desde: string | null; pasarela_desde: string | null; pasarela: { cuenta: string; cobros_pendientes: number; pendiente: number; saldo_contabilizado: number }; bancos: { id: number; nombre: string }[]; resumen: BancoRes[] }>("tpv"),
         apiC<{ total: number; movimientos: Movimiento[]; porEstado: Record<string, number> }>("tpv/movimientos", {
           query: { banco_id: filtroBanco, estado: filtroEstado, signo: filtroSigno, q: busqueda.trim(), limit: POR_PAGINA, offset: (pagina - 1) * POR_PAGINA },
         }),
       ]);
       setActivoDesde(a.activo_desde);
+      setPasarelaDesde(a.pasarela_desde);
+      setPasarela(a.pasarela);
       setBancos(a.bancos);
       setResumen(a.resumen);
       setMovs(m.movimientos);
@@ -92,11 +97,12 @@ export default function TpvPage() {
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => setPagina(1), [filtroBanco, filtroEstado, filtroSigno, busqueda]);
 
-  async function guardarActivacion(desde: string | null) {
+  async function guardarActivacion(desde: string | null, clave: "tpv_desde" | "pasarela_desde" = "tpv_desde") {
     setTrabajando(true);
     try {
-      await apiC("tpv/configurar", { metodo: "POST", cuerpo: { desde } });
-      toast.success(desde ? `Los cobros con tarjeta desde el ${fechaCorta(desde)} irán a la cuenta del TPV` : "Función desactivada: la tarjeta vuelve a ir directa al banco");
+      await apiC("tpv/configurar", { metodo: "POST", cuerpo: { desde, clave } });
+      const web = clave === "pasarela_desde";
+      toast.success(desde ? `Los cobros con ${web ? "tarjeta virtual" : "tarjeta"} desde el ${fechaCorta(desde)} irán a la cuenta transitoria ${web ? "de la pasarela web" : "del TPV"}` : web ? "Pasarela desactivada: la tarjeta virtual vuelve a la partida pendiente (555)" : "Función desactivada: la tarjeta vuelve a ir directa al banco");
       await cargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error");
@@ -177,7 +183,26 @@ export default function TpvPage() {
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3 text-sm">
+        <span className="font-medium">Cobros con tarjeta virtual (pasarela web) a su cuenta transitoria 44000001:</span>
+        {pasarelaDesde ? (
+          <>
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">Activo desde {fechaCorta(pasarelaDesde)}</span>
+            <Button size="sm" variant="outline" disabled={trabajando} onClick={() => guardarActivacion(null, "pasarela_desde")}>Desactivar</Button>
+          </>
+        ) : (
+          <>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Desactivado: la tarjeta virtual va a la partida pendiente (555)</span>
+            <Input type="date" className="h-8 w-40" value={fechaPasarela} onChange={(e) => setFechaPasarela(e.target.value)} aria-label="Activar pasarela desde" />
+            <Button size="sm" disabled={trabajando || !fechaPasarela} onClick={() => guardarActivacion(fechaPasarela, "pasarela_desde")}>Activar desde esa fecha</Button>
+          </>
+        )}
+      </div>
+
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {pasarela && (pasarela.cobros_pendientes > 0 || pasarela.saldo_contabilizado !== 0) && (
+          <Kpi titulo={`Pasarela web · ${pasarela.cobros_pendientes} cobro(s) · cta. ${pasarela.cuenta}`} valor={eur(pasarela.pendiente)} color="text-amber-600 dark:text-amber-400" />
+        )}
         <Kpi titulo="Pendiente de liquidar (todos los bancos)" valor={eur(pendienteTotal)} color="text-amber-600 dark:text-amber-400" />
         {resumen.filter((r) => r.cobros_pendientes > 0 || r.saldo_contabilizado !== 0).map((r) => (
           <Kpi key={r.banco_id} titulo={`${r.banco} · ${r.cobros_pendientes} cobro(s) · cta. ${r.cuenta}`} valor={eur(r.pendiente)} color="" />
@@ -275,6 +300,7 @@ export default function TpvPage() {
 
 function LiquidarDialog({ mov, onClose, onHecho }: { mov: Movimiento; onClose: () => void; onHecho: () => void }) {
   const [lineas, setLineas] = useState<LineaTpv[]>([]);
+  const [canal, setCanal] = useState<"tpv" | "pasarela">("tpv");
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [modo, setModo] = useState<Modo>("sin_iva");
   const [ref, setRef] = useState("");
@@ -283,11 +309,13 @@ function LiquidarDialog({ mov, onClose, onHecho }: { mov: Movimiento; onClose: (
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiC<{ lineas: LineaTpv[] }>("tpv", { query: { banco_id: mov.banco_id } })
+    setCargando(true);
+    setSel(new Set());
+    apiC<{ lineas: LineaTpv[] }>("tpv", { query: { banco_id: mov.banco_id, canal } })
       .then((d) => { setLineas(d.lineas); })
       .catch((e) => setError(e instanceof Error ? e.message : "Error"))
       .finally(() => setCargando(false));
-  }, [mov.banco_id]);
+  }, [mov.banco_id, canal]);
 
   const bruto = lineas.filter((l) => sel.has(l.linea_id)).reduce((s, l) => s + l.importe, 0);
   const comision = bruto - mov.importe;
@@ -299,7 +327,7 @@ function LiquidarDialog({ mov, onClose, onHecho }: { mov: Movimiento; onClose: (
     try {
       const r = await apiC<{ bruto: number; comision: number }>("tpv/liquidaciones", {
         metodo: "POST",
-        cuerpo: { movimiento_id: mov.id, lineas: [...sel], iva_modo: modo, referencia_tpv: ref.trim() },
+        cuerpo: { movimiento_id: mov.id, canal, lineas: [...sel], iva_modo: modo, referencia_tpv: ref.trim() },
       });
       toast.success(`Borrador generado: bruto ${eur(r.bruto)}, comisión ${eur(r.comision)}`);
       onHecho();
@@ -313,8 +341,15 @@ function LiquidarDialog({ mov, onClose, onHecho }: { mov: Movimiento; onClose: (
   return (
     <Dialog open onOpenChange={(a) => { if (!a) onClose(); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-        <DialogHeader><DialogTitle>Liquidación del TPV · {mov.banco} · {fechaCorta(mov.fecha)} · {eur(mov.importe)}</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Marca los cobros con tarjeta que cubre este ingreso. La diferencia con lo ingresado es la comisión del TPV.</p>
+        <DialogHeader><DialogTitle>Liquidación · {mov.banco} · {fechaCorta(mov.fecha)} · {eur(mov.importe)}</DialogTitle></DialogHeader>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span>¿Quién ingresó este dinero?</span>
+          <select className="h-8 rounded-md border bg-background px-2 text-sm" value={canal} onChange={(e) => setCanal(e.target.value as "tpv" | "pasarela")} aria-label="Origen del ingreso">
+            <option value="tpv">TPV físico ({mov.banco})</option>
+            <option value="pasarela">Pasarela web (tarjeta virtual)</option>
+          </select>
+        </div>
+        <p className="text-sm text-muted-foreground">Marca los cobros con tarjeta que cubre este ingreso. La diferencia con lo ingresado es la comisión real del {canal === "pasarela" ? "proveedor de la pasarela" : "TPV"}.</p>
         <CajaError mensaje={error} />
         <div className="max-h-72 overflow-y-auto rounded-md border">
           <Table>
