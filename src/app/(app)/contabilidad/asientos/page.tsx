@@ -304,7 +304,24 @@ function BandejaEventos({ onAsiento, onCambio }: { onAsiento: (id: number) => vo
               eventos.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.tipo_evento}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{e.origen_tipo} · {e.origen_id}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {(() => {
+                      const numero = (e.payload as { numero?: string } | null)?.numero;
+                      const resguardo = e.origen_tipo === "reparaciones" ? e.origen_id.split(":")[0] : null;
+                      return (
+                        <>
+                          {numero && <div className="font-medium text-foreground">Documento {numero}</div>}
+                          <div>{e.origen_tipo} · {e.origen_id}</div>
+                          {resguardo && (
+                            <a href={`/reparaciones?resguardo=${encodeURIComponent(resguardo)}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                              Abrir la reparación {resguardo}
+                            </a>
+                          )}
+                          {e.asiento_id && <div>Asiento n.º {e.asiento_id}</div>}
+                        </>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell><span className={`text-sm font-medium ${color[e.estado]}`}>{etiqueta[e.estado]?.replace(/s$/, "")}</span></TableCell>
                   <TableCell className="max-w-md text-xs text-muted-foreground">
                     {ignorando === e.id ? (
