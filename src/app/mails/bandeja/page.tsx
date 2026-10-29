@@ -80,6 +80,15 @@ interface FiltroExterno {
   email: string | null;
 }
 
+interface PestanaMail {
+  id: number;
+  titulo: string;
+  asunto: string;
+  msg: MensajeLista;
+}
+const CLAVE_PESTANAS = "mails-pestanas-v1";
+const MAX_PESTANAS = 10;
+
 export default function CentroMailsPage() {
   const [buzones, setBuzones] = useState<Buzon[]>([]);
   const [cargandoBuzones, setCargandoBuzones] = useState(true);
@@ -107,6 +116,10 @@ export default function CentroMailsPage() {
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [abiertos, setAbiertos] = useState<Set<number>>(new Set());
   const [seleccionarBuzonAbierto, setSeleccionarBuzonAbierto] = useState(false);
+  // Pestañas de lectura, como en Thunderbird: cada correo abierto en una pestaña se queda ahí (con la bandeja y su búsqueda intactas) hasta que se cierra.
+  const [pestanas, setPestanas] = useState<PestanaMail[]>([]);
+  const [pestanaActiva, setPestanaActiva] = useState<"bandeja" | number>("bandeja");
+  const enPestana = pestanaActiva !== "bandeja";
   const consulta = useRef(0);
   const abrirPrimero = useRef(false); // llegó desde una notificación: abre solo el mensaje más reciente al cargar la lista
   const abrirRef = useRef<((m: MensajeLista) => void) | null>(null);
@@ -333,6 +346,39 @@ export default function CentroMailsPage() {
   const mensajeActivo = hilo ? hilo[hilo.length - 1] : detalle;
   const filaDestacada = seleccionado ? mensajes.find((m) => m.id === seleccionado.id)?.destacado ?? false : false;
 
+  // Las pestañas abiertas se recuerdan en este navegador (si el navegador lo impide, simplemente no se recuerdan).
+  useEffect(() => {
+    try {
+      const guardado = JSON.parse(localStorage.getItem(CLAVE_PESTANAS) || "[]");
+      if (Array.isArray(guardado)) setPestanas(guardado.filter((t) => t && typeof t.id === "number" && t.msg).slice(0, MAX_PESTANAS));
+    } catch {
+      /* sin pestañas guardadas */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLAVE_PESTANAS, JSON.stringify(pestanas));
+    } catch {
+      /* el navegador no deja guardar */
+    }
+  }, [pestanas]);
+
+  function abrirEnPestana(m: MensajeLista) {
+    setPestanas((prev) =>
+      prev.some((t) => t.id === m.id) ? prev : [...prev.slice(-(MAX_PESTANAS - 1)), { id: m.id, titulo: nombreOCorreo(m) || m.remitente, asunto: m.asunto || "(sin asunto)", msg: m }]
+    );
+    setPestanaActiva(m.id);
+    abrir(m);
+  }
+  function irAPestana(t: PestanaMail) {
+    setPestanaActiva(t.id);
+    abrir(t.msg);
+  }
+  function cerrarPestana(id: number) {
+    setPestanas((prev) => prev.filter((t) => t.id !== id));
+    if (pestanaActiva === id) setPestanaActiva("bandeja");
+  }
+
   function abrirRedactar(borrador: BorradorCorreo) {
     setRedactar((r) => ({ abierto: true, n: r.n + 1, borrador }));
   }
@@ -369,9 +415,30 @@ export default function CentroMailsPage() {
 
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Error al cargar: {error}</div>}
 
-      <div className="grid min-h-[65vh] gap-3 lg:grid-cols-[17rem_minmax(20rem,27rem)_1fr]">
+      {pestanas.length > 0 && (
+        <div className="flex items-end gap-1 overflow-x-auto border-b" role="tablist" aria-label="Pestañas de correos">
+          <button
+            type="button" role="tab" aria-selected={!enPestana} onClick={() => setPestanaActiva("bandeja")}
+            className={`shrink-0 rounded-t-md border border-b-0 px-3 py-1.5 text-sm ${!enPestana ? "bg-card font-medium" : "bg-muted/40 text-muted-foreground hover:bg-muted"}`}
+          >
+            Bandeja
+          </button>
+          {pestanas.map((t) => (
+            <div key={t.id} role="tab" aria-selected={pestanaActiva === t.id} className={`flex max-w-56 shrink-0 items-center rounded-t-md border border-b-0 ${pestanaActiva === t.id ? "bg-card font-medium" : "bg-muted/40 text-muted-foreground hover:bg-muted"}`}>
+              <button type="button" onClick={() => irAPestana(t)} title={`${t.titulo} · ${t.asunto}`} className="min-w-0 flex-1 truncate py-1.5 pl-3 pr-1 text-left text-sm">
+                {t.titulo.slice(0, 16)} · <span className="font-normal">{t.asunto.slice(0, 22)}</span>
+              </button>
+              <button type="button" aria-label="Cerrar pestaña" onClick={() => cerrarPestana(t.id)} className="shrink-0 rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground">
+                <CloseCircle className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={`grid min-h-[65vh] gap-3 ${enPestana ? "lg:grid-cols-1" : "lg:grid-cols-[17rem_minmax(20rem,27rem)_1fr]"}`}>
         {/* Carpetas y buzones */}
-        <div className="space-y-3">
+        <div className={`space-y-3 ${enPestana ? "hidden" : ""}`}>
           <div className="rounded-lg border bg-card p-1">
             {CARPETAS.map((c) => {
               const Icono = c.icono;
@@ -459,7 +526,7 @@ export default function CentroMailsPage() {
         </div>
 
         {/* Lista */}
-        <div className="flex flex-col rounded-lg border bg-card">
+        <div className={`${enPestana ? "hidden" : "flex"} flex-col rounded-lg border bg-card`}>
           <div className="space-y-1.5 border-b p-2">
             <div className="relative">
               <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -509,7 +576,7 @@ export default function CentroMailsPage() {
                     >
                       <Star className={`size-4 ${m.destacado ? "fill-amber-400 text-amber-500" : ""}`} />
                     </button>
-                    <button type="button" onClick={() => abrir(m)} className="block min-w-0 flex-1 px-2 py-2.5 text-left">
+                    <button type="button" onClick={() => abrir(m)} onDoubleClick={() => abrirEnPestana(m)} title="Doble clic: abrir en una pestaña" className="block min-w-0 flex-1 px-2 py-2.5 text-left">
                       <div className="flex items-center justify-between gap-2">
                         <span className={`truncate text-sm ${sinLeer ? "font-semibold" : ""}`}>
                           {m.direccion === "salida" ? `Para: ${m.destinatarios || "—"}` : nombreOCorreo(m)}
@@ -565,6 +632,11 @@ export default function CentroMailsPage() {
           {seleccionado && !cargandoDetalle && mensajeActivo && (
             <>
               <div className="flex flex-wrap items-center gap-1 border-b px-3 py-2">
+                {!enPestana && (
+                  <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={() => abrirEnPestana(seleccionado)} title="Abrir este correo en una pestaña para volver a él sin buscarlo">
+                    Abrir en pestaña
+                  </Button>
+                )}
                 {puedeEnviar && seleccionado.direccion === "entrada" && !mensajeActivo.es_rebote && buzones.some((b) => b.id === mensajeActivo.buzon_id && b.activo) && (
                   <Button
                     size="sm"
