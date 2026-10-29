@@ -49,6 +49,7 @@ const NOMBRE_CARD: Record<CardFiltroId, string> = {
   piezaPendiente: "Pieza Pendiente",
   enReparacion: "En Reparación",
   listos: "Listos p/ Recoger",
+  listosParaEnviar: "Pendientes de Enviar",
   sinReparacion: "No tiene Reparación",
   pptoRechazado: "Ppto. Rechazado",
   abandonado: "Abandonado",
@@ -281,6 +282,9 @@ export default function ReparacionesPage() {
       if (estados) lista = lista.filter((r) => estados.includes(r.estado));
       if (cardFiltro === "cintasEnReparacion") lista = lista.filter((r) => !!r.datosCintas);
       if (cardFiltro === "mensajeriaActiva") lista = lista.filter((r) => r.entregaMensajeria === "SI");
+      // Terminados: los que se envían por mensajería van a «Pendientes de Enviar»; el resto, a «Listos p/ Recoger».
+      if (cardFiltro === "listosParaEnviar") lista = lista.filter((r) => r.entregaMensajeria === "SI");
+      if (cardFiltro === "listos") lista = lista.filter((r) => r.entregaMensajeria !== "SI");
       // Por tipoIngreso, no por estado (ver CARD_FILTRO_ESTADOS.garantia) —
       // así un caso de garantía sigue localizable aunque haya avanzado a
       // "Pieza Pendiente"/"En Reparación"/etc.
