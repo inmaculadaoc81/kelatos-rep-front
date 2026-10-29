@@ -30,6 +30,9 @@ interface FacturaCompra {
   motivo: string | null;
   total: number | null;
   pagado: number;
+  /** Marcada «Pagada» en el Libro de Compras y sin pagos anotados aquí: el asiento del pago se genera solo al sincronizar. */
+  pago_libro?: boolean;
+  medio_libro?: string | null;
   pendiente: number | null;
   en_contabilidad: boolean;
   pagos: PagoRegistrado[];
@@ -78,8 +81,13 @@ export default function ComprasPagosPage() {
 
   function estado(f: FacturaCompra) {
     if (!f.validada) return <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">Sin validar</span>;
-    if (!f.contabilizable) return <span title={f.motivo || ""} className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300">No contabilizable</span>;
-    if ((f.pendiente ?? 0) <= 0.004) return <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">Pagada</span>;
+    if (!f.contabilizable) return (
+      <span title={f.motivo || ""}>
+        <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300">No contabilizable</span>
+        {f.motivo && <span className="mt-0.5 block max-w-52 text-[11px] leading-tight text-red-700/80 dark:text-red-300/80">{f.motivo}</span>}
+      </span>
+    );
+    if ((f.pendiente ?? 0) <= 0.004) return <span title={f.pago_libro ? "Marcada como pagada en el Libro de Compras; el asiento del pago se genera al sincronizar y el banco se asigna en Partidas pendientes" : ""} className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">{f.pago_libro ? "Pagada (Libro)" : "Pagada"}</span>;
     if (f.pagado > 0) return <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">Pago parcial</span>;
     return <span className="rounded-full bg-zinc-500/15 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">Pendiente</span>;
   }
@@ -194,6 +202,11 @@ function PagoDialog({ factura, bancos, onClose, onGuardado }: { factura: Factura
       <DialogContent className="sm:max-w-md">
         <DialogTitle>Pagos de {factura.numero}</DialogTitle>
         <p className="text-sm text-muted-foreground">{factura.proveedor} · a pagar {num(factura.total)} € · pendiente {num(pendiente)} €</p>
+        {factura.pago_libro && (
+          <p className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+            En el Libro de Compras consta como <strong>pagada</strong>{factura.medio_libro ? ` (${factura.medio_libro})` : ""}. Al sincronizar se genera el asiento del pago en la fecha de la factura; el banco se asigna después en «Partidas pendientes».
+          </p>
+        )}
         {factura.pagos.length > 0 && (
           <div className="space-y-1 rounded-md border p-2 text-sm">
             {factura.pagos.map((p) => (
