@@ -376,6 +376,17 @@ export default function FacturasRecibidasPage() {
                       ) : (
                         <span className="inline-flex whitespace-nowrap rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Pendiente</span>
                       )}
+                      {f.estadoRevision === "validada" && f.contabilidad?.estado === "falta" && (
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400" title={f.contabilidad.faltan.join("\n")}>
+                          <Warning2 className="size-3" /> No contabilizable: {f.contabilidad.faltan[0].startsWith("Falta la categoría") ? "falta la categoría" : "revisar"}
+                        </span>
+                      )}
+                      {f.estadoRevision === "validada" && f.contabilidad?.estado === "lista" && (
+                        <span className="inline-flex whitespace-nowrap rounded-md bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-400" title="Lista para contabilizar: sincroniza las operaciones en Contabilidad → Asientos">Lista para contabilidad</span>
+                      )}
+                      {f.estadoRevision === "validada" && f.contabilidad?.estado === "sincronizada" && (
+                        <span className="inline-flex whitespace-nowrap rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400" title="Ya tiene asiento en Contabilidad">En contabilidad</span>
+                      )}
                       {f.origen === "automatico" && (
                         <span className="inline-flex whitespace-nowrap rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400" title="Importada automáticamente desde Drive">Auto</span>
                       )}

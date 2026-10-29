@@ -986,6 +986,18 @@ export function FacturaRecibidaFormDialog({
               verificacion={lecturaPanel?.extraido.receptorCoincide === true ? { cif: lecturaPanel.extraido.receptorCifEncontrado ?? true, nombre: lecturaPanel.extraido.receptorNombreEncontrado ?? true } : null}
             />
 
+            {esEdicion && facturaExistente!.estadoRevision === "validada" && facturaExistente!.contabilidad?.estado === "falta" && (
+              <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                <Warning2 className="mt-0.5 size-4 shrink-0" />
+                <div>
+                  <p className="font-medium">Esta factura está validada, pero todavía no se puede contabilizar.</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs">
+                    {facturaExistente!.contabilidad.faltan.map((m) => (<li key={m}>{m}</li>))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             {mostrarAvisoDuplicado && (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
                 <span className="flex items-start gap-2 text-amber-800 dark:text-amber-300">

@@ -135,6 +135,8 @@ export interface FacturaRecibida {
 
   /** Por qué la importación automática la dejó en revisión manual (null si no aplica). */
   revisionMotivo: string | null;
+  /** Estado contable: si está validada, si ya se puede contabilizar y, si no, qué le falta. */
+  contabilidad: { estado: "sin_validar" | "falta" | "lista" | "sincronizada"; faltan: string[] } | null;
   /** Lo que leyó la IA al cargar la factura (solo si se cargó con «Leer con IA»). */
   lecturaOcr: LecturaOcrGuardada | null;
   enlaces: EnlaceFactura[];
@@ -197,6 +199,7 @@ interface FilaFacturaSql {
   drive_file_id: string | null;
   revision_motivo?: string | null;
   lectura_ocr?: unknown;
+  contabilidad?: unknown;
   enlaces?: EnlaceFactura[] | null;
   origen: string;
   usuario_registro: string;
@@ -267,6 +270,7 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     ejercicioFiscal: f.ejercicio_fiscal,
     driveFileId: f.drive_file_id,
     revisionMotivo: f.revision_motivo || null,
+    contabilidad: (f.contabilidad as FacturaRecibida["contabilidad"]) || null,
     lecturaOcr: (f.lectura_ocr as LecturaOcrGuardada | null) || null,
     enlaces: f.enlaces || [],
     origen: (f.origen as "manual" | "automatico") || "manual",
