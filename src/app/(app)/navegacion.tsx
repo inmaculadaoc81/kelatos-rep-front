@@ -130,6 +130,7 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
     { label: "Libro de IVA", href: "/contabilidad/iva", icon: ReceiptItem },
     { label: "Inmovilizado", href: "/contabilidad/inmovilizado", icon: Box },
     { label: "Partidas pendientes", href: "/contabilidad/pendientes", icon: Wallet },
+    { label: "Conciliación TPV", href: "/contabilidad/tpv", icon: CardPos },
     { label: "Cierre de ejercicio", href: "/contabilidad/cierre", icon: Save2 },
     { label: "Efectivo y caja", href: "/contabilidad/efectivo", icon: Coin1 },
     { label: "Plan contable", href: "/contabilidad/plan", icon: Hierarchy },
