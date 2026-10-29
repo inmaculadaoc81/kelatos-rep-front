@@ -33,6 +33,7 @@ export default function AsientosPage() {
   const [editar, setEditar] = useState<DetalleAsiento | null>(null);
   const [lote, setLote] = useState(false);
   const [sincAbierto, setSincAbierto] = useState(false);
+  const [eventosConError, setEventosConError] = useState(0);
   const plan = usePlan();
   const consulta = useRef(0);
 
@@ -55,6 +56,8 @@ export default function AsientosPage() {
       setTotal(d.total);
       setPorEstado(d.porEstado);
       setSeleccion(new Set());
+      // Operaciones que no han podido generar su asiento: se avisa aquí para que no pasen días sin que nadie lo vea.
+      apiC<{ porEstado: Record<string, number> }>("eventos", { query: { limit: 1 } }).then((e) => setEventosConError(e.porEstado?.error ?? 0)).catch(() => {});
     } catch (e) {
       if (id === consulta.current) setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -105,6 +108,13 @@ export default function AsientosPage() {
         }
       />
       <InfoVista>Todos los apuntes contables (los movimientos de debe/haber), en sus tres estados: borrador, validado y contabilizado. Ejemplo: la venta de un ticket de reparación genera un borrador que carga Caja (570) y abona Ventas (700) e IVA repercutido (477); al contabilizarlo, ya cuenta en el resto de informes.</InfoVista>
+
+      {eventosConError > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          <span>⚠️ Hay <strong>{eventosConError}</strong> operaciones que no han podido generar su asiento (aparecen en la «Bandeja de eventos» con el motivo). Al sincronizar se reintentan; si el motivo no se ha arreglado, seguirán ahí.</span>
+          <Button size="sm" variant="outline" className="h-7 border-red-300 text-red-800" onClick={() => setPestana("eventos")}>Ver la bandeja</Button>
+        </div>
+      )}
 
       <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList>

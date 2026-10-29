@@ -24,6 +24,9 @@ interface Resumen {
   noCubiertos: Record<string, number>;
   registrados?: number;
   proceso?: { procesados: number; errores: number };
+  /** Operaciones que fallaron antes y están en la bandeja de eventos con error (se reintentan al registrar). */
+  conError?: number;
+  reintentados?: number;
 }
 
 const ETIQUETA: Record<string, string> = {
@@ -142,11 +145,11 @@ export function SincronizarDialog({ abierto, onClose, onHecho }: { abierto: bool
             )}
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <Checkbox checked={confirma} onCheckedChange={(c) => setConfirma(!!c)} className="mt-0.5" />
-              <span>Entiendo que se registrarán {res.nuevos} eventos y sus borradores contables. Los borradores se pueden revisar, editar o eliminar antes de contabilizar.</span>
+              <span>Entiendo que se registrarán {res.nuevos} eventos y sus borradores contables{res.conError ? ` y que se reintentarán ${res.conError} operaciones que fallaron antes` : ""}. Los borradores se pueden revisar, editar o eliminar antes de contabilizar.</span>
             </label>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={onClose} disabled={cargando}>Cerrar</Button>
-              <Button onClick={registrar} disabled={cargando || !confirma || res.nuevos === 0}>{cargando ? "Trabajando…" : "Registrar y generar borradores"}</Button>
+              <Button onClick={registrar} disabled={cargando || !confirma || (res.nuevos === 0 && !(res.conError && res.conError > 0))}>{cargando ? "Trabajando…" : res.nuevos === 0 && res.conError ? `Reintentar ${res.conError} con error` : "Registrar y generar borradores"}</Button>
             </div>
           </div>
         )}
