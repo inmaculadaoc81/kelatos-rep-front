@@ -139,7 +139,6 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
     { label: "Periodos y auditoría", href: "/contabilidad/periodos", icon: Clock },
     { label: "Libro de Compras", href: "/facturas-recibidas", icon: Book1 },
     { label: "Importaciones / DUA", href: "/importaciones", icon: Airplane },
-    { label: "Gastos / Compras", href: null, icon: ReceiptItem },
     { label: "Arquitectura del módulo", href: "/contabilidad/arquitectura", icon: Diagram },
   ],
 };
