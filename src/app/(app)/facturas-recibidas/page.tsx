@@ -384,6 +384,9 @@ export default function FacturasRecibidasPage() {
                       {f.estadoRevision === "validada" && f.contabilidad?.estado === "lista" && (
                         <span className="inline-flex whitespace-nowrap rounded-md bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-400" title="Lista para contabilizar: sincroniza las operaciones en Contabilidad → Asientos">Lista para contabilidad</span>
                       )}
+                      {f.estadoRevision === "validada" && f.contabilidad?.estado === "anterior" && (
+                        <span className="inline-flex whitespace-nowrap rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400" title={f.contabilidad.faltan.join("\n")}>Fecha anterior al inicio de la contabilidad</span>
+                      )}
                       {f.estadoRevision === "validada" && f.contabilidad?.estado === "sincronizada" && (
                         <span className="inline-flex whitespace-nowrap rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400" title="Ya tiene asiento en Contabilidad">En contabilidad</span>
                       )}
