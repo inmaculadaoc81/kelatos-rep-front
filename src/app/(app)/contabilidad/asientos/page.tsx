@@ -12,7 +12,7 @@ import { ColumnaFiltroFechas, ColumnaFiltroOpciones, ColumnaFiltroTexto } from "
 import { ColumnaFiltroRango } from "../../reporte-facturas/columna-filtro-rango";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { apiC, fechaCorta, num, type AsientoResumen, type DetalleAsiento, type EstadoAsiento, type EventoContable } from "@/lib/contabilidad";
+import { apiC, eur, fechaCorta, num, type AsientoResumen, type DetalleAsiento, type EstadoAsiento, type EventoContable } from "@/lib/contabilidad";
 import { CajaError, Cabecera, EstadoBadge, FilaVacia, FilasCarga, InfoVista, Kpi, usePlan } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 import { AsientoFormDialog } from "../asiento-form-dialog";
@@ -28,6 +28,32 @@ const ORIGENES: { valor: string; etiqueta: string }[] = [
   { valor: "facturas_recibidas", etiqueta: "Facturas recibidas" },
   { valor: "importaciones", etiqueta: "Importaciones" },
 ];
+const TIPOS_ORIGEN: Record<string, string> = {
+  reparaciones: "Reparación", tickets_manuales: "Ticket manual", facturas_manuales: "Factura manual", ventas: "Venta", alquileres: "Alquiler",
+  facturas_recibidas: "Compra", importaciones: "Importación", banco_movimientos: "Banco", efectivo_retiradas: "Efectivo", pagos_compras: "Pago de compra",
+};
+const SUFIJOS_ORIGEN: [RegExp, string][] = [
+  [/:rect:devolucion|:devolucion|:conf\d+/, "devolución"], [/:rect/, "rectificativa"], [/:corr:cobro/, "cobro de la corregida"], [/:corr/, "corregida"],
+  [/:cobro/, "cobro"], [/:pago/, "pago"], [/f_anticipo|t_anticipo/, "anticipo"], [/f_revision|t_revision/, "revisión"], [/t_mensajeria/, "mensajería"],
+];
+/** Convierte «reparaciones · 19583:t_principal» en algo que se lee: «Reparación 19583» + «ticket». */
+function origenLegible(f: { origen_tipo: string | null; origen_id: string | null; tipo: string }): { titulo: string; detalle: string } {
+  if (!f.origen_tipo || !f.origen_id) return { titulo: f.tipo === "manual" ? "Asiento manual" : f.tipo === "reversion" ? "Reversión" : f.tipo, detalle: "" };
+  const ref = f.origen_id.split(":")[0].replace(/^(TICKETMAN|MANUAL)-/, "");
+  const sufijo = SUFIJOS_ORIGEN.find(([re]) => re.test(f.origen_id!))?.[1];
+  const clase = /(^|:)f_|factura/.test(f.origen_id) ? "factura" : /(^|:)t_|ticket/i.test(f.origen_id) ? "ticket" : "";
+  return { titulo: `${TIPOS_ORIGEN[f.origen_tipo] || f.origen_tipo} ${ref}`, detalle: [clase, sufijo].filter(Boolean).join(" · ") };
+}
+const OPERACIONES: [RegExp, string, string][] = [
+  [/^rectificativa/i, "Rectificativa", "bg-amber-500/10 text-amber-700 dark:text-amber-400"],
+  [/^devoluci/i, "Devolución", "bg-orange-500/10 text-orange-700 dark:text-orange-400"],
+  [/^cobro/i, "Cobro", "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"],
+  [/^factura/i, "Factura", "bg-sky-500/10 text-sky-700 dark:text-sky-400"],
+  [/^ticket/i, "Ticket", "bg-violet-500/10 text-violet-700 dark:text-violet-400"],
+  [/^(liquidaci|comisi|cuota)/i, "Banco / TPV", "bg-teal-500/10 text-teal-700 dark:text-teal-400"],
+  [/^(compra|pago|dua|importaci)/i, "Compra", "bg-slate-500/10 text-slate-700 dark:text-slate-300"],
+];
+const operacionDe = (concepto: string) => OPERACIONES.find(([re]) => re.test(concepto.trim())) || null;
 const celdaCsv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 export default function AsientosPage() {
@@ -190,7 +216,7 @@ export default function AsientosPage() {
             </Button>
             {seleccion.size > 0 && (
               <div className="ml-auto flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{seleccion.size} seleccionado(s)</span>
+                <span className="text-sm text-muted-foreground">{seleccion.size} seleccionado(s) · <strong className="text-foreground tabular-nums">{eur(filas.filter((f) => seleccion.has(f.id)).reduce((s, f) => s + (f.total ?? 0), 0))}</strong></span>
                 <Button size="sm" variant="outline" disabled={lote} onClick={() => accionLote("validar")}>Validar</Button>
                 <Button size="sm" disabled={lote} onClick={() => accionLote("contabilizar")}>Validar y contabilizar</Button>
               </div>
@@ -199,9 +225,9 @@ export default function AsientosPage() {
 
           <CajaError mensaje={error || plan.error} />
 
-          <div className="overflow-x-auto rounded-lg border bg-card">
+          <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--border)]">
                 <TableRow>
                   <TableHead className="w-8">
                     <Checkbox
@@ -223,7 +249,7 @@ export default function AsientosPage() {
                 {!cargando && filas.length === 0 && <FilaVacia columnas={7} texto="Todavía no hay asientos. Aparecerán aquí cuando las operaciones generen eventos contables." />}
                 {!cargando &&
                   filas.map((f) => (
-                    <TableRow key={f.id} className="cursor-pointer" onClick={() => setDetalleId(f.id)}>
+                    <TableRow key={f.id} className="cursor-pointer even:bg-muted/20 hover:bg-muted/50" onClick={() => setDetalleId(f.id)}>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {(f.estado === "BORRADOR" || f.estado === "VALIDADO") && (
                           <Checkbox
@@ -235,9 +261,16 @@ export default function AsientosPage() {
                       </TableCell>
                       <TableCell className="font-medium tabular-nums">{f.numero || <span className="text-muted-foreground">#{f.id}</span>}</TableCell>
                       <TableCell className="tabular-nums">{fechaCorta(f.fecha)}</TableCell>
-                      <TableCell className="max-w-md truncate">{f.concepto}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{f.origen_id ? `${f.origen_tipo} · ${f.origen_id}` : f.tipo}</TableCell>
-                      <TableCell className="text-right tabular-nums">{num(f.total)}</TableCell>
+                      <TableCell className="max-w-md">
+                        <div className="flex items-center gap-2">
+                          {(() => { const o = operacionDe(f.concepto); return o ? <span className={`inline-flex shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${o[2]}`}>{o[1]}</span> : null; })()}
+                          <span className="truncate" title={f.concepto}>{f.concepto}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {(() => { const o = origenLegible(f); return (<><div className="text-sm">{o.titulo}</div>{o.detalle && <div className="text-xs text-muted-foreground">{o.detalle}</div>}</>); })()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">{num(f.total)}</TableCell>
                       <TableCell><EstadoBadge estado={f.estado} /></TableCell>
                     </TableRow>
                   ))}
@@ -247,7 +280,8 @@ export default function AsientosPage() {
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-3">
-              <span>{total} asiento(s)</span>
+              <span>{total === 0 ? "0 asientos" : `${(pagina - 1) * porPagina + 1}–${Math.min(pagina * porPagina, total)} de ${total} asientos`}</span>
+              {filas.length > 0 && <span className="hidden sm:inline">· importe de la página: <strong className="text-foreground tabular-nums">{eur(filas.reduce((s, f) => s + (f.total ?? 0), 0))}</strong></span>}
               <label className="flex items-center gap-1.5 text-xs">
                 Filas por página
                 <Select value={String(porPagina)} onValueChange={(v) => setPorPagina(Number(v) || 25)}>
