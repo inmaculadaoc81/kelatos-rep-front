@@ -22,6 +22,8 @@ interface Resumen {
   anomalias: { origen: string; motivo: string }[];
   totalAnomalias: number;
   noCubiertos: Record<string, number>;
+  /** Operaciones con fecha anterior al inicio de la contabilidad: no se cargan (se avisa para que no pasen desapercibidas). */
+  anterioresAlInicio?: { total: number; porTipo: Record<string, number>; ejemplos: string[] };
   registrados?: number;
   proceso?: { procesados: number; errores: number };
   /** Operaciones que fallaron antes y están en la bandeja de eventos con error (se reintentan al registrar). */
@@ -136,6 +138,11 @@ export function SincronizarDialog({ abierto, onClose, onHecho }: { abierto: bool
                 {res.anomalias.slice(0, 8).map((a, i) => (
                   <div key={i} className="text-xs text-muted-foreground">{a.origen} — {a.motivo}</div>
                 ))}
+              </div>
+            )}
+            {res.anterioresAlInicio && res.anterioresAlInicio.total > 0 && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                <strong>{res.anterioresAlInicio.total} operación(es) quedan fuera</strong> por ser anteriores al inicio de la contabilidad ({res.desde}): {Object.entries(res.anterioresAlInicio.porTipo).map(([k, n]) => `${k} (${n})`).join(", ")}. No se contabilizan; si deben entrar, hay que decidir con la gestoría cómo (por ejemplo, con la fecha de registro). Ej.: {res.anterioresAlInicio.ejemplos.slice(0, 3).join("; ")}
               </div>
             )}
             {Object.keys(res.noCubiertos).length > 0 && (
