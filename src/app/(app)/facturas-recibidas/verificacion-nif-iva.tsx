@@ -32,14 +32,16 @@ const compacto = (n: string) => n.toUpperCase().replace(/[^A-Z0-9]/g, "");
 /** `nif` es el de la ficha del proveedor (nacional) o el NIF-IVA escrito (intracomunitaria). `nifFactura`, si se pasa, es el CIF que la IA leyó
     en la propia factura: si no coincide con el de la ficha, casi seguro se ha emparejado el proveedor equivocado o la ficha tiene un dato mal.
     Si el CIF de la factura es válido, se ofrece actualizar la ficha con él (`onUsarCifFactura`, que pide confirmación). */
-export function VerificacionNifIva({ nif, tipo, nifFactura, onUsarCifFactura }: {
+export function VerificacionNifIva({ nif, tipo, nifFactura, onUsarCifFactura, onNifCorregido }: {
   nif: string; tipo: "nacional" | "intracomunitaria"; nifFactura?: string | null; onUsarCifFactura?: (cif: string) => void;
+  /** El NIF-IVA se leyó con una letra confundida con un número y se ha corregido solo: se actualiza el campo. */
+  onNifCorregido?: (nif: string) => void;
 }) {
   const discrepa = tipo === "nacional" && !!nifFactura && !!nif.trim() && compacto(nifFactura).replace(/^ES/, "") !== compacto(nif).replace(/^ES/, "");
   const validezFactura = useValidacionNif(discrepa ? nifFactura! : "", "nacional");
   return (
     <div className="space-y-1.5">
-      <EstadoNifIva nif={nif} tipo={tipo} />
+      <EstadoNifIva nif={nif} tipo={tipo} onNifCorregido={onNifCorregido} />
       {discrepa && (
         <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
           <p className="flex min-w-0 flex-1 items-start gap-1.5">
@@ -61,8 +63,13 @@ export function VerificacionNifIva({ nif, tipo, nifFactura, onUsarCifFactura }: 
   );
 }
 
-function EstadoNifIva({ nif, tipo }: { nif: string; tipo: "nacional" | "intracomunitaria" }) {
+function EstadoNifIva({ nif, tipo, onNifCorregido }: { nif: string; tipo: "nacional" | "intracomunitaria"; onNifCorregido?: (nif: string) => void }) {
   const r = useValidacionNif(nif, tipo);
+  const corregido = r?.nifCorregido;
+  useEffect(() => {
+    if (corregido && onNifCorregido && compacto(corregido) !== compacto(nif)) onNifCorregido(corregido);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [corregido]);
   if (!nif.trim()) {
     return tipo === "nacional" ? <p className="text-xs text-muted-foreground">El proveedor no tiene NIF/CIF en su ficha: no se puede comprobar.</p> : null;
   }

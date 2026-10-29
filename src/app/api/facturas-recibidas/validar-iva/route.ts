@@ -8,6 +8,8 @@ export interface ResultadoNifIva {
   nombre?: string | null;
   pais?: string;
   fuente?: string;
+  /** NIF-IVA ya corregido (una letra leída como número); la pantalla lo pone en el campo. */
+  nifCorregido?: string;
 }
 
 /** Proxy de POST /v1/facturas-recibidas/validar-iva — comprueba el NIF/CIF español (dígito de control) o el NIF-IVA de la UE (VIES). */
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { nif?: string; tipo?: string };
   try {
     const r = await kelatosApiPost<ResultadoNifIva & { ok: boolean }>("/v1/facturas-recibidas/validar-iva", { nif: body.nif || "", tipo: body.tipo || "nacional" });
-    return NextResponse.json({ ok: true, resultado: { estado: r.estado, mensaje: r.mensaje, nombre: r.nombre ?? null, pais: r.pais, fuente: r.fuente } });
+    return NextResponse.json({ ok: true, resultado: { estado: r.estado, mensaje: r.mensaje, nombre: r.nombre ?? null, pais: r.pais, fuente: r.fuente, nifCorregido: r.nifCorregido } });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "No se pudo comprobar el NIF-IVA" }, { status: 502 });
   }

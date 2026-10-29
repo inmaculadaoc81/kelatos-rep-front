@@ -1223,6 +1223,7 @@ export function FacturaRecibidaFormDialog({
                       tipo={datos.tipoOperacion}
                       nifFactura={resumenOcr?.extraido.proveedorDniCif}
                       onUsarCifFactura={usarCifDeLaFactura}
+                      onNifCorregido={datos.tipoOperacion === "intracomunitaria" ? (n) => set("nifIvaProveedor", n) : undefined}
                       nif={datos.tipoOperacion === "nacional" ? (proveedores.find((p) => p.proveedorId === datos.proveedorId)?.dniCif ?? "") : datos.nifIvaProveedor}
                     />
                   </div>
