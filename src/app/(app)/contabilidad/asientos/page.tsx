@@ -8,6 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { descargarCsv } from "@/lib/reporte-facturas";
+import { ColumnaFiltroFechas, ColumnaFiltroOpciones, ColumnaFiltroTexto } from "../../facturas-recibidas/columna-filtro-simple";
+import { ColumnaFiltroRango } from "../../reporte-facturas/columna-filtro-rango";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, fechaCorta, num, type AsientoResumen, type DetalleAsiento, type EstadoAsiento, type EventoContable } from "@/lib/contabilidad";
@@ -41,6 +43,8 @@ export default function AsientosPage() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [origen, setOrigen] = useState("");
+  const [numero, setNumero] = useState("");
+  const [concepto, setConcepto] = useState("");
   const [importeMin, setImporteMin] = useState("");
   const [importeMax, setImporteMax] = useState("");
   const [exportando, setExportando] = useState(false);
@@ -60,7 +64,7 @@ export default function AsientosPage() {
     const t = setTimeout(() => setBusquedaAplicada(busqueda), 350);
     return () => clearTimeout(t);
   }, [busqueda]);
-  useEffect(() => setPagina(1), [estado, busquedaAplicada, porPagina, desde, hasta, origen, importeMin, importeMax]);
+  useEffect(() => setPagina(1), [estado, busquedaAplicada, porPagina, desde, hasta, origen, importeMin, importeMax, numero, concepto]);
 
   const cargar = useCallback(async () => {
     const id = ++consulta.current;
@@ -68,7 +72,7 @@ export default function AsientosPage() {
     setError(null);
     try {
       const d = await apiC<{ total: number; asientos: AsientoResumen[]; porEstado: Record<string, number> }>("asientos", {
-        query: { limit: porPagina, offset: (pagina - 1) * porPagina, estado, q: busquedaAplicada.trim(), desde, hasta, origen, importeMin, importeMax },
+        query: { limit: porPagina, offset: (pagina - 1) * porPagina, estado, q: busquedaAplicada.trim(), desde, hasta, origen, importeMin, importeMax, numero, concepto },
       });
       if (id !== consulta.current) return;
       setFilas(d.asientos);
@@ -82,15 +86,15 @@ export default function AsientosPage() {
     } finally {
       if (id === consulta.current) setCargando(false);
     }
-  }, [pagina, porPagina, estado, busquedaAplicada, desde, hasta, origen, importeMin, importeMax]);
+  }, [pagina, porPagina, estado, busquedaAplicada, desde, hasta, origen, importeMin, importeMax, numero, concepto]);
   useEffect(() => {
     cargar();
   }, [cargar]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
-  const hayFiltros = !!(estado || busquedaAplicada.trim() || desde || hasta || origen || importeMin || importeMax);
+  const hayFiltros = !!(estado || busquedaAplicada.trim() || desde || hasta || origen || importeMin || importeMax || numero || concepto);
   function quitarFiltros() {
-    setEstado(""); setBusqueda(""); setDesde(""); setHasta(""); setOrigen(""); setImporteMin(""); setImporteMax("");
+    setEstado(""); setBusqueda(""); setDesde(""); setHasta(""); setOrigen(""); setImporteMin(""); setImporteMax(""); setNumero(""); setConcepto("");
   }
 
   // Exporta TODOS los asientos que cumplen los filtros activos (no solo la página), en bloques de 500, a un CSV que abre Excel (separador «;», coma decimal).
@@ -99,7 +103,7 @@ export default function AsientosPage() {
     try {
       const todos: AsientoResumen[] = [];
       for (let offset = 0; ; offset += 500) {
-        const d = await apiC<{ asientos: AsientoResumen[] }>("asientos", { query: { limit: 500, offset, estado, q: busquedaAplicada.trim(), desde, hasta, origen, importeMin, importeMax } });
+        const d = await apiC<{ asientos: AsientoResumen[] }>("asientos", { query: { limit: 500, offset, estado, q: busquedaAplicada.trim(), desde, hasta, origen, importeMin, importeMax, numero, concepto } });
         todos.push(...d.asientos);
         if (d.asientos.length < 500) break;
       }
@@ -180,21 +184,6 @@ export default function AsientosPage() {
               <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar por concepto, número u origen…" className="h-8 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              Desde <Input type="date" className="h-8 w-36" value={desde} onChange={(e) => setDesde(e.target.value)} />
-              hasta <Input type="date" className="h-8 w-36" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-            </div>
-            <Select value={origen || "todos"} onValueChange={(v) => setOrigen(!v || v === "todos" ? "" : v)}>
-              <SelectTrigger className="h-8 w-44"><SelectValue placeholder="Origen" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Cualquier origen</SelectItem>
-                {ORIGENES.map((o) => <SelectItem key={o.valor} value={o.valor}>{o.etiqueta}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              Importe <Input type="number" min="0" step="0.01" placeholder="mín." className="h-8 w-24" value={importeMin} onChange={(e) => setImporteMin(e.target.value)} />
-              – <Input type="number" min="0" step="0.01" placeholder="máx." className="h-8 w-24" value={importeMax} onChange={(e) => setImporteMax(e.target.value)} />
-            </div>
             {hayFiltros && <Button variant="ghost" size="sm" className="h-8" onClick={quitarFiltros}>Quitar filtros</Button>}
             <Button variant="outline" size="sm" className="h-8 gap-1.5" disabled={exportando || total === 0} onClick={exportarCsv} title="Descarga todos los asientos que cumplen los filtros actuales">
               <DocumentDownload className="size-4" /> {exportando ? "Exportando…" : "Exportar CSV"}
@@ -221,12 +210,12 @@ export default function AsientosPage() {
                       onCheckedChange={(c) => setSeleccion(c ? new Set(seleccionables.map((f) => f.id)) : new Set())}
                     />
                   </TableHead>
-                  <TableHead>Nº</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Concepto</TableHead>
-                  <TableHead>Origen</TableHead>
-                  <TableHead className="text-right">Importe</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <TableHead>Nº<ColumnaFiltroTexto valor={numero} placeholder="Nº de asiento…" onAplicar={setNumero} /></TableHead>
+                  <TableHead>Fecha<ColumnaFiltroFechas valor={{ desde, hasta }} onAplicar={(r) => { setDesde(r.desde); setHasta(r.hasta); }} /></TableHead>
+                  <TableHead>Concepto<ColumnaFiltroTexto valor={concepto} placeholder="Contiene…" onAplicar={setConcepto} /></TableHead>
+                  <TableHead>Origen<ColumnaFiltroOpciones valor={origen} opciones={ORIGENES.map((o) => ({ id: o.valor, etiqueta: o.etiqueta }))} onAplicar={setOrigen} /></TableHead>
+                  <TableHead className="text-right">Importe<ColumnaFiltroRango seleccion={importeMin || importeMax ? { min: importeMin ? Number(importeMin) : null, max: importeMax ? Number(importeMax) : null } : null} onAplicar={(r) => { setImporteMin(r?.min != null ? String(r.min) : ""); setImporteMax(r?.max != null ? String(r.max) : ""); }} /></TableHead>
+                  <TableHead>Estado<ColumnaFiltroOpciones valor={estado} opciones={[{ id: "BORRADOR", etiqueta: "Borrador" }, { id: "VALIDADO", etiqueta: "Validado" }, { id: "CONTABILIZADO", etiqueta: "Contabilizado" }, { id: "CERRADO", etiqueta: "Cerrado" }]} onAplicar={(v) => setEstado(v === "BORRADOR" || v === "VALIDADO" || v === "CONTABILIZADO" || v === "CERRADO" ? v : "")} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
