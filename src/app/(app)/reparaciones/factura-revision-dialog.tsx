@@ -1,5 +1,6 @@
 "use client";
 
+import { AvisoNifCliente } from "@/components/aviso-nif-cliente";
 import { useEffect, useRef, useState } from "react";
 import { Receipt, Ticket, TickCircle, CloseCircle, SearchNormal1, ArrowLeft2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle, esCierreAccidental } from "@/components/ui/dialog";
@@ -418,7 +419,7 @@ function VistaGenerar({
           requestId: rid,
           tipo: "revision",
           datos: {
-            cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: detalle.cliente.email },
+            cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim().toUpperCase(), telefono: telefono.trim(), email: detalle.cliente.email },
             ...formaPagoParaPayload(pago),
             lineas: [{ referencia: "REV-01", descripcion: "Revisión técnica del equipo", cantidad: 1, precio: parseFloat(importe) || 20 }],
             clienteOverrideProvisto: true,
@@ -471,6 +472,7 @@ function VistaGenerar({
               <Input id="frTelefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
             </div>
           </div>
+          <AvisoNifCliente nif={dni} nombre={nombre} />
 
           <hr className="my-1" />
 

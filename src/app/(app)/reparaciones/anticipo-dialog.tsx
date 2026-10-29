@@ -1,5 +1,6 @@
 "use client";
 
+import { AvisoNifCliente } from "@/components/aviso-nif-cliente";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Wallet, CloseCircle, Building, Profile, SearchNormal1, ArrowRight2, Receipt, Ticket, ArrowLeft2, TickCircle } from "@/lib/icons";
@@ -232,7 +233,7 @@ function VistaGenerarFactura({
           requestId: rid,
           tipo: "anticipo",
           datos: {
-            cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: detalle.cliente.email },
+            cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim().toUpperCase(), telefono: telefono.trim(), email: detalle.cliente.email },
             ...formaPagoParaPayload(pago),
             estadoFactura,
             lineas: validas,
@@ -350,6 +351,7 @@ function VistaGenerarFactura({
                         <Input id="anTelefono" className="h-8 text-sm" value={telefono} onChange={(e) => setTelefono(e.target.value)} disabled={!!resultado} />
                       </div>
                     </div>
+                    {!resultado && <AvisoNifCliente nif={dni} nombre={nombre} />}
                   </div>
                 </div>
               </div>

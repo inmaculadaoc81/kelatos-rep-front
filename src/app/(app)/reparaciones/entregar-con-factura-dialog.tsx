@@ -1,5 +1,6 @@
 "use client";
 
+import { AvisoNifCliente } from "@/components/aviso-nif-cliente";
 import { useEffect, useRef, useState } from "react";
 import { BoxTick, Truck, Trash, TickCircle, CloseCircle, DocumentText, Profile, SearchNormal1, Ticket, Receipt, Send2, Warning2 } from "@/lib/icons";
 import { useConfirm } from "@/components/confirm-provider";
@@ -513,7 +514,7 @@ function VistaConFactura({
             requestId: rid,
             tipo: "mensajeria",
             datos: {
-              cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email },
+              cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim().toUpperCase(), telefono: telefono.trim(), email },
               ...formaPagoParaPayload(pago),
               lineas,
               // El cliente paga en el momento de confirmar este modal (misma
@@ -649,6 +650,7 @@ function VistaConFactura({
                     <Input id="efTelefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
                   </div>
                 </div>
+                <AvisoNifCliente nif={dni} nombre={nombre} />
                 <div className="space-y-1.5">
                   <Label htmlFor="efDireccion">Dirección</Label>
                   <Input id="efDireccion" value={direccion} onChange={(e) => setDireccion(e.target.value)} />

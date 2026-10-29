@@ -1,5 +1,6 @@
 "use client";
 
+import { AvisoNifCliente } from "@/components/aviso-nif-cliente";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Receipt, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, ArrowRight2, Send2, Box1 } from "@/lib/icons";
@@ -186,7 +187,7 @@ export function NuevaFacturaManualDialog({
         body: JSON.stringify({
           requestId: rid,
           serie,
-          cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: email.trim() },
+          cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim().toUpperCase(), telefono: telefono.trim(), email: email.trim() },
           ...formaPagoParaPayload(pago),
           estadoFactura,
           lineas: lineasConDescuento,
@@ -329,6 +330,7 @@ export function NuevaFacturaManualDialog({
                         <Input id="nfmTelefono" className="h-8 text-sm" value={telefono} onChange={(e) => setTelefono(e.target.value)} disabled={!!resultado} />
                       </div>
                     </div>
+                    {!resultado && <AvisoNifCliente nif={dni} nombre={nombre} />}
                     <div className="space-y-1">
                       <Label htmlFor="nfmEmail" className="text-xs text-muted-foreground">Email</Label>
                       <Input id="nfmEmail" type="email" className="h-8 text-sm" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!resultado} />

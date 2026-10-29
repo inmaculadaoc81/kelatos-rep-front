@@ -1,5 +1,6 @@
 "use client";
 
+import { AvisoNifCliente } from "@/components/aviso-nif-cliente";
 import { useEffect, useMemo, useState } from "react";
 import { Add, Trash, Receipt, Building, Profile, CloseCircle, SearchNormal1, Star, Send2, TickCircle, DocumentDownload, Box1, Warning2 } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -653,7 +654,7 @@ function VistaGenerar({
           requestId: rid,
           tipo: "normal",
           datos: {
-            cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim(), telefono: telefono.trim(), email: email.trim(), codigo: codigo.trim() },
+            cliente: { nombre: nombre.trim(), direccion: direccion.trim(), dni: dni.trim().toUpperCase(), telefono: telefono.trim(), email: email.trim(), codigo: codigo.trim() },
             ...formaPagoParaPayload(pago),
             // El descuento global solo afectaba a la vista previa en pantalla
             // y nunca llegaba a la factura real (bug detectado: el importe
@@ -772,6 +773,7 @@ function VistaGenerar({
                       <Label htmlFor="vfDir" className="text-xs text-muted-foreground">Dirección</Label>
                       <Input id="vfDir" className="h-8 text-sm" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
                     </div>
+                    <AvisoNifCliente nif={dni} nombre={nombre} />
                   </div>
                 </div>
 
