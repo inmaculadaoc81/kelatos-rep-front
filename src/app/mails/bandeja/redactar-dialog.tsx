@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Buzon, tamanoLegible } from "@/lib/mails";
+import { BotonMejorarRedaccion } from "@/components/boton-mejorar-redaccion";
 
 export interface BorradorCorreo {
   buzonId: number | null;
@@ -283,6 +284,7 @@ export function RedactarDialog({
           <div className="space-y-1.5">
             <Label htmlFor="rcTexto">Mensaje *</Label>
             <Textarea id="rcTexto" rows={11} className="font-sans" value={f.texto} onChange={(e) => set("texto", e.target.value)} />
+            <BotonMejorarRedaccion texto={f.texto} onCambiar={(t) => set("texto", t)} contexto={`Correo a un cliente. Asunto: ${f.asunto}`} deshabilitado={enviando} />
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
