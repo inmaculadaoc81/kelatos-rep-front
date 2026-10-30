@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { Reparacion, COLOR_ESTADO } from "@/lib/reparaciones";
 import { formatearFecha } from "@/lib/dias-entrega";
 import { DetalleReparacionDialogLazy as DetalleReparacionDialog } from "../reparaciones/detalle-dialog-lazy";
+import { PagoTransferenciaPill } from "../reparaciones/comprobante-transferencia-boton";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -134,6 +135,9 @@ export default function HistorialPage() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [filtroEntrega, setFiltroEntrega] = useState("");
   const [filtroFactura, setFiltroFactura] = useState("");
+  // Comprobante de transferencia de cada resguardo (columna «Pago»): SIN = ninguno subido, PENDIENTE = subido sin emparejar con el banco, CONCILIADA = pago realizado.
+  const [filtroPago, setFiltroPago] = useState("");
+  const [comprobantesEstado, setComprobantesEstado] = useState<Record<string, "Pendiente" | "Conciliada">>({});
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [reparandoFechas, setReparandoFechas] = useState(false);
 
@@ -182,7 +186,28 @@ export default function HistorialPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busqueda, fechaDesde, fechaHasta, filtroEntrega, filtroFactura]);
 
-  const conteo = useMemo(() => reparaciones.length, [reparaciones]);
+  // Una sola petición en bloque para todos los resguardos de la lista (mismo endpoint que la lista principal de Reparaciones).
+  useEffect(() => {
+    if (!reparaciones.length) return;
+    fetch("/api/reparaciones/comprobantes-estado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resguardos: reparaciones.map((r) => r.resguardo) }),
+    })
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setComprobantesEstado(data.estados); })
+      .catch(() => {});
+  }, [reparaciones]);
+
+  const visibles = useMemo(() => {
+    if (!filtroPago) return reparaciones;
+    return reparaciones.filter((r) => {
+      const e = comprobantesEstado[r.resguardo];
+      return (!e ? "SIN" : e === "Pendiente" ? "PENDIENTE" : "CONCILIADA") === filtroPago;
+    });
+  }, [reparaciones, filtroPago, comprobantesEstado]);
+
+  const conteo = visibles.length;
 
   return (
     <div className="p-6">
@@ -230,6 +255,17 @@ export default function HistorialPage() {
             <SelectItem value="sin">Sin factura</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={filtroPago || "__todos__"} onValueChange={(v) => setFiltroPago(!v || v === "__todos__" ? "" : v)}>
+          <SelectTrigger className="w-56">
+            <SelectValue>{(v: string) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido (pendiente)" : v === "CONCILIADA" ? "Pago realizado (conciliado)" : "Pago: Todos")}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__todos__">Pago: Todos</SelectItem>
+            <SelectItem value="SIN">Sin comprobante</SelectItem>
+            <SelectItem value="PENDIENTE">Comprobante subido (pendiente)</SelectItem>
+            <SelectItem value="CONCILIADA">Pago realizado (conciliado)</SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           variant="outline"
           size="sm"
@@ -240,7 +276,7 @@ export default function HistorialPage() {
         >
           <Setting2 className={`size-3.5 ${reparandoFechas ? "animate-spin" : ""}`} /> {reparandoFechas ? "Reparando..." : "Reparar fechas"}
         </Button>
-        {(busqueda || fechaDesde || fechaHasta || filtroEntrega || filtroFactura) && (
+        {(busqueda || fechaDesde || fechaHasta || filtroEntrega || filtroFactura || filtroPago) && (
           <Button
             variant="ghost"
             size="sm"
@@ -251,6 +287,7 @@ export default function HistorialPage() {
               setFechaHasta("");
               setFiltroEntrega("");
               setFiltroFactura("");
+              setFiltroPago("");
             }}
           >
             Limpiar
@@ -274,6 +311,7 @@ export default function HistorialPage() {
               <TableHead>Estado Final</TableHead>
               <TableHead>Entrega</TableHead>
               <TableHead>Factura</TableHead>
+              <TableHead>Pago</TableHead>
               <TableHead>Fecha Entrega</TableHead>
               <TableHead>Técnico</TableHead>
               <TableHead>Reseña</TableHead>
@@ -284,7 +322,7 @@ export default function HistorialPage() {
             {cargando &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 10 }).map((__, j) => (
+                  {Array.from({ length: 11 }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -292,16 +330,16 @@ export default function HistorialPage() {
                 </TableRow>
               ))}
 
-            {!cargando && reparaciones.length === 0 && (
+            {!cargando && visibles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                   No se encontraron resultados
                 </TableCell>
               </TableRow>
             )}
 
             {!cargando &&
-              reparaciones.map((r) => (
+              visibles.map((r) => (
                 <TableRow
                   key={r.resguardo}
                   className="group cursor-pointer"
@@ -345,6 +383,7 @@ export default function HistorialPage() {
                   </TableCell>
                   <TableCell className="text-sm"><EntregaBadge estado={r.estadoEntrega || "PENDIENTE"} /></TableCell>
                   <TableCell className="text-sm"><FacturaCelda r={r} /></TableCell>
+                  <TableCell className="text-sm"><PagoTransferenciaPill estado={comprobantesEstado[r.resguardo]} /></TableCell>
                   <TableCell className="text-sm">{formatearFecha(r.fechaEntrega)}</TableCell>
                   <TableCell className="text-sm">{r.tecnicoAsignado || "-"}</TableCell>
                   <TableCell className="text-sm">

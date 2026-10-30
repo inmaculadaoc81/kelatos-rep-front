@@ -180,6 +180,8 @@ export default function ReparacionesPage() {
   const [filtroTecnico, setFiltroTecnico] = useState<string[]>([]);
   const [filtroEquipo, setFiltroEquipo] = useState<string[]>([]);
   const [filtroEntrega, setFiltroEntrega] = useState<string[]>([]);
+  // Filtro por comprobante de transferencia (columna «Pago»): SIN = ninguno subido, PENDIENTE = subido sin emparejar con el banco, CONCILIADA = pago realizado.
+  const [filtroPago, setFiltroPago] = useState<string[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
@@ -274,6 +276,12 @@ export default function ReparacionesPage() {
     if (filtroTecnico.length) lista = lista.filter((r) => filtroTecnico.includes(r.tecnicoAsignado));
     if (filtroEquipo.length) lista = lista.filter((r) => filtroEquipo.includes(r.equipoEnLocal));
     if (filtroEntrega.length) lista = lista.filter((r) => filtroEntrega.includes(r.entregaMensajeria));
+    if (filtroPago.length) {
+      lista = lista.filter((r) => {
+        const e = comprobantesEstado[r.resguardo];
+        return filtroPago.includes(!e ? "SIN" : e === "Pendiente" ? "PENDIENTE" : "CONCILIADA");
+      });
+    }
 
     // Filtro por card — mismo orden/lógica que aplicarFiltrosCombinados() del
     // original: primero los estados del mapeo, luego el predicado extra.
@@ -330,7 +338,7 @@ export default function ReparacionesPage() {
       });
     }
     return lista;
-  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
+  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, comprobantesEstado, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
 
   function alternarOrden(campo: "resguardo" | "fecha") {
     setOrden((prev) => {
@@ -369,6 +377,7 @@ export default function ReparacionesPage() {
     setFiltroTecnico([]);
     setFiltroEquipo([]);
     setFiltroEntrega([]);
+    setFiltroPago([]);
     setBusqueda("");
     setFechaDesde("");
     setFechaHasta("");
@@ -383,10 +392,11 @@ export default function ReparacionesPage() {
     if (filtroTecnico.length) desc.push(`Técnico: ${filtroTecnico.join(", ")}`);
     if (filtroEquipo.length) desc.push(`Equipo: ${filtroEquipo.map((v) => (v === "SI" ? "En local" : "Cliente se llevó")).join(", ")}`);
     if (filtroEntrega.length) desc.push(`Entrega: ${filtroEntrega.map((v) => (v === "SI" ? "Mensajería" : "Local")).join(", ")}`);
+    if (filtroPago.length) desc.push(`Pago: ${filtroPago.map((v) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido, pendiente" : "Pago realizado")).join(", ")}`);
     if (busqueda.trim()) desc.push(`Búsqueda: "${busqueda.trim()}"`);
     if (fechaDesde || fechaHasta) desc.push(`Fecha: ${fechaDesde || "*"} - ${fechaHasta || "*"}`);
     return desc.join(" | ");
-  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, busqueda, fechaDesde, fechaHasta]);
+  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, busqueda, fechaDesde, fechaHasta]);
 
   const hayFiltrosActivos = descripcionFiltros.length > 0;
 
@@ -490,6 +500,12 @@ export default function ReparacionesPage() {
           opciones={[{ value: "SI", label: "Mensajería" }, { value: "NO", label: "Local" }]}
           seleccionados={filtroEntrega}
           onCambiar={setFiltroEntrega}
+        />
+        <MultiselectFiltro
+          label="Pago"
+          opciones={[{ value: "SIN", label: "Sin comprobante" }, { value: "PENDIENTE", label: "Comprobante subido (pendiente)" }, { value: "CONCILIADA", label: "Pago realizado (conciliado)" }]}
+          seleccionados={filtroPago}
+          onCambiar={setFiltroPago}
         />
         {hayFiltrosActivos && (
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltros}>
