@@ -136,7 +136,7 @@ export interface FacturaRecibida {
   /** Por qué la importación automática la dejó en revisión manual (null si no aplica). */
   revisionMotivo: string | null;
   /** Estado contable: si está validada, si ya se puede contabilizar y, si no, qué le falta. */
-  contabilidad: { estado: "sin_validar" | "falta" | "anterior" | "lista" | "sincronizada"; faltan: string[] } | null;
+  contabilidad: { estado: "sin_validar" | "falta" | "anterior" | "atrasada" | "lista" | "sincronizada"; faltan: string[] } | null;
   /** Lo que leyó la IA al cargar la factura (solo si se cargó con «Leer con IA»). */
   lecturaOcr: LecturaOcrGuardada | null;
   enlaces: EnlaceFactura[];

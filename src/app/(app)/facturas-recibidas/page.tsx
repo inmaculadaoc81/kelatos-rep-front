@@ -387,6 +387,9 @@ export default function FacturasRecibidasPage() {
                       {f.estadoRevision === "validada" && f.contabilidad?.estado === "anterior" && (
                         <span className="inline-flex whitespace-nowrap rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400" title={f.contabilidad.faltan.join("\n")}>Fecha anterior al inicio de la contabilidad</span>
                       )}
+                      {f.estadoRevision === "validada" && f.contabilidad?.estado === "atrasada" && (
+                        <a href="/contabilidad/facturas-atrasadas" className="inline-flex whitespace-nowrap rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 hover:underline dark:text-amber-400" title={f.contabilidad.faltan.join("\n")}>Atrasada: revisar en Contabilidad</a>
+                      )}
                       {f.estadoRevision === "validada" && f.contabilidad?.estado === "sincronizada" && (
                         <span className="inline-flex whitespace-nowrap rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400" title="Ya tiene asiento en Contabilidad">En contabilidad</span>
                       )}

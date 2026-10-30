@@ -31,6 +31,7 @@ import {
   Airplane,
   Star1,
   Diagram,
+  Calendar,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -132,6 +133,7 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
     { label: "Partidas pendientes", href: "/contabilidad/pendientes", icon: Wallet },
     { label: "Conciliación TPV", href: "/contabilidad/tpv", icon: CardPos },
     { label: "Devoluciones", href: "/contabilidad/devoluciones", icon: MoneySend },
+    { label: "Facturas atrasadas", href: "/contabilidad/facturas-atrasadas", icon: Calendar },
     { label: "Cierre de ejercicio", href: "/contabilidad/cierre", icon: Save2 },
     { label: "Efectivo y caja", href: "/contabilidad/efectivo", icon: Coin1 },
     { label: "Plan contable", href: "/contabilidad/plan", icon: Hierarchy },
