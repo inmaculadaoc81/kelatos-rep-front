@@ -290,7 +290,7 @@ export default function HistorialPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="overflow-x-auto rounded-lg border bg-card [&_td]:px-2 [&_th]:px-2 [&_th]:whitespace-nowrap">
         <Table>
           <TableHeader>
             <TableRow>
@@ -302,8 +302,8 @@ export default function HistorialPage() {
               <TableHead>Factura</TableHead>
               <TableHead>
         <Select value={filtroPago || "__todos__"} onValueChange={(v) => setFiltroPago(!v || v === "__todos__" ? "" : v)}>
-          <SelectTrigger className="h-7 w-44 text-xs font-medium">
-            <SelectValue>{(v: string) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido (pendiente)" : v === "CONCILIADA" ? "Pago realizado (conciliado)" : "Pago")}</SelectValue>
+          <SelectTrigger className="h-7 w-28 text-xs font-medium">
+            <SelectValue>{(v: string) => (v === "SIN" ? "Sin comprob." : v === "PENDIENTE" ? "Subido" : v === "CONCILIADA" ? "Pagado" : "Pago")}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__todos__">Pago: Todos</SelectItem>
@@ -348,7 +348,7 @@ export default function HistorialPage() {
                   title={`Abrir reparación ${r.resguardo}`}
                 >
                   <TableCell className="font-semibold">{r.resguardo}</TableCell>
-                  <TableCell className="max-w-52 text-sm">
+                  <TableCell className="max-w-40 text-sm">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate">{r.cliente.nombre || "N/A"}</span>
                       {r.tipoIngreso === "GARANTIA" && (
@@ -378,7 +378,7 @@ export default function HistorialPage() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm">{r.equipo.modelo || "-"}</TableCell>
+                  <TableCell className="max-w-44 text-sm"><span className="line-clamp-2" title={r.equipo.modelo || ""}>{r.equipo.modelo || "-"}</span></TableCell>
                   <TableCell>
                     <EstadoBadge estado={r.estado} />
                   </TableCell>
