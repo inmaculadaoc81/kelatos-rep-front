@@ -511,7 +511,13 @@ export default function FacturasClientesPage() {
 
   const listaFiltrada = useMemo(() => {
     const out = aplicarFiltrosColumna(listaBase, undefined);
+    // Más recientes primero (fecha y hora); a igual fecha, por número. Antes se ordenaba solo por el número sin la serie, así que
+    // los tickets (serie 4: 4-000456 → 4000456) quedaban SIEMPRE por encima de las facturas (serie 1: 1-003032 → 1003032) y parecía
+    // que solo salían las de reparaciones (reportado 2026-10-30).
     return [...out].sort((a, b) => {
+      const ta = Date.parse(a.fecha || "") || 0;
+      const tb = Date.parse(b.fecha || "") || 0;
+      if (tb !== ta) return tb - ta;
       const na = parseInt(a.numero.replace(/\D/g, "") || "0", 10);
       const nb = parseInt(b.numero.replace(/\D/g, "") || "0", 10);
       return nb - na;
