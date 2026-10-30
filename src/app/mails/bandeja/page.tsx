@@ -167,7 +167,7 @@ export default function CentroMailsPage() {
 
   const parametros = useCallback(
     (offset: number, limit = PAGINA) => {
-      const p = new URLSearchParams({ vista, limit: String(limit), offset: String(offset) });
+      const p = new URLSearchParams({ vista: busquedaAplicada.trim() ? "todos" : vista, limit: String(limit), offset: String(offset) });
       if (buzonSel) p.set("buzon", String(buzonSel));
       if (soloSinLeer) p.set("sinLeer", "true");
       if (agrupar) p.set("agrupar", "si");
@@ -532,6 +532,12 @@ export default function CentroMailsPage() {
               <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar en asunto, remitente y contenido…" className="h-8 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             </div>
+            {busquedaAplicada.trim() && (
+              <p className="flex items-center justify-between gap-2 px-0.5 text-xs text-sky-700 dark:text-sky-300">
+                <span>Buscando en <strong>todos los correos</strong> (enviados y recibidos), no solo en esta carpeta.</span>
+                <button type="button" className="shrink-0 underline-offset-2 hover:underline" onClick={() => setBusqueda("")}>Limpiar</button>
+              </p>
+            )}
             <label className="flex cursor-pointer items-center gap-2 px-0.5 text-xs text-muted-foreground">
               <input
                 type="checkbox"
