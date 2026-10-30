@@ -316,7 +316,11 @@ export default function KioskPage() {
                 <Button
                   className="h-20 flex-col gap-1 bg-slate-800 text-white hover:bg-slate-900"
                   disabled={fichando || !abierto}
-                  onClick={() => setMostrandoFirma(true)}
+                  onClick={() => {
+                    // Dato interno (no se muestra): hora real en que se pulsó «Salida», antes de firmar.
+                    fetch("/api/asistencia/kiosk/salida-iniciada", { method: "POST" }).catch(() => {});
+                    setMostrandoFirma(true);
+                  }}
                 >
                   <span className="text-lg">{info?.horario_flexible ? "⏹️" : "🌙"}</span> {info?.horario_flexible ? "Finalizar jornada" : "Salida"}
                 </Button>
