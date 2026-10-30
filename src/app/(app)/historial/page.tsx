@@ -255,17 +255,6 @@ export default function HistorialPage() {
             <SelectItem value="sin">Sin factura</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filtroPago || "__todos__"} onValueChange={(v) => setFiltroPago(!v || v === "__todos__" ? "" : v)}>
-          <SelectTrigger className="w-56">
-            <SelectValue>{(v: string) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido (pendiente)" : v === "CONCILIADA" ? "Pago realizado (conciliado)" : "Pago: Todos")}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__todos__">Pago: Todos</SelectItem>
-            <SelectItem value="SIN">Sin comprobante</SelectItem>
-            <SelectItem value="PENDIENTE">Comprobante subido (pendiente)</SelectItem>
-            <SelectItem value="CONCILIADA">Pago realizado (conciliado)</SelectItem>
-          </SelectContent>
-        </Select>
         <Button
           variant="outline"
           size="sm"
@@ -311,7 +300,19 @@ export default function HistorialPage() {
               <TableHead>Estado Final</TableHead>
               <TableHead>Entrega</TableHead>
               <TableHead>Factura</TableHead>
-              <TableHead>Pago</TableHead>
+              <TableHead>
+        <Select value={filtroPago || "__todos__"} onValueChange={(v) => setFiltroPago(!v || v === "__todos__" ? "" : v)}>
+          <SelectTrigger className="h-7 w-44 text-xs font-medium">
+            <SelectValue>{(v: string) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido (pendiente)" : v === "CONCILIADA" ? "Pago realizado (conciliado)" : "Pago")}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__todos__">Pago: Todos</SelectItem>
+            <SelectItem value="SIN">Sin comprobante</SelectItem>
+            <SelectItem value="PENDIENTE">Comprobante subido (pendiente)</SelectItem>
+            <SelectItem value="CONCILIADA">Pago realizado (conciliado)</SelectItem>
+          </SelectContent>
+        </Select>
+              </TableHead>
               <TableHead>Fecha Entrega</TableHead>
               <TableHead>Técnico</TableHead>
               <TableHead>Reseña</TableHead>

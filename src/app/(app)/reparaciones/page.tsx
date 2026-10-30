@@ -501,12 +501,6 @@ export default function ReparacionesPage() {
           seleccionados={filtroEntrega}
           onCambiar={setFiltroEntrega}
         />
-        <MultiselectFiltro
-          label="Pago"
-          opciones={[{ value: "SIN", label: "Sin comprobante" }, { value: "PENDIENTE", label: "Comprobante subido (pendiente)" }, { value: "CONCILIADA", label: "Pago realizado (conciliado)" }]}
-          seleccionados={filtroPago}
-          onCambiar={setFiltroPago}
-        />
         {hayFiltrosActivos && (
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltros}>
             <CloseCircle className="size-3.5" /> Limpiar
@@ -541,7 +535,14 @@ export default function ReparacionesPage() {
               <TableHead>Cliente</TableHead>
               <TableHead>Equipo</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Pago</TableHead>
+              <TableHead>
+                <MultiselectFiltro
+                  label="Pago"
+                  opciones={[{ value: "SIN", label: "Sin comprobante" }, { value: "PENDIENTE", label: "Comprobante subido (pendiente)" }, { value: "CONCILIADA", label: "Pago realizado (conciliado)" }]}
+                  seleccionados={filtroPago}
+                  onCambiar={setFiltroPago}
+                />
+              </TableHead>
               <TableHead>Técnico</TableHead>
               <TableHead>Días</TableHead>
               <TableHead>F. Entrega</TableHead>
