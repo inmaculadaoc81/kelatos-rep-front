@@ -65,7 +65,7 @@ export function GuiaModal({ open, onClose }: { open: boolean; onClose: () => voi
               Si cometiste un error en un fichaje, ve a <strong className="text-amber-950">Solicitudes</strong> → <strong className="text-amber-950">Corrección</strong>.
               Selecciona el fichaje a corregir, indica la hora correcta y el motivo, y pulsa &ldquo;Solicitar corrección&rdquo;.
             </p>
-            <p className="font-medium text-amber-950">Importante: no se pueden corregir fichajes ya firmados.</p>
+            <p className="font-medium text-amber-950">También puedes pedir la corrección de un fichaje ya firmado: el cambio solo se aplica cuando tu responsable lo aprueba y queda registrado.</p>
           </Seccion>
 
           <Seccion color="gris">
