@@ -11,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -78,6 +79,60 @@ function EstadoBadge({ estado }: { estado: string }) {
 }
 
 type OpcionFiltro = { value: string; label: string };
+
+/** Botón-filtro compacto para el encabezado de una columna; se pinta en color primario si el filtro está activo. */
+function BotonFiltroCabecera({ activo, titulo }: { activo: boolean; titulo: string }) {
+  return (
+    <span
+      title={titulo}
+      className={`inline-flex size-5 items-center justify-center rounded ${activo ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}
+    >
+      <Filter className="size-3" />
+    </span>
+  );
+}
+
+/** Filtro de texto en el encabezado de una columna. */
+function FiltroCabeceraTexto({ label, valor, onCambiar, placeholder }: { label: string; valor: string; onCambiar: (v: string) => void; placeholder?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <Popover>
+        <PopoverTrigger render={<button type="button" className="inline-flex" />}>
+          <BotonFiltroCabecera activo={!!valor.trim()} titulo={`Filtrar por ${label.toLowerCase()}`} />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-60 space-y-2 p-2">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <div className="flex gap-1">
+            <Input autoFocus value={valor} onChange={(e) => onCambiar(e.target.value)} placeholder={placeholder || "Contiene…"} className="h-8" />
+            {valor && <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => onCambiar("")}>Borrar</Button>}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </span>
+  );
+}
+
+/** Filtro por rango de fechas en el encabezado de una columna. */
+function FiltroCabeceraFechas({ label, desde, hasta, onDesde, onHasta }: { label: string; desde: string; hasta: string; onDesde: (v: string) => void; onHasta: (v: string) => void }) {
+  return (
+    <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <Popover>
+        <PopoverTrigger render={<button type="button" className="inline-flex" />}>
+          <BotonFiltroCabecera activo={!!(desde || hasta)} titulo={`Filtrar por ${label.toLowerCase()}`} />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 space-y-2 p-2">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <div className="flex items-center gap-1">
+            <Input type="date" value={desde} onChange={(e) => onDesde(e.target.value)} className="h-8" title="Desde" />
+            <span className="text-sm text-muted-foreground">-</span>
+            <Input type="date" value={hasta} onChange={(e) => onHasta(e.target.value)} className="h-8" title="Hasta" />
+          </div>
+          {(desde || hasta) && <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { onDesde(""); onHasta(""); }}>Borrar fechas</Button>}
+        </PopoverContent>
+      </Popover>
+    </span>
+  );
+}
 
 function MultiselectFiltro({
   label,
@@ -182,6 +237,13 @@ export default function ReparacionesPage() {
   const [filtroEntrega, setFiltroEntrega] = useState<string[]>([]);
   // Filtro por comprobante de transferencia (columna «Pago»): SIN = ninguno subido, PENDIENTE = subido sin emparejar con el banco, CONCILIADA = pago realizado.
   const [filtroPago, setFiltroPago] = useState<string[]>([]);
+  // Filtros de texto y de fecha en los encabezados de la tabla.
+  const [filtroResguardo, setFiltroResguardo] = useState("");
+  const [filtroCliente, setFiltroCliente] = useState("");
+  const [filtroModelo, setFiltroModelo] = useState("");
+  const [filtroObs, setFiltroObs] = useState("");
+  const [entregaDesde, setEntregaDesde] = useState("");
+  const [entregaHasta, setEntregaHasta] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
@@ -282,6 +344,18 @@ export default function ReparacionesPage() {
         return filtroPago.includes(!e ? "SIN" : e === "Pendiente" ? "PENDIENTE" : "CONCILIADA");
       });
     }
+    const contiene = (campo: unknown, t: string) => String(campo || "").toLowerCase().includes(t.trim().toLowerCase());
+    if (filtroResguardo.trim()) lista = lista.filter((r) => contiene(r.resguardo, filtroResguardo));
+    if (filtroCliente.trim()) lista = lista.filter((r) => contiene(r.cliente.nombre, filtroCliente) || contiene(r.cliente.telefono, filtroCliente) || contiene(r.cliente.email, filtroCliente));
+    if (filtroModelo.trim()) lista = lista.filter((r) => contiene(r.equipo.modelo, filtroModelo) || contiene(r.equipo.sintoma, filtroModelo));
+    if (filtroObs.trim()) lista = lista.filter((r) => contiene(r.observaciones, filtroObs));
+    if (entregaDesde || entregaHasta) {
+      lista = lista.filter((r) => {
+        const f = r.fechaEntrega ? String(r.fechaEntrega).slice(0, 10) : "";
+        if (!f) return false;
+        return (!entregaDesde || f >= entregaDesde) && (!entregaHasta || f <= entregaHasta);
+      });
+    }
 
     // Filtro por card — mismo orden/lógica que aplicarFiltrosCombinados() del
     // original: primero los estados del mapeo, luego el predicado extra.
@@ -338,7 +412,7 @@ export default function ReparacionesPage() {
       });
     }
     return lista;
-  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, comprobantesEstado, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
+  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, comprobantesEstado, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
 
   function alternarOrden(campo: "resguardo" | "fecha") {
     setOrden((prev) => {
@@ -378,6 +452,12 @@ export default function ReparacionesPage() {
     setFiltroEquipo([]);
     setFiltroEntrega([]);
     setFiltroPago([]);
+    setFiltroResguardo("");
+    setFiltroCliente("");
+    setFiltroModelo("");
+    setFiltroObs("");
+    setEntregaDesde("");
+    setEntregaHasta("");
     setBusqueda("");
     setFechaDesde("");
     setFechaHasta("");
@@ -393,10 +473,15 @@ export default function ReparacionesPage() {
     if (filtroEquipo.length) desc.push(`Equipo: ${filtroEquipo.map((v) => (v === "SI" ? "En local" : "Cliente se llevó")).join(", ")}`);
     if (filtroEntrega.length) desc.push(`Entrega: ${filtroEntrega.map((v) => (v === "SI" ? "Mensajería" : "Local")).join(", ")}`);
     if (filtroPago.length) desc.push(`Pago: ${filtroPago.map((v) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido, pendiente" : "Pago realizado")).join(", ")}`);
+    if (filtroResguardo.trim()) desc.push(`Resguardo: "${filtroResguardo.trim()}"`);
+    if (filtroCliente.trim()) desc.push(`Cliente: "${filtroCliente.trim()}"`);
+    if (filtroModelo.trim()) desc.push(`Equipo: "${filtroModelo.trim()}"`);
+    if (filtroObs.trim()) desc.push(`Obs.: "${filtroObs.trim()}"`);
+    if (entregaDesde || entregaHasta) desc.push(`F. Entrega: ${entregaDesde || "*"} - ${entregaHasta || "*"}`);
     if (busqueda.trim()) desc.push(`Búsqueda: "${busqueda.trim()}"`);
     if (fechaDesde || fechaHasta) desc.push(`Fecha: ${fechaDesde || "*"} - ${fechaHasta || "*"}`);
     return desc.join(" | ");
-  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, busqueda, fechaDesde, fechaHasta]);
+  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, busqueda, fechaDesde, fechaHasta]);
 
   const hayFiltrosActivos = descripcionFiltros.length > 0;
 
@@ -487,8 +572,6 @@ export default function ReparacionesPage() {
           </Button>
         </div>
 
-        <MultiselectFiltro label="Estado" opciones={ESTADOS_REPARACION} seleccionados={filtroEstado} onCambiar={setFiltroEstado} />
-        <MultiselectFiltro label="Técnico" opciones={tecnicosDisponibles} seleccionados={filtroTecnico} onCambiar={setFiltroTecnico} />
         <MultiselectFiltro
           label="Equipo"
           opciones={[{ value: "SI", label: "En local" }, { value: "NO", label: "Cliente se llevó" }]}
@@ -527,14 +610,26 @@ export default function ReparacionesPage() {
           <TableHeader>
             <TableRow>
               <TableHead className="cursor-pointer select-none" onClick={() => alternarOrden("resguardo")}>
-                Resguardo {orden.campo === "resguardo" ? (orden.direccion === "asc" ? "↑" : "↓") : ""}
+                <span className="inline-flex items-center gap-1">
+                  Resguardo {orden.campo === "resguardo" ? (orden.direccion === "asc" ? "↑" : "↓") : ""}
+                  <FiltroCabeceraTexto label="Resguardo" valor={filtroResguardo} onCambiar={setFiltroResguardo} />
+                </span>
               </TableHead>
               <TableHead className="cursor-pointer select-none" onClick={() => alternarOrden("fecha")}>
-                Fecha Recepción {orden.campo === "fecha" ? (orden.direccion === "asc" ? "↑" : "↓") : ""}
+                <span className="inline-flex items-center gap-1">
+                  Fecha Recepción {orden.campo === "fecha" ? (orden.direccion === "asc" ? "↑" : "↓") : ""}
+                  <FiltroCabeceraFechas label="Fecha de recepción" desde={fechaDesde} hasta={fechaHasta} onDesde={(v) => cambiarFecha("desde", v)} onHasta={(v) => cambiarFecha("hasta", v)} />
+                </span>
               </TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Equipo</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center gap-1">Cliente <FiltroCabeceraTexto label="Cliente (nombre, teléfono o email)" valor={filtroCliente} onCambiar={setFiltroCliente} /></span>
+              </TableHead>
+              <TableHead>
+                <span className="inline-flex items-center gap-1">Equipo <FiltroCabeceraTexto label="Equipo (modelo o síntoma)" valor={filtroModelo} onCambiar={setFiltroModelo} /></span>
+              </TableHead>
+              <TableHead>
+                <MultiselectFiltro label="Estado" opciones={ESTADOS_REPARACION} seleccionados={filtroEstado} onCambiar={setFiltroEstado} />
+              </TableHead>
               <TableHead>
                 <MultiselectFiltro
                   label="Pago"
@@ -543,10 +638,16 @@ export default function ReparacionesPage() {
                   onCambiar={setFiltroPago}
                 />
               </TableHead>
-              <TableHead>Técnico</TableHead>
+              <TableHead>
+                <MultiselectFiltro label="Técnico" opciones={tecnicosDisponibles} seleccionados={filtroTecnico} onCambiar={setFiltroTecnico} />
+              </TableHead>
               <TableHead>Días</TableHead>
-              <TableHead>F. Entrega</TableHead>
-              <TableHead>Obs.</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center gap-1">F. Entrega <FiltroCabeceraFechas label="Fecha de entrega" desde={entregaDesde} hasta={entregaHasta} onDesde={setEntregaDesde} onHasta={setEntregaHasta} /></span>
+              </TableHead>
+              <TableHead>
+                <span className="inline-flex items-center gap-1">Obs. <FiltroCabeceraTexto label="Observaciones" valor={filtroObs} onCambiar={setFiltroObs} /></span>
+              </TableHead>
               {/* Fija a la derecha: con 11 columnas la tabla se desborda y,
                   sin esto, el botón de acción queda fuera de la pantalla. */}
               <TableHead className="sticky right-0 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
