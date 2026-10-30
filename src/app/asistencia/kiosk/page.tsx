@@ -208,6 +208,17 @@ export default function KioskPage() {
     }
   }
 
+  // La ventana de firma caduca a los 10 minutos (el servidor también lo exige): la salida queda con la hora en que se pulsó «Salida».
+  useEffect(() => {
+    if (!mostrandoFirma) return;
+    toast.info("Tienes 10 minutos para firmar. La salida queda con la hora en que pulsaste «Salida».");
+    const t = setTimeout(() => {
+      setMostrandoFirma(false);
+      toast.error("La ventana de firma ha caducado. Pulsa «Salida» de nuevo.");
+    }, 9.5 * 60 * 1000); // un poco antes que el servidor, para que nunca se envíe una firma ya caducada
+    return () => clearTimeout(t);
+  }, [mostrandoFirma]);
+
   async function confirmarSalida(firmaDataUrl: string, resumenDia: string) {
     setFichando(true);
     try {
