@@ -10,6 +10,7 @@ import { colorAvatar, iniciales } from "@/lib/registro-acciones-estilo";
 import { formatDuracion } from "@/lib/remote-workers";
 import { TipoFichajePill } from "../pills";
 import { FirmaPad } from "./firma-pad";
+import { registrarContextoFichaje } from "./contexto-fichaje";
 
 interface MiInfo {
   nombre: string;
@@ -177,6 +178,7 @@ export default function KioskPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (estadoAusencia?.fichaje_id) marcarRegresoConfirmado(estadoAusencia.fichaje_id);
+      registrarContextoFichaje("regreso_ausencia");
       toast.success("Regreso confirmado");
       await Promise.all([cargar(), cargarEstadoAusencia()]);
     } catch (e) {
@@ -197,6 +199,7 @@ export default function KioskPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(`${ETIQUETA_TIPO[tipo] || tipo} registrada`);
+      registrarContextoFichaje(tipo);
       await cargar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
@@ -216,6 +219,7 @@ export default function KioskPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success("Salida registrada");
+      registrarContextoFichaje("salida");
       setMostrandoFirma(false);
       await cargar();
     } catch (e) {
@@ -319,6 +323,7 @@ export default function KioskPage() {
                   onClick={() => {
                     // Dato interno (no se muestra): hora real en que se pulsó «Salida», antes de firmar.
                     fetch("/api/asistencia/kiosk/salida-iniciada", { method: "POST" }).catch(() => {});
+                    registrarContextoFichaje("salida_iniciada");
                     setMostrandoFirma(true);
                   }}
                 >
@@ -329,6 +334,10 @@ export default function KioskPage() {
           )}
         </CardContent>
       </Card>
+
+      <p className="px-1 text-center text-[11px] leading-snug text-muted-foreground">
+        Control horario: al fichar se registran la hora, el dispositivo y tu ubicación aproximada (el navegador te pedirá permiso). Fichar funciona igual si no lo permites.
+      </p>
 
       <Card>
         <CardHeader>
