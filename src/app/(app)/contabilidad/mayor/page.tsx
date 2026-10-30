@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, fechaCorta, num, type EstadoAsiento } from "@/lib/contabilidad";
-import { Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, InfoVista, Kpi, rangoAnioActual, usePlan } from "../_ui";
+import { BotonCsv, Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, InfoVista, Kpi, rangoAnioActual, usePlan } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
 interface Movimiento {
@@ -80,9 +80,16 @@ export default function MayorPage() {
         titulo="Libro Mayor"
         descripcion="Movimientos de una cuenta con su saldo acumulado; una cuenta de control incluye sus subcuentas"
         acciones={
-          <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
-            <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
-          </Button>
+          <>
+            <BotonCsv
+              nombre={`mayor-${cuenta || "cuenta"}`} disabled={!datos || datos.movimientos.length === 0}
+              cabecera={["Fecha", "Asiento", "Concepto", "Subcuenta", "Debe", "Haber", "Saldo"]}
+              filas={() => (datos?.movimientos || []).map((m) => [m.fecha.slice(0, 10), m.numero || `#${m.asiento_id}`, m.concepto || m.asiento_concepto, m.subcuenta_codigo ? `${m.subcuenta_codigo} ${m.subcuenta_nombre || ""}` : m.cuenta_codigo, m.debe || "", m.haber || "", m.saldo])}
+            />
+            <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
+              <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+            </Button>
+          </>
         }
       />
       <InfoVista>Muestra el movimiento de UNA cuenta a lo largo del tiempo, con el saldo tras cada apunte. Ejemplo: elige la cuenta 572 (Bancos) para ver cada cobro y pago de esa cuenta y cuánto queda en cada momento.</InfoVista>
@@ -91,6 +98,12 @@ export default function MayorPage() {
           <option key={c.codigo} value={c.codigo}>{c.nombre}</option>
         ))}
       </datalist>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">Cuentas habituales:</span>
+        {[["430", "Clientes"], ["570", "Caja"], ["57200001", "BBVA"], ["57200002", "CaixaBank"], ["57200003", "Sabadell"], ["57200004", "Santander"], ["477", "IVA repercutido"], ["472", "IVA soportado"], ["700", "Ventas"], ["705", "Servicios"], ["555", "Pendientes"]].map(([c, n]) => (
+          <Button key={c} size="sm" variant={cuenta === c ? "secondary" : "outline"} className="h-7 px-2 text-xs" onClick={() => setCuenta(c)}>{c} <span className="ml-1 font-normal text-muted-foreground">{n}</span></Button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center gap-3">
         <Input list="cuentas-mayor" placeholder="Cuenta (p. ej. 430, 572, 705)" className="h-8 w-56 tabular-nums" value={cuenta} onChange={(e) => setCuenta(e.target.value.trim())} />
         <FiltroFechas desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
@@ -112,9 +125,9 @@ export default function MayorPage() {
         </>
       )}
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--border)]">
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead>Asiento</TableHead>
@@ -130,7 +143,7 @@ export default function MayorPage() {
             {!datos && !cargando && <FilaVacia columnas={7} texto="Indica una cuenta para ver su mayor." />}
             {datos && datos.movimientos.length === 0 && <FilaVacia columnas={7} texto="Sin movimientos en este periodo." />}
             {datos?.movimientos.map((m) => (
-              <TableRow key={`${m.asiento_id}-${m.orden}`} className="cursor-pointer" onClick={() => setDetalleId(m.asiento_id)}>
+              <TableRow key={`${m.asiento_id}-${m.orden}`} className="cursor-pointer even:bg-muted/20 hover:bg-muted/50" onClick={() => setDetalleId(m.asiento_id)}>
                 <TableCell className="tabular-nums">{fechaCorta(m.fecha)}</TableCell>
                 <TableCell className="tabular-nums">
                   <span className="mr-1.5 font-medium">{m.numero || `#${m.asiento_id}`}</span>
@@ -140,7 +153,7 @@ export default function MayorPage() {
                 <TableCell className="text-xs text-muted-foreground">{m.subcuenta_codigo ? `${m.subcuenta_codigo} · ${m.subcuenta_nombre}` : m.cuenta_codigo}</TableCell>
                 <TableCell className="text-right tabular-nums">{m.debe ? num(m.debe) : ""}</TableCell>
                 <TableCell className="text-right tabular-nums">{m.haber ? num(m.haber) : ""}</TableCell>
-                <TableCell className="text-right font-medium tabular-nums">{num(m.saldo)}</TableCell>
+                <TableCell className={`text-right font-medium tabular-nums ${m.saldo < 0 ? "text-red-600 dark:text-red-400" : ""}`}>{num(m.saldo)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

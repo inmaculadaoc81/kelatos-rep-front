@@ -8,8 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiC, hoyISO, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FiltroFechas, InfoVista, rangoAnioActual } from "../_ui";
+import { apiC, eur, hoyISO, num } from "@/lib/contabilidad";
+import { BotonCsv, Cabecera, CajaError, FiltroFechas, InfoVista, Kpi, rangoAnioActual } from "../_ui";
 
 interface CuentaBal {
   codigo: string;
@@ -86,6 +86,14 @@ export default function BalancePage() {
                 {balance.cuadra ? "Activo = Pasivo + Patrimonio" : "Descuadrado"}
               </span>
             )}
+            <BotonCsv
+              nombre={pestana === "balance" ? "balance-de-situacion" : "perdidas-y-ganancias"}
+              disabled={pestana === "balance" ? !balance : !pyg}
+              cabecera={pestana === "balance" ? ["Lado", "Sección", "Cuenta", "Nombre", "Importe"] : ["Línea", "Cuenta", "Nombre", "Importe"]}
+              filas={() => pestana === "balance"
+                ? (balance ? [["ACTIVO", balance.activo], ["PATRIMONIO NETO Y PASIVO", balance.pasivo]] as const : []).flatMap(([lado, secs]) => secs.flatMap((s) => [[lado, s.nombre, "", "TOTAL " + s.nombre, s.total], ...s.cuentas.map((c) => [lado, s.nombre, c.codigo, c.nombre, c.importe])]))
+                : (pyg?.lineas || []).flatMap((l) => [[l.nombre, "", "", l.total], ...l.cuentas.map((c) => [l.nombre, c.codigo, c.nombre, c.importe])])}
+            />
             <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
               <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
             </Button>
@@ -116,6 +124,14 @@ export default function BalancePage() {
         <TabsContent value="balance" className="pt-3">
           {cargando && !balance && <Skeleton className="h-64 w-full" />}
           {balance && (
+            <div className="mb-3 grid grid-cols-2 gap-2 sm:max-w-3xl sm:grid-cols-4">
+              <Kpi titulo="Total activo" valor={eur(balance.totalActivo)} color="" />
+              <Kpi titulo="Pasivo y patrimonio" valor={eur(balance.totalPasivo)} color="" />
+              <Kpi titulo="Resultado del ejercicio" valor={eur(balance.resultado)} color={balance.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"} />
+              <Kpi titulo="Diferencia" valor={eur(Math.round((balance.totalActivo - balance.totalPasivo) * 100) / 100)} color={balance.cuadra ? "text-emerald-600 dark:text-emerald-400" : "text-red-600"} />
+            </div>
+          )}
+          {balance && (
             <div className="grid gap-3 lg:grid-cols-2">
               <Lado titulo="ACTIVO" secciones={balance.activo} total={balance.totalActivo} />
               <Lado titulo="PATRIMONIO NETO Y PASIVO" secciones={balance.pasivo} total={balance.totalPasivo} />
@@ -126,6 +142,12 @@ export default function BalancePage() {
 
         <TabsContent value="pyg" className="pt-3">
           {cargando && !pyg && <Skeleton className="h-64 w-full" />}
+          {pyg && (
+            <div className="mb-3 grid grid-cols-2 gap-2 sm:max-w-xl">
+              <Kpi titulo="Ingresos (ventas y otros)" valor={eur(pyg.lineas.filter((l) => !l.subtotal && l.total > 0).reduce((s, l) => s + l.total, 0))} color="" />
+              <Kpi titulo="Resultado del periodo" valor={eur(pyg.resultado)} color={pyg.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"} />
+            </div>
+          )}
           {pyg && (
             <div className="overflow-hidden rounded-lg border bg-card sm:max-w-3xl">
               {pyg.lineas.map((l) => (

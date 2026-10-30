@@ -5,8 +5,33 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { InfoCircle } from "@/lib/icons";
+import { DocumentDownload, InfoCircle } from "@/lib/icons";
+import { toast } from "sonner";
 import { apiC, CLASE_ESTADO, ETIQUETA_ESTADO, hoyISO, type Banco, type Categoria, type Cuenta, type EstadoAsiento } from "@/lib/contabilidad";
+
+/** Descarga un CSV listo para Excel (separador «;», coma decimal, con tildes). */
+export function descargarCsvInforme(nombre: string, cabecera: string[], filas: (string | number | null | undefined)[][]) {
+  const celda = (v: string | number | null | undefined) => `"${(typeof v === "number" ? String(v).replace(".", ",") : String(v ?? "")).replace(/"/g, '""')}"`;
+  const csv = "\uFEFF" + [cabecera, ...filas].map((f) => f.map(celda).join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${nombre}-${hoyISO()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Botón «Exportar CSV» de los informes: genera el fichero con lo que se ve en pantalla. */
+export function BotonCsv({ nombre, cabecera, filas, disabled }: { nombre: string; cabecera: string[]; filas: () => (string | number | null | undefined)[][]; disabled?: boolean }) {
+  return (
+    <Button
+      variant="outline" size="sm" className="h-8 gap-1.5" disabled={disabled} title="Descarga lo que ves en pantalla, listo para Excel"
+      onClick={() => { const f = filas(); if (!f.length) return toast.error("No hay nada que exportar"); descargarCsvInforme(nombre, cabecera, f); toast.success(`${f.length} fila(s) exportadas`); }}
+    >
+      <DocumentDownload className="size-4" /> Exportar CSV
+    </Button>
+  );
+}
 
 /** Explicación corta de qué es esta vista, con un ejemplo — para quien no es contable. */
 export function InfoVista({ children }: { children: React.ReactNode }) {

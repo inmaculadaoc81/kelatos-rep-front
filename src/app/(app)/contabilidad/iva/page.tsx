@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, fechaCorta, num, type EstadoAsiento } from "@/lib/contabilidad";
-import { Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, InfoVista, Kpi, rangoAnioActual } from "../_ui";
+import { BotonCsv, Cabecera, CajaError, EstadoBadge, FilaVacia, FilasCarga, FiltroFechas, InfoVista, Kpi, rangoAnioActual } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
 interface Doc {
@@ -61,28 +61,30 @@ export default function IvaPage() {
   }, [cargar]);
 
   const tabla = (docs: Doc[], vacio: string) => (
-    <div className="overflow-x-auto rounded-lg border bg-card">
+    <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card">
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--border)]">
           <TableRow>
             <TableHead>Fecha</TableHead>
             <TableHead>Asiento</TableHead>
             <TableHead>Concepto</TableHead>
+            <TableHead>Tercero</TableHead>
             <TableHead className="text-right">Base</TableHead>
             <TableHead className="text-right">Cuota IVA</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {cargando && !datos && <FilasCarga columnas={5} />}
-          {datos && docs.length === 0 && <FilaVacia columnas={5} texto={vacio} />}
+          {cargando && !datos && <FilasCarga columnas={6} />}
+          {datos && docs.length === 0 && <FilaVacia columnas={6} texto={vacio} />}
           {docs.map((d) => (
-            <TableRow key={d.asiento_id} className="cursor-pointer" onClick={() => setDetalleId(d.asiento_id)}>
+            <TableRow key={d.asiento_id} className="cursor-pointer even:bg-muted/20 hover:bg-muted/50" onClick={() => setDetalleId(d.asiento_id)}>
               <TableCell className="tabular-nums">{fechaCorta(d.fecha)}</TableCell>
               <TableCell className="tabular-nums">
                 <span className="mr-1.5 font-medium">{d.numero || `#${d.asiento_id}`}</span>
                 {d.estado !== "CONTABILIZADO" && d.estado !== "CERRADO" && <EstadoBadge estado={d.estado} />}
               </TableCell>
               <TableCell className="max-w-md truncate text-sm">{d.concepto}</TableCell>
+              <TableCell className="max-w-48 truncate text-xs text-muted-foreground">{d.tercero || "—"}</TableCell>
               <TableCell className="text-right tabular-nums">{num(d.base)}</TableCell>
               <TableCell className="text-right font-medium tabular-nums">{num(d.cuota)}</TableCell>
             </TableRow>
@@ -99,9 +101,16 @@ export default function IvaPage() {
         titulo="Libro de IVA"
         descripcion="IVA repercutido (ventas) y soportado (compras) con el resultado de cada trimestre"
         acciones={
-          <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
-            <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
-          </Button>
+          <>
+            <BotonCsv
+              nombre="libro-iva" disabled={!datos || datos.repercutido.length + datos.soportado.length === 0}
+              cabecera={["Tipo", "Fecha", "Asiento", "Estado", "Concepto", "Tercero", "Base", "Cuota IVA"]}
+              filas={() => [...(datos?.repercutido || []).map((d) => ({ t: "Repercutido", d })), ...(datos?.soportado || []).map((d) => ({ t: "Soportado", d }))].map(({ t, d }) => [t, d.fecha.slice(0, 10), d.numero || `#${d.asiento_id}`, d.estado, d.concepto, d.tercero || "", d.base, d.cuota])}
+            />
+            <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
+              <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+            </Button>
+          </>
         }
       />
       <InfoVista>El IVA repercutido (el que se cobra en las ventas) y el soportado (el que se paga en compras) de cada trimestre, para la declaración a Hacienda. Ejemplo: 1.000€ repercutidos y 300€ soportados dejan 700€ a ingresar ese trimestre.</InfoVista>

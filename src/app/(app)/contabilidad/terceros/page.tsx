@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, hoyISO, num } from "@/lib/contabilidad";
-import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi } from "../_ui";
+import { BotonCsv, Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi } from "../_ui";
 
 interface Fila {
   codigo: string;
@@ -61,9 +61,16 @@ export default function TercerosPage() {
         titulo="Clientes y proveedores"
         descripcion="Saldo pendiente de cada tercero con su antigüedad; los cobros y pagos cierran primero las partidas más viejas"
         acciones={
-          <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
-            <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
-          </Button>
+          <>
+            <BotonCsv
+              nombre={`${tipo}-saldos`} disabled={!datos || datos.filas.length === 0}
+              cabecera={[tipo === "clientes" ? "Cliente" : "Proveedor", "Código", "0-30 días", "31-60", "61-90", "Más de 90", "Pendiente", "A favor", "Saldo"]}
+              filas={() => (datos?.filas || []).map((f) => [f.nombre, f.codigo, f["0-30"], f["31-60"], f["61-90"], f["mas-90"], f.pendiente, f.a_favor, f.saldo])}
+            />
+            <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar">
+              <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
+            </Button>
+          </>
         }
       />
       <InfoVista>Cuánto debe cada cliente o se debe a cada proveedor, con la antigüedad de esa deuda. Ejemplo: una factura sin cobrar de hace 45 días aparece en el tramo «31-60 días»; el próximo cobro de ese cliente cierra primero esa factura.</InfoVista>
@@ -89,9 +96,9 @@ export default function TercerosPage() {
           <Kpi titulo="Saldos a favor" valor={eur(datos.totales.a_favor)} color="text-emerald-600 dark:text-emerald-400" />
         </div>
       )}
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-card shadow-[0_1px_0_var(--border)]">
             <TableRow>
               <TableHead>{tipo === "clientes" ? "Cliente" : "Proveedor"}</TableHead>
               <TableHead className="text-right">0-30 días</TableHead>
@@ -107,7 +114,7 @@ export default function TercerosPage() {
             {cargando && !datos && <FilasCarga columnas={8} />}
             {datos && datos.filas.length === 0 && <FilaVacia columnas={8} texto={tipo === "clientes" ? "Ningún cliente tiene saldo pendiente." : "No se debe nada a ningún proveedor."} />}
             {datos?.filas.map((f) => (
-              <TableRow key={f.codigo}>
+              <TableRow key={f.codigo} className="even:bg-muted/20 hover:bg-muted/50">
                 <TableCell>
                   <Link href={`/contabilidad/mayor?cuenta=${f.codigo}`} className="font-medium hover:underline">{f.nombre}</Link>
                   <div className="text-xs tabular-nums text-muted-foreground">{f.codigo}</div>
