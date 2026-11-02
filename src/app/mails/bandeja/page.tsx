@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2, Edit2, Star, Trash, Folder2, RotateLeft, Eye, Category, Forward, Copy, Danger, Tag } from "@/lib/icons";
+import { Refresh2, SearchNormal1, Sms, Send2, CloseCircle, Notification, Paperclip2, Edit2, Star, Trash, Folder2, RotateLeft, Eye, Category, Forward, Copy, Danger, Tag, ShoppingCart } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +26,7 @@ const CARPETAS: { vista: Vista; etiqueta: string; icono: typeof Sms; contador: k
   { vista: "destacados", etiqueta: "Destacados", icono: Star, contador: "destacados", color: "from-amber-500 to-amber-600" },
   { vista: "enviados", etiqueta: "Enviados", icono: Send2, contador: "enviados", color: "from-indigo-500 to-indigo-600" },
   { vista: "archivo", etiqueta: "Archivo", icono: Folder2, contador: "archivo", color: "from-violet-500 to-violet-600" },
+  { vista: "compras", etiqueta: "Compras", icono: ShoppingCart, contador: "compras", color: "from-teal-500 to-teal-600" },
   { vista: "ofertas", etiqueta: "Ofertas", icono: Tag, contador: "ofertas", color: "from-pink-500 to-pink-600" },
   { vista: "spam", etiqueta: "Spam", icono: Danger, contador: "spam", color: "from-orange-500 to-orange-600" },
   { vista: "rebotes", etiqueta: "Rebotes", icono: CloseCircle, contador: "rebotes", color: "from-red-500 to-red-600" },
