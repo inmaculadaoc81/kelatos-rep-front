@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft2, ArrowRight2 } from "@/lib/icons";
+import { Add, ArrowLeft2, ArrowRight2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { ESTADOS, type EstadoPieza, type Pieza } from "@/lib/contenido";
 import { PiezaDialog } from "../pieza-dialog";
+import { NuevaPiezaDialog } from "../nueva-pieza-dialog";
 
 const POLL_MS = 30000;
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -40,6 +41,7 @@ export default function CalendarioPage() {
     return new Date(h.getFullYear(), h.getMonth(), 1);
   });
   const [seleccionada, setSeleccionada] = useState<number | null>(null);
+  const [nuevaEn, setNuevaEn] = useState<string | null>(null);
 
   useEffect(() => {
     let activo = true;
@@ -85,6 +87,10 @@ export default function CalendarioPage() {
   const hoy = claveDia(new Date());
   const tituloMes = mes.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
 
+  const recargar = () => {
+    fetch("/api/asistencia/kiosk/contenido").then((r) => r.json()).then((d) => d.ok && setPiezas(d.piezas as Pieza[]));
+  };
+
   if (cargando) return <Skeleton className="h-96 w-full" />;
 
   return (
@@ -120,8 +126,19 @@ export default function CalendarioPage() {
             const delMes = d.getMonth() === mes.getMonth();
             const lista = porDia.get(clave) || [];
             return (
-              <div key={clave} className={cn("min-h-28 border-b border-r p-1.5", !delMes && "bg-muted/30 text-muted-foreground/60", clave === hoy && "bg-sky-50 dark:bg-sky-950/30")}>
-                <div className={cn("mb-1 text-xs font-medium", clave === hoy && "text-sky-700 dark:text-sky-300")}>{d.getDate()}</div>
+              <div key={clave} className={cn("group relative min-h-28 border-b border-r p-1.5", !delMes && "bg-muted/30 text-muted-foreground/60", clave === hoy && "bg-sky-50 dark:bg-sky-950/30")}>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className={cn("text-xs font-medium", clave === hoy && "text-sky-700 dark:text-sky-300")}>{d.getDate()}</span>
+                  <button
+                    type="button"
+                    onClick={() => setNuevaEn(clave)}
+                    className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-60"
+                    title="Añadir pieza este día"
+                    aria-label={`Añadir pieza el ${clave}`}
+                  >
+                    <Add className="size-3.5" />
+                  </button>
+                </div>
                 <div className="space-y-1">
                   {lista.slice(0, 3).map((p) => {
                     const f = fechaDePieza(p);
@@ -159,13 +176,22 @@ export default function CalendarioPage() {
         </div>
       )}
 
+      <NuevaPiezaDialog
+        open={nuevaEn !== null}
+        onOpenChange={(o) => !o && setNuevaEn(null)}
+        fechaInicial={nuevaEn ?? undefined}
+        onCreada={(id) => {
+          setNuevaEn(null);
+          recargar();
+          setSeleccionada(id);
+        }}
+      />
+
       <PiezaDialog
         piezaId={seleccionada}
         open={seleccionada !== null}
         onOpenChange={(o) => !o && setSeleccionada(null)}
-        onCambiada={() => {
-          fetch("/api/asistencia/kiosk/contenido").then((r) => r.json()).then((d) => d.ok && setPiezas(d.piezas as Pieza[]));
-        }}
+        onCambiada={recargar}
       />
     </div>
   );
