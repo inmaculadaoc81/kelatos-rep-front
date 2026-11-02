@@ -7,6 +7,7 @@ import { ResumenVista } from "@/components/prospeccion/resumen-vista";
 import { AgenteVista } from "@/components/prospeccion/agente-vista";
 import { EnviosVista } from "@/components/prospeccion/envios-vista";
 import { ClientesVista } from "@/components/prospeccion/clientes-vista";
+import { BusquedaDiariaPanel } from "@/components/prospeccion/busqueda-diaria-panel";
 import ProspeccionLeadsPage from "@/app/prospeccion/leads/page";
 import ComoFuncionaProspeccionPage from "@/app/prospeccion/como-funciona/page";
 
@@ -49,7 +50,7 @@ export default function AgentesProspeccionPage() {
         </TabsList>
         <TabsContent value="resumen" className="pt-4"><ResumenVista segmento={parte} /></TabsContent>
         <TabsContent value="contactos" className="pt-4">{parte === "clientes" ? <ClientesVista /> : <ProspeccionLeadsPage />}</TabsContent>
-        <TabsContent value="agente" className="pt-4"><AgenteVista segmento={parte} /></TabsContent>
+        <TabsContent value="agente" className="space-y-6 pt-4">{parte === "empresas" && <BusquedaDiariaPanel />}<AgenteVista segmento={parte} /></TabsContent>
         <TabsContent value="mensajes" className="pt-4"><EnviosVista segmento={parte} /></TabsContent>
         {parte === "empresas" && <TabsContent value="como" className="pt-4"><ComoFuncionaProspeccionPage /></TabsContent>}
       </Tabs>
