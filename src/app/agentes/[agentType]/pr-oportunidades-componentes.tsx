@@ -78,10 +78,10 @@ function TarjetaItem({ item, ver }: { item: ItemOportunidad; ver?: WebVerificada
             <>
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">Web verificada</span>
               <a href={ver.web} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">Abrir web</a>
-              {ver.urlContacto ? <a href={ver.urlContacto} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">Página de contacto</a> : <span className="text-muted-foreground">No se encontró página de contacto</span>}
+              {ver.urlContacto ? <a href={ver.urlContacto} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">Página de contacto</a> : item.quePublicar ? null : <span className="text-muted-foreground">No se encontró página de contacto</span>}
             </>
           ) : ver.estado === "no_responde" ? (
-            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-rose-800">La web no responde{ver.codigo ? ` (${ver.codigo})` : ""}: compruébala a mano</span>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800" title="Muchas webs bloquean a los robots o han cambiado la ruta del enlace">No se pudo comprobar{ver.codigo ? ` (${ver.codigo})` : ""}: ábrela a mano{ver.web ? <> · <a href={ver.web} target="_blank" rel="noopener noreferrer" className="underline">abrir</a></> : null}</span>
           ) : (
             <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">Sin web que comprobar</span>
           )}
