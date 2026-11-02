@@ -5,7 +5,12 @@ export type EstadoAsiento = "BORRADOR" | "VALIDADO" | "CONTABILIZADO" | "CERRADO
 export interface AsientoResumen {
   id: number;
   numero: string | null;
+  /** Fecha de contabilización: la del asiento. */
   fecha: string;
+  /** Fecha del documento (la que figura en la factura o ticket). */
+  fecha_documento?: string | null;
+  /** Fecha de recepción (facturas de proveedor); null si no aplica. */
+  fecha_recepcion?: string | null;
   concepto: string;
   tipo: string;
   estado: EstadoAsiento;

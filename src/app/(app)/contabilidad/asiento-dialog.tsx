@@ -96,7 +96,9 @@ export function AsientoDialog({ id, onClose, onCambio, onEditar }: { id: number 
         {d && a && (
           <div className="space-y-3">
             <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-              <div><span className="text-muted-foreground">Fecha: </span>{fechaCorta(a.fecha)}</div>
+              <div><span className="text-muted-foreground">Fecha de contabilización: </span>{fechaCorta(a.fecha)}</div>
+              <div><span className="text-muted-foreground">Fecha de documento: </span>{a.fecha_documento ? fechaCorta(a.fecha_documento) : "—"}</div>
+              <div><span className="text-muted-foreground">Fecha de recepción: </span>{a.fecha_recepcion ? fechaCorta(a.fecha_recepcion) : "—"}</div>
               <div><span className="text-muted-foreground">Tipo: </span>{a.tipo}</div>
               <div className="sm:col-span-2"><span className="text-muted-foreground">Concepto: </span>{a.concepto}</div>
               {a.origen_id && <div><span className="text-muted-foreground">Origen: </span>{a.origen_tipo} · {a.origen_id}</div>}

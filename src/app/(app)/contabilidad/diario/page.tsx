@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { descargarCsv } from "@/lib/reporte-facturas";
-import { apiC, eur, num, type AsientoResumen, type EstadoAsiento } from "@/lib/contabilidad";
+import { apiC, eur, fechaCorta, num, type AsientoResumen, type EstadoAsiento } from "@/lib/contabilidad";
 import { Cabecera, CajaError, EstadoBadge, FiltroFechas, InfoVista, Kpi, rangoAnioActual } from "../_ui";
 import { AsientoDialog } from "../asiento-dialog";
 
@@ -158,6 +158,7 @@ export default function DiarioPage() {
                     <span className="font-semibold tabular-nums">{a.numero || `#${a.id}`}</span>
                     {op && <span className={`inline-flex shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${op[2]}`}>{op[1]}</span>}
                     <span className="min-w-0 flex-1 truncate text-sm" title={a.concepto}>{a.concepto}</span>
+                    <span className="hidden shrink-0 text-xs text-muted-foreground tabular-nums md:inline">Doc. {a.fecha_documento ? fechaCorta(a.fecha_documento) : "—"} · Recep. {a.fecha_recepcion ? fechaCorta(a.fecha_recepcion) : "—"}</span>
                     <EstadoBadge estado={a.estado as EstadoAsiento} />
                   </button>
                   {a.lineas.map((l) => (

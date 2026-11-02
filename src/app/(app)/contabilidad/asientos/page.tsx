@@ -134,8 +134,8 @@ export default function AsientosPage() {
         if (d.asientos.length < 500) break;
       }
       if (todos.length === 0) return toast.error("No hay asientos que exportar con estos filtros");
-      const cab = ["Nº", "Fecha", "Concepto", "Tipo", "Estado", "Origen", "Referencia de origen", "Importe"];
-      const filasCsv = todos.map((f) => [f.numero || `#${f.id}`, f.fecha, f.concepto, f.tipo, f.estado, f.origen_tipo || "", f.origen_id || "", String(f.total ?? 0).replace(".", ",")]);
+      const cab = ["Nº", "F. contabilización", "F. documento", "F. recepción", "Concepto", "Tipo", "Estado", "Origen", "Referencia de origen", "Importe"];
+      const filasCsv = todos.map((f) => [f.numero || `#${f.id}`, f.fecha, f.fecha_documento || "", f.fecha_recepcion || "", f.concepto, f.tipo, f.estado, f.origen_tipo || "", f.origen_id || "", String(f.total ?? 0).replace(".", ",")]);
       descargarCsv("\uFEFF" + [cab, ...filasCsv].map((r) => r.map(celdaCsv).join(";")).join("\r\n"), `asientos-${new Date().toISOString().slice(0, 10)}.csv`);
       toast.success(`${todos.length} asiento${todos.length !== 1 ? "s" : ""} exportado${todos.length !== 1 ? "s" : ""}`);
     } catch (e) {
@@ -237,7 +237,9 @@ export default function AsientosPage() {
                     />
                   </TableHead>
                   <TableHead>Nº<ColumnaFiltroTexto valor={numero} placeholder="Nº de asiento…" onAplicar={setNumero} /></TableHead>
-                  <TableHead>Fecha<ColumnaFiltroFechas valor={{ desde, hasta }} onAplicar={(r) => { setDesde(r.desde); setHasta(r.hasta); }} /></TableHead>
+                  <TableHead>F. contabilización<ColumnaFiltroFechas valor={{ desde, hasta }} onAplicar={(r) => { setDesde(r.desde); setHasta(r.hasta); }} /></TableHead>
+                  <TableHead>F. documento</TableHead>
+                  <TableHead>F. recepción</TableHead>
                   <TableHead>Concepto<ColumnaFiltroTexto valor={concepto} placeholder="Contiene…" onAplicar={setConcepto} /></TableHead>
                   <TableHead>Origen<ColumnaFiltroOpciones valor={origen} opciones={ORIGENES.map((o) => ({ id: o.valor, etiqueta: o.etiqueta }))} onAplicar={setOrigen} /></TableHead>
                   <TableHead className="text-right">Importe<ColumnaFiltroRango seleccion={importeMin || importeMax ? { min: importeMin ? Number(importeMin) : null, max: importeMax ? Number(importeMax) : null } : null} onAplicar={(r) => { setImporteMin(r?.min != null ? String(r.min) : ""); setImporteMax(r?.max != null ? String(r.max) : ""); }} /></TableHead>
@@ -245,8 +247,8 @@ export default function AsientosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cargando && <FilasCarga columnas={7} />}
-                {!cargando && filas.length === 0 && <FilaVacia columnas={7} texto="Todavía no hay asientos. Aparecerán aquí cuando las operaciones generen eventos contables." />}
+                {cargando && <FilasCarga columnas={9} />}
+                {!cargando && filas.length === 0 && <FilaVacia columnas={9} texto="Todavía no hay asientos. Aparecerán aquí cuando las operaciones generen eventos contables." />}
                 {!cargando &&
                   filas.map((f) => (
                     <TableRow key={f.id} className="cursor-pointer even:bg-muted/20 hover:bg-muted/50" onClick={() => setDetalleId(f.id)}>
@@ -261,6 +263,8 @@ export default function AsientosPage() {
                       </TableCell>
                       <TableCell className="font-medium tabular-nums">{f.numero || <span className="text-muted-foreground">#{f.id}</span>}</TableCell>
                       <TableCell className="tabular-nums">{fechaCorta(f.fecha)}</TableCell>
+                      <TableCell className="tabular-nums">{f.fecha_documento ? fechaCorta(f.fecha_documento) : <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="tabular-nums">{f.fecha_recepcion ? fechaCorta(f.fecha_recepcion) : <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell className="max-w-md">
                         <div className="flex items-center gap-2">
                           {(() => { const o = operacionDe(f.concepto); return o ? <span className={`inline-flex shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${o[2]}`}>{o[1]}</span> : null; })()}
