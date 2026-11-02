@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentRun, AgentStep } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
+import { BorradorArticulos, BorradorGoogle, PanelBorradores } from "./pr-borradores";
 import { Oportunidades, PanelOportunidades, Verificacion } from "./pr-oportunidades-componentes";
 
 /** Panel del agente de Oportunidades de PR: mismo patrón que
@@ -34,6 +35,8 @@ export function PrOportunidadesDashboard({ runs, cargando, onEjecutado }: { runs
   }, [ultimoCompletado?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const oportunidades = pasos?.find((p) => p.step === "oportunidades" && p.status === "completed")?.output as Oportunidades | undefined;
+  const borradorGoogle = pasos?.find((p) => p.step === "borrador_google" && p.status === "completed")?.output as BorradorGoogle | undefined;
+  const borradorArticulos = pasos?.find((p) => p.step === "borrador_articulos" && p.status === "completed")?.output as BorradorArticulos | undefined;
   const verificacion = pasos?.find((p) => p.step === "verificacion" && p.status === "completed")?.output as Verificacion | undefined;
 
   async function ejecutarAhora() {
@@ -74,7 +77,7 @@ export function PrOportunidadesDashboard({ runs, cargando, onEjecutado }: { runs
           {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
         </div>
       ) : (
-        <PanelOportunidades oportunidades={oportunidades} verificacion={verificacion} />
+        <><PanelOportunidades oportunidades={oportunidades} verificacion={verificacion} /><PanelBorradores google={borradorGoogle} articulos={borradorArticulos} /></>
       )}
 
       {ultimoCompletado && (
