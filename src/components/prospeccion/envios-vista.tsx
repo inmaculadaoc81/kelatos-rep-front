@@ -27,6 +27,8 @@ export function EnviosVista({ segmento = "empresas" }: { segmento?: Segmento }) 
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState("");
   const [encaje, setEncaje] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [abierto, setAbierto] = useState<number | null>(null);
   const [redactando, setRedactando] = useState(false);
 
@@ -37,7 +39,10 @@ export function EnviosVista({ segmento = "empresas" }: { segmento?: Segmento }) 
   if (encaje) params.set("encaje", encaje);
   const { datos, error } = useApi<{ ok: boolean; envios: EnvioLista[] }>(`/api/prospeccion/envios?${params.toString()}`, recarga);
   const recargar = () => setRecarga((n) => n + 1);
-  const filas = datos?.envios ?? [];
+  const filas = (datos?.envios ?? []).filter((f) => {
+    const dia = String(f.generado_en || "").slice(0, 10);
+    return (!desde || dia >= desde) && (!hasta || dia <= hasta);
+  });
 
   async function redactar() {
     setRedactando(true);
@@ -77,6 +82,13 @@ export function EnviosVista({ segmento = "empresas" }: { segmento?: Segmento }) 
           <option value="medio">Encaje medio</option>
           <option value="bajo">Encaje bajo</option>
         </select>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Redactados desde</span>
+          <input type="date" className={SELECT} value={desde} onChange={(e) => setDesde(e.target.value)} aria-label="Desde" />
+          <span>hasta</span>
+          <input type="date" className={SELECT} value={hasta} onChange={(e) => setHasta(e.target.value)} aria-label="Hasta" />
+          {(desde || hasta) && <button type="button" className="rounded px-1.5 py-0.5 hover:bg-accent" onClick={() => { setDesde(""); setHasta(""); }}>Quitar fechas</button>}
+        </div>
       </div>
 
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">No se pudo cargar: {error}</div>}
@@ -152,7 +164,7 @@ function DetalleEnvio({ id, onCerrar, onCambio }: { id: number; onCerrar: () => 
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !trabajando) onCerrar(); }}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle>{e?.empresa ?? "Mensaje"}</DialogTitle>
           <DialogDescription>{e ? `${e.email} · ${nombreEstadoEnvio(e.estado)}` : "Cargando…"}</DialogDescription>
@@ -160,7 +172,7 @@ function DetalleEnvio({ id, onCerrar, onCambio }: { id: number; onCerrar: () => 
         {error && <p className="text-sm text-destructive">{error}</p>}
         {!e && !error && <Skeleton className="h-48 w-full" />}
         {e && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             <div className="space-y-3 text-sm">
               <h3 className="font-semibold">Análisis de la IA</h3>
               <p><span className={`rounded-full px-2 py-0.5 text-xs ${chipEncaje(e.analisis?.encaje ?? null)}`}>Encaje {e.analisis?.encaje ?? "—"}{e.puntuacion !== null ? ` · ${e.puntuacion}/100` : ""}</span></p>
@@ -196,8 +208,9 @@ function DetalleEnvio({ id, onCerrar, onCambio }: { id: number; onCerrar: () => 
             </div>
             <div className="space-y-2">
               <h3 className="text-sm font-semibold">Correo</h3>
-              <Input value={asuntoActual} disabled={!editable} onChange={(ev) => setAsunto(ev.target.value)} aria-label="Asunto" />
-              <Textarea rows={14} value={cuerpoActual} disabled={!editable} onChange={(ev) => setCuerpo(ev.target.value)} aria-label="Mensaje" />
+              <Input value={asuntoActual} disabled={!editable} onChange={(ev) => setAsunto(ev.target.value)} aria-label="Asunto" className="font-medium" />
+              <Textarea rows={20} className="min-h-80 resize-y text-sm leading-relaxed" value={cuerpoActual} disabled={!editable} onChange={(ev) => setCuerpo(ev.target.value)} aria-label="Mensaje" />
+              <p className="text-xs text-muted-foreground">En el pie, «{"{{enlace_baja}}"}» se sustituye al enviar por el enlace de baja firmado de esta dirección.</p>
             </div>
           </div>
         )}

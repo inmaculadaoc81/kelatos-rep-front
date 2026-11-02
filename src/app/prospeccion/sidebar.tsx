@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
-import { BookOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -38,7 +37,6 @@ const SECCIONES: { titulo: string; vistas: { href: string; etiqueta: string; ico
       { href: "/prospeccion/empresas/buscar", etiqueta: "Buscar empresas", icono: SearchNormal1 },
       { href: "/prospeccion/empresas/correos", etiqueta: "Correos", icono: Sms },
       { href: "/prospeccion/empresas/agente", etiqueta: "Agente y búsqueda diaria", icono: Setting2 },
-      { href: "/prospeccion/empresas/como-funciona", etiqueta: "Cómo funciona", icono: BookOpen },
     ],
   },
 ];

@@ -28,10 +28,13 @@ function situacion(c: ClienteFila): { texto: string; clase: string } {
 /** Parte «clientes» de Prospección: los clientes de Reparaciones que marcaron la casilla de recibir promociones en el formulario. */
 export function ClientesVista() {
   const [q, setQ] = useState("");
+  const [filtroSituacion, setFiltroSituacion] = useState("");
   const [recarga, setRecarga] = useState(0);
   const [buscando, setBuscando] = useState(false);
   const { datos, error } = useApi<Datos>(`/api/prospeccion/clientes?q=${encodeURIComponent(q.trim())}`, recarga);
   const t = datos?.totales;
+  const filas = (datos?.clientes ?? []).filter((c) => !filtroSituacion || situacion(c).texto === filtroSituacion);
+  const SITUACIONES = ["Pendiente de escribir", "Borrador por revisar", "Aprobado, por enviar", "Ya escrito", "Respondió", "De baja", "Correo inválido"];
 
   async function sincronizar() {
     setBuscando(true);
@@ -74,9 +77,16 @@ export function ClientesVista() {
         </div>
       )}
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o correo" className="pl-8" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o correo" className="pl-8" />
+        </div>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={filtroSituacion} onChange={(e) => setFiltroSituacion(e.target.value)} aria-label="Situación">
+          <option value="">Todas las situaciones</option>
+          {SITUACIONES.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+        {filtroSituacion && <span className="text-xs text-muted-foreground">{filas.length} cliente{filas.length === 1 ? "" : "s"}</span>}
       </div>
 
       {datos && (
@@ -93,8 +103,8 @@ export function ClientesVista() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {datos.clientes.length === 0 && <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No hay clientes con esa búsqueda</TableCell></TableRow>}
-              {datos.clientes.map((c) => {
+              {filas.length === 0 && <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No hay clientes con esa búsqueda</TableCell></TableRow>}
+              {filas.map((c) => {
                 const s = situacion(c);
                 return (
                   <TableRow key={c.id}>
