@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentRun, AgentStep } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
-import { Oportunidades, PanelOportunidades } from "./pr-oportunidades-componentes";
+import { Oportunidades, PanelOportunidades, Verificacion } from "./pr-oportunidades-componentes";
 
 /** Panel del agente de Oportunidades de PR: mismo patrón que
     VideoSeoDashboard — lee los pasos del último run completado vía
@@ -34,6 +34,7 @@ export function PrOportunidadesDashboard({ runs, cargando, onEjecutado }: { runs
   }, [ultimoCompletado?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const oportunidades = pasos?.find((p) => p.step === "oportunidades" && p.status === "completed")?.output as Oportunidades | undefined;
+  const verificacion = pasos?.find((p) => p.step === "verificacion" && p.status === "completed")?.output as Verificacion | undefined;
 
   async function ejecutarAhora() {
     setEjecutando(true);
@@ -73,7 +74,7 @@ export function PrOportunidadesDashboard({ runs, cargando, onEjecutado }: { runs
           {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
         </div>
       ) : (
-        <PanelOportunidades oportunidades={oportunidades} />
+        <PanelOportunidades oportunidades={oportunidades} verificacion={verificacion} />
       )}
 
       {ultimoCompletado && (
