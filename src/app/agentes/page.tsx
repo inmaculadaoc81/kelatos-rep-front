@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Este módulo quedó dedicado solo al agente de Auditoría de seguridad
-    (petición del usuario, 2026-10-01) — con un único tipo de agente ya no
-    tiene sentido la landing de "una card por tipo" que había antes, así
-    que /agentes entra directo a su panel. */
+/** /agentes entra directo a «Prospección de clientes» (2026-11-02; antes entraba en Auditoría de seguridad, que sigue en /agentes/security_audit). */
 export default function AgentesIndexPage() {
-  redirect("/agentes/security_audit");
+  redirect("/agentes/prospeccion");
 }

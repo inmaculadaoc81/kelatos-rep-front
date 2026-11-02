@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import type { ComponentType } from "react";
 import type { IconProps } from "iconsax-react";
-import { Cpu, SecuritySafe, Video, Microphone, Chart } from "@/lib/icons";
+import { Cpu, SecuritySafe, Video, Microphone, Chart, Sms } from "@/lib/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentType, hrefParaTipoAgente } from "@/lib/agentes";
 import { NavUser } from "../(app)/nav-user";
@@ -34,7 +34,9 @@ import { NavUser } from "../(app)/nav-user";
 // la lista que ya devuelve el backend en vez de dejar de pedirla, así que
 // si algún día se quiere recuperar la vista genérica basta con quitar
 // este filtro.
-const TIPOS_VISIBLES = new Set(["security_audit", "video_seo", "pr_opportunities"]);
+// 2026-11-02: «Auditoría de seguridad» deja su sitio a «Prospección de clientes» (petición del usuario). El agente de seguridad NO se borra: su panel sigue en
+// /agentes/security_audit y basta con volver a añadir "security_audit" aquí para que reaparezca en el menú.
+const TIPOS_VISIBLES = new Set(["video_seo", "pr_opportunities"]);
 
 // Icono por tipo — antes era SecuritySafe fijo para todos, válido mientras
 // solo hubiera un agente en este módulo. Con dos agentes de naturaleza
@@ -111,6 +113,13 @@ export function AgentesSidebar({ session, soloRedes = false }: { session: Sessio
                 </div>
               )}
               <SidebarMenuSub className="mx-0 gap-1.5 border-none px-0">
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton isActive={pathname?.startsWith("/agentes/prospeccion") ?? false} render={<Link href="/agentes/prospeccion" />}>
+                    <span className="size-1.5 shrink-0 rounded-full bg-blue-500" />
+                    <Sms />
+                    <span className="truncate">Prospección de clientes</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
                 {tipos.map((tipo) => {
                   const href = hrefParaTipoAgente(tipo.type);
                   const Icono = ICONO_POR_TIPO[tipo.type] || SecuritySafe;
