@@ -406,6 +406,8 @@ export function FacturaRecibidaFormDialog({
   // Categoría sugerida automáticamente (misma lógica que al guardar): se preselecciona en el formulario mientras la persona no la haya elegido a mano.
   const categoriaManualRef = useRef(false);
   const [categoriaNota, setCategoriaNota] = useState<string | null>(null);
+  const [categoriaIA, setCategoriaIA] = useState<string | null>(null);
+  const [categoriaDiscrepa, setCategoriaDiscrepa] = useState(false);
   const esEdicion = facturaExistente !== null;
   // Pedidos enlazados (una factura puede cubrir varios — migración 119): copia local para poder quitar enlaces sin cerrar el diálogo.
   const [enlaces, setEnlaces] = useState<EnlaceFactura[]>([]);
@@ -442,6 +444,8 @@ export function FacturaRecibidaFormDialog({
     if (open) {
       categoriaManualRef.current = false;
       setCategoriaNota(null);
+      setCategoriaIA(null);
+      setCategoriaDiscrepa(false);
       setDatos(facturaExistente ? desdeExistente(facturaExistente) : vacio(borrador));
       setDriveFileId(facturaExistente?.driveFileId ?? null);
       setArchivoPendiente(null);
@@ -477,13 +481,13 @@ export function FacturaRecibidaFormDialog({
   useEffect(() => {
     if (!open || categoriaManualRef.current) return;
     if (facturaExistente?.categoria) return;
-    if (!datos.proveedorId && !textoParaCategoria && !hayStockParaCategoria) return;
+    if (!datos.proveedorId && !textoParaCategoria && !hayStockParaCategoria && !categoriaIA) return;
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       fetch("/api/facturas-recibidas/sugerir-categoria", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proveedorId: datos.proveedorId || undefined, texto: textoParaCategoria, hayStock: hayStockParaCategoria, facturaId: facturaExistente?.id }),
+        body: JSON.stringify({ proveedorId: datos.proveedorId || undefined, texto: textoParaCategoria, hayStock: hayStockParaCategoria, facturaId: facturaExistente?.id, categoriaIA: categoriaIA || undefined }),
         signal: ctrl.signal,
       })
         .then((r) => r.json())
@@ -491,11 +495,12 @@ export function FacturaRecibidaFormDialog({
           if (!d?.ok || !d.categoria || !(d.categoria in ETIQUETA_CATEGORIA) || categoriaManualRef.current) return;
           setDatos((p) => (p.categoria ? p : { ...p, categoria: d.categoria as CategoriaFactura }));
           setCategoriaNota(d.motivo || null);
+          setCategoriaDiscrepa(d.coinciden === false);
         })
         .catch(() => {});
     }, 600);
     return () => { clearTimeout(t); ctrl.abort(); };
-  }, [open, facturaExistente, datos.proveedorId, textoParaCategoria, hayStockParaCategoria]);
+  }, [open, facturaExistente, datos.proveedorId, textoParaCategoria, hayStockParaCategoria, categoriaIA]);
 
   // Cancela también si el componente se desmonta de verdad (no solo se cierra el diálogo).
   useEffect(() => () => { ocrAbortRef.current?.abort(); }, []);
@@ -909,6 +914,7 @@ export function FacturaRecibidaFormDialog({
         setIvaSinDeducirMotivo(motivoSinDeducirIva(e));
       }
       setOrigenAutomatico(true);
+      setCategoriaIA(e.categoriaIA || null);
       setArticulosStock(articulosEmparejadosAEditables(data.articulosEmparejados || []));
       setLineas(articulosALineas(data.articulosEmparejados || []));
 
@@ -1507,7 +1513,7 @@ export function FacturaRecibidaFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  {categoriaNota && datos.categoria && <p className="text-xs text-muted-foreground">Sugerida automáticamente: {categoriaNota}. Puedes cambiarla.</p>}
+                  {categoriaNota && datos.categoria && <p className={`text-xs ${categoriaDiscrepa ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>Sugerida automáticamente: {categoriaNota}. Puedes cambiarla.</p>}
                 </div>
                 {datos.almacen === "servicio" && (
                   <CampoBuscable

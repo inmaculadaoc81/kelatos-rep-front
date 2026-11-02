@@ -10,13 +10,14 @@ export async function POST(req: Request) {
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
   try {
     const body = await req.json().catch(() => ({}));
-    const r = await kelatosApiPost<{ ok: boolean; categoria: string | null; motivo: string | null }>("/v1/facturas-recibidas/sugerir-categoria", {
+    const r = await kelatosApiPost<{ ok: boolean; categoria: string | null; motivo: string | null; coinciden: boolean | null; alternativa: string | null }>("/v1/facturas-recibidas/sugerir-categoria", {
       proveedorId: typeof body.proveedorId === "string" ? body.proveedorId : undefined,
       texto: typeof body.texto === "string" ? body.texto : "",
       hayStock: body.hayStock === true,
       facturaId: typeof body.facturaId === "number" ? body.facturaId : undefined,
+      categoriaIA: typeof body.categoriaIA === "string" ? body.categoriaIA : undefined,
     });
-    return NextResponse.json({ ok: true, categoria: r.categoria, motivo: r.motivo });
+    return NextResponse.json({ ok: true, categoria: r.categoria, motivo: r.motivo, coinciden: r.coinciden, alternativa: r.alternativa });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "No se pudo sugerir la categoría" }, { status: 502 });
   }

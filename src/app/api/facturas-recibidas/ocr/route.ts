@@ -17,6 +17,8 @@ export interface FacturaOcrExtraido {
   importeTotal: number | null;
   moneda: string;
   descripcion: string | null;
+  /** Categoría de la factura que propone la IA local (repuestos, mercancias, suministros, servicios, otro) o null. */
+  categoriaIA?: string | null;
   /** Nombres de los campos de arriba que la IA (o una verificación de
       cuadre base+IVA=total) marcó como posiblemente mal leídos — el
       formulario debe mostrarlos con aviso, no como si fueran seguros. */
