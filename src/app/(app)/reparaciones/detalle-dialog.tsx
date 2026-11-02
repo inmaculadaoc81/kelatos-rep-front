@@ -20,6 +20,7 @@ import {
   Ticket,
   Gallery,
   Shop,
+  Sms,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +40,7 @@ import { separarSintoma } from "@/lib/progreso-reparacion";
 import { ReparacionDetalle, type Pedido, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
+import { PanelMensajes, useMensajesCliente } from "./mensajes-reparacion";
 import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog, MarcarEnviadoDialog } from "./finalizar-dialog";
 import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
 import { AnticipoDialog } from "./anticipo-dialog";
@@ -366,6 +368,8 @@ export function DetalleReparacionDialog({
   onActualizado?: () => void;
 }) {
   const [detalle, setDetalle] = useState<ReparacionDetalle | null>(null);
+  const [soloEstaReparacion, setSoloEstaReparacion] = useState(false);
+  const mensajes = useMensajesCliente(detalle?.cliente.email, detalle ? String(detalle.resguardo) : "", soloEstaReparacion);
   // El asistente de ayuda sabe qué resguardo está abierto ("¿cuándo se generó este resguardo?").
   useContextoAsistente(detalle ? { tipo: "resguardo", id: String(detalle.resguardo) } : null);
   const [error, setError] = useState<string | null>(null);
@@ -805,6 +809,10 @@ export function DetalleReparacionDialog({
                   <TabsTrigger value="informacion">Información</TabsTrigger>
                   <TabsTrigger value="observaciones">Observaciones</TabsTrigger>
                   <TabsTrigger value="historial">Historial</TabsTrigger>
+                  <TabsTrigger value="mensajes" className="gap-1.5">
+                    <Sms className="size-4" /> Mensajes
+                    {mensajes.sinLeer > 0 && <span className="rounded-full bg-sky-500 px-1.5 text-[10px] font-semibold text-white">{mensajes.sinLeer}</span>}
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Dos columnas como renderizarInfoDetallada(): a la izquierda
@@ -1040,6 +1048,10 @@ export function DetalleReparacionDialog({
                       );
                     })}
                   </ol>
+                </TabsContent>
+
+                <TabsContent value="mensajes" className="pt-3">
+                  <PanelMensajes resguardo={String(detalle.resguardo)} datos={mensajes} soloEstaReparacion={soloEstaReparacion} onCambiarAlcance={setSoloEstaReparacion} />
                 </TabsContent>
                 </Tabs>
               </m.div>
