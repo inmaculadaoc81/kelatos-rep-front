@@ -40,7 +40,8 @@ import { separarSintoma } from "@/lib/progreso-reparacion";
 import { ReparacionDetalle, type Pedido, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
-import { PanelMensajes, useMensajesCliente } from "./mensajes-reparacion";
+import { PanelMensajeAbierto, PanelMensajes, useMensajesCliente } from "./mensajes-reparacion";
+import { cn } from "@/lib/utils";
 import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog, MarcarEnviadoDialog } from "./finalizar-dialog";
 import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
 import { AnticipoDialog } from "./anticipo-dialog";
@@ -369,6 +370,7 @@ export function DetalleReparacionDialog({
 }) {
   const [detalle, setDetalle] = useState<ReparacionDetalle | null>(null);
   const [soloEstaReparacion, setSoloEstaReparacion] = useState(false);
+  const [mensajeAbiertoId, setMensajeAbiertoId] = useState<number | null>(null);
   const mensajes = useMensajesCliente(detalle?.cliente.email, detalle ? String(detalle.resguardo) : "", soloEstaReparacion);
   // El asistente de ayuda sabe qué resguardo está abierto ("¿cuándo se generó este resguardo?").
   useContextoAsistente(detalle ? { tipo: "resguardo", id: String(detalle.resguardo) } : null);
@@ -472,6 +474,8 @@ export function DetalleReparacionDialog({
   useEffect(() => {
     if (!resguardo) return;
     setDetalle(null);
+    setMensajeAbiertoId(null);
+    setSoloEstaReparacion(false);
     setError(null);
     setNuevaObservacion("");
     cargarDetalle();
@@ -668,12 +672,13 @@ export function DetalleReparacionDialog({
       {/* p-0 / gap-0: la cabecera va a sangre y el cuerpo pone su propio
           padding, para poder pintar la barra de color de lado a lado. */}
       <DialogContent
-        className="flex max-h-[92vh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl print:static print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:shadow-none print:ring-0"
+        className={cn("flex max-h-[92vh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:flex-row", mensajeAbiertoId !== null && "sm:max-w-[min(96vw,84rem)]", "print:static print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:shadow-none print:ring-0")}
         showCloseButton={false}
       >
         {/* El proveedor va aquí y no en el layout: así el motor de animación
             solo se descarga cuando se abre una reparación. */}
         <ProveedorAnimacion>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 bg-primary px-5 py-3.5 text-primary-foreground">
           <Setting2 className="size-5 shrink-0" variant="Bold" />
           <DialogTitle className="text-lg font-semibold tabular-nums">{resguardo}</DialogTitle>
@@ -811,7 +816,7 @@ export function DetalleReparacionDialog({
                   <TabsTrigger value="historial">Historial</TabsTrigger>
                   <TabsTrigger value="mensajes" className="gap-1.5">
                     <Sms className="size-4" /> Mensajes
-                    {mensajes.sinLeer > 0 && <span className="rounded-full bg-sky-500 px-1.5 text-[10px] font-semibold text-white">{mensajes.sinLeer}</span>}
+                    {mensajes.sinLeer > 0 && <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white" title={`${mensajes.sinLeer} sin leer`}>{mensajes.sinLeer}</span>}
                   </TabsTrigger>
                 </TabsList>
 
@@ -1051,7 +1056,7 @@ export function DetalleReparacionDialog({
                 </TabsContent>
 
                 <TabsContent value="mensajes" className="pt-3">
-                  <PanelMensajes resguardo={String(detalle.resguardo)} datos={mensajes} soloEstaReparacion={soloEstaReparacion} onCambiarAlcance={setSoloEstaReparacion} />
+                  <PanelMensajes resguardo={String(detalle.resguardo)} datos={mensajes} soloEstaReparacion={soloEstaReparacion} onCambiarAlcance={setSoloEstaReparacion} abiertoId={mensajeAbiertoId} onAbrir={(m) => setMensajeAbiertoId(m.id)} />
                 </TabsContent>
                 </Tabs>
               </m.div>
@@ -1080,6 +1085,12 @@ export function DetalleReparacionDialog({
             Cerrar
           </Button>
         </footer>
+        </div>
+        {mensajeAbiertoId !== null && (
+          <aside className="no-imprimir flex max-h-[50vh] min-h-0 w-full flex-col border-t lg:max-h-none lg:w-[32rem] lg:shrink-0 lg:border-l lg:border-t-0">
+            <PanelMensajeAbierto id={mensajeAbiertoId} correo={mensajes.correo} onCerrar={() => setMensajeAbiertoId(null)} onLeido={mensajes.marcarLeidoLocal} />
+          </aside>
+        )}
         </ProveedorAnimacion>
       </DialogContent>
 
