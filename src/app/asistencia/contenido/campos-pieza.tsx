@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EMPLEADO_SOLO_ASIGNADAS_ID } from "@/lib/contenido-acceso";
 import { MARCAS, etiquetaDe, type CoincidenciaVideo, type Empleado, type Marca } from "@/lib/contenido";
 
 export const SIN_VALOR = "__ninguno__";
@@ -37,7 +38,8 @@ export function SelectAsignado({ id, valor, onChange, empleados }: { id: string;
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={SIN_VALOR}>Sin asignar</SelectItem>
-          {[...empleados].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map((x) => (
+          {/* Por ahora solo se puede asignar a Gean; si una pieza ya tiene a otra persona, se conserva en la lista. */}
+          {[...empleados].filter((x) => x.id === EMPLEADO_SOLO_ASIGNADAS_ID || String(x.id) === valor).sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map((x) => (
             <SelectItem key={x.id} value={String(x.id)}>{x.nombre}</SelectItem>
           ))}
         </SelectContent>
