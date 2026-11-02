@@ -1,5 +1,6 @@
 export type EstadoPieza = "pendiente" | "en_proceso" | "listo";
 export type TipoPieza = "video" | "reel" | "single_post" | "carrusel" | "pdf" | "imagen";
+export type Marca = "tech4you" | "thinkcentre" | "delltech" | "dyson" | "n8n" | "surface" | "kelatos" | "thermotech";
 export type RedSocial = "youtube" | "facebook" | "tiktok" | "instagram" | "x" | "snapchat" | "linkedin";
 
 export interface Subtarea {
@@ -38,6 +39,12 @@ export interface Pieza {
   recursos: string[];
   enlaceSubida: string | null;
   programadaPara: string | null;
+  marca: Marca | null;
+  asignadoId: number | null;
+  asignadoNombre: string | null;
+  enlaceVideo: string | null;
+  /** Otra pieza tiene ya el mismo enlace de video. */
+  videoRepetido: boolean;
   creadoPor: string | null;
   creadoEn: string | null;
   subtareasTotal: number;
@@ -53,13 +60,36 @@ export const ESTADOS: { valor: EstadoPieza; etiqueta: string; color: string }[] 
 ];
 
 export const TIPOS: { valor: TipoPieza; etiqueta: string }[] = [
-  { valor: "video", etiqueta: "Video" },
+  { valor: "video", etiqueta: "Video largo" },
   { valor: "reel", etiqueta: "Reel" },
   { valor: "single_post", etiqueta: "Single post" },
   { valor: "carrusel", etiqueta: "Carrusel" },
   { valor: "pdf", etiqueta: "PDF" },
   { valor: "imagen", etiqueta: "Imagen" },
 ];
+
+/** Tipos que se ofrecen al crear o editar; «pdf» e «imagen» siguen existiendo en las piezas antiguas. */
+export const TIPOS_ELEGIBLES = TIPOS.filter((t) => ["reel", "single_post", "carrusel", "video"].includes(t.valor));
+
+export const MARCAS: { valor: Marca; etiqueta: string }[] = [
+  { valor: "tech4you", etiqueta: "Tech4you" },
+  { valor: "thinkcentre", etiqueta: "ThinkCentre" },
+  { valor: "delltech", etiqueta: "DellTech" },
+  { valor: "dyson", etiqueta: "Dyson" },
+  { valor: "n8n", etiqueta: "N8n" },
+  { valor: "surface", etiqueta: "Surface" },
+  { valor: "kelatos", etiqueta: "Kelatos" },
+  { valor: "thermotech", etiqueta: "ThermoTech" },
+];
+
+export interface CoincidenciaVideo {
+  id: number;
+  titulo: string;
+  estado: EstadoPieza;
+  marca: Marca | null;
+  redSocial: RedSocial | null;
+  enlaceVideo: string;
+}
 
 export const REDES: { valor: RedSocial; etiqueta: string; color: string }[] = [
   { valor: "youtube", etiqueta: "YouTube", color: "bg-red-500/10 text-red-700 dark:text-red-400" },

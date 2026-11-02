@@ -11,7 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CloseCircle, Trash, Add, Video } from "@/lib/icons";
-import { colorDeRed, ESTADOS, REDES, TIPOS, aInputFechaHora, etiquetaDe, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
+import { colorDeRed, ESTADOS, REDES, TIPOS, TIPOS_ELEGIBLES, aInputFechaHora, etiquetaDe, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type Marca, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
+
+import { CampoEnlaceVideo, SelectAsignado, SelectMarca } from "./campos-pieza";
+import { useSoloAsignadas } from "./acceso-contexto";
 
 const SIN_VALOR = "__ninguno__";
 
@@ -24,6 +27,9 @@ interface Borrador {
   descripcion: string;
   enlaceSubida: string;
   programadaPara: string;
+  marca: Marca | "";
+  asignadoId: string;
+  enlaceVideo: string;
 }
 
 function aBorrador(p: Pieza): Borrador {
@@ -36,6 +42,9 @@ function aBorrador(p: Pieza): Borrador {
     descripcion: p.descripcion ?? "",
     enlaceSubida: p.enlaceSubida ?? "",
     programadaPara: aInputFechaHora(p.programadaPara),
+    marca: p.marca ?? "",
+    asignadoId: p.asignadoId ? String(p.asignadoId) : "",
+    enlaceVideo: p.enlaceVideo ?? "",
   };
 }
 
@@ -57,6 +66,7 @@ export function PiezaDialog({
   const [responsableNecesidad, setResponsableNecesidad] = useState("");
   const [nuevaSubtarea, setNuevaSubtarea] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const soloLectura = useSoloAsignadas();
 
   useEffect(() => {
     if (!open || !piezaId) return;
@@ -111,6 +121,9 @@ export function PiezaDialog({
           descripcion: borrador.descripcion.trim() || null,
           enlace_subida: borrador.enlaceSubida.trim() || null,
           programada_para: borrador.programadaPara ? new Date(borrador.programadaPara).toISOString() : null,
+          marca: borrador.marca || null,
+          asignado_id: borrador.asignadoId ? Number(borrador.asignadoId) : null,
+          enlace_video: borrador.enlaceVideo.trim() || null,
         }),
       });
       const data = await res.json();
@@ -237,7 +250,7 @@ export function PiezaDialog({
               </Button>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+            <fieldset disabled={soloLectura} className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto border-0 p-4">
               <div className="flex flex-wrap items-center gap-1.5">
                 {(() => {
                   const estadoActual = ESTADOS.find((e) => e.valor === borrador.estado);
@@ -263,21 +276,8 @@ export function PiezaDialog({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="pzEstado">Estado</Label>
-                  <Select value={borrador.estado} onValueChange={(v) => v && cambiar("estado", v as EstadoPieza)}>
-                    <SelectTrigger id="pzEstado" className="w-full">
-                      <SelectValue>{(v: string) => etiquetaDe(ESTADOS, v as EstadoPieza)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ESTADOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="pzFecha">Fecha límite</Label>
-                  <Input id="pzFecha" type="date" value={borrador.fechaLimite} onChange={(e) => cambiar("fechaLimite", e.target.value)} />
-                </div>
+                <SelectAsignado id="pzAsignado" valor={borrador.asignadoId} onChange={(v) => cambiar("asignadoId", v)} empleados={empleados} />
+                <SelectMarca id="pzMarca" valor={borrador.marca} onChange={(v) => cambiar("marca", v)} />
                 <div className="space-y-1.5">
                   <Label htmlFor="pzTipo">Tipo</Label>
                   <Select value={borrador.tipo || SIN_VALOR} onValueChange={(v) => cambiar("tipo", (v && v !== SIN_VALOR ? v : "") as TipoPieza | "")}>
@@ -286,7 +286,9 @@ export function PiezaDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={SIN_VALOR}>—</SelectItem>
-                      {TIPOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                      {(!borrador.tipo || TIPOS_ELEGIBLES.some((x) => x.valor === borrador.tipo) ? TIPOS_ELEGIBLES : [...TIPOS_ELEGIBLES, ...TIPOS.filter((x) => x.valor === borrador.tipo)]).map((x) => (
+                        <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -305,6 +307,31 @@ export function PiezaDialog({
               </div>
 
               <div className="space-y-1.5">
+                <Label htmlFor="pzProgramada">Fecha y hora de programación</Label>
+                <Input id="pzProgramada" type="datetime-local" value={borrador.programadaPara} onChange={(e) => cambiar("programadaPara", e.target.value)} />
+              </div>
+
+              <CampoEnlaceVideo id="pzVideo" valor={borrador.enlaceVideo} onChange={(v) => cambiar("enlaceVideo", v)} excluirId={piezaId} />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pzEstado">Estado</Label>
+                  <Select value={borrador.estado} onValueChange={(v) => v && cambiar("estado", v as EstadoPieza)}>
+                    <SelectTrigger id="pzEstado" className="w-full">
+                      <SelectValue>{(v: string) => etiquetaDe(ESTADOS, v as EstadoPieza)}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ESTADOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pzFecha">Fecha límite</Label>
+                  <Input id="pzFecha" type="date" value={borrador.fechaLimite} onChange={(e) => cambiar("fechaLimite", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label htmlFor="pzDescripcion">Motivo</Label>
                 <Textarea id="pzDescripcion" rows={4} value={borrador.descripcion} onChange={(e) => cambiar("descripcion", e.target.value)} />
               </div>
@@ -312,11 +339,6 @@ export function PiezaDialog({
               <div className="space-y-1.5">
                 <Label htmlFor="pzSubida">Enlace para subir la pieza</Label>
                 <Input id="pzSubida" value={borrador.enlaceSubida} onChange={(e) => cambiar("enlaceSubida", e.target.value)} placeholder="https://…" />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="pzProgramada">Fecha y hora de programación</Label>
-                <Input id="pzProgramada" type="datetime-local" value={borrador.programadaPara} onChange={(e) => cambiar("programadaPara", e.target.value)} />
               </div>
 
               <div className="space-y-2 border-t pt-3">
@@ -384,13 +406,13 @@ export function PiezaDialog({
                   </div>
                 </div>
               </div>
-            </div>
+            </fieldset>
 
             <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
-              <Button variant="ghost" className="text-destructive" onClick={eliminar} disabled={guardando}>Eliminar</Button>
+              {soloLectura ? <span /> : <Button variant="ghost" className="text-destructive" onClick={eliminar} disabled={guardando}>Eliminar</Button>}
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={guardando}>Cancelar</Button>
-                <Button onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button>
+                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={guardando}>{soloLectura ? "Cerrar" : "Cancelar"}</Button>
+                {!soloLectura && <Button onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button>}
               </div>
             </div>
           </>

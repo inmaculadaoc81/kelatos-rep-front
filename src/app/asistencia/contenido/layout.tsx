@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { puedeVerContenido } from "@/lib/contenido-acceso";
+import { esSoloAsignadas, puedeVerContenido } from "@/lib/contenido-acceso";
+import { AccesoContenidoProvider } from "./acceso-contexto";
 import { ContenidoSidebar } from "./sidebar";
 import { ContenidoHeader } from "./header";
 
@@ -11,13 +12,14 @@ import { ContenidoHeader } from "./header";
 export default async function ContenidoLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!puedeVerContenido(session)) redirect("/asistencia/kiosk");
+  const soloAsignadas = esSoloAsignadas(session);
 
   return (
     <SidebarProvider>
-      <ContenidoSidebar session={session} />
+      <ContenidoSidebar session={session} soloAsignadas={soloAsignadas} />
       <SidebarInset>
         <ContenidoHeader />
-        <main className="flex-1 bg-white p-6">{children}</main>
+        <main className="flex-1 bg-white p-6"><AccesoContenidoProvider soloAsignadas={soloAsignadas}>{children}</AccesoContenidoProvider></main>
       </SidebarInset>
     </SidebarProvider>
   );

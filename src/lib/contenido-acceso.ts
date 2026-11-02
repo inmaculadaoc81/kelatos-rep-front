@@ -7,8 +7,22 @@ import type { Session } from "next-auth";
     admin concreta pudiera revisarlo). */
 export const EMPLEADO_CONTENIDO_ID = 23;
 
+/** Gean Paul: entra al panel solo para ver en el calendario las piezas que se le asignan (solo lectura). */
+export const EMPLEADO_SOLO_ASIGNADAS_ID = 14;
+
+export function esSoloAsignadas(session: Session | null): boolean {
+  return session?.user?.role !== "admin" && session?.user?.asistenciaEmpleadoId === EMPLEADO_SOLO_ASIGNADAS_ID;
+}
+
+/** Cualquiera que pueda entrar al panel, también quien solo ve lo asignado. */
 export function puedeVerContenido(session: Session | null): boolean {
   if (!session?.user) return false;
   if (session.user.asistenciaEmpleadoId === EMPLEADO_CONTENIDO_ID) return true;
+  if (esSoloAsignadas(session)) return true;
   return session.user.role === "admin";
+}
+
+/** Gestionar el contenido (crear, editar, borrar, Drive…): todos menos quien solo ve lo asignado. */
+export function puedeGestionarContenido(session: Session | null): boolean {
+  return puedeVerContenido(session) && !esSoloAsignadas(session);
 }

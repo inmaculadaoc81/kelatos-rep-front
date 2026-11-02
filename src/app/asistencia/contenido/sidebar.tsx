@@ -21,7 +21,10 @@ const GRUPOS: GrupoNavegacionBase[] = [
   {
     titulo: "Contenido",
     icon: Video,
-    items: [{ label: "Piezas", href: "/asistencia/contenido", icon: Video, exacto: true }],
+    items: [
+      { label: "Piezas", href: "/asistencia/contenido", icon: Video, exacto: true },
+      { label: "Videos subidos", href: "/asistencia/contenido/videos", icon: Video },
+    ],
   },
   {
     titulo: "Planificación",
@@ -40,8 +43,9 @@ const GRUPOS: GrupoNavegacionBase[] = [
 
 /** Sidebar del panel de contenido — mismo esquema que el de Gestión MAILS
     (logo + trigger arriba, grupos, NavUser abajo). */
-export function ContenidoSidebar({ session }: { session: Session | null }) {
+export function ContenidoSidebar({ session, soloAsignadas = false }: { session: Session | null; soloAsignadas?: boolean }) {
   const pathname = usePathname();
+  const grupos = soloAsignadas ? [{ titulo: "Calendario", icon: Calendar, items: [{ label: "Calendario", href: "/asistencia/contenido/calendario", icon: Calendar }] }] : GRUPOS;
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -77,7 +81,7 @@ export function ContenidoSidebar({ session }: { session: Session | null }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
-              {GRUPOS.map((grupo) =>
+              {grupos.map((grupo) =>
                 grupo.items.length === 1 ? (
                   <ItemDirecto key={grupo.titulo} item={grupo.items[0]} pathname={pathname} />
                 ) : (

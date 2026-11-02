@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
-import { puedeVerContenido } from "@/lib/contenido-acceso";
+import { puedeGestionarContenido } from "@/lib/contenido-acceso";
 
 type Params = { params: Promise<{ sid: string }> };
 
 export async function PATCH(req: Request, { params }: Params) {
   const session = await auth();
-  if (!puedeVerContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeGestionarContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const { sid } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   try {
@@ -19,7 +19,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   const session = await auth();
-  if (!puedeVerContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeGestionarContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const { sid } = await params;
   try {
     return NextResponse.json(await kelatosApiPost(`/v1/contenido/subtareas/${encodeURIComponent(sid)}`, undefined, "DELETE"));

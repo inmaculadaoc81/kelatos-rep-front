@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
-import { puedeVerContenido } from "@/lib/contenido-acceso";
+import { puedeGestionarContenido } from "@/lib/contenido-acceso";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ folderId: string }> }) {
   const session = await auth();
-  if (!puedeVerContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeGestionarContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const { folderId } = await params;
   try {
     const data = await kelatosApiGet(`/v1/contenido/drive/carpetas/${encodeURIComponent(folderId)}/archivos`);
@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ folderI
 
 export async function POST(req: Request, { params }: { params: Promise<{ folderId: string }> }) {
   const session = await auth();
-  if (!puedeVerContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeGestionarContenido(session)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const { folderId } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   try {

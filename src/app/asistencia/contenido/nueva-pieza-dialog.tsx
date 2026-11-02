@@ -8,9 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Video } from "@/lib/icons";
-import { ESTADOS, REDES, TIPOS, etiquetaDe, type EstadoPieza, type RedSocial, type TipoPieza } from "@/lib/contenido";
-
-const SIN_VALOR = "__ninguno__";
+import { ESTADOS, REDES, TIPOS_ELEGIBLES, etiquetaDe, type EstadoPieza, type Marca, type RedSocial, type TipoPieza } from "@/lib/contenido";
+import { CampoEnlaceVideo, SelectAsignado, SelectMarca, SIN_VALOR, useEmpleados } from "./campos-pieza";
 
 export function NuevaPiezaDialog({
   open, onOpenChange, onCreada, fechaInicial,
@@ -21,19 +20,23 @@ export function NuevaPiezaDialog({
   /** Día (AAAA-MM-DD) con el que se abre el formulario, p. ej. al pulsar un hueco del calendario. */
   fechaInicial?: string;
 }) {
+  const empleados = useEmpleados(open);
   const [titulo, setTitulo] = useState("");
   const [estado, setEstado] = useState<EstadoPieza>("pendiente");
   const [tipo, setTipo] = useState<TipoPieza | "">("");
   const [red, setRed] = useState<RedSocial | "">("");
-  const [fechaLimite, setFechaLimite] = useState("");
+  const [marca, setMarca] = useState<Marca | "">("");
+  const [asignadoId, setAsignadoId] = useState("");
+  const [programada, setProgramada] = useState("");
+  const [enlaceVideo, setEnlaceVideo] = useState("");
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    if (open) setFechaLimite(fechaInicial ?? "");
+    if (open) setProgramada(fechaInicial ? `${fechaInicial}T09:00` : "");
   }, [open, fechaInicial]);
 
   function limpiar() {
-    setTitulo(""); setEstado("pendiente"); setTipo(""); setRed(""); setFechaLimite("");
+    setTitulo(""); setEstado("pendiente"); setTipo(""); setRed(""); setMarca(""); setAsignadoId(""); setProgramada(""); setEnlaceVideo("");
   }
 
   async function crear() {
@@ -48,7 +51,10 @@ export function NuevaPiezaDialog({
           estado,
           tipo: tipo || null,
           red_social: red || null,
-          fecha_limite: fechaLimite || null,
+          marca: marca || null,
+          asignado_id: asignadoId ? Number(asignadoId) : null,
+          programada_para: programada ? new Date(programada).toISOString() : null,
+          enlace_video: enlaceVideo.trim() || null,
         }),
       });
       const data = await res.json();
@@ -65,7 +71,7 @@ export function NuevaPiezaDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogTitle className="flex items-center gap-2"><Video className="size-4.5" /> Nueva pieza</DialogTitle>
         <div className="space-y-3">
           <div className="space-y-1.5">
@@ -73,15 +79,17 @@ export function NuevaPiezaDialog({
             <Input id="npTitulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <SelectAsignado id="npAsignado" valor={asignadoId} onChange={setAsignadoId} empleados={empleados} />
+            <SelectMarca id="npMarca" valor={marca} onChange={setMarca} />
             <div className="space-y-1.5">
               <Label htmlFor="npTipo">Tipo</Label>
               <Select value={tipo || SIN_VALOR} onValueChange={(v) => setTipo((v && v !== SIN_VALOR ? v : "") as TipoPieza | "")}>
                 <SelectTrigger id="npTipo" className="w-full">
-                  <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(TIPOS, v as TipoPieza))}</SelectValue>
+                  <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(TIPOS_ELEGIBLES, v as TipoPieza))}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SIN_VALOR}>—</SelectItem>
-                  {TIPOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                  {TIPOS_ELEGIBLES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -97,6 +105,12 @@ export function NuevaPiezaDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="npProgramada">Fecha y hora de programación</Label>
+              <Input id="npProgramada" type="datetime-local" value={programada} onChange={(e) => setProgramada(e.target.value)} />
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="npEstado">Estado</Label>
               <Select value={estado} onValueChange={(v) => v && setEstado(v as EstadoPieza)}>
@@ -108,11 +122,8 @@ export function NuevaPiezaDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="npFecha">Fecha límite</Label>
-              <Input id="npFecha" type="date" value={fechaLimite} onChange={(e) => setFechaLimite(e.target.value)} />
-            </div>
           </div>
+          <CampoEnlaceVideo id="npVideo" valor={enlaceVideo} onChange={setEnlaceVideo} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>Cancelar</Button>

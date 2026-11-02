@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ESTADOS, type EstadoPieza, type Pieza } from "@/lib/contenido";
 import { PiezaDialog } from "../pieza-dialog";
 import { NuevaPiezaDialog } from "../nueva-pieza-dialog";
+import { useSoloAsignadas } from "../acceso-contexto";
 
 const POLL_MS = 30000;
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -42,6 +43,7 @@ export default function CalendarioPage() {
   });
   const [seleccionada, setSeleccionada] = useState<number | null>(null);
   const [nuevaEn, setNuevaEn] = useState<string | null>(null);
+  const soloLectura = useSoloAsignadas();
 
   useEffect(() => {
     let activo = true;
@@ -129,15 +131,15 @@ export default function CalendarioPage() {
               <div key={clave} className={cn("group relative min-h-28 border-b border-r p-1.5", !delMes && "bg-muted/30 text-muted-foreground/60", clave === hoy && "bg-sky-50 dark:bg-sky-950/30")}>
                 <div className="mb-1 flex items-center justify-between">
                   <span className={cn("text-xs font-medium", clave === hoy && "text-sky-700 dark:text-sky-300")}>{d.getDate()}</span>
-                  <button
+                  {!soloLectura && <button
                     type="button"
                     onClick={() => setNuevaEn(clave)}
-                    className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-60"
+                    className="rounded p-0.5 text-muted-foreground opacity-40 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
                     title="Añadir pieza este día"
                     aria-label={`Añadir pieza el ${clave}`}
                   >
                     <Add className="size-3.5" />
-                  </button>
+                  </button>}
                 </div>
                 <div className="space-y-1">
                   {lista.slice(0, 3).map((p) => {
@@ -162,6 +164,8 @@ export default function CalendarioPage() {
           })}
         </div>
       </div>
+
+      {soloLectura && piezas.length === 0 && <p className="text-sm text-muted-foreground">Todavía no tienes piezas asignadas.</p>}
 
       {sinFecha.length > 0 && (
         <div className="space-y-2">
