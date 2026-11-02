@@ -53,6 +53,9 @@ export type EnvioLista = {
   estado: EstadoEnvio; puntuacion: number | null; encaje: string | null; buzon_email: string | null; error: string | null; generado_en: string; enviado_en: string | null;
 };
 
+/** Las dos partes de Prospección: «empresas» = negocios que buscamos con las APIs; «clientes» = clientes de Reparaciones que marcaron recibir promociones. */
+export type Segmento = "empresas" | "clientes";
+
 /** Resumen del análisis SEO real de la web del lead (lo calcula el servidor, no la IA). */
 export type ResumenSeo = { puntuacion: number; nivel: string; web?: string; principales: { titulo: string; detalle: string }[]; total_hallazgos: number };
 export type Analisis = { resumen?: string; encaje?: string; motivos?: string[]; riesgos?: string[]; seo?: ResumenSeo | null };
