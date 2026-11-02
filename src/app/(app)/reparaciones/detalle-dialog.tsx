@@ -672,7 +672,7 @@ export function DetalleReparacionDialog({
       {/* p-0 / gap-0: la cabecera va a sangre y el cuerpo pone su propio
           padding, para poder pintar la barra de color de lado a lado. */}
       <DialogContent
-        className={cn("flex max-h-[92vh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:flex-row", mensajeAbiertoId !== null && "sm:max-w-[min(96vw,84rem)]", "print:static print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:shadow-none print:ring-0")}
+        className={cn("flex max-h-[92vh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:flex-row", mensajeAbiertoId !== null && "sm:max-w-[min(96vw,90rem)]", "print:static print:max-h-none print:max-w-none print:translate-none print:overflow-visible print:shadow-none print:ring-0")}
         showCloseButton={false}
       >
         {/* El proveedor va aquí y no en el layout: así el motor de animación
@@ -1087,7 +1087,7 @@ export function DetalleReparacionDialog({
         </footer>
         </div>
         {mensajeAbiertoId !== null && (
-          <aside className="no-imprimir flex max-h-[50vh] min-h-0 w-full flex-col border-t lg:max-h-none lg:w-[32rem] lg:shrink-0 lg:border-l lg:border-t-0">
+          <aside className="no-imprimir flex max-h-[50vh] min-h-0 w-full flex-col border-t lg:max-h-none lg:w-[38rem] lg:shrink-0 lg:border-l lg:border-t-0">
             <PanelMensajeAbierto id={mensajeAbiertoId} correo={mensajes.correo} onCerrar={() => setMensajeAbiertoId(null)} onLeido={mensajes.marcarLeidoLocal} />
           </aside>
         )}

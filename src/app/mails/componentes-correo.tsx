@@ -70,6 +70,10 @@ async function reescribirImagenesRemotas(html: string): Promise<string> {
     const tok = await obtenerTokenImagen();
     for (const img of imgs) {
       const src = img.getAttribute("src") || "";
+      if (/^https?:\/\/(www\.)?kelatos\.com\/wp-content\/uploads\/[^?#]*logo_web_kelatos\.png/i.test(src)) {
+        img.setAttribute("src", `${window.location.origin}/logos/kelatos.png`);
+        continue;
+      }
       img.setAttribute("src", `${window.location.origin}/api/mails/imagen?url=${encodeURIComponent(src)}&tok=${encodeURIComponent(tok)}`);
     }
     return doc.body.innerHTML;
@@ -83,13 +87,13 @@ async function reescribirImagenesRemotas(html: string): Promise<string> {
     en data:/cid: y las que ya se reescribieron hacia nuestro propio proxy —
     cualquier otra carga remota (píxeles de seguimiento, CSS externo) sigue
     bloqueada. */
-export async function documentoSeguro(html: string): Promise<string> {
+export async function documentoSeguro(html: string, ajustar = false): Promise<string> {
   const origen = typeof window !== "undefined" ? window.location.origin : "";
   const cuerpo = await reescribirImagenesRemotas(html);
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: cid: ${origen}; style-src 'unsafe-inline'; font-src data:">
 <base target="_blank">
-<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.5;margin:16px;color:#1f2937;word-break:break-word}img{max-width:100%;height:auto}table{max-width:100%}blockquote{border-left:3px solid #d1d5db;margin:8px 0;padding-left:12px;color:#4b5563}</style>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.5;margin:16px;color:#1f2937;word-break:break-word}img{max-width:100%;height:auto}table{max-width:100%}blockquote{border-left:3px solid #d1d5db;margin:8px 0;padding-left:12px;color:#4b5563}${ajustar ? "html,body{overflow-x:hidden}body{margin:12px}*{box-sizing:border-box}table,td,th,div,p,pre,center{max-width:100%!important}table{width:auto!important;table-layout:auto}td,th{width:auto!important}" : ""}</style>
 </head><body>${cuerpo}</body></html>`;
 }
 
@@ -114,7 +118,7 @@ export function LinksAdjuntos({ adjuntos }: { adjuntos: AdjuntoMail[] }) {
   );
 }
 
-export function CuerpoMensaje({ m, altura }: { m: Pick<MensajeHilo, "cuerpo_html" | "cuerpo_texto" | "truncado">; altura: string }) {
+export function CuerpoMensaje({ m, altura, ajustar = false }: { m: Pick<MensajeHilo, "cuerpo_html" | "cuerpo_texto" | "truncado">; altura: string; ajustar?: boolean }) {
   const [verTexto, setVerTexto] = useState(false);
   const [srcDoc, setSrcDoc] = useState<string | null>(null);
 
@@ -122,14 +126,14 @@ export function CuerpoMensaje({ m, altura }: { m: Pick<MensajeHilo, "cuerpo_html
     let vivo = true;
     setSrcDoc(null);
     if (m.cuerpo_html) {
-      documentoSeguro(m.cuerpo_html).then((doc) => {
+      documentoSeguro(m.cuerpo_html, ajustar).then((doc) => {
         if (vivo) setSrcDoc(doc);
       });
     }
     return () => {
       vivo = false;
     };
-  }, [m.cuerpo_html]);
+  }, [m.cuerpo_html, ajustar]);
 
   return (
     <>

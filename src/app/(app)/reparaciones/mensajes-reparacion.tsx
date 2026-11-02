@@ -183,7 +183,7 @@ export function PanelMensajeAbierto({ id, correo, onCerrar, onLeido }: { id: num
               <p><span className="font-medium text-foreground">Fecha:</span> {fechaHora(m.fecha)}</p>
               <LinksAdjuntos adjuntos={m.adjuntos} />
             </div>
-            <CuerpoMensaje m={m} altura="h-[48vh]" />
+            <CuerpoMensaje m={m} altura="h-[62vh]" ajustar />
           </>
         )}
       </div>
