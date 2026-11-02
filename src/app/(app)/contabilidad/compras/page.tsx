@@ -17,6 +17,9 @@ interface PagoRegistrado {
   medio: string;
   banco: string | null;
   referencia: string | null;
+  medio_nombre?: string | null;
+  tipo?: string;
+  estado?: string;
 }
 interface FacturaCompra {
   id: number;
@@ -40,13 +43,16 @@ interface FacturaCompra {
 interface Datos {
   facturas: FacturaCompra[];
   bancos: { id: number; nombre: string }[];
+  medios: MedioPago[];
 }
+interface MedioPago { id: number; tipo: string; nombre: string; ultimos4: string | null; paypal_fuente: string | null }
 
 const MEDIOS: [string, string][] = [
-  ["transferencia", "Transferencia"],
-  ["tarjeta", "Tarjeta"],
+  ["transferencia", "Transferencia bancaria"],
+  ["paypal", "PayPal"],
+  ["tarjeta_debito", "Tarjeta de débito"],
+  ["tarjeta_credito", "Tarjeta de crédito"],
   ["efectivo", "Efectivo"],
-  ["otro", "Otro"],
 ];
 
 /** Facturas de proveedor validadas y sus pagos reales (fecha, importe y banco). */
@@ -152,16 +158,21 @@ export default function ComprasPagosPage() {
           </TableBody>
         </Table>
       </div>
-      <PagoDialog factura={pagando} bancos={datos?.bancos ?? []} onClose={() => setPagando(null)} onGuardado={() => { setPagando(null); cargar(); }} />
+      <PagoDialog factura={pagando} bancos={datos?.bancos ?? []} medios={datos?.medios ?? []} onClose={() => setPagando(null)} onGuardado={() => { setPagando(null); cargar(); }} />
     </div>
   );
 }
 
-function PagoDialog({ factura, bancos, onClose, onGuardado }: { factura: FacturaCompra | null; bancos: { id: number; nombre: string }[]; onClose: () => void; onGuardado: () => void }) {
+function PagoDialog({ factura, bancos, medios, onClose, onGuardado }: { factura: FacturaCompra | null; bancos: { id: number; nombre: string }[]; medios: MedioPago[]; onClose: () => void; onGuardado: () => void }) {
   const [fecha, setFecha] = useState(hoyISO());
   const [importe, setImporte] = useState("");
   const [medio, setMedio] = useState("transferencia");
   const [bancoId, setBancoId] = useState("");
+  const [medioPagoId, setMedioPagoId] = useState("");
+  const [comision, setComision] = useState("");
+  const [difCambio, setDifCambio] = useState("");
+  const [devolucion, setDevolucion] = useState(false);
+  const [confirmado, setConfirmado] = useState(false);
   const [referencia, setReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,12 +184,21 @@ function PagoDialog({ factura, bancos, onClose, onGuardado }: { factura: Factura
       setImporte(String(Math.max(0, factura.pendiente ?? 0)));
       setMedio("transferencia");
       setBancoId("");
+      setMedioPagoId("");
+      setComision("");
+      setDifCambio("");
+      setDevolucion(false);
+      setConfirmado(false);
       setReferencia("");
       setError(null);
     }
   }
   if (!factura) return <Dialog open={false} onOpenChange={() => {}}><DialogContent /></Dialog>;
   const pendiente = factura.pendiente ?? 0;
+  const tipoMedio = medio === "tarjeta_debito" || medio === "tarjeta_credito" || medio === "paypal" ? medio : null;
+  const opcionesMedio = medios.filter((m) => m.tipo === tipoMedio);
+  const pagado = factura.pagos.reduce((sum, p) => sum + (p.tipo === "devolucion" ? -p.importe : p.importe), 0);
+  const importeMax = devolucion ? pagado : pendiente;
 
   async function guardar() {
     setEnviando(true);
@@ -186,9 +206,15 @@ function PagoDialog({ factura, bancos, onClose, onGuardado }: { factura: Factura
     try {
       await apiC(`compras/${factura!.id}/pagos`, {
         metodo: "POST",
-        cuerpo: { fecha, importe: Number(importe.replace(",", ".")), medio, banco_id: medio === "efectivo" ? null : bancoId ? Number(bancoId) : null, referencia },
+        cuerpo: {
+          fecha, importe: Number(importe.replace(",", ".")), medio, referencia,
+          banco_id: medio === "transferencia" && bancoId ? Number(bancoId) : null,
+          medio_pago_id: tipoMedio && medioPagoId ? Number(medioPagoId) : null,
+          comision: comision || undefined, dif_cambio: difCambio || undefined,
+          tipo: devolucion ? "devolucion" : "pago", confirmado,
+        },
       });
-      toast.success("Pago registrado; se contabilizará en la próxima sincronización");
+      toast.success(devolucion ? "Devolución registrada" : confirmado || medio === "tarjeta_credito" || medio === "efectivo" ? "Pago registrado; se contabilizará en la próxima sincronización" : "Pago registrado: queda pendiente de confirmar el cargo en el banco (la deuda sigue en la 400)");
       onGuardado();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -204,41 +230,69 @@ function PagoDialog({ factura, bancos, onClose, onGuardado }: { factura: Factura
         <p className="text-sm text-muted-foreground">{factura.proveedor} · a pagar {num(factura.total)} € · pendiente {num(pendiente)} €</p>
         {factura.pago_libro && (
           <p className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-            En el Libro de Compras consta como <strong>pagada</strong>{factura.medio_libro ? ` (${factura.medio_libro})` : ""}. Al sincronizar se genera el asiento del pago en la fecha de la factura; el banco se asigna después en «Partidas pendientes».
+            En el Libro de Compras consta como <strong>pagada</strong>{factura.medio_libro ? ` (${factura.medio_libro})` : ""}, pero no consta el banco, la tarjeta ni la cuenta PayPal: <strong>pendiente de verificar</strong>. Registra el pago con su medio real y se contabilizará contra su cuenta (nunca a la 555). Antes de eso no se genera ningún asiento de pago.  «Partidas pendientes».
           </p>
         )}
         {factura.pagos.length > 0 && (
           <div className="space-y-1 rounded-md border p-2 text-sm">
             {factura.pagos.map((p) => (
               <div key={p.id} className="flex justify-between gap-2">
-                <span>{fechaCorta(p.fecha)} · {p.medio}{p.banco ? ` · ${p.banco}` : ""}{p.referencia ? ` · ${p.referencia}` : ""}</span>
+                <span>{fechaCorta(p.fecha)} · {p.tipo === "devolucion" ? "Devolución · " : ""}{p.medio_nombre || p.medio}{p.banco ? ` · ${p.banco}` : ""}{p.estado === "pendiente" ? " · pendiente de confirmar" : ""}{p.referencia ? ` · ${p.referencia}` : ""}</span>
                 <span className="tabular-nums">{num(p.importe)} €</span>
               </div>
             ))}
           </div>
         )}
-        {pendiente > 0.004 && (
+        {(pendiente > 0.004 || pagado > 0.004) && (
           <div className="space-y-2">
+            {pagado > 0.004 && (
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={devolucion} onChange={(e) => { setDevolucion(e.target.checked); setImporte(String(e.target.checked ? pagado : Math.max(0, pendiente))); }} />
+                Es una devolución del proveedor (nos devuelve dinero)
+              </label>
+            )}
             <div className="grid grid-cols-2 gap-2">
-              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} aria-label="Fecha del pago" />
+              <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} aria-label="Fecha" />
               <Input inputMode="decimal" className="text-right tabular-nums" value={importe} onChange={(e) => setImporte(e.target.value)} aria-label="Importe" />
             </div>
-            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={medio} onChange={(e) => setMedio(e.target.value)} aria-label="Medio de pago">
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={medio} onChange={(e) => { setMedio(e.target.value); setMedioPagoId(""); }} aria-label="Medio de pago">
               {MEDIOS.map(([v, et]) => <option key={v} value={v}>{et}</option>)}
             </select>
-            {medio !== "efectivo" && (
+            {medio === "transferencia" && (
               <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={bancoId} onChange={(e) => setBancoId(e.target.value)} aria-label="Banco">
-                <option value="">Banco no identificado (pendiente de aplicar)</option>
+                <option value="">Banco no indicado (pendiente de verificar)</option>
                 {bancos.map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}
               </select>
             )}
+            {tipoMedio && (
+              <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={medioPagoId} onChange={(e) => setMedioPagoId(e.target.value)} aria-label="Tarjeta o cuenta">
+                <option value="">{tipoMedio === "paypal" ? "Elige la cuenta PayPal" : "Elige la tarjeta"}</option>
+                {opcionesMedio.map((m) => <option key={m.id} value={m.id}>{m.nombre}{m.ultimos4 ? ` ·· ${m.ultimos4}` : ""}</option>)}
+              </select>
+            )}
+            {tipoMedio && opcionesMedio.length === 0 && (
+              <p className="text-xs text-amber-700">No hay ninguna {tipoMedio === "paypal" ? "cuenta PayPal" : "tarjeta"} dada de alta. Créala en <a className="underline" href="/contabilidad/pagos-proveedores">Pagos a proveedores → Medios de pago</a>.</p>
+            )}
+            {!devolucion && medio !== "efectivo" && (
+              <div className="grid grid-cols-2 gap-2">
+                <Input inputMode="decimal" className="text-right tabular-nums" placeholder="Comisión (opc.)" value={comision} onChange={(e) => setComision(e.target.value)} aria-label="Comisión" />
+                <Input inputMode="decimal" className="text-right tabular-nums" placeholder="Dif. de cambio (+ gana, − pierde)" value={difCambio} onChange={(e) => setDifCambio(e.target.value)} aria-label="Diferencia de cambio" />
+              </div>
+            )}
+            {(medio === "transferencia" || medio === "tarjeta_debito" || medio === "paypal") && !devolucion && (
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} />
+                El cargo ya está confirmado en el banco (si no, queda pendiente y se concilia al importar el extracto)
+              </label>
+            )}
             <Input placeholder="Referencia (opcional)" value={referencia} onChange={(e) => setReferencia(e.target.value)} maxLength={120} />
+            {Number(importe.replace(",", ".")) > importeMax + 0.004 && <p className="text-xs text-red-600">El importe supera lo {devolucion ? "pagado" : "pendiente"} ({num(importeMax)} €).</p>}
           </div>
         )}
         <CajaError mensaje={error} />
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={enviando}>Cerrar</Button>
-          {pendiente > 0.004 && <Button onClick={guardar} disabled={enviando || !importe}>{enviando ? "Guardando…" : "Registrar pago"}</Button>}
+          {(pendiente > 0.004 || pagado > 0.004) && <Button onClick={guardar} disabled={enviando || !importe}>{enviando ? "Guardando…" : devolucion ? "Registrar devolución" : "Registrar pago"}</Button>}
         </div>
       </DialogContent>
     </Dialog>

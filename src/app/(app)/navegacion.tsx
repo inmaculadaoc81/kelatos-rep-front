@@ -126,6 +126,7 @@ export const GRUPO_CONTABILIDAD: GrupoNavegacion = {
     { label: "Libro Mayor", href: "/contabilidad/mayor", icon: ClipboardText },
     { label: "Sumas y Saldos", href: "/contabilidad/sumas-saldos", icon: Chart },
     { label: "Compras y pagos", href: "/contabilidad/compras", icon: MoneySend },
+    { label: "Pagos a proveedores", href: "/contabilidad/pagos-proveedores", icon: Wallet },
     { label: "Clientes y proveedores", href: "/contabilidad/terceros", icon: Profile2User },
     { label: "Balance y resultados", href: "/contabilidad/balance", icon: Element3 },
     { label: "Libro de IVA", href: "/contabilidad/iva", icon: ReceiptItem },
