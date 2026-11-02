@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Video } from "@/lib/icons";
-import { ESTADOS, REDES, TIPOS_ELEGIBLES, etiquetaDe, type EstadoPieza, type Marca, type RedSocial, type TipoPieza } from "@/lib/contenido";
+import { ESTADOS, REDES_ELEGIBLES, TIPOS_ELEGIBLES, etiquetaDe, type EstadoPieza, type Marca, type RedSocial, type TipoPieza } from "@/lib/contenido";
 import { CampoEnlaceVideo, SelectAsignado, SelectMarca, SIN_VALOR, useEmpleados } from "./campos-pieza";
 
 export function NuevaPiezaDialog({
@@ -97,11 +97,11 @@ export function NuevaPiezaDialog({
               <Label htmlFor="npRed">Red social</Label>
               <Select value={red || SIN_VALOR} onValueChange={(v) => setRed((v && v !== SIN_VALOR ? v : "") as RedSocial | "")}>
                 <SelectTrigger id="npRed" className="w-full">
-                  <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(REDES, v as RedSocial))}</SelectValue>
+                  <SelectValue>{(v: string) => (v === SIN_VALOR ? "—" : etiquetaDe(REDES_ELEGIBLES, v as RedSocial))}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SIN_VALOR}>—</SelectItem>
-                  {REDES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                  {REDES_ELEGIBLES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

@@ -1,7 +1,7 @@
 export type EstadoPieza = "pendiente" | "en_proceso" | "listo";
 export type TipoPieza = "video" | "reel" | "single_post" | "carrusel" | "pdf" | "imagen";
 export type Marca = "tech4you" | "thinkcentre" | "delltech" | "dyson" | "n8n" | "surface" | "kelatos" | "thermotech";
-export type RedSocial = "youtube" | "facebook" | "tiktok" | "instagram" | "x" | "snapchat" | "linkedin";
+export type RedSocial = "youtube" | "facebook" | "tiktok" | "instagram" | "x" | "snapchat" | "linkedin" | "y_f_i_t" | "y_f_i";
 
 export interface Subtarea {
   id: number;
@@ -99,7 +99,13 @@ export const REDES: { valor: RedSocial; etiqueta: string; color: string }[] = [
   { valor: "x", etiqueta: "X", color: "bg-neutral-500/10 text-neutral-700 dark:text-neutral-300" },
   { valor: "snapchat", etiqueta: "Snapchat", color: "bg-yellow-500/10 text-yellow-800 dark:text-yellow-500" },
   { valor: "linkedin", etiqueta: "LinkedIn", color: "bg-sky-700/10 text-sky-800 dark:text-sky-400" },
+  { valor: "y_f_i_t", etiqueta: "Y / F / I / T", color: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
+  { valor: "y_f_i", etiqueta: "Y / F / I", color: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
 ];
+
+/** Redes que se ofrecen al crear o editar (YouTube, Facebook, Instagram, TikTok y sus combinaciones); X, Snapchat y LinkedIn solo existen en piezas antiguas. */
+export const REDES_ELEGIBLES = ["youtube", "facebook", "tiktok", "instagram", "y_f_i_t", "y_f_i"]
+  .map((v) => REDES.find((r) => r.valor === v)!);
 
 /** Color de una red social por valor — "" (sin red asignada) o un valor sin
     entrada en REDES cae a un gris neutro, nunca a un color con significado

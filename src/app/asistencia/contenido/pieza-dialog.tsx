@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CloseCircle, Trash, Add, Video } from "@/lib/icons";
-import { colorDeRed, ESTADOS, REDES, TIPOS, TIPOS_ELEGIBLES, aInputFechaHora, etiquetaDe, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type Marca, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
+import { colorDeRed, ESTADOS, REDES, REDES_ELEGIBLES, TIPOS, TIPOS_ELEGIBLES, aInputFechaHora, etiquetaDe, type Empleado, type EstadoPieza, type Necesidad, type Pieza, type Marca, type RedSocial, type Subtarea, type TipoPieza } from "@/lib/contenido";
 
 import { CampoEnlaceVideo, SelectAsignado, SelectMarca } from "./campos-pieza";
 import { useSoloAsignadas } from "./acceso-contexto";
@@ -300,7 +300,7 @@ export function PiezaDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={SIN_VALOR}>—</SelectItem>
-                      {REDES.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
+                      {(!borrador.redSocial || REDES_ELEGIBLES.some((x) => x.valor === borrador.redSocial) ? REDES_ELEGIBLES : [...REDES_ELEGIBLES, ...REDES.filter((x) => x.valor === borrador.redSocial)]).map((x) => <SelectItem key={x.valor} value={x.valor}>{x.etiqueta}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
