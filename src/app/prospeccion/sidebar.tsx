@@ -17,7 +17,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { ComponentType } from "react";
-import { Chart, Sms, Setting2, SearchNormal1, Profile2User } from "@/lib/icons";
+import { Chart, Sms, Setting2, SearchNormal1, Profile2User, Message } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const SECCIONES: { titulo: string; vistas: { href: string; etiqueta: string; icono: ComponentType<{ className?: string }> }[] }[] = [
@@ -27,6 +27,7 @@ const SECCIONES: { titulo: string; vistas: { href: string; etiqueta: string; ico
       { href: "/prospeccion/clientes", etiqueta: "Resumen", icono: Chart },
       { href: "/prospeccion/clientes/lista", etiqueta: "Clientes que aceptaron", icono: Profile2User },
       { href: "/prospeccion/clientes/correos", etiqueta: "Correos", icono: Sms },
+      { href: "/prospeccion/clientes/respuestas", etiqueta: "Respuestas", icono: Message },
       { href: "/prospeccion/clientes/agente", etiqueta: "Agente", icono: Setting2 },
     ],
   },
@@ -36,6 +37,7 @@ const SECCIONES: { titulo: string; vistas: { href: string; etiqueta: string; ico
       { href: "/prospeccion/empresas", etiqueta: "Resumen", icono: Chart },
       { href: "/prospeccion/empresas/buscar", etiqueta: "Buscar empresas", icono: SearchNormal1 },
       { href: "/prospeccion/empresas/correos", etiqueta: "Correos", icono: Sms },
+      { href: "/prospeccion/empresas/respuestas", etiqueta: "Respuestas", icono: Message },
       { href: "/prospeccion/empresas/agente", etiqueta: "Agente y búsqueda diaria", icono: Setting2 },
     ],
   },
