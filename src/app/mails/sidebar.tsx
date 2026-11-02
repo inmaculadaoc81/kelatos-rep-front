@@ -35,10 +35,9 @@ const GRUPOS: GrupoNavegacionBase[] = [
     ],
   },
   {
-    titulo: "Leads",
+    titulo: "Direcciones",
     icon: Building,
     items: [
-      { label: "Leads", href: "/mails/leads", icon: Building },
       { label: "Direcciones inválidas", href: "/mails/direcciones", icon: CloseCircle },
     ],
   },

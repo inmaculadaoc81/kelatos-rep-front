@@ -18,7 +18,7 @@ export function AgenteVista({ segmento = "empresas" }: { segmento?: Segmento }) 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-lg font-semibold">Prospección · Agente</h1>
+        <h1 className="text-lg font-semibold">{segmento === "clientes" ? "Clientes" : "Empresas"} · Agente</h1>
         <p className="text-sm text-muted-foreground">Cómo escribe el agente, a quién y con qué límites. Empieza apagado y en modo con aprobación: nada se envía sin que lo actives.</p>
       </div>
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">No se pudo cargar: {error}</div>}

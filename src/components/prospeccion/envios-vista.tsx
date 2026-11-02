@@ -56,7 +56,7 @@ export function EnviosVista({ segmento = "empresas" }: { segmento?: Segmento }) 
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Prospección · Mensajes</h1>
+          <h1 className="text-lg font-semibold">{segmento === "clientes" ? "Clientes" : "Empresas"} · Correos</h1>
           <p className="text-sm text-muted-foreground">Cada correo que la IA ha redactado para una empresa, con su análisis. Ábrelo para revisarlo, editarlo, aprobarlo o descartarlo. {datos ? `${filas.length} resultado${filas.length === 1 ? "" : "s"}.` : ""}</p>
         </div>
         <Button variant="outline" disabled={redactando} onClick={redactar}>{redactando ? "Lanzando…" : "Redactar 3 de prueba"}</Button>

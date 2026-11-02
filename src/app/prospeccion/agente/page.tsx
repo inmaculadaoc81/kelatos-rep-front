@@ -1,5 +1,5 @@
-import { AgenteVista } from "@/components/prospeccion/agente-vista";
+import { redirect } from "next/navigation";
 
-export default function ProspeccionAgentePage() {
-  return <AgenteVista />;
+export default function Pagina() {
+  redirect("/prospeccion/empresas/agente");
 }

@@ -10,21 +10,37 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Chart, Sms, Setting2, SearchNormal1 } from "@/lib/icons";
+import type { ComponentType } from "react";
+import { Chart, Sms, Setting2, SearchNormal1, Profile2User } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
-const VISTAS = [
-  { href: "/prospeccion", etiqueta: "Resumen", icono: Chart },
-  { href: "/prospeccion/leads", etiqueta: "Buscar leads", icono: SearchNormal1 },
-  { href: "/prospeccion/envios", etiqueta: "Mensajes", icono: Sms },
-  { href: "/prospeccion/agente", etiqueta: "Agente", icono: Setting2 },
-  { href: "/prospeccion/como-funciona", etiqueta: "Cómo funciona", icono: BookOpen },
+const SECCIONES: { titulo: string; vistas: { href: string; etiqueta: string; icono: ComponentType<{ className?: string }> }[] }[] = [
+  {
+    titulo: "Clientes",
+    vistas: [
+      { href: "/prospeccion/clientes", etiqueta: "Resumen", icono: Chart },
+      { href: "/prospeccion/clientes/lista", etiqueta: "Clientes que aceptaron", icono: Profile2User },
+      { href: "/prospeccion/clientes/correos", etiqueta: "Correos", icono: Sms },
+      { href: "/prospeccion/clientes/agente", etiqueta: "Agente", icono: Setting2 },
+    ],
+  },
+  {
+    titulo: "Empresas",
+    vistas: [
+      { href: "/prospeccion/empresas", etiqueta: "Resumen", icono: Chart },
+      { href: "/prospeccion/empresas/buscar", etiqueta: "Buscar empresas", icono: SearchNormal1 },
+      { href: "/prospeccion/empresas/correos", etiqueta: "Correos", icono: Sms },
+      { href: "/prospeccion/empresas/agente", etiqueta: "Agente y búsqueda diaria", icono: Setting2 },
+      { href: "/prospeccion/empresas/como-funciona", etiqueta: "Cómo funciona", icono: BookOpen },
+    ],
+  },
 ];
 
 /** Mismo esqueleto (logo + NavUser) que Tareas/Webs Kelatos. */
@@ -46,20 +62,23 @@ export function ProspeccionSidebar({ session }: { session: Session | null }) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {VISTAS.map((v) => (
-                <SidebarMenuItem key={v.href}>
-                  <SidebarMenuButton isActive={pathname === v.href} tooltip={v.etiqueta} render={<Link href={v.href} />}>
-                    <v.icono className="text-sidebar-primary" />
-                    <span>{v.etiqueta}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {SECCIONES.map((sec) => (
+          <SidebarGroup key={sec.titulo}>
+            <SidebarGroupLabel>{sec.titulo}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sec.vistas.map((v) => (
+                  <SidebarMenuItem key={v.href}>
+                    <SidebarMenuButton isActive={pathname === v.href} tooltip={`${sec.titulo}: ${v.etiqueta}`} render={<Link href={v.href} />}>
+                      <v.icono className="text-sidebar-primary" />
+                      <span>{v.etiqueta}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <NavUser session={session} />
     </Sidebar>

@@ -1,5 +1,5 @@
-import { ResumenVista } from "@/components/prospeccion/resumen-vista";
+import { redirect } from "next/navigation";
 
-export default function ProspeccionResumenPage() {
-  return <ResumenVista />;
+export default function Pagina() {
+  redirect("/prospeccion/clientes");
 }

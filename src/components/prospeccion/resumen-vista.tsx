@@ -24,7 +24,7 @@ export function ResumenVista({ segmento = "empresas" }: { segmento?: Segmento })
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Prospección · Resumen</h1>
+          <h1 className="text-lg font-semibold">{segmento === "clientes" ? "Clientes" : "Empresas"} · Resumen</h1>
           <p className="text-sm text-muted-foreground">Qué ha redactado y enviado el agente a las empresas, con qué análisis y con qué resultado.</p>
         </div>
         <div className="flex gap-1 rounded-lg border bg-card p-1">
@@ -49,7 +49,7 @@ export function ResumenVista({ segmento = "empresas" }: { segmento?: Segmento })
                 {r.agente.generando ? ` · redactando ${r.agente.generando.hechos}/${r.agente.generando.total}…` : ""}
               </p>
             </div>
-            <Link href="/prospeccion/agente" className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted">Configurar agente</Link>
+            <Link href={`/prospeccion/${segmento}/agente`} className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted">Configurar agente</Link>
           </div>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

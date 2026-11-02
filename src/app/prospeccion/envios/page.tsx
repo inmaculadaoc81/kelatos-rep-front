@@ -1,5 +1,5 @@
-import { EnviosVista } from "@/components/prospeccion/envios-vista";
+import { redirect } from "next/navigation";
 
-export default function ProspeccionEnviosPage() {
-  return <EnviosVista />;
+export default function Pagina() {
+  redirect("/prospeccion/empresas/correos");
 }
