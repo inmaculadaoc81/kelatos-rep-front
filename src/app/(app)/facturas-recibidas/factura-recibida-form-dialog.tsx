@@ -286,15 +286,18 @@ function motivoSinDeducirIva(e: FacturaOcrExtraido): string {
 const MENSAJE_SOLO_PDF = "Las facturas solo se pueden cargar en PDF (la gestoría solo recibe PDF). Conviértela a PDF y vuelve a subirla.";
 const esPdf = (a: File) => a.type === "application/pdf" || /\.pdf$/i.test(a.name);
 
-function DatosEmpresaReceptora({ noCoincide, verificacion }: { noCoincide?: boolean; verificacion?: { cif: boolean; nombre: boolean } | null }) {
+function DatosEmpresaReceptora({ noCoincide, bloquea, verificacion }: { noCoincide?: boolean; bloquea?: boolean; verificacion?: { cif: boolean; nombre: boolean } | null }) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-dashed px-4 py-2.5 text-xs text-muted-foreground", noCoincide ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20" : "bg-muted/30")}>
+    <div className={cn("flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-dashed px-4 py-2.5 text-xs text-muted-foreground", noCoincide ? (bloquea ? "border-red-400 bg-red-50 dark:bg-red-900/20" : "border-amber-400 bg-amber-50 dark:bg-amber-900/20") : "bg-muted/30")}>
       <span className="flex items-center gap-1.5 font-medium text-foreground">
         <Building className="size-3.5" /> Receptor (siempre el mismo)
       </span>
       {noCoincide && (
-        <span className="flex w-full items-center gap-1.5 font-medium text-amber-800 dark:text-amber-300">
-          <Warning2 className="size-3.5 shrink-0" /> Esta factura no muestra los datos de Affirma (ni el CIF ni el nombre): puede no estar a nombre de la empresa. Compruébalo con el archivo antes de registrarla.
+        <span className={cn("flex w-full items-center gap-1.5 font-medium", bloquea ? "text-red-700 dark:text-red-300" : "text-amber-800 dark:text-amber-300")}>
+          <Warning2 className="size-3.5 shrink-0" />
+          {bloquea
+            ? "Esta factura no muestra los datos de Affirma (ni el CIF ni el nombre), así que no está a nombre de la empresa y no se puede registrar. Pide al proveedor la factura con los datos correctos."
+            : "Esta factura no muestra los datos de Affirma (ni el CIF ni el nombre): puede no estar a nombre de la empresa. Compruébalo con el archivo antes de registrarla."}
         </span>
       )}
       {!noCoincide && verificacion && (verificacion.cif || verificacion.nombre) && (
@@ -656,6 +659,9 @@ export function FacturaRecibidaFormDialog({
     if (datos.estadoIva === "parcial" && !(datos.cuotaIvaDeducible > 0 && datos.cuotaIvaDeducible < datos.cuotaIvaSoportado)) {
       return toast.error("En un IVA parcialmente deducible, la parte deducible debe ser mayor que 0 y menor que la cuota soportada");
     }
+    if (!esEdicion && resumenOcr?.extraido.receptorCoincide === false) {
+      return toast.error("No se puede registrar: la factura no muestra los datos de Affirma (ni el CIF ni el nombre). Sube la factura a nombre de la empresa.");
+    }
     if (resumenOcr && resumenOcr.extraido.advertencias.length > 0 && !advertenciasVistas) {
       return toast.error("La IA marcó datos que no está segura de haber leído bien — revísalos y marca la casilla del aviso antes de registrar");
     }
@@ -1000,6 +1006,8 @@ export function FacturaRecibidaFormDialog({
 
   // Lectura mostrada: la recién hecha al cargar un PDF o, al abrir una factura ya registrada, la guardada con ella.
   const lecturaEsNueva = !!resumenOcr;
+  /** Factura nueva leída por la IA que no lleva los datos de Affirma: no se puede registrar. */
+  const receptorAusente = !esEdicion && resumenOcr?.extraido.receptorCoincide === false;
   const lecturaPanel = resumenOcr
     ? { ...resumenOcr, ivaMotivo: ivaDeducidoDelPdf || ivaSinDeducirMotivo || null, ivaDeducidoSolo: !!ivaDeducidoDelPdf, leidoEn: "" }
     : facturaExistente?.lecturaOcr ?? null;
@@ -1022,6 +1030,7 @@ export function FacturaRecibidaFormDialog({
           <div className="space-y-4 p-4">
             <DatosEmpresaReceptora
               noCoincide={lecturaPanel?.extraido.receptorCoincide === false}
+              bloquea={receptorAusente}
               verificacion={lecturaPanel?.extraido.receptorCoincide === true ? { cif: lecturaPanel.extraido.receptorCifEncontrado ?? true, nombre: lecturaPanel.extraido.receptorNombreEncontrado ?? true } : null}
             />
 
@@ -1106,7 +1115,16 @@ export function FacturaRecibidaFormDialog({
                     {lecturaPanel.extraido.advertencias.length > 0 ? ` · ${lecturaPanel.extraido.advertencias.length} dato(s) dudoso(s)` : " · sin dudas"}
                   </p>
 
-                  {lecturaEsNueva && lecturaPanel.extraido.advertencias.length > 0 && (
+                  {receptorAusente && (
+                    <div className="mb-2.5 rounded border border-red-300 bg-red-50 p-2 dark:border-red-800 dark:bg-red-900/30">
+                      <p className="flex items-start gap-1.5 text-xs font-medium text-red-800 dark:text-red-200">
+                        <Warning2 className="mt-0.5 size-3.5 shrink-0" />
+                        No se puede registrar: la factura no lleva los datos de Affirma. Cambia el archivo por la factura correcta.
+                      </p>
+                    </div>
+                  )}
+
+                  {lecturaEsNueva && !receptorAusente && lecturaPanel.extraido.advertencias.length > 0 && (
                     <div className="mb-2.5 rounded border border-amber-300 bg-amber-100/60 p-2 dark:border-amber-800 dark:bg-amber-900/30">
                       <p className="flex items-start gap-1.5 text-xs text-amber-900 dark:text-amber-200">
                         <Warning2 className="mt-0.5 size-3.5 shrink-0" />
@@ -1601,7 +1619,7 @@ export function FacturaRecibidaFormDialog({
             ) : <span />}
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={enviando}>Cancelar</Button>
-              <Button onClick={guardar} disabled={enviando}>{enviando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Registrar factura"}</Button>
+              <Button onClick={guardar} disabled={enviando || receptorAusente} title={receptorAusente ? "La factura no lleva los datos de Affirma" : undefined}>{enviando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Registrar factura"}</Button>
             </div>
           </div>
         </DialogContent>
