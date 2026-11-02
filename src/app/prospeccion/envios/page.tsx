@@ -166,6 +166,18 @@ function DetalleEnvio({ id, onCerrar, onCambio }: { id: number; onCerrar: () => 
               <p className="text-muted-foreground">{e.analisis?.resumen || "Sin resumen."}</p>
               {!!e.analisis?.motivos?.length && <Lista titulo="Por qué encaja" items={e.analisis.motivos} />}
               {!!e.analisis?.riesgos?.length && <Lista titulo="Riesgos" items={e.analisis.riesgos} />}
+              {e.analisis?.seo && (
+                <div className="rounded-md border bg-sky-50/60 p-2 text-xs dark:bg-sky-950/20">
+                  <p className="font-medium">
+                    Análisis SEO de su web: <span className={e.analisis.seo.puntuacion >= 80 ? "text-emerald-700" : e.analisis.seo.puntuacion >= 55 ? "text-amber-700" : "text-rose-700"}>{e.analisis.seo.puntuacion}/100 ({e.analisis.seo.nivel})</span>
+                  </p>
+                  {e.analisis.seo.web && <p className="truncate text-muted-foreground">{e.analisis.seo.web}</p>}
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+                    {e.analisis.seo.principales.map((h, i) => <li key={i}>{h.titulo}</li>)}
+                  </ul>
+                  {e.analisis.seo.total_hallazgos > e.analisis.seo.principales.length && <p className="mt-1 text-muted-foreground">y {e.analisis.seo.total_hallazgos - e.analisis.seo.principales.length} más en el informe completo.</p>}
+                </div>
+              )}
               {datos?.lead && (
                 <div className="rounded-md border bg-muted/30 p-2 text-xs">
                   <p className="font-medium">Datos del lead</p>

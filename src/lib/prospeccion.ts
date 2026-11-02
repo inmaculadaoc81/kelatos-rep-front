@@ -53,7 +53,9 @@ export type EnvioLista = {
   estado: EstadoEnvio; puntuacion: number | null; encaje: string | null; buzon_email: string | null; error: string | null; generado_en: string; enviado_en: string | null;
 };
 
-export type Analisis = { resumen?: string; encaje?: string; motivos?: string[]; riesgos?: string[] };
+/** Resumen del análisis SEO real de la web del lead (lo calcula el servidor, no la IA). */
+export type ResumenSeo = { puntuacion: number; nivel: string; web?: string; principales: { titulo: string; detalle: string }[]; total_hallazgos: number };
+export type Analisis = { resumen?: string; encaje?: string; motivos?: string[]; riesgos?: string[]; seo?: ResumenSeo | null };
 
 export type EnvioDetalle = EnvioLista & {
   cuerpo: string; analisis: Analisis | null; modelo: string | null; ms_ia: number | null; generado_por: string | null; aprobado_por: string | null; aprobado_en: string | null;
