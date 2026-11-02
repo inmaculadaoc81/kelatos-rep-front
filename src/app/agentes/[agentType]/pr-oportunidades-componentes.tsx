@@ -4,7 +4,11 @@ export interface ItemOportunidad {
   nombre: string;
   web?: string | null;
   porQue: string;
-  comoContactar: string;
+  comoContactar?: string;
+  impacto?: "alto" | "medio" | "bajo";
+  necesitaAlta?: string;
+  quePublicar?: string;
+  modo?: "automatico" | "semiautomatico" | "manual";
 }
 
 export interface WebVerificada {
@@ -18,14 +22,25 @@ export interface WebVerificada {
 export type Verificacion = Partial<Record<keyof Oportunidades, WebVerificada[]>>;
 
 export interface Oportunidades {
-  medios: ItemOportunidad[];
-  blogsEspecializados: ItemOportunidad[];
-  podcasts: ItemOportunidad[];
-  entrevistas: ItemOportunidad[];
-  directoriosRelevantes: ItemOportunidad[];
-  eventos: ItemOportunidad[];
-  publicacionesSectoriales: ItemOportunidad[];
+  // Formato nuevo (2026-11-02): sitios donde publicar uno mismo.
+  googleYDirectorios?: ItemOportunidad[];
+  articulos?: ItemOportunidad[];
+  foros?: ItemOportunidad[];
+  // Formato antiguo (ejecuciones anteriores): dónde podría aparecer la empresa.
+  medios?: ItemOportunidad[];
+  blogsEspecializados?: ItemOportunidad[];
+  podcasts?: ItemOportunidad[];
+  entrevistas?: ItemOportunidad[];
+  directoriosRelevantes?: ItemOportunidad[];
+  eventos?: ItemOportunidad[];
+  publicacionesSectoriales?: ItemOportunidad[];
 }
+
+const CATEGORIAS_NUEVAS: { clave: keyof Oportunidades; titulo: string }[] = [
+  { clave: "googleYDirectorios", titulo: "Google y directorios de negocio" },
+  { clave: "articulos", titulo: "Plataformas de artículos" },
+  { clave: "foros", titulo: "Foros y comunidades" },
+];
 
 const CATEGORIAS: { clave: keyof Oportunidades; titulo: string }[] = [
   { clave: "medios", titulo: "Medios" },
@@ -42,10 +57,21 @@ function TarjetaItem({ item, ver }: { item: ItemOportunidad; ver?: WebVerificada
     <div className="rounded-md border bg-muted/20 p-3">
       <p className="text-sm font-semibold">{item.nombre}</p>
       <p className="mt-1 text-sm text-muted-foreground">{item.porQue}</p>
-      <p className="mt-1.5 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">Cómo acercarse: </span>
-        {item.comoContactar}
-      </p>
+      {item.quePublicar ? (
+        <div className="mt-1.5 space-y-1 text-xs text-muted-foreground">
+          <p className="flex flex-wrap gap-1.5">
+            {item.impacto && <span className={`rounded-full px-2 py-0.5 ${item.impacto === "alto" ? "bg-emerald-100 text-emerald-800" : item.impacto === "medio" ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}>Impacto {item.impacto}</span>}
+            {item.modo && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-sky-800">{item.modo === "automatico" ? "Se puede automatizar" : item.modo === "semiautomatico" ? "El agente redacta, una persona publica" : "A mano"}</span>}
+          </p>
+          <p><span className="font-medium text-foreground">Qué publicar: </span>{item.quePublicar}</p>
+          {item.necesitaAlta && <p><span className="font-medium text-foreground">Antes de publicar: </span>{item.necesitaAlta}</p>}
+        </div>
+      ) : item.comoContactar ? (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Cómo acercarse: </span>
+          {item.comoContactar}
+        </p>
+      ) : null}
       {ver && (
         <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           {ver.estado === "ok" && ver.web ? (
@@ -94,7 +120,7 @@ export function PanelOportunidades({ oportunidades, verificacion }: { oportunida
         Ideas generadas por IA a partir de conocimiento general. {verificacion ? "Cada web se ha comprobado automáticamente (responde y se ha buscado su página de contacto); aun así, revisa que el medio y el contacto siguen vigentes antes de usarlos." : "Sin búsqueda en tiempo real: comprueba que cada medio, contacto y URL sigue vigente antes de usarlo."}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        {CATEGORIAS.map((c) => (
+        {(oportunidades?.foros || oportunidades?.googleYDirectorios ? CATEGORIAS_NUEVAS : CATEGORIAS).map((c) => (
           <SeccionCategoria key={c.clave} titulo={c.titulo} items={oportunidades?.[c.clave]} ver={verificacion?.[c.clave]} />
         ))}
       </div>
