@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Book1, DocumentUpload, Paperclip2, Truck, MoneyRecive, Wallet, Category, Warning2, Trash, MagicStar, Refresh2, ExportSquare, TickCircle, CloseCircle, Building } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -403,6 +403,9 @@ export function FacturaRecibidaFormDialog({
   // ese momento. Bug real reportado, 2026-09-23: "cerré el modal y volví a
   // entrar, sigue cargando la IA pero mi archivo no está".
   const ocrAbortRef = useRef<AbortController | null>(null);
+  // Categoría sugerida automáticamente (misma lógica que al guardar): se preselecciona en el formulario mientras la persona no la haya elegido a mano.
+  const categoriaManualRef = useRef(false);
+  const [categoriaNota, setCategoriaNota] = useState<string | null>(null);
   const esEdicion = facturaExistente !== null;
   // Pedidos enlazados (una factura puede cubrir varios — migración 119): copia local para poder quitar enlaces sin cerrar el diálogo.
   const [enlaces, setEnlaces] = useState<EnlaceFactura[]>([]);
@@ -437,6 +440,8 @@ export function FacturaRecibidaFormDialog({
 
   useEffect(() => {
     if (open) {
+      categoriaManualRef.current = false;
+      setCategoriaNota(null);
       setDatos(facturaExistente ? desdeExistente(facturaExistente) : vacio(borrador));
       setDriveFileId(facturaExistente?.driveFileId ?? null);
       setArchivoPendiente(null);
@@ -463,6 +468,34 @@ export function FacturaRecibidaFormDialog({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, facturaExistente]);
+
+  const textoParaCategoria = useMemo(
+    () => [datos.descripcion, ...lineas.map((l) => l.descripcion), ...articulosStock.map((a) => a.nombre)].filter(Boolean).join(" ").trim(),
+    [datos.descripcion, lineas, articulosStock]
+  );
+  const hayStockParaCategoria = datos.almacen === "stock" && articulosStock.some((a) => a.aplicar);
+  useEffect(() => {
+    if (!open || categoriaManualRef.current) return;
+    if (facturaExistente?.categoria) return;
+    if (!datos.proveedorId && !textoParaCategoria && !hayStockParaCategoria) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch("/api/facturas-recibidas/sugerir-categoria", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proveedorId: datos.proveedorId || undefined, texto: textoParaCategoria, hayStock: hayStockParaCategoria, facturaId: facturaExistente?.id }),
+        signal: ctrl.signal,
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!d?.ok || !d.categoria || !(d.categoria in ETIQUETA_CATEGORIA) || categoriaManualRef.current) return;
+          setDatos((p) => (p.categoria ? p : { ...p, categoria: d.categoria as CategoriaFactura }));
+          setCategoriaNota(d.motivo || null);
+        })
+        .catch(() => {});
+    }, 600);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [open, facturaExistente, datos.proveedorId, textoParaCategoria, hayStockParaCategoria]);
 
   // Cancela también si el componente se desmonta de verdad (no solo se cierra el diálogo).
   useEffect(() => () => { ocrAbortRef.current?.abort(); }, []);
@@ -1463,7 +1496,7 @@ export function FacturaRecibidaFormDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Categoría</Label>
-                  <Select value={datos.categoria || "Ninguna"} onValueChange={(v) => set("categoria", (v && v in ETIQUETA_CATEGORIA ? v : "") as CategoriaFactura | "")}>
+                  <Select value={datos.categoria || "Ninguna"} onValueChange={(v) => { categoriaManualRef.current = true; setCategoriaNota(null); set("categoria", (v && v in ETIQUETA_CATEGORIA ? v : "") as CategoriaFactura | ""); }}>
                     <SelectTrigger className="w-full">
                       <SelectValue>{(v: string) => (v in ETIQUETA_CATEGORIA ? ETIQUETA_CATEGORIA[v as CategoriaFactura] : "Sin clasificar")}</SelectValue>
                     </SelectTrigger>
@@ -1474,6 +1507,7 @@ export function FacturaRecibidaFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  {categoriaNota && datos.categoria && <p className="text-xs text-muted-foreground">Sugerida automáticamente: {categoriaNota}. Puedes cambiarla.</p>}
                 </div>
                 {datos.almacen === "servicio" && (
                   <CampoBuscable
