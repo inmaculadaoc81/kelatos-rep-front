@@ -96,7 +96,7 @@ function vacio(borrador?: BorradorFactura): Formulario {
   return {
     proveedorId: borrador?.proveedorId || "", numeroFacturaProveedor: "", serieProveedor: "",
     fechaExpedicion: new Date().toISOString().slice(0, 10), fechaOperacion: "",
-    fechaRecepcion: new Date().toISOString().slice(0, 10), fechaContabilizacion: "", pagoMedio: "", pagoBancoId: "", pagoMedioPagoId: "", pagoConfirmado: false, tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
+    fechaRecepcion: new Date().toISOString().slice(0, 10), fechaContabilizacion: new Date().toISOString().slice(0, 10), pagoMedio: "", pagoBancoId: "", pagoMedioPagoId: "", pagoConfirmado: false, tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
     baseImponible: borrador?.baseImponible || 0, tipoIva: 21, cuotaIvaSoportado: 0,
     cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR", tipoCambio: null, baseMonedaOriginal: 0, totalMonedaOriginal: 0,
     operacionExenta: false, inversionSujetoPasivo: false,
@@ -1271,7 +1271,7 @@ export function FacturaRecibidaFormDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="frFechaContabilizacion">Fecha de contabilización</Label>
                   <Input id="frFechaContabilizacion" type="date" value={datos.fechaContabilizacion} onChange={(e) => set("fechaContabilizacion", e.target.value)} />
-                  <p className="text-[11px] text-muted-foreground">Vacía = la fecha de recepción. Pon el último día del mes para incluirla en un cierre ya hecho.</p>
+                  <p className="text-[11px] text-muted-foreground">Por defecto, la fecha de hoy. Cámbiala a mano (p. ej. el último día del mes) para incluirla en un cierre ya hecho.</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Tipo de documento *</Label>
