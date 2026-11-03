@@ -17,6 +17,7 @@ const ETIQUETA_FORMA_PAGO: Record<string, string> = {
   tarjeta_virtual: "Tarjeta virtual",
   transferencia: "Transferencia bancaria",
   bizum: "Bizum",
+  paypal: "PayPal",
   multiforma: "Multiforma",
   redsys: "Redsys",
 };

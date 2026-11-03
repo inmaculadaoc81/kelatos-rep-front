@@ -49,6 +49,7 @@ export const METODOS_PAGO = [
   { value: "tarjeta_virtual", label: "Tarjeta virtual" },
   { value: "transferencia", label: "Transferencia bancaria" },
   { value: "bizum", label: "Bizum" },
+  { value: "paypal", label: "PayPal" },
 ];
 export const METODOS_PAGO_RECT = [...METODOS_PAGO, { value: "redsys", label: "Redsys" }];
 export { BANCOS } from "@/lib/bancos";

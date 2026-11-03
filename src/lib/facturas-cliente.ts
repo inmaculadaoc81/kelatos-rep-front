@@ -253,6 +253,7 @@ const FORMA_PAGO_LABEL: Record<string, string> = {
   tarjeta_virtual: "Tarjeta virtual",
   transferencia: "Transferencia",
   bizum: "Bizum",
+  paypal: "PayPal",
   redsys: "Redsys",
   multiforma: "Multiforma",
 };

@@ -18,6 +18,7 @@ export const METODOS_TPV = [
   { value: "tarjeta", label: "Tarjeta bancaria" },
   { value: "tarjeta_virtual", label: "Tarjeta virtual" },
   { value: "bizum", label: "Bizum" },
+  { value: "paypal", label: "PayPal" },
   { value: "transferencia", label: "Transferencia bancaria" },
   { value: "efectivo", label: "Efectivo" },
 ] as const;
@@ -166,6 +167,7 @@ export const FILAS_DESGLOSE_TPV: FilaDesgloseTpv[] = [
   ...BANCOS.map((b) => ({ clave: `tarjeta:${b}`, metodo: "tarjeta" as MetodoTpv, banco: b, label: `Tarjeta bancaria · ${b}` })),
   { clave: "tarjeta_virtual", metodo: "tarjeta_virtual" as MetodoTpv, banco: null, label: "Tarjeta virtual" },
   { clave: "bizum", metodo: "bizum" as MetodoTpv, banco: null, label: "Bizum" },
+  { clave: "paypal", metodo: "paypal" as MetodoTpv, banco: null, label: "PayPal" },
   ...BANCOS.map((b) => ({ clave: `transferencia:${b}`, metodo: "transferencia" as MetodoTpv, banco: b, label: `Transferencia bancaria · ${b}` })),
   { clave: "efectivo", metodo: "efectivo" as MetodoTpv, banco: null, label: "Efectivo" },
 ];

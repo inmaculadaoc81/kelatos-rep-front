@@ -13,6 +13,7 @@ const METODOS = [
   { value: "tarjeta", label: "Tarjeta bancaria" },
   { value: "tarjeta_virtual", label: "Tarjeta virtual" },
   { value: "bizum", label: "Bizum" },
+  { value: "paypal", label: "PayPal" },
   { value: "transferencia", label: "Transferencia bancaria" },
   { value: "efectivo", label: "Efectivo" },
 ];

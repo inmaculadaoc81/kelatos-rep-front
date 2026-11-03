@@ -31,6 +31,7 @@ const MEDIOS = [
   { v: "tarjeta", t: "Tarjeta (TPV físico)" },
   { v: "tarjeta_virtual", t: "Tarjeta virtual (pasarela web)" },
   { v: "bizum", t: "Bizum" },
+  { v: "paypal", t: "PayPal" },
 ];
 const etiquetaMedio = (m: string | null) => MEDIOS.find((x) => x.v === m)?.t.replace(/ \(.*\)/, "") || m || "—";
 

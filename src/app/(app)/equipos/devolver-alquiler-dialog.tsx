@@ -28,6 +28,7 @@ const METODOS_PAGO = [
   { value: "tarjeta_virtual", label: "Tarjeta virtual" },
   { value: "transferencia", label: "Transferencia" },
   { value: "bizum", label: "Bizum" },
+  { value: "paypal", label: "PayPal" },
 ];
 const BANCOS = ["Sabadell", "BBVA", "CaixaBank"];
 
