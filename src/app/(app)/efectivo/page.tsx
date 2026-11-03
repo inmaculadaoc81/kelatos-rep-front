@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Refresh2, SearchNormal1, MoneySend, MoneyRecive, ArrowRotateLeft, Coin1, CloseCircle, Verify, Warning2 } from "@/lib/icons";
+import { Refresh2, SearchNormal1, MoneySend, MoneyRecive, ArrowRotateLeft, Coin1, CloseCircle, Verify, Warning2, Paperclip2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,7 @@ import { RetirarEfectivoDialog } from "./retirar-efectivo-dialog";
 import { ContarEfectivoDialog } from "./contar-efectivo-dialog";
 import { RegistrarFaltanteDialog } from "./registrar-faltante-dialog";
 import { AnularRetiradaDialog } from "./anular-retirada-dialog";
+import { JustificantesEfectivoDialog } from "./justificantes-efectivo";
 
 const TIMEZONE = "Europe/Madrid";
 
@@ -101,6 +102,7 @@ export default function EfectivoPage() {
   const [contarAbierto, setContarAbierto] = useState(false);
   const [faltanteAbierto, setFaltanteAbierto] = useState(false);
   const [anulando, setAnulando] = useState<MovimientoEfectivo | null>(null);
+  const [verJustificantes, setVerJustificantes] = useState<number | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -499,6 +501,16 @@ export default function EfectivoPage() {
                     <TableCell className="max-w-56 text-sm">
                       <span className="line-clamp-2">{m.concepto}</span>
                       {m.retiradaId !== undefined && m.usuario && <span className="block text-xs text-muted-foreground">{m.usuario}</span>}
+                      {m.tipo === "retirada" && m.retiradaId !== undefined && !m.anulada && (
+                        <button
+                          type="button"
+                          onClick={() => setVerJustificantes(m.retiradaId ?? null)}
+                          className={`mt-0.5 inline-flex items-center gap-1 text-xs hover:underline ${m.justificantes?.length ? "text-green-700" : "text-muted-foreground"}`}
+                          title={m.justificantes?.length ? "Ver los justificantes" : "Sin justificante: pulsa para adjuntar la factura o el ticket de compra"}
+                        >
+                          <Paperclip2 className="size-3" /> {m.justificantes?.length ? `${m.justificantes.length} justificante${m.justificantes.length > 1 ? "s" : ""}` : "Sin justificante"}
+                        </button>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">{m.referencia || "-"}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{m.numero || "-"}</TableCell>
@@ -531,6 +543,12 @@ export default function EfectivoPage() {
         </Table>
       </div>
 
+      <JustificantesEfectivoDialog
+        movimiento={verJustificantes === null ? null : movimientos.find((x) => x.retiradaId === verJustificantes && x.tipo === "retirada") ?? null}
+        puedeEditar={puedeRetirar}
+        onOpenChange={(o) => !o && setVerJustificantes(null)}
+        onCambiado={cargar}
+      />
       {puedeRetirar && <RetirarEfectivoDialog open={retirarAbierto} onOpenChange={setRetirarAbierto} saldo={saldoActual} onRegistrada={cargar} />}
       {puedeRetirar && <ContarEfectivoDialog open={contarAbierto} onOpenChange={setContarAbierto} saldo={saldoActual} onRegistrado={cargar} />}
       {puedeRetirar && <RegistrarFaltanteDialog open={faltanteAbierto} onOpenChange={setFaltanteAbierto} saldo={saldoActual} onRegistrado={cargar} />}

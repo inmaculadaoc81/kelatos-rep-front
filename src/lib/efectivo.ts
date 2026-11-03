@@ -43,8 +43,17 @@ export interface MovimientoEfectivo {
   usuario?: string;
   anulada?: boolean;
   anuladaMotivo?: string;
+  /** Solo retiradas: facturas o tickets de compra adjuntos. */
+  justificantes?: JustificanteEfectivo[];
   /** Solo conteos: lo que había según el sistema en el momento de contar (foto, no se recalcula después). */
   saldoSistema?: number;
+}
+
+/** Factura o ticket de compra que sustenta una retirada (archivo en Drive). */
+export interface JustificanteEfectivo {
+  id: number;
+  driveFileId: string;
+  nombre: string | null;
 }
 
 export interface RetiradaEfectivoApi {
@@ -61,6 +70,7 @@ export interface RetiradaEfectivoApi {
   anulada_en: string | null;
   anulada_por: string | null;
   anulada_motivo: string | null;
+  justificantes?: JustificanteEfectivo[];
 }
 
 /** "efectivo" / "Efectivo" / " EFECTIVO " — los distintos formularios lo
@@ -179,6 +189,7 @@ export function movimientosDeRetiradas(retiradas: RetiradaEfectivoApi[]): Movimi
       usuario: r.usuario,
       anulada: !!r.anulada_en,
       anuladaMotivo: r.anulada_motivo || undefined,
+      justificantes: r.justificantes ?? [],
     };
   });
 }

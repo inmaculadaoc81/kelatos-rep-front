@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { toast } from "sonner";
+import { subirJustificante } from "./justificantes-efectivo";
 
 /** Valor para <input type="datetime-local"> (hora local del navegador). */
 function ahoraLocal(): string {
@@ -31,6 +32,7 @@ export function RetirarEfectivoDialog({
   const [fechaHora, setFechaHora] = useState(ahoraLocal);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [archivos, setArchivos] = useState<File[]>([]);
   // Retirar más de lo que hay en caja pide una segunda confirmación, dentro
   // del propio modal (no un window.confirm del navegador).
   const [confirmaExceso, setConfirmaExceso] = useState(false);
@@ -39,6 +41,7 @@ export function RetirarEfectivoDialog({
     setImporte(0);
     setFechaHora(ahoraLocal());
     setMotivo("");
+    setArchivos([]);
     setConfirmaExceso(false);
   }
 
@@ -61,7 +64,19 @@ export function RetirarEfectivoDialog({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      toast.success("Retirada registrada");
+      const retiradaId = Number(data.retirada?.id);
+      let fallidos = 0;
+      if (retiradaId > 0) {
+        for (const f of archivos) {
+          try {
+            await subirJustificante(retiradaId, f);
+          } catch {
+            fallidos++;
+          }
+        }
+      }
+      if (fallidos) toast.warning(`Retirada registrada, pero ${fallidos} justificante(s) no se pudieron subir: añádelos desde la lista (clip)`);
+      else toast.success(archivos.length ? "Retirada registrada con su justificante" : "Retirada registrada");
       reiniciar();
       onOpenChange(false);
       onRegistrada();
@@ -120,6 +135,17 @@ export function RetirarEfectivoDialog({
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="justificanteRetirada">Justificante (factura o ticket de compra, opcional)</Label>
+            <Input
+              id="justificanteRetirada"
+              type="file"
+              multiple
+              accept="application/pdf,image/*,.heic,.heif"
+              onChange={(e) => setArchivos(Array.from(e.target.files || []))}
+            />
+            <p className="text-[11px] text-muted-foreground">Si es un gasto corriente, sube aquí su sustento. Si es un ingreso en el banco, el sustento es el movimiento bancario.</p>
           </div>
           {confirmaExceso && excede && (
             <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
