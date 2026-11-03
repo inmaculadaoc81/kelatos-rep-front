@@ -36,6 +36,9 @@ interface FacturaCompra {
   /** Marcada «Pagada» en el Libro de Compras y sin pagos anotados aquí: el asiento del pago se genera solo al sincronizar. */
   pago_libro?: boolean;
   medio_libro?: string | null;
+  /** Pagada en el Libro de Compras pero sin tarjeta, banco ni cuenta PayPal: pendiente de verificar. */
+  sin_medio?: boolean;
+  pago_previsto?: string | null;
   pendiente: number | null;
   en_contabilidad: boolean;
   pagos: PagoRegistrado[];
@@ -60,7 +63,7 @@ export default function ComprasPagosPage() {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState<"" | "pendientes" | "pagadas" | "sin_validar">("");
+  const [filtro, setFiltro] = useState<"" | "pendientes" | "pagadas" | "sin_validar" | "sin_medio">("");
   const [pagando, setPagando] = useState<FacturaCompra | null>(null);
 
   const cargar = useCallback(async () => {
@@ -82,7 +85,8 @@ export default function ComprasPagosPage() {
   const pendientes = todas.filter((f) => f.validada && f.contabilizable && (f.pendiente ?? 0) > 0.004);
   const pagadas = todas.filter((f) => f.validada && f.contabilizable && (f.pendiente ?? 0) <= 0.004);
   const sinValidar = todas.filter((f) => !f.validada);
-  const visibles = filtro === "pendientes" ? pendientes : filtro === "pagadas" ? pagadas : filtro === "sin_validar" ? sinValidar : todas;
+  const sinMedio = todas.filter((f) => f.validada && f.sin_medio && !f.pago_previsto);
+  const visibles = filtro === "pendientes" ? pendientes : filtro === "pagadas" ? pagadas : filtro === "sin_validar" ? sinValidar : filtro === "sin_medio" ? sinMedio : todas;
   const porPagar = pendientes.reduce((s, f) => s + (f.pendiente ?? 0), 0);
 
   function estado(f: FacturaCompra) {
@@ -93,7 +97,7 @@ export default function ComprasPagosPage() {
         {f.motivo && <span className="mt-0.5 block max-w-52 text-[11px] leading-tight text-red-700/80 dark:text-red-300/80">{f.motivo}</span>}
       </span>
     );
-    if ((f.pendiente ?? 0) <= 0.004) return <span title={f.pago_libro ? "Marcada como pagada en el Libro de Compras; el asiento del pago se genera al sincronizar y el banco se asigna en Partidas pendientes" : ""} className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">{f.pago_libro ? "Pagada (Libro)" : "Pagada"}</span>;
+    if ((f.pendiente ?? 0) <= 0.004) return <span title={f.pago_libro ? "Marcada como pagada en el Libro de Compras; el asiento del pago se genera al sincronizar y el banco se asigna en Partidas pendientes" : ""} className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">{f.pago_libro ? (f.sin_medio ? "Pagada (Libro) · falta el medio" : "Pagada (Libro)") : "Pagada"}</span>;
     if (f.pagado > 0) return <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300">Pago parcial</span>;
     return <span className="rounded-full bg-zinc-500/15 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">Pendiente</span>;
   }
@@ -112,6 +116,12 @@ export default function ComprasPagosPage() {
       />
       <InfoVista>Registra el pago de cada factura de proveedor: cuánto, cuándo y desde qué banco. Ejemplo: una factura de 200€ de un proveedor de piezas queda en la cuenta 400 hasta que aquí se anota que se pagó por banco, lo que genera el asiento del pago.</InfoVista>
       <CajaError mensaje={error} />
+      {sinMedio.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <span><strong>{sinMedio.length}</strong> {sinMedio.length === 1 ? "factura figura" : "facturas figuran"} como pagada{sinMedio.length === 1 ? "" : "s"} pero sin tarjeta, banco ni cuenta PayPal: el pago está pendiente de verificar y no tiene asiento.</span>
+          <Button size="sm" variant="outline" onClick={() => setFiltro(filtro === "sin_medio" ? "" : "sin_medio")}>{filtro === "sin_medio" ? "Ver todas" : "Verlas"}</Button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <Kpi titulo="Pendientes de pago" valor={String(pendientes.length)} color="text-amber-600 dark:text-amber-400" activo={filtro === "pendientes"} onClick={() => setFiltro(filtro === "pendientes" ? "" : "pendientes")} />
         <Kpi titulo="Importe por pagar" valor={`${num(porPagar)} €`} color="" />

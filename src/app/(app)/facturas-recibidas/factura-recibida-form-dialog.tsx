@@ -22,6 +22,7 @@ import { EliminarRegistroDialog } from "@/components/eliminar-registro-dialog";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import type { CompraFila } from "@/lib/compras";
 import type { PedidoStockBusqueda } from "@/app/api/stock-piezas/pedidos/buscar/route";
+import { apiC } from "@/lib/contabilidad";
 import type { FacturaOcrExtraido } from "@/app/api/facturas-recibidas/ocr/route";
 import { VerificacionNifIva } from "./verificacion-nif-iva";
 import { detectarCompraIntracomunitaria, detectarProveedorFueraUE } from "@/lib/facturas-recibidas";
@@ -53,6 +54,10 @@ interface Formulario {
   fechaOperacion: string;
   fechaRecepcion: string;
   fechaContabilizacion: string;
+  pagoMedio: string;
+  pagoBancoId: string;
+  pagoMedioPagoId: string;
+  pagoConfirmado: boolean;
   tipoDocumento: TipoDocumentoFactura | "";
   facturaRectificadaId: number | null;
   descripcion: string;
@@ -91,7 +96,7 @@ function vacio(borrador?: BorradorFactura): Formulario {
   return {
     proveedorId: borrador?.proveedorId || "", numeroFacturaProveedor: "", serieProveedor: "",
     fechaExpedicion: new Date().toISOString().slice(0, 10), fechaOperacion: "",
-    fechaRecepcion: new Date().toISOString().slice(0, 10), fechaContabilizacion: "", tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
+    fechaRecepcion: new Date().toISOString().slice(0, 10), fechaContabilizacion: "", pagoMedio: "", pagoBancoId: "", pagoMedioPagoId: "", pagoConfirmado: false, tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
     baseImponible: borrador?.baseImponible || 0, tipoIva: 21, cuotaIvaSoportado: 0,
     cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR", tipoCambio: null, baseMonedaOriginal: 0, totalMonedaOriginal: 0,
     operacionExenta: false, inversionSujetoPasivo: false,
@@ -106,7 +111,7 @@ function vacio(borrador?: BorradorFactura): Formulario {
 function desdeExistente(f: FacturaRecibida): Formulario {
   return {
     proveedorId: f.proveedorId, numeroFacturaProveedor: f.numeroFacturaProveedor, serieProveedor: f.serieProveedor,
-    fechaExpedicion: f.fechaExpedicion, fechaOperacion: f.fechaOperacion || "", fechaRecepcion: f.fechaRecepcion, fechaContabilizacion: f.fechaContabilizacion || "",
+    fechaExpedicion: f.fechaExpedicion, fechaOperacion: f.fechaOperacion || "", fechaRecepcion: f.fechaRecepcion, fechaContabilizacion: f.fechaContabilizacion || "", pagoMedio: f.pagoMedio || "", pagoBancoId: f.pagoBancoId ? String(f.pagoBancoId) : "", pagoMedioPagoId: f.pagoMedioPagoId ? String(f.pagoMedioPagoId) : "", pagoConfirmado: f.pagoConfirmado,
     tipoDocumento: f.tipoDocumento || "", facturaRectificadaId: f.facturaRectificadaId, descripcion: f.descripcion,
     baseImponible: f.baseImponible, tipoIva: f.tipoIva ?? 21,
     cuotaIvaSoportado: f.cuotaIvaSoportado ?? 0, cuotaIvaDeducible: f.cuotaIvaDeducible, ivaNoDeducible: f.ivaNoDeducible ?? 0,
@@ -408,6 +413,14 @@ export function FacturaRecibidaFormDialog({
   // entrar, sigue cargando la IA pero mi archivo no está".
   const ocrAbortRef = useRef<AbortController | null>(null);
   // Categoría sugerida automáticamente (misma lógica que al guardar): se preselecciona en el formulario mientras la persona no la haya elegido a mano.
+  // Medio de pago real (tarjeta, banco o cuenta PayPal): solo lo ven quienes tienen acceso a Contabilidad; si falla, el bloque no se muestra.
+  const [opcionesPago, setOpcionesPago] = useState<{ bancos: { id: number; nombre: string }[]; medios: { id: number; tipo: string; nombre: string; ultimos4: string | null }[] } | null>(null);
+  useEffect(() => {
+    if (!open || opcionesPago) return;
+    apiC<{ bancos: { id: number; nombre: string }[]; medios: { id: number; tipo: string; nombre: string; ultimos4: string | null }[] }>("compras/opciones-pago")
+      .then(setOpcionesPago)
+      .catch(() => undefined);
+  }, [open, opcionesPago]);
   const categoriaManualRef = useRef(false);
   const [categoriaNota, setCategoriaNota] = useState<string | null>(null);
   const [categoriaIA, setCategoriaIA] = useState<string | null>(null);
@@ -672,6 +685,10 @@ export function FacturaRecibidaFormDialog({
       const payload = {
         proveedorId: datos.proveedorId, numeroFacturaProveedor: datos.numeroFacturaProveedor.trim(), serieProveedor: datos.serieProveedor.trim(),
         fechaExpedicion: datos.fechaExpedicion, fechaOperacion: datos.fechaOperacion || undefined, fechaRecepcion: datos.fechaRecepcion || undefined, fechaContabilizacion: datos.fechaContabilizacion || null,
+        pagoMedio: datos.estadoPago === "pagada" ? datos.pagoMedio || null : null,
+        pagoBancoId: datos.estadoPago === "pagada" && datos.pagoMedio === "transferencia" && datos.pagoBancoId ? Number(datos.pagoBancoId) : null,
+        pagoMedioPagoId: datos.estadoPago === "pagada" && datos.pagoMedioPagoId ? Number(datos.pagoMedioPagoId) : null,
+        pagoConfirmado: datos.pagoConfirmado,
         tipoDocumento: datos.tipoDocumento || undefined, facturaRectificadaId: datos.facturaRectificadaId,
         descripcion: datos.descripcion.trim(), baseImponible: datos.baseImponible,
         tipoIva: datos.estadoIva === "sin_cuota" ? undefined : datos.tipoIva || undefined, cuotaIvaSoportado: datos.cuotaIvaSoportado || undefined, cuotaIvaDeducible: datos.cuotaIvaDeducible,
@@ -1515,6 +1532,47 @@ export function FacturaRecibidaFormDialog({
                   <Input id="frRefBancaria" value={datos.referenciaBancaria} onChange={(e) => set("referenciaBancaria", e.target.value)} />
                 </div>
               </div>
+              {datos.estadoPago === "pagada" && opcionesPago && (
+                <div className="mt-3 space-y-2 rounded-lg border border-dashed bg-muted/30 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">¿Con qué se pagó? (para contabilizar el pago sin esperar al extracto)</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <select
+                      className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                      value={datos.pagoMedio}
+                      onChange={(e) => setDatos((prev) => ({ ...prev, pagoMedio: e.target.value, pagoBancoId: "", pagoMedioPagoId: "", pagoConfirmado: false }))}
+                      aria-label="Medio de pago real"
+                    >
+                      <option value="">— Sin indicar (quedará pendiente de verificar) —</option>
+                      <option value="transferencia">Transferencia bancaria</option>
+                      <option value="tarjeta_debito">Tarjeta de débito</option>
+                      <option value="tarjeta_credito">Tarjeta de crédito</option>
+                      <option value="paypal">PayPal</option>
+                      <option value="efectivo">Efectivo</option>
+                    </select>
+                    {datos.pagoMedio === "transferencia" && (
+                      <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={datos.pagoBancoId} onChange={(e) => set("pagoBancoId", e.target.value)} aria-label="Banco">
+                        <option value="">— Banco —</option>
+                        {opcionesPago.bancos.map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+                      </select>
+                    )}
+                    {["tarjeta_debito", "tarjeta_credito", "paypal"].includes(datos.pagoMedio) && (
+                      <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={datos.pagoMedioPagoId} onChange={(e) => set("pagoMedioPagoId", e.target.value)} aria-label="Tarjeta o cuenta">
+                        <option value="">— {datos.pagoMedio === "paypal" ? "Cuenta PayPal" : "Tarjeta"} —</option>
+                        {opcionesPago.medios.filter((m) => m.tipo === datos.pagoMedio).map((m) => <option key={m.id} value={m.id}>{m.nombre}{m.ultimos4 ? ` ·· ${m.ultimos4}` : ""}</option>)}
+                      </select>
+                    )}
+                    {["transferencia", "tarjeta_debito", "paypal"].includes(datos.pagoMedio) && (
+                      <label className="flex items-center gap-2 text-xs">
+                        <input type="checkbox" checked={datos.pagoConfirmado} onChange={(e) => set("pagoConfirmado", e.target.checked)} /> El cargo ya está confirmado en el banco
+                      </label>
+                    )}
+                  </div>
+                  {["tarjeta_debito", "tarjeta_credito", "paypal"].includes(datos.pagoMedio) && opcionesPago.medios.filter((m) => m.tipo === datos.pagoMedio).length === 0 && (
+                    <p className="text-xs text-amber-700">No hay ninguna {datos.pagoMedio === "paypal" ? "cuenta PayPal" : "tarjeta"} dada de alta. Créala en <a className="underline" href="/contabilidad/pagos-proveedores">Pagos a proveedores → Medios de pago</a>.</p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">Al validar la factura se crea el pago por el total contra ese medio. Sin dato, queda «pendiente de verificar» y no se usa la 555.</p>
+                </div>
+              )}
             </Seccion>
 
             <Seccion titulo="Clasificación y control interno" icono={Category}>

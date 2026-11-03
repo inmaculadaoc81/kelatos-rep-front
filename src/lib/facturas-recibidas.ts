@@ -84,6 +84,11 @@ export interface FacturaRecibida {
   fechaRecepcion: string;
   /** Fecha en que se contabiliza; null = la de recepción. */
   fechaContabilizacion: string | null;
+  /** Medio de pago real indicado al registrar (tarjeta, banco o cuenta PayPal): al validar la factura se crea solo el pago. */
+  pagoMedio: string | null;
+  pagoBancoId: number | null;
+  pagoMedioPagoId: number | null;
+  pagoConfirmado: boolean;
   tipoDocumento: TipoDocumentoFactura | null;
   facturaRectificadaId: number | null;
   descripcion: string;
@@ -158,6 +163,10 @@ interface FilaFacturaSql {
   fecha_operacion: string | null;
   fecha_recepcion: string;
   fecha_contabilizacion?: string | null;
+  pago_medio?: string | null;
+  pago_banco_id?: number | null;
+  pago_medio_pago_id?: number | null;
+  pago_confirmado?: boolean;
   tipo_documento: string | null;
   factura_rectificada_id: number | string | null;
   descripcion: string | null;
@@ -231,6 +240,10 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     fechaOperacion: f.fecha_operacion,
     fechaRecepcion: f.fecha_recepcion,
     fechaContabilizacion: f.fecha_contabilizacion || null,
+    pagoMedio: f.pago_medio || null,
+    pagoBancoId: f.pago_banco_id ?? null,
+    pagoMedioPagoId: f.pago_medio_pago_id ?? null,
+    pagoConfirmado: f.pago_confirmado === true,
     tipoDocumento: (f.tipo_documento as TipoDocumentoFactura) || null,
     facturaRectificadaId: f.factura_rectificada_id !== null ? Number(f.factura_rectificada_id) : null,
     descripcion: f.descripcion || "",
