@@ -10,6 +10,8 @@ export interface FacturaOcrExtraido {
   numeroFacturaProveedor: string | null;
   serieProveedor: string | null;
   tipoDocumento: TipoDocumentoFactura | null;
+  /** Qué es el documento según la IA («Presupuesto», «Albarán», «Factura»…). */
+  documentoDetectado?: string | null;
   fechaExpedicion: string | null;
   baseImponible: number | null;
   tipoIva: number | null;

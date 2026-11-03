@@ -870,6 +870,11 @@ export function FacturaRecibidaFormDialog({
       // formulario — el número de factura quedaba guardado sin su serie.
       if (e.serieProveedor) set("serieProveedor", e.serieProveedor);
       if (e.tipoDocumento) set("tipoDocumento", e.tipoDocumento);
+      if (e.tipoDocumento === "otro") {
+        // La IA no reconoce una factura: se anota qué es el documento y se avisa, en vez de tratarlo como factura completa.
+        if (e.documentoDetectado) set("descripcion", `Documento: ${e.documentoDetectado}`);
+        toast.warning(`La IA cree que este documento no es una factura${e.documentoDetectado ? ` (${e.documentoDetectado})` : ""}. Revisa el tipo de documento antes de registrarlo.`, { duration: 9000 });
+      }
       if (e.fechaExpedicion) set("fechaExpedicion", e.fechaExpedicion);
       const otraMoneda = !!e.moneda && e.moneda.trim().toUpperCase() !== "EUR";
       if (otraMoneda) {
@@ -1249,6 +1254,11 @@ export function FacturaRecibidaFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  {datos.tipoDocumento === "otro" && (
+                    <p className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                      No es una factura: se guarda como documento, pero no se contabiliza ni entra en pagos a proveedores.
+                    </p>
+                  )}
                 </div>
                 <CampoBuscable
                   etiqueta="Factura rectificada de (opcional)"

@@ -6,7 +6,7 @@
  * usuario — ver el comentario al inicio de la migración 113.
  */
 
-export type TipoDocumentoFactura = "completa" | "simplificada" | "rectificativa" | "aduanero";
+export type TipoDocumentoFactura = "completa" | "simplificada" | "rectificativa" | "aduanero" | "otro";
 export type CategoriaFactura = "repuestos" | "mercancias" | "suministros" | "servicios" | "otro";
 export type AlmacenFactura = "servicio" | "stock";
 export type EstadoPagoFactura = "pendiente" | "parcial" | "pagada";
@@ -64,7 +64,7 @@ export interface LecturaOcrGuardada {
   extraido: {
     proveedorNombre: string | null; proveedorDniCif: string | null; numeroFacturaProveedor: string | null; serieProveedor: string | null;
     tipoDocumento: TipoDocumentoFactura | null; fechaExpedicion: string | null; baseImponible: number | null; tipoIva: number | null;
-    cuotaIvaSoportado: number | null; importeTotal: number | null; descripcion: string | null; advertencias: string[]; receptorCoincide?: boolean;
+    cuotaIvaSoportado: number | null; importeTotal: number | null; descripcion: string | null; documentoDetectado?: string | null; advertencias: string[]; receptorCoincide?: boolean;
     receptorCifEncontrado?: boolean; receptorNombreEncontrado?: boolean;
   };
   proveedorEncontrado: boolean;
@@ -285,6 +285,7 @@ export const ETIQUETA_TIPO_DOCUMENTO: Record<TipoDocumentoFactura, string> = {
   simplificada: "Simplificada",
   rectificativa: "Rectificativa",
   aduanero: "Aduanero",
+  otro: "Otro (no es una factura)",
 };
 
 export const ETIQUETA_CATEGORIA: Record<CategoriaFactura, string> = {
