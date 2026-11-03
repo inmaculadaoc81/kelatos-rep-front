@@ -248,6 +248,15 @@ function CampoResumen({ etiqueta, valor, advertencia, incierto, nota }: { etique
 
 const CLASE_IMPORTE = "text-right tabular-nums";
 
+/** Medios de pago admitidos; el texto también se guarda como «forma de pago» legible. */
+const ETIQUETA_MEDIO_PAGO: Record<string, string> = {
+  transferencia: "Transferencia bancaria",
+  tarjeta_debito: "Tarjeta de débito",
+  tarjeta_credito: "Tarjeta de crédito",
+  paypal: "PayPal",
+  efectivo: "Efectivo",
+};
+
 /** Datos fiscales de la propia empresa (el receptor de TODA factura recibida —
     nunca cambia entre facturas, así que no tiene sentido que la IA los busque
     ni que se guarden por factura). Mismos datos ya usados en las plantillas de
@@ -685,10 +694,10 @@ export function FacturaRecibidaFormDialog({
       const payload = {
         proveedorId: datos.proveedorId, numeroFacturaProveedor: datos.numeroFacturaProveedor.trim(), serieProveedor: datos.serieProveedor.trim(),
         fechaExpedicion: datos.fechaExpedicion, fechaOperacion: datos.fechaOperacion || undefined, fechaRecepcion: datos.fechaRecepcion || undefined, fechaContabilizacion: datos.fechaContabilizacion || null,
-        pagoMedio: datos.estadoPago === "pagada" ? datos.pagoMedio || null : null,
-        pagoBancoId: datos.estadoPago === "pagada" && datos.pagoMedio === "transferencia" && datos.pagoBancoId ? Number(datos.pagoBancoId) : null,
-        pagoMedioPagoId: datos.estadoPago === "pagada" && datos.pagoMedioPagoId ? Number(datos.pagoMedioPagoId) : null,
-        pagoConfirmado: datos.pagoConfirmado,
+        pagoMedio: datos.pagoMedio || null,
+        pagoBancoId: datos.pagoMedio === "transferencia" && datos.pagoBancoId ? Number(datos.pagoBancoId) : null,
+        pagoMedioPagoId: ["tarjeta_debito", "tarjeta_credito", "paypal"].includes(datos.pagoMedio) && datos.pagoMedioPagoId ? Number(datos.pagoMedioPagoId) : null,
+        pagoConfirmado: datos.estadoPago === "pagada" && datos.pagoConfirmado,
         tipoDocumento: datos.tipoDocumento || undefined, facturaRectificadaId: datos.facturaRectificadaId,
         descripcion: datos.descripcion.trim(), baseImponible: datos.baseImponible,
         tipoIva: datos.estadoIva === "sin_cuota" ? undefined : datos.tipoIva || undefined, cuotaIvaSoportado: datos.cuotaIvaSoportado || undefined, cuotaIvaDeducible: datos.cuotaIvaDeducible,
@@ -1508,7 +1517,18 @@ export function FacturaRecibidaFormDialog({
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="frFormaPago">Forma de pago prevista</Label>
-                  <Input id="frFormaPago" value={datos.formaPago} onChange={(e) => set("formaPago", e.target.value)} />
+                  <select
+                    id="frFormaPago"
+                    className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                    value={datos.pagoMedio}
+                    onChange={(e) => {
+                      const medio = e.target.value;
+                      setDatos((prev) => ({ ...prev, pagoMedio: medio, pagoBancoId: "", pagoMedioPagoId: "", pagoConfirmado: false, formaPago: ETIQUETA_MEDIO_PAGO[medio] ?? prev.formaPago }));
+                    }}
+                  >
+                    <option value="">{datos.formaPago.trim() ? `— Sin indicar (texto actual: ${datos.formaPago.trim()}) —` : "— Sin indicar (quedará pendiente de verificar) —"}</option>
+                    {Object.entries(ETIQUETA_MEDIO_PAGO).map(([valor, texto]) => <option key={valor} value={valor}>{texto}</option>)}
+                  </select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Estado de pago</Label>
@@ -1532,23 +1552,12 @@ export function FacturaRecibidaFormDialog({
                   <Input id="frRefBancaria" value={datos.referenciaBancaria} onChange={(e) => set("referenciaBancaria", e.target.value)} />
                 </div>
               </div>
-              {datos.estadoPago === "pagada" && opcionesPago && (
+              {datos.pagoMedio && opcionesPago && (
                 <div className="mt-3 space-y-2 rounded-lg border border-dashed bg-muted/30 p-3">
-                  <p className="text-xs font-semibold text-muted-foreground">¿Con qué se pagó? (para contabilizar el pago sin esperar al extracto)</p>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {datos.estadoPago === "pagada" ? "¿Con qué se pagó? (para contabilizar el pago sin esperar al extracto)" : "¿Con qué se va a pagar?"}
+                  </p>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <select
-                      className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-                      value={datos.pagoMedio}
-                      onChange={(e) => setDatos((prev) => ({ ...prev, pagoMedio: e.target.value, pagoBancoId: "", pagoMedioPagoId: "", pagoConfirmado: false }))}
-                      aria-label="Medio de pago real"
-                    >
-                      <option value="">— Sin indicar (quedará pendiente de verificar) —</option>
-                      <option value="transferencia">Transferencia bancaria</option>
-                      <option value="tarjeta_debito">Tarjeta de débito</option>
-                      <option value="tarjeta_credito">Tarjeta de crédito</option>
-                      <option value="paypal">PayPal</option>
-                      <option value="efectivo">Efectivo</option>
-                    </select>
                     {datos.pagoMedio === "transferencia" && (
                       <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={datos.pagoBancoId} onChange={(e) => set("pagoBancoId", e.target.value)} aria-label="Banco">
                         <option value="">— Banco —</option>
@@ -1561,7 +1570,7 @@ export function FacturaRecibidaFormDialog({
                         {opcionesPago.medios.filter((m) => m.tipo === datos.pagoMedio).map((m) => <option key={m.id} value={m.id}>{m.nombre}{m.ultimos4 ? ` ·· ${m.ultimos4}` : ""}</option>)}
                       </select>
                     )}
-                    {["transferencia", "tarjeta_debito", "paypal"].includes(datos.pagoMedio) && (
+                    {datos.estadoPago === "pagada" && ["transferencia", "tarjeta_debito", "paypal"].includes(datos.pagoMedio) && (
                       <label className="flex items-center gap-2 text-xs">
                         <input type="checkbox" checked={datos.pagoConfirmado} onChange={(e) => set("pagoConfirmado", e.target.checked)} /> El cargo ya está confirmado en el banco
                       </label>
@@ -1570,7 +1579,11 @@ export function FacturaRecibidaFormDialog({
                   {["tarjeta_debito", "tarjeta_credito", "paypal"].includes(datos.pagoMedio) && opcionesPago.medios.filter((m) => m.tipo === datos.pagoMedio).length === 0 && (
                     <p className="text-xs text-amber-700">No hay ninguna {datos.pagoMedio === "paypal" ? "cuenta PayPal" : "tarjeta"} dada de alta. Créala en <a className="underline" href="/contabilidad/pagos-proveedores">Pagos a proveedores → Medios de pago</a>.</p>
                   )}
-                  <p className="text-[11px] text-muted-foreground">Al validar la factura se crea el pago por el total contra ese medio. Sin dato, queda «pendiente de verificar» y no se usa la 555.</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {datos.estadoPago === "pagada"
+                      ? "Al validar la factura se crea el pago por el total contra ese medio. Sin dato, queda «pendiente de verificar» y no se usa la 555."
+                      : "Queda como pago previsto: al marcar la factura como pagada se crea el pago contra este medio."}
+                  </p>
                 </div>
               )}
             </Seccion>
