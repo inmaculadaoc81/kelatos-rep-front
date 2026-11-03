@@ -34,11 +34,29 @@ export interface Movimiento {
   fecha_conciliacion: string | null;
   conciliado_por: string | null;
   par_conciliado: number | null;
+  /** Código de la reparación (resguardo) cuando el comprobante se subió desde la propia reparación. */
+  resguardo: string | null;
+  /** Grupo de Telegram del que viene; vacío si se subió desde el dashboard. */
+  chat_id: string | null;
 }
 
 function fmtMonto(m: string | null, moneda: string | null) {
   if (!m) return "-";
   return `${Number(m).toFixed(2)} ${moneda || "EUR"}`;
+}
+
+/** Código de la reparación a la que está asociado el comprobante (para poder emparejarlo con el voucher de la empresa) y por dónde se subió. */
+function ResguardoCelda({ m }: { m: Movimiento }) {
+  return (
+    <div className="space-y-0.5">
+      {m.resguardo ? (
+        <span className="inline-flex rounded-md bg-sky-500/10 px-1.5 py-0.5 font-mono text-xs font-semibold text-sky-800 dark:text-sky-300" title="Código de la reparación">{m.resguardo}</span>
+      ) : (
+        <span className="text-xs text-muted-foreground">-</span>
+      )}
+      <div className="text-[10px] text-muted-foreground">{m.chat_id ? "Subido por Telegram" : "Subido desde el dashboard"}</div>
+    </div>
+  );
 }
 
 /** Puerto fiel de "origenBadge" en renderTabla()/renderFilaConciliada() — mismo pill en Pendientes y Conciliadas. */
@@ -107,6 +125,7 @@ function FilaConciliada({ m, enPar, onRevertir }: { m: Movimiento; enPar: boolea
       <TableCell className={enPar ? "border-l-2 border-l-emerald-500" : ""}>
         <OrigenBadge origen={m.origen} />
       </TableCell>
+      <TableCell><ResguardoCelda m={m} /></TableCell>
       <TableCell className="text-xs">{m.fecha_valor || "-"}</TableCell>
       <TableCell><MontoConSigno origen={m.origen} monto={m.monto} /></TableCell>
       <TableCell className="max-w-40 truncate text-sm" title={m.remitente || ""}>{m.remitente || "-"}</TableCell>
@@ -238,6 +257,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
         (m.remitente || "").toLowerCase().includes(filtro) ||
         (m.codigo_referencia_concepto || "").toLowerCase().includes(filtro) ||
         (m.concepto || "").toLowerCase().includes(filtro) ||
+        (m.resguardo || "").toLowerCase().includes(filtro) ||
         (m.monto || "").toLowerCase().includes(filtro);
 
       let fechaOk = true;
@@ -419,6 +439,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                 <TableHead>ID</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Origen</TableHead>
+                <TableHead>Resguardo</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Remitente</TableHead>
                 <TableHead>Beneficiario</TableHead>
@@ -439,6 +460,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                   <TableCell>
                     <OrigenBadge origen={m.origen} />
                   </TableCell>
+                  <TableCell><ResguardoCelda m={m} /></TableCell>
                   <TableCell><MontoConSigno origen={m.origen} monto={m.monto} /></TableCell>
                   <TableCell className="max-w-40 truncate text-sm" title={m.remitente || ""}>{m.remitente || "-"}</TableCell>
                   <TableCell className="max-w-40 truncate text-sm" title={m.beneficiario || ""}>{m.beneficiario || "-"}</TableCell>
@@ -472,6 +494,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
             <TableHeader>
               <TableRow>
                 <TableHead>Origen</TableHead>
+                <TableHead>Resguardo</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Remitente</TableHead>
