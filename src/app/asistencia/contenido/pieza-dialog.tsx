@@ -250,7 +250,8 @@ export function PiezaDialog({
               </Button>
             </div>
 
-            <fieldset disabled={soloLectura} className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto border-0 p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+            <fieldset disabled={soloLectura} className="min-w-0 space-y-3 border-0 p-4">
               <div className="flex flex-wrap items-center gap-1.5">
                 {(() => {
                   const estadoActual = ESTADOS.find((e) => e.valor === borrador.estado);
@@ -333,7 +334,7 @@ export function PiezaDialog({
 
               <div className="space-y-1.5">
                 <Label htmlFor="pzDescripcion">Motivo</Label>
-                <Textarea id="pzDescripcion" rows={4} value={borrador.descripcion} onChange={(e) => cambiar("descripcion", e.target.value)} />
+                <Textarea id="pzDescripcion" rows={4} className="max-h-60 overflow-y-auto" value={borrador.descripcion} onChange={(e) => cambiar("descripcion", e.target.value)} />
               </div>
 
               <div className="space-y-1.5">
@@ -407,8 +408,9 @@ export function PiezaDialog({
                 </div>
               </div>
             </fieldset>
+            </div>
 
-            <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t px-4 py-3">
               {soloLectura ? <span /> : <Button variant="ghost" className="text-destructive" onClick={eliminar} disabled={guardando}>Eliminar</Button>}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)} disabled={guardando}>{soloLectura ? "Cerrar" : "Cancelar"}</Button>
