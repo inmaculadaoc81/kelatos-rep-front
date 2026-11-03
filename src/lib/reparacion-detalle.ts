@@ -750,23 +750,23 @@ export function numeroSerieDe(detalle: Pick<ReparacionDetalle, "equipo">): strin
 }
 
 /** Concepto de la reparación: la primera frase del diagnóstico del presupuesto (el diagnóstico completo puede ser largo), recortada para que quepa en la línea. */
-export function conceptoReparacion(p?: Pick<Presupuesto, "descripcion"> | null): string {
+export function conceptoReparacion(p?: Pick<Presupuesto, "descripcion"> | null, maximo = 90): string {
   const primera = String(p?.descripcion || "").split(/[.\n]/)[0].replace(/\s+/g, " ").trim();
-  if (primera.length <= 90) return primera;
-  const corte = primera.slice(0, 90);
-  return `${corte.slice(0, Math.max(corte.lastIndexOf(" "), 60)).trim()}…`;
+  if (primera.length <= maximo) return primera;
+  const corte = primera.slice(0, maximo);
+  return `${corte.slice(0, Math.max(corte.lastIndexOf(" "), Math.round(maximo * 0.65))).trim()}…`;
 }
 
 /** Descripción de la línea de mano de obra: «Mano de obra — Portátil ASUS UX8406M (Nº serie: S2N0…) — cambio de bisagra».
     Cada parte solo aparece si existe (equipo, número de serie, concepto); sin ninguna, queda «Mano de obra».
-    La celda del PDF solo muestra unos 105 caracteres (dos renglones): el equipo y el número de serie van siempre enteros y el concepto se acorta con «…»
-    para que quepa. `reserva` = caracteres que el llamador añadirá detrás (p. ej. « (50% restante)»). */
-export function descripcionManoObra(detalle: Pick<ReparacionDetalle, "equipo">, p?: Pick<Presupuesto, "descripcion"> | null, reserva = 0): string {
-  const MAX = 105 - reserva;
+    El equipo y el número de serie van siempre enteros y el concepto se acorta con «…» si no cabe. `maximo` = caracteres que admite la celda: 105 en facturas (dos renglones);
+    los tickets agrandan la fila del PDF y admiten unos 190. `reserva` = caracteres que el llamador añadirá detrás (p. ej. « (50% restante)»). */
+export function descripcionManoObra(detalle: Pick<ReparacionDetalle, "equipo">, p?: Pick<Presupuesto, "descripcion"> | null, reserva = 0, maximo = 105): string {
+  const MAX = maximo - reserva;
   const equipo = String(detalle.equipo?.modelo || "").trim().replace(/^Portátil\/Laptop\s+/i, "Portátil ");
   const serie = numeroSerieDe(detalle);
   let texto = `Mano de obra${equipo ? ` — ${equipo}${serie ? ` (Nº serie: ${serie})` : ""}` : ""}`;
-  const concepto = conceptoReparacion(p);
+  const concepto = conceptoReparacion(p, maximo > 105 ? 140 : 90);
   if (concepto) {
     const resto = MAX - texto.length - 3;
     if (concepto.length <= resto) texto += ` — ${concepto}`;
