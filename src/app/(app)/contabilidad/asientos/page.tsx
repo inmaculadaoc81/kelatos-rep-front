@@ -27,6 +27,9 @@ const ORIGENES: { valor: string; etiqueta: string }[] = [
   { valor: "alquileres", etiqueta: "Alquileres" },
   { valor: "facturas_recibidas", etiqueta: "Facturas recibidas" },
   { valor: "importaciones", etiqueta: "Importaciones" },
+  { valor: "efectivo_retiradas", etiqueta: "Efectivo" },
+  { valor: "banco_movimientos", etiqueta: "Banco" },
+  { valor: "pagos_compras", etiqueta: "Pagos de compra" },
 ];
 const TIPOS_ORIGEN: Record<string, string> = {
   reparaciones: "Reparación", tickets_manuales: "Ticket manual", facturas_manuales: "Factura manual", ventas: "Venta", alquileres: "Alquiler",
