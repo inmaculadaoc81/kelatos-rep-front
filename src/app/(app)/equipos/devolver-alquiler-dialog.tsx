@@ -29,7 +29,7 @@ const METODOS_PAGO = [
   { value: "transferencia", label: "Transferencia" },
   { value: "bizum", label: "Bizum" },
 ];
-const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+const BANCOS = ["Sabadell", "BBVA", "CaixaBank"];
 
 function euros(n: number): string {
   return (n || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";

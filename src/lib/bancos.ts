@@ -5,4 +5,4 @@
  * poder desglosar la vista "Facturación del día" (TPV) banco a banco en
  * vez de en un único total por método. Petición del usuario.
  */
-export const BANCOS = ["Santander", "Sabadell", "BBVA", "CaixaBank"];
+export const BANCOS = ["Sabadell", "BBVA", "CaixaBank"];
