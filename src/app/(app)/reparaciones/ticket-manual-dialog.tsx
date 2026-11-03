@@ -112,7 +112,7 @@ function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
     const sufijo = remFactor < 1 ? ` (${Math.round(remFactor * 100)}% restante)` : "";
 
     for (const p of aceptados) {
-      if (p.manoObra > 0) lineas.push({ descripcion: `${descripcionManoObra(detalle, p)}${sufijo}`, cantidad: 1, precio: p.manoObra * remFactor, descuento: 0 });
+      if (p.manoObra > 0) lineas.push({ descripcion: `${descripcionManoObra(detalle, p, sufijo.length)}${sufijo}`, cantidad: 1, precio: p.manoObra * remFactor, descuento: 0 });
       for (const pz of p.piezas) {
         const precioPieza = pz.precio || pz.costo || 0;
         if (precioPieza > 0) lineas.push({ descripcion: `${pz.descripcion || "Pieza"}${sufijo}`, cantidad: 1, precio: precioPieza * remFactor, descuento: 0, referencia: pz.referenciaStock || undefined });

@@ -758,11 +758,23 @@ export function conceptoReparacion(p?: Pick<Presupuesto, "descripcion"> | null):
 }
 
 /** Descripción de la línea de mano de obra: «Mano de obra — Portátil ASUS UX8406M (Nº serie: S2N0…) — cambio de bisagra».
-    Cada parte solo aparece si existe (equipo, número de serie, concepto); sin ninguna, queda «Mano de obra». */
-export function descripcionManoObra(detalle: Pick<ReparacionDetalle, "equipo">, p?: Pick<Presupuesto, "descripcion"> | null): string {
-  const equipo = String(detalle.equipo?.modelo || "").trim();
+    Cada parte solo aparece si existe (equipo, número de serie, concepto); sin ninguna, queda «Mano de obra».
+    La celda del PDF solo muestra unos 105 caracteres (dos renglones): el equipo y el número de serie van siempre enteros y el concepto se acorta con «…»
+    para que quepa. `reserva` = caracteres que el llamador añadirá detrás (p. ej. « (50% restante)»). */
+export function descripcionManoObra(detalle: Pick<ReparacionDetalle, "equipo">, p?: Pick<Presupuesto, "descripcion"> | null, reserva = 0): string {
+  const MAX = 105 - reserva;
+  const equipo = String(detalle.equipo?.modelo || "").trim().replace(/^Portátil\/Laptop\s+/i, "Portátil ");
   const serie = numeroSerieDe(detalle);
+  let texto = `Mano de obra${equipo ? ` — ${equipo}${serie ? ` (Nº serie: ${serie})` : ""}` : ""}`;
   const concepto = conceptoReparacion(p);
-  const partes = [equipo ? `${equipo}${serie ? ` (Nº serie: ${serie})` : ""}` : "", concepto].filter(Boolean);
-  return partes.length ? `Mano de obra — ${partes.join(" — ")}` : "Mano de obra";
+  if (concepto) {
+    const resto = MAX - texto.length - 3;
+    if (concepto.length <= resto) texto += ` — ${concepto}`;
+    else if (resto >= 14) {
+      const corte = concepto.slice(0, resto - 1);
+      const palabra = corte.lastIndexOf(" ");
+      texto += ` — ${(palabra > resto * 0.5 ? corte.slice(0, palabra) : corte).trim()}…`;
+    }
+  }
+  return texto;
 }

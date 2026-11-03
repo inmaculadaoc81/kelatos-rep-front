@@ -68,7 +68,7 @@ function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
       lineas.push({ descripcion: etiqueta("Material / Piezas", ppto), cantidad: 1, precio: ppto.precioPiezas * factor });
     }
     if (ppto.manoObra > 0) {
-      lineas.push({ descripcion: etiqueta(descripcionManoObra(detalle, ppto), ppto), cantidad: 1, precio: ppto.manoObra * factor });
+      lineas.push({ descripcion: etiqueta(descripcionManoObra(detalle, ppto, 7 + (multiples ? 5 : 0)), ppto), cantidad: 1, precio: ppto.manoObra * factor });
     }
   }
   return lineas.length > 0 ? lineas : [{ descripcion: "", cantidad: 1, precio: 0 }];

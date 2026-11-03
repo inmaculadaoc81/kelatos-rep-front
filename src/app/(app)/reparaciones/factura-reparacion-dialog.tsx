@@ -157,7 +157,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
         const mo = (p.manoObra || 0) * remFactor;
         if (mo > 0) {
           hayManoObra = true;
-          add(etiqueta(descripcionManoObra(detalle, p), p), 1, mo);
+          add(etiqueta(descripcionManoObra(detalle, p, sufijo.length + (multiples ? 5 : 0)), p), 1, mo);
         }
       }
       if (!hayManoObra && !hayPiezas) add("Mano de obra", 1, 0);
