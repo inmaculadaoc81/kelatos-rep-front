@@ -122,14 +122,14 @@ function LadoComparacion({ t, tipo, titulo }: { t: Movimiento; tipo: "cliente" |
     ["Banco", t.banco || "-"],
   ];
   return (
-    <div className="flex-1 space-y-1.5 rounded-lg border p-3">
+    <div className="min-w-0 flex-1 space-y-1.5 rounded-lg border p-3">
       <p className={`flex items-center gap-1.5 text-xs font-bold uppercase ${colorClase}`}>
         <Icono className="size-3.5" /> {titulo}
       </p>
       {filas.map(([label, value]) => (
-        <div key={label} className="flex items-start justify-between gap-2 border-t pt-1 text-xs first:border-0 first:pt-0">
+        <div key={label} className="flex min-w-0 items-start justify-between gap-2 border-t pt-1 text-xs first:border-0 first:pt-0">
           <span className="shrink-0 text-muted-foreground">{label}</span>
-          <span className="truncate text-right font-medium" title={value}>{value}</span>
+          <span className="min-w-0 break-words text-right font-medium [overflow-wrap:anywhere]" title={value}>{value}</span>
         </div>
       ))}
     </div>
@@ -181,7 +181,7 @@ export function ConciliarParDialog({
 
   return (
     <Dialog open={t1 !== null && t2 !== null} onOpenChange={(o) => !enviando && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-2xl" showCloseButton={!enviando}>
+      <DialogContent className="max-h-[90vh] min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl" showCloseButton={!enviando}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
@@ -192,10 +192,10 @@ export function ConciliarParDialog({
         </DialogHeader>
 
         {izq && der && resultado && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <LadoComparacion t={izq} tipo={izqTipo} titulo={`${izq.origen || "Transferencia"} #${izq.id}`} />
-              <ArrowSwapHorizontal className="size-4 shrink-0 text-muted-foreground" />
+              <ArrowSwapHorizontal className="size-4 shrink-0 self-center text-muted-foreground" />
               <LadoComparacion t={der} tipo={derTipo} titulo={`${der.origen || "Transferencia"} #${der.id}`} />
             </div>
 
