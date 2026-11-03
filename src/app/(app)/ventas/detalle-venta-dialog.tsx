@@ -1,5 +1,6 @@
 "use client";
 
+import { ComprobanteTransferenciaBoton } from "../reparaciones/comprobante-transferencia-boton";
 import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import { esProveedorOtro, formatoPedidoDe } from "@/lib/formato-pedido";
 import { useEffect, useState } from "react";
@@ -634,6 +635,7 @@ export function DetalleVentaDialog({
                 <CloseCircle className="size-3.5" /> Cancelar Venta
               </Button>
             )}
+            {venta && <ComprobanteTransferenciaBoton documento={{ tipo: "venta", id: String(venta.ventaId) }} />}
             {venta && esSuperadmin && (
               <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setEliminarAbierto(true)} disabled={enviando}>
                 <Trash className="size-3.5" /> Eliminar

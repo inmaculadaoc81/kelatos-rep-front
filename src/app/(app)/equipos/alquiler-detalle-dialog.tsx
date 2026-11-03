@@ -1,5 +1,6 @@
 "use client";
 
+import { ComprobanteTransferenciaBoton } from "../reparaciones/comprobante-transferencia-boton";
 import { useState } from "react";
 import Link from "next/link";
 import { Bank, Calendar, CloseCircle, DocumentText, Edit2, Hashtag, Money, Profile, Wallet } from "@/lib/icons";
@@ -124,6 +125,10 @@ export function AlquilerDetalleDialog({
                 {al.totalCobrado > 0 && <Fila etiqueta="Total cobrado" valor={euros(al.totalCobrado)} />}
                 {al.envioActivado && <Fila etiqueta="Envío" valor="Sí, con recogida a domicilio" />}
                 {al.observaciones && <Fila etiqueta="Observaciones" valor={al.observaciones} />}
+                <div className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <span className="text-muted-foreground">Soporte de la transferencia</span>
+                  <ComprobanteTransferenciaBoton documento={{ tipo: "alquiler", id: al.alquilerId }} />
+                </div>
               </Tarjeta>
 
               {al.numeroFactura && (

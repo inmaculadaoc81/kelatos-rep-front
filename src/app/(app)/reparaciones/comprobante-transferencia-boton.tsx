@@ -85,13 +85,26 @@ export function PagoTransferenciaPill({ estado }: { estado?: "Pendiente" | "Conc
  * "Pago realizado"). Petición del usuario, 2026-09-15: "para llevar un
  * mejor control" de qué reparaciones ya cobraron de verdad por transferencia.
  */
-export function ComprobanteTransferenciaBoton({ detalle, onActualizado }: { detalle: ReparacionDetalle; onActualizado?: () => void }) {
+export function ComprobanteTransferenciaBoton({
+  detalle,
+  documento,
+  onActualizado,
+}: {
+  /** Reparación (usa su resguardo). */
+  detalle?: ReparacionDetalle;
+  /** Alquiler o venta de piezas: el soporte se guarda con su propio identificador. */
+  documento?: { tipo: "alquiler" | "venta"; id: string };
+  onActualizado?: () => void;
+}) {
+  const clave = documento ? `${documento.tipo}:${documento.id}` : detalle?.resguardo || "";
+  const urlApi = documento ? `/api/comprobantes-transferencia/${documento.tipo}/${encodeURIComponent(documento.id)}` : `/api/reparaciones/${detalle?.resguardo}/comprobante-transferencia`;
+  const origenTexto = documento ? (documento.tipo === "alquiler" ? "el alquiler" : "la venta") : "la reparación";
   const [comprobante, setComprobante] = useState<ComprobanteTransferencia | null | undefined>(undefined);
   const [detalleAbierto, setDetalleAbierto] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
 
   function cargar() {
-    fetch(`/api/reparaciones/${detalle.resguardo}/comprobante-transferencia`)
+    fetch(urlApi)
       .then((r) => r.json())
       .then((data) => setComprobante(data.ok ? data.comprobante : null))
       .catch(() => setComprobante(null));
@@ -100,7 +113,7 @@ export function ComprobanteTransferenciaBoton({ detalle, onActualizado }: { deta
   useEffect(() => {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detalle.resguardo]);
+  }, [clave]);
 
   async function onSeleccionarArchivo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -109,7 +122,7 @@ export function ComprobanteTransferenciaBoton({ detalle, onActualizado }: { deta
     setSubiendo(true);
     try {
       const { base64, mime } = await leerComoBase64(file);
-      const res = await fetch(`/api/reparaciones/${detalle.resguardo}/comprobante-transferencia`, {
+      const res = await fetch(urlApi, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ base64, mime }),
@@ -194,7 +207,7 @@ export function ComprobanteTransferenciaBoton({ detalle, onActualizado }: { deta
               )}
             </p>
             <div>
-              {conciliado && <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subido desde la reparación</p>}
+              {conciliado && <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subido desde {origenTexto}</p>}
               <div className="space-y-1 rounded-md bg-muted/50 px-3 py-2 text-muted-foreground">
                 <p>Monto: <span className="text-foreground">{comprobante.monto ? `${Number(comprobante.monto).toFixed(2)} €` : "-"}</span></p>
                 <p>Fecha del comprobante: <span className="text-foreground">{comprobante.fecha_valor || "-"}</span></p>
