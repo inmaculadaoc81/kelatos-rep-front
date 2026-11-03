@@ -17,7 +17,8 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Clock, TickCircle, Wallet } from "@/lib/icons";
+import { Clock, Profile2User, TickCircle, Wallet } from "@/lib/icons";
+import { puedeGestionarAccesosTelegram } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
 
 // Puerto del sidebar de "Transferencias-2" (index.html): 3 vistas —
@@ -52,6 +53,10 @@ export function TransferenciasSidebar({ session }: { session: Session | null }) 
     { href: "/transferencias", label: "Pendientes", icon: Clock, badge: pendientes, badgeClase: "bg-destructive text-destructive-foreground" },
     { href: "/transferencias/conciliadas", label: "Conciliadas", icon: TickCircle, badge: conciliadas, badgeClase: "bg-emerald-600 text-white" },
     { href: "/transferencias/devoluciones", label: "Devoluciones", icon: Wallet, badge: devolucionesPendientes, badgeClase: "bg-amber-500 text-white" },
+    // Solo la cuenta autorizada ve (y puede abrir) los accesos de Telegram.
+    ...(puedeGestionarAccesosTelegram(session?.user?.email)
+      ? [{ href: "/transferencias/accesos-telegram", label: "Accesos de Telegram", icon: Profile2User, badge: 0, badgeClase: "" }]
+      : []),
   ];
 
   return (

@@ -49,3 +49,13 @@ const CUENTAS_EMPLEADOS_RESTRINGIDAS = new Set(["soporte@kelatos.com"]);
 export function esCuentaEmpleadosRestringida(email: string | null | undefined): boolean {
   return !!email && CUENTAS_EMPLEADOS_RESTRINGIDAS.has(email.toLowerCase());
 }
+
+/**
+ * Accesos de Telegram del grupo de transferencias (quién puede subir comprobantes y como «Cliente» o «Empresa»): solo una cuenta puede verlos
+ * y cambiarlos. Petición del usuario, 2026-11-03: kelatosclaude2@gmail.com.
+ */
+const ACCESOS_TELEGRAM_EMAIL = "kelatosclaude2@gmail.com";
+
+export function puedeGestionarAccesosTelegram(email: string | null | undefined): boolean {
+  return !!email && email.toLowerCase() === ACCESOS_TELEGRAM_EMAIL;
+}
