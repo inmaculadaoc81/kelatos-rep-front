@@ -61,16 +61,19 @@ export const MOTIVO_LABELS: Record<string, string> = {
   ACEPTACION_CONDICIONADA: "Acepta el presupuesto de forma condicionada",
   FORMULARIO_REQUIERE_RESPUESTA_MANUAL: "Consulta de un formulario web: debe responderse manualmente",
   CORREO_REQUIERE_RESPUESTA_MANUAL: "Correo de un cliente que el sistema no contesta solo: debe responderlo una persona",
+  SOLICITUD_RECICLAJE_WEB: "Solicitud de reciclaje o destrucción de datos recibida por el formulario de la web",
 };
 
 /** Tipo de aviso: consulta de un formulario web (hay que contestarla) o respuesta de un cliente a un presupuesto de reparación. */
-export function tipoDeEvento(e: Pick<WebhookEvento, "motivo">): "consulta_web" | "presupuesto" {
+export function tipoDeEvento(e: Pick<WebhookEvento, "motivo">): "consulta_web" | "presupuesto" | "reciclaje" {
+  if (e.motivo === "SOLICITUD_RECICLAJE_WEB") return "reciclaje";
   return e.motivo === "FORMULARIO_REQUIERE_RESPUESTA_MANUAL" || e.motivo === "CORREO_REQUIERE_RESPUESTA_MANUAL" ? "consulta_web" : "presupuesto";
 }
 
 /** Enlace al mensaje del cliente en el módulo Mails. Una consulta web llega desde el buzón del formulario, así que se busca por el email del cliente dentro del
     texto; una respuesta a un presupuesto llega desde el propio cliente, así que se filtra por su dirección. En los dos casos se abre solo el más reciente. */
 export function urlMensajeDeEvento(e: Pick<WebhookEvento, "motivo" | "email_cliente">): string | null {
+  if (e.motivo === "SOLICITUD_RECICLAJE_WEB") return "/punto-limpio?tab=solicitudes";
   const email = (e.email_cliente || "").trim();
   if (!email) return null;
   return tipoDeEvento(e) === "consulta_web"

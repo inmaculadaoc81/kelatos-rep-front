@@ -27,7 +27,7 @@ interface PresupuestoPendiente {
 }
 
 type FiltroFecha = "todas" | "hoy" | "ayer" | "semana" | "mes" | "mes_anterior";
-type FiltroTipo = "todos" | "consulta_web" | "Aviso" | "Aceptado" | "Rechazado";
+type FiltroTipo = "todos" | "consulta_web" | "reciclaje" | "Aviso" | "Aceptado" | "Rechazado";
 
 // Apagado temporalmente a petición del usuario, 2026-09-05 — el backend
 // (POST /v1/webhook-eventos/:id/responder) sigue desplegado y probado,
@@ -46,6 +46,7 @@ const FILTROS_FECHA: { valor: FiltroFecha; label: string }[] = [
 const FILTROS_TIPO: { valor: FiltroTipo; label: string }[] = [
   { valor: "todos", label: "Todos los tipos" },
   { valor: "consulta_web", label: "Consultas web (por responder)" },
+  { valor: "reciclaje", label: "Solicitudes de reciclaje" },
   { valor: "Aviso", label: "Presupuestos: revisión manual" },
   { valor: "Aceptado", label: "Presupuestos aceptados" },
   { valor: "Rechazado", label: "Presupuestos rechazados" },
@@ -97,7 +98,7 @@ export function NotificacionesBell() {
   const [seleccionado, setSeleccionado] = useState<WebhookEvento | null>(null);
 
   const eventosFiltrados = useMemo(
-    () => eventos.filter((e) => dentroDeRango(e.fecha, filtroFecha) && (filtroTipo === "todos" || (filtroTipo === "consulta_web" ? tipoDeEvento(e) === "consulta_web" : tipoDeEvento(e) === "presupuesto" && e.estado === filtroTipo))),
+    () => eventos.filter((e) => dentroDeRango(e.fecha, filtroFecha) && (filtroTipo === "todos" || (filtroTipo === "consulta_web" || filtroTipo === "reciclaje" ? tipoDeEvento(e) === filtroTipo : tipoDeEvento(e) === "presupuesto" && e.estado === filtroTipo))),
     [eventos, filtroFecha, filtroTipo]
   );
   const filtroTipoLabel = FILTROS_TIPO.find((f) => f.valor === filtroTipo)?.label || "Todos los tipos";
@@ -113,7 +114,7 @@ export function NotificacionesBell() {
     }
     const esAviso = evento.estado === "Aviso";
     const motivoLabel = evento.motivo ? MOTIVO_LABELS[evento.motivo] || evento.motivo : null;
-    const titulo = tipoDeEvento(evento) === "consulta_web" ? "Consulta web por responder" : esAviso ? "Presupuesto: revisión manual requerida" : `Presupuesto ${evento.estado?.toLowerCase()}`;
+    const titulo = tipoDeEvento(evento) === "reciclaje" ? "Nueva solicitud de reciclaje" : tipoDeEvento(evento) === "consulta_web" ? "Consulta web por responder" : esAviso ? "Presupuesto: revisión manual requerida" : `Presupuesto ${evento.estado?.toLowerCase()}`;
     const detalle = [evento.nombre_cliente, esAviso ? motivoLabel : evento.numero_presupuesto].filter(Boolean).join(" — ");
     const resto = cuantasNuevas - 1;
 
@@ -301,10 +302,10 @@ function TarjetaEvento({ evento, onClick }: { evento: WebhookEvento; onClick: ()
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex min-w-0 items-center justify-between gap-2">
             <span className="min-w-0 truncate text-sm font-semibold">
-              <span className={`mr-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${tipoDeEvento(evento) === "consulta_web" ? "bg-sky-100 text-sky-800" : "bg-violet-100 text-violet-800"}`}>
-                {tipoDeEvento(evento) === "consulta_web" ? "Consulta web" : "Presupuesto"}
+              <span className={`mr-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${tipoDeEvento(evento) === "reciclaje" ? "bg-emerald-100 text-emerald-800" : tipoDeEvento(evento) === "consulta_web" ? "bg-sky-100 text-sky-800" : "bg-violet-100 text-violet-800"}`}>
+                {tipoDeEvento(evento) === "reciclaje" ? "Reciclaje" : tipoDeEvento(evento) === "consulta_web" ? "Consulta web" : "Presupuesto"}
               </span>
-              {esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "—"}
+              {tipoDeEvento(evento) === "reciclaje" ? "Solicitud desde la web" : esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "—"}
             </span>
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${colorBadge}`}>{evento.estado}</span>
           </div>

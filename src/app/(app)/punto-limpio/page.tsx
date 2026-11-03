@@ -17,6 +17,8 @@ import {
 import { formatearFecha } from "@/lib/dias-entrega";
 import { PuntoLimpioItem, ESTILO_ESTADO_PRESUPUESTO, labelDestino, labelEstadoPresupuesto, labelMotivo } from "@/lib/punto-limpio";
 import { PuntoLimpioMotivoDialog } from "./punto-limpio-motivo-dialog";
+import { SolicitudesWeb } from "./solicitudes-web";
+import { cn } from "@/lib/utils";
 
 const ESTILO_MOTIVO: Record<string, string> = {
   reparable: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
@@ -32,6 +34,17 @@ export default function PuntoLimpioPage() {
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<PuntoLimpioItem | null>(null);
+  const [vista, setVista] = useState<"equipos" | "solicitudes">("equipos");
+  const [abrirSolicitud, setAbrirSolicitud] = useState<number | null>(null);
+  const [nuevas, setNuevas] = useState(0);
+
+  // Enlace desde la campana de notificaciones: /punto-limpio?tab=solicitudes&id=…
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("tab") === "solicitudes") setVista("solicitudes");
+    const id = Number(p.get("id"));
+    if (Number.isInteger(id) && id > 0) setAbrirSolicitud(id);
+  }, []);
 
   async function cargar() {
     setCargando(true);
@@ -65,19 +78,30 @@ export default function PuntoLimpioPage() {
           <h1 className="flex items-center gap-2 text-lg font-semibold">
             <Trash className="size-5" /> Punto Limpio
           </h1>
-          <p className="text-sm text-muted-foreground">Seguimiento de equipos enviados a reciclaje</p>
+          <p className="text-sm text-muted-foreground">{vista === "equipos" ? "Seguimiento de equipos enviados a reciclaje" : "Solicitudes de reciclaje y destrucción de datos recibidas por el formulario de la web"}</p>
         </div>
         <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
           <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
-      {error && (
+      <div className="mb-4 inline-flex rounded-lg border p-0.5 text-sm">
+        <button type="button" onClick={() => setVista("equipos")} className={cn("rounded-md px-3 py-1.5", vista === "equipos" ? "bg-primary text-primary-foreground" : "hover:bg-accent")}>Equipos en reciclaje</button>
+        <button type="button" onClick={() => setVista("solicitudes")} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5", vista === "solicitudes" ? "bg-primary text-primary-foreground" : "hover:bg-accent")}>
+          Solicitudes web
+          {nuevas > 0 && <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white">{nuevas}</span>}
+        </button>
+      </div>
+
+      {vista === "solicitudes" && <SolicitudesWeb abrirId={abrirSolicitud} onContadorNuevas={setNuevas} />}
+
+      {vista === "equipos" && error && (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Error al cargar: {error}
         </div>
       )}
 
+      {vista === "equipos" && (<>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="relative">
           <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -176,6 +200,7 @@ export default function PuntoLimpioPage() {
           </TableBody>
         </Table>
       </div>
+      </>)}
 
       {editando && (
         <PuntoLimpioMotivoDialog
