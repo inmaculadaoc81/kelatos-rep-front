@@ -33,6 +33,12 @@ export default function VentasPage() {
   const [ventaEliminarId, setVentaEliminarId] = useState<string | null>(null);
   const esSuperadmin = useEsSuperadmin();
 
+  // Enlace desde el buscador global: /ventas?buscar=…
+  useEffect(() => {
+    const b = new URLSearchParams(window.location.search).get("buscar");
+    if (b) setBusqueda(b);
+  }, []);
+
   async function cargar() {
     setCargando(true);
     setError(null);

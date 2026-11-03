@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SearchNormal1 } from "@/lib/icons";
+import { SearchNormal1, Profile } from "@/lib/icons";
 import {
   CommandDialog,
   CommandEmpty,
@@ -20,9 +20,35 @@ import { gruposVisibles } from "./navegacion";
  * (href !== null); las que aún viven solo en Apps Script no aparecen,
  * igual que en el propio menú lateral.
  */
+interface ResultadosClientes {
+  clientes: { codigo: string; nombre: string; dni_cif: string | null; telefono: string | null; email: string | null }[];
+  reparaciones: { resguardo: string; cliente_nombre: string; cliente_telefono: string | null; equipo_modelo: string | null; estado: string | null }[];
+  ventas: { venta_id: string; cliente_nombre: string | null; cliente_telefono: string | null; estado: string | null }[];
+  alquileres: { alquiler_id: string; equipo_id: string | null; cliente_nombre: string | null; cliente_telefono: string | null; estado: string | null }[];
+}
+
 export function BuscadorGlobal({ esAdmin = false, efectivoSoloLectura = false, equiposEntregados = false }: { esAdmin?: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean }) {
   const [abierto, setAbierto] = useState(false);
   const router = useRouter();
+  const [texto, setTexto] = useState("");
+  const [encontrados, setEncontrados] = useState<ResultadosClientes | null>(null);
+
+  // Clientes de todo el dashboard (catálogo, reparaciones, ventas y alquileres): se consulta al escribir, con una pequeña espera.
+  useEffect(() => {
+    const q = texto.trim();
+    if (!abierto || q.length < 2) {
+      setEncontrados(null);
+      return;
+    }
+    let vigente = true;
+    const t = setTimeout(() => {
+      fetch(`/api/buscar-global?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((d) => { if (vigente && d.ok) setEncontrados(d as ResultadosClientes); })
+        .catch(() => undefined);
+    }, 250);
+    return () => { vigente = false; clearTimeout(t); };
+  }, [texto, abierto]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -37,6 +63,7 @@ export function BuscadorGlobal({ esAdmin = false, efectivoSoloLectura = false, e
 
   function ir(href: string) {
     setAbierto(false);
+    setTexto("");
     router.push(href);
   }
 
@@ -55,9 +82,50 @@ export function BuscadorGlobal({ esAdmin = false, efectivoSoloLectura = false, e
       </button>
 
       <CommandDialog open={abierto} onOpenChange={setAbierto} title="Buscar en Kelatos" description="Busca y navega a cualquier página del sistema">
-        <CommandInput placeholder="Busca una página..." />
+        <CommandInput placeholder="Busca una página o un cliente (nombre, teléfono, correo, nº de reparación…)" value={texto} onValueChange={setTexto} />
         <CommandList>
           <CommandEmpty>Sin resultados.</CommandEmpty>
+          {encontrados && encontrados.clientes.length > 0 && (
+            <CommandGroup heading="Clientes">
+              {encontrados.clientes.map((c) => (
+                <CommandItem key={`c-${c.codigo}`} value={`${texto} cliente ${c.codigo}`} onSelect={() => ir(`/clientes?buscar=${encodeURIComponent(c.nombre)}`)}>
+                  <Profile className="size-4" />
+                  <span className="min-w-0 flex-1 truncate">{c.nombre}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{[c.telefono, c.email].filter(Boolean).join(" · ")}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {encontrados && encontrados.reparaciones.length > 0 && (
+            <CommandGroup heading="Reparaciones">
+              {encontrados.reparaciones.map((r) => (
+                <CommandItem key={`r-${r.resguardo}`} value={`${texto} reparacion ${r.resguardo}`} onSelect={() => ir(`/reparaciones?resguardo=${encodeURIComponent(r.resguardo)}`)}>
+                  <span className="min-w-0 flex-1 truncate">{r.cliente_nombre} <span className="text-muted-foreground">· {r.equipo_modelo || "equipo"}</span></span>
+                  <span className="shrink-0 text-xs text-muted-foreground">#{r.resguardo}{r.estado ? ` · ${r.estado}` : ""}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {encontrados && encontrados.ventas.length > 0 && (
+            <CommandGroup heading="Ventas">
+              {encontrados.ventas.map((v) => (
+                <CommandItem key={`v-${v.venta_id}`} value={`${texto} venta ${v.venta_id}`} onSelect={() => ir(`/ventas?buscar=${encodeURIComponent(v.venta_id)}`)}>
+                  <span className="min-w-0 flex-1 truncate">{v.cliente_nombre || "Sin nombre"}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{v.venta_id}{v.estado ? ` · ${v.estado}` : ""}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {encontrados && encontrados.alquileres.length > 0 && (
+            <CommandGroup heading="Alquileres">
+              {encontrados.alquileres.map((a) => (
+                <CommandItem key={`a-${a.alquiler_id}`} value={`${texto} alquiler ${a.alquiler_id}`} onSelect={() => ir(`/equipos?equipo=${Number(String(a.equipo_id || "").replace(/\D/g, "")) || ""}`)}>
+                  <span className="min-w-0 flex-1 truncate">{a.cliente_nombre || "Sin nombre"}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{a.alquiler_id} · {a.equipo_id}{a.estado ? ` · ${a.estado}` : ""}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
           {gruposVisibles({ esAdmin, superadmin: false, efectivoSoloLectura, equiposEntregados }).map((grupo) => {
             const items = grupo.items.filter((item) => item.href);
             if (items.length === 0) return null;
