@@ -742,3 +742,27 @@ export function mapearReparacionDetalle(
     historialEventos: historialRaw.map(mapearHistorial),
   };
 }
+
+/** Número de serie del equipo: el formulario de recepción lo guarda dentro del texto del síntoma («Nº Serie: XXXX»), solo en portátiles y sobremesas. */
+export function numeroSerieDe(detalle: Pick<ReparacionDetalle, "equipo">): string {
+  const m = /N[º°o.]*\s*serie\s*:\s*([^\n]+)/i.exec(String(detalle.equipo?.sintoma || ""));
+  return m ? m[1].trim() : "";
+}
+
+/** Concepto de la reparación: la primera frase del diagnóstico del presupuesto (el diagnóstico completo puede ser largo), recortada para que quepa en la línea. */
+export function conceptoReparacion(p?: Pick<Presupuesto, "descripcion"> | null): string {
+  const primera = String(p?.descripcion || "").split(/[.\n]/)[0].replace(/\s+/g, " ").trim();
+  if (primera.length <= 90) return primera;
+  const corte = primera.slice(0, 90);
+  return `${corte.slice(0, Math.max(corte.lastIndexOf(" "), 60)).trim()}…`;
+}
+
+/** Descripción de la línea de mano de obra: «Mano de obra — Portátil ASUS UX8406M (Nº serie: S2N0…) — cambio de bisagra».
+    Cada parte solo aparece si existe (equipo, número de serie, concepto); sin ninguna, queda «Mano de obra». */
+export function descripcionManoObra(detalle: Pick<ReparacionDetalle, "equipo">, p?: Pick<Presupuesto, "descripcion"> | null): string {
+  const equipo = String(detalle.equipo?.modelo || "").trim();
+  const serie = numeroSerieDe(detalle);
+  const concepto = conceptoReparacion(p);
+  const partes = [equipo ? `${equipo}${serie ? ` (Nº serie: ${serie})` : ""}` : "", concepto].filter(Boolean);
+  return partes.length ? `Mano de obra — ${partes.join(" — ")}` : "Mano de obra";
+}

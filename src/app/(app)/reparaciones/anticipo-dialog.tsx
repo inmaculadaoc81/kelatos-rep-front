@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import type { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import type { LineaFactura } from "@/lib/factura";
-import { ReparacionDetalle } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, descripcionManoObra } from "@/lib/reparacion-detalle";
 import { euros } from "./factura-acciones-tabs";
 import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "./selector-forma-pago";
 import { guardarSuReferencia } from "@/lib/su-referencia";
@@ -57,7 +57,6 @@ function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
 
   const factor = PORCENTAJE / 100;
   const multiples = pressBase.length > 1;
-  const equipo = (detalle.equipo?.modelo || "").trim();
   const etiqueta = (base: string, p: (typeof pressBase)[number]) => (multiples ? `${base} (v${p.version})` : base) + ` (${PORCENTAJE}%)`;
   const lineas: LineaFactura[] = [];
   for (const ppto of pressBase) {
@@ -69,7 +68,7 @@ function construirLineas(detalle: ReparacionDetalle): LineaFactura[] {
       lineas.push({ descripcion: etiqueta("Material / Piezas", ppto), cantidad: 1, precio: ppto.precioPiezas * factor });
     }
     if (ppto.manoObra > 0) {
-      lineas.push({ descripcion: etiqueta(equipo ? `Mano de obra — ${equipo}` : "Mano de obra", ppto), cantidad: 1, precio: ppto.manoObra * factor });
+      lineas.push({ descripcion: etiqueta(descripcionManoObra(detalle, ppto), ppto), cantidad: 1, precio: ppto.manoObra * factor });
     }
   }
   return lineas.length > 0 ? lineas : [{ descripcion: "", cantidad: 1, precio: 0 }];

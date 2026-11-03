@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ReparacionDetalle, Presupuesto, esPptoAceptado, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
+import { ReparacionDetalle, Presupuesto, descripcionManoObra, esPptoAceptado, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { Cliente } from "@/lib/clientes";
 import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
@@ -136,8 +136,6 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
       // cada importe, igual que ya se ve en la lista de Presupuestos.
       const multiples = pressBase.length > 1;
       const etiqueta = (base: string, p: Presupuesto) => (multiples ? `${base} (v${p.version})` : base) + sufijo;
-      const equipo = (detalle.equipo?.modelo || "").trim();
-      const manoObra = equipo ? `Mano de obra — ${equipo}` : "Mano de obra";
 
       let hayPiezas = false;
       for (const p of pressBase) {
@@ -159,7 +157,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
         const mo = (p.manoObra || 0) * remFactor;
         if (mo > 0) {
           hayManoObra = true;
-          add(etiqueta(manoObra, p), 1, mo);
+          add(etiqueta(descripcionManoObra(detalle, p), p), 1, mo);
         }
       }
       if (!hayManoObra && !hayPiezas) add("Mano de obra", 1, 0);
