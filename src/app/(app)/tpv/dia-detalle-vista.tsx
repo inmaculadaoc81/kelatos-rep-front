@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft2, MoneyRecive, Gallery, Bank, CloseCircle } from "@/lib/icons";
 import { resolverBlobImagen, comprimirImagen } from "@/lib/foto-captura";
+import { BANCOS_RETIRADOS } from "@/lib/bancos";
 import { METODOS_TPV, MovimientoTpv, TpvFotoApi, TpvImporteApi, FilaDesgloseTpv, FILAS_DESGLOSE_TPV, filaDesgloseSinBanco } from "@/lib/tpv";
 import { useConfirm } from "@/components/confirm-provider";
 
@@ -215,6 +216,11 @@ export function DiaDetalleVista({
     ...(["tarjeta", "transferencia"] as const)
       .map((m) => filaDesgloseSinBanco(m))
       .filter((f) => (segunSistemaDesglosadoDia[f.clave] || 0) !== 0 || importesDia.some((i) => i.metodo === f.clave)),
+    // Santander ya no se ofrece al cobrar, pero los días con cobros antiguos siguen mostrando su fila (solo si tienen importe).
+    ...BANCOS_RETIRADOS.flatMap((b) => [
+      { clave: `tarjeta:${b}`, metodo: "tarjeta" as const, banco: b, label: `Tarjeta bancaria · ${b}` },
+      { clave: `transferencia:${b}`, metodo: "transferencia" as const, banco: b, label: `Transferencia bancaria · ${b}` },
+    ]).filter((f) => (segunSistemaDesglosadoDia[f.clave] || 0) !== 0 || importesDia.some((i) => i.metodo === f.clave)),
   ];
 
   // Todos los tipos, siempre — una fila en 0 € es información tan válida

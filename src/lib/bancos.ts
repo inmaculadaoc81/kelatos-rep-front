@@ -6,3 +6,6 @@
  * vez de en un único total por método. Petición del usuario.
  */
 export const BANCOS = ["Sabadell", "BBVA", "CaixaBank"];
+
+/** Bancos que ya no se ofrecen al cobrar pero pueden tener cobros antiguos (se muestran solo si hay importe). */
+export const BANCOS_RETIRADOS = ["Santander"];
