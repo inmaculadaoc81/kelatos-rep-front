@@ -82,6 +82,8 @@ export interface FacturaRecibida {
   fechaExpedicion: string;
   fechaOperacion: string | null;
   fechaRecepcion: string;
+  /** Fecha en que se contabiliza; null = la de recepción. */
+  fechaContabilizacion: string | null;
   tipoDocumento: TipoDocumentoFactura | null;
   facturaRectificadaId: number | null;
   descripcion: string;
@@ -155,6 +157,7 @@ interface FilaFacturaSql {
   fecha_expedicion: string;
   fecha_operacion: string | null;
   fecha_recepcion: string;
+  fecha_contabilizacion?: string | null;
   tipo_documento: string | null;
   factura_rectificada_id: number | string | null;
   descripcion: string | null;
@@ -227,6 +230,7 @@ export function mapearFacturaRecibida(f: FilaFacturaSql): FacturaRecibida {
     fechaExpedicion: f.fecha_expedicion,
     fechaOperacion: f.fecha_operacion,
     fechaRecepcion: f.fecha_recepcion,
+    fechaContabilizacion: f.fecha_contabilizacion || null,
     tipoDocumento: (f.tipo_documento as TipoDocumentoFactura) || null,
     facturaRectificadaId: f.factura_rectificada_id !== null ? Number(f.factura_rectificada_id) : null,
     descripcion: f.descripcion || "",

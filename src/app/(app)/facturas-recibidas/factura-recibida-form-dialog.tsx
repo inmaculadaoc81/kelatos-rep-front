@@ -52,6 +52,7 @@ interface Formulario {
   fechaExpedicion: string;
   fechaOperacion: string;
   fechaRecepcion: string;
+  fechaContabilizacion: string;
   tipoDocumento: TipoDocumentoFactura | "";
   facturaRectificadaId: number | null;
   descripcion: string;
@@ -90,7 +91,7 @@ function vacio(borrador?: BorradorFactura): Formulario {
   return {
     proveedorId: borrador?.proveedorId || "", numeroFacturaProveedor: "", serieProveedor: "",
     fechaExpedicion: new Date().toISOString().slice(0, 10), fechaOperacion: "",
-    fechaRecepcion: new Date().toISOString().slice(0, 10), tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
+    fechaRecepcion: new Date().toISOString().slice(0, 10), fechaContabilizacion: "", tipoDocumento: "", facturaRectificadaId: null, descripcion: "",
     baseImponible: borrador?.baseImponible || 0, tipoIva: 21, cuotaIvaSoportado: 0,
     cuotaIvaDeducible: 0, ivaNoDeducible: 0, importeTotal: borrador?.importeTotal || 0, moneda: "EUR", tipoCambio: null, baseMonedaOriginal: 0, totalMonedaOriginal: 0,
     operacionExenta: false, inversionSujetoPasivo: false,
@@ -105,7 +106,7 @@ function vacio(borrador?: BorradorFactura): Formulario {
 function desdeExistente(f: FacturaRecibida): Formulario {
   return {
     proveedorId: f.proveedorId, numeroFacturaProveedor: f.numeroFacturaProveedor, serieProveedor: f.serieProveedor,
-    fechaExpedicion: f.fechaExpedicion, fechaOperacion: f.fechaOperacion || "", fechaRecepcion: f.fechaRecepcion,
+    fechaExpedicion: f.fechaExpedicion, fechaOperacion: f.fechaOperacion || "", fechaRecepcion: f.fechaRecepcion, fechaContabilizacion: f.fechaContabilizacion || "",
     tipoDocumento: f.tipoDocumento || "", facturaRectificadaId: f.facturaRectificadaId, descripcion: f.descripcion,
     baseImponible: f.baseImponible, tipoIva: f.tipoIva ?? 21,
     cuotaIvaSoportado: f.cuotaIvaSoportado ?? 0, cuotaIvaDeducible: f.cuotaIvaDeducible, ivaNoDeducible: f.ivaNoDeducible ?? 0,
@@ -670,7 +671,7 @@ export function FacturaRecibidaFormDialog({
     try {
       const payload = {
         proveedorId: datos.proveedorId, numeroFacturaProveedor: datos.numeroFacturaProveedor.trim(), serieProveedor: datos.serieProveedor.trim(),
-        fechaExpedicion: datos.fechaExpedicion, fechaOperacion: datos.fechaOperacion || undefined, fechaRecepcion: datos.fechaRecepcion || undefined,
+        fechaExpedicion: datos.fechaExpedicion, fechaOperacion: datos.fechaOperacion || undefined, fechaRecepcion: datos.fechaRecepcion || undefined, fechaContabilizacion: datos.fechaContabilizacion || null,
         tipoDocumento: datos.tipoDocumento || undefined, facturaRectificadaId: datos.facturaRectificadaId,
         descripcion: datos.descripcion.trim(), baseImponible: datos.baseImponible,
         tipoIva: datos.estadoIva === "sin_cuota" ? undefined : datos.tipoIva || undefined, cuotaIvaSoportado: datos.cuotaIvaSoportado || undefined, cuotaIvaDeducible: datos.cuotaIvaDeducible,
@@ -1240,6 +1241,11 @@ export function FacturaRecibidaFormDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="frFechaRecepcion">Fecha de recepción</Label>
                   <Input id="frFechaRecepcion" type="date" value={datos.fechaRecepcion} onChange={(e) => set("fechaRecepcion", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="frFechaContabilizacion">Fecha de contabilización</Label>
+                  <Input id="frFechaContabilizacion" type="date" value={datos.fechaContabilizacion} onChange={(e) => set("fechaContabilizacion", e.target.value)} />
+                  <p className="text-[11px] text-muted-foreground">Vacía = la fecha de recepción. Pon el último día del mes para incluirla en un cierre ya hecho.</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Tipo de documento *</Label>
