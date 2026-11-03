@@ -1,6 +1,6 @@
 export type EstadoPieza = "pendiente" | "en_proceso" | "listo";
 export type TipoPieza = "video" | "reel" | "single_post" | "carrusel" | "pdf" | "imagen";
-export type Marca = "tech4you" | "thinkcentre" | "delltech" | "dyson" | "n8n" | "surface" | "kelatos" | "thermotech";
+export type Marca = "tech4you" | "thinkcentre" | "delltech" | "dyson" | "n8n" | "surface" | "kelatos" | "thermotech" | "techmac";
 export type RedSocial = "youtube" | "facebook" | "tiktok" | "instagram" | "x" | "snapchat" | "linkedin" | "y_f_i_t" | "y_f_i";
 
 export interface Subtarea {
@@ -80,6 +80,7 @@ export const MARCAS: { valor: Marca; etiqueta: string }[] = [
   { valor: "surface", etiqueta: "Surface" },
   { valor: "kelatos", etiqueta: "Kelatos" },
   { valor: "thermotech", etiqueta: "ThermoTech" },
+  { valor: "techmac", etiqueta: "TechMac" },
 ];
 
 export interface CoincidenciaVideo {
