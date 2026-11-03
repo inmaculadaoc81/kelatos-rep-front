@@ -105,6 +105,9 @@ export default function CentroMailsPage() {
   const [externo, setExterno] = useState<FiltroExterno>({ cliente: null, lead: null, email: null });
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [verFechas, setVerFechas] = useState(false);
   const [mensajes, setMensajes] = useState<MensajeLista[]>([]);
   const [total, setTotal] = useState(0);
   const [contadores, setContadores] = useState<ContadoresMensajes>(CONTADORES_VACIOS);
@@ -168,17 +171,19 @@ export default function CentroMailsPage() {
 
   const parametros = useCallback(
     (offset: number, limit = PAGINA) => {
-      const p = new URLSearchParams({ vista: busquedaAplicada.trim() ? "todos" : vista, limit: String(limit), offset: String(offset) });
+      const p = new URLSearchParams({ vista: busquedaAplicada.trim() || desde || hasta ? "todos" : vista, limit: String(limit), offset: String(offset) });
       if (buzonSel) p.set("buzon", String(buzonSel));
       if (soloSinLeer) p.set("sinLeer", "true");
       if (agrupar) p.set("agrupar", "si");
       if (busquedaAplicada.trim()) p.set("q", busquedaAplicada.trim());
+      if (desde) p.set("desde", desde);
+      if (hasta) p.set("hasta", hasta);
       if (externo.cliente) p.set("cliente", externo.cliente);
       if (externo.lead) p.set("lead", externo.lead);
       if (externo.email) p.set("email", externo.email);
       return p.toString();
     },
-    [vista, buzonSel, soloSinLeer, agrupar, busquedaAplicada, externo]
+    [vista, buzonSel, soloSinLeer, agrupar, busquedaAplicada, externo, desde, hasta]
   );
 
   const cargar = useCallback(
@@ -194,7 +199,12 @@ export default function CentroMailsPage() {
         const data = await res.json();
         if (id !== consulta.current) return;
         if (!data.ok) throw new Error(data.error || "Error desconocido");
-        setMensajes(data.mensajes as MensajeLista[]);
+        const nuevos = data.mensajes as MensajeLista[];
+        setMensajes((prev) => {
+          if (!silencioso || prev.length <= nuevos.length) return nuevos;
+          const vistos = new Set(nuevos.map((m) => m.id));
+          return [...nuevos, ...prev.slice(nuevos.length).filter((m) => !vistos.has(m.id))];
+        });
         setTotal(data.total as number);
         setContadores(data.contadores as ContadoresMensajes);
         if (abrirPrimero.current) {
@@ -533,6 +543,32 @@ export default function CentroMailsPage() {
               <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar en asunto, remitente y contenido…" className="h-8 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             </div>
+            <div className="flex flex-wrap items-center gap-1.5 px-0.5">
+              <button
+                type="button"
+                onClick={() => setVerFechas((v) => !v)}
+                className={`rounded-md border px-2 py-0.5 text-xs ${desde || hasta ? "border-primary bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Fechas{desde || hasta ? ` · ${desde ? fechaCorta(desde) : "…"} → ${hasta ? fechaCorta(hasta) : "hoy"}` : ""}
+              </button>
+              {(desde || hasta) && (
+                <button type="button" className="text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={() => { setDesde(""); setHasta(""); }}>Quitar fechas</button>
+              )}
+            </div>
+            {verFechas && (
+              <div className="space-y-1.5 rounded-md border bg-muted/30 p-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-0.5 text-[11px] text-muted-foreground">Desde<Input type="date" className="h-8" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} /></label>
+                  <label className="space-y-0.5 text-[11px] text-muted-foreground">Hasta<Input type="date" className="h-8" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} /></label>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {([["Última semana", 7], ["Último mes", 30], ["Últimos 3 meses", 90], ["Último año", 365]] as const).map(([texto, dias]) => (
+                    <button key={texto} type="button" className="rounded border px-2 py-0.5 text-xs hover:bg-accent" onClick={() => { const h = new Date(); const d = new Date(h.getTime() - dias * 86400000); const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; setDesde(iso(d)); setHasta(iso(h)); }}>{texto}</button>
+                  ))}
+                  <button type="button" className="rounded border px-2 py-0.5 text-xs hover:bg-accent" onClick={() => { const h = new Date(); setDesde(`${h.getFullYear()}-01-01`); setHasta(""); }}>Este año</button>
+                </div>
+              </div>
+            )}
             {busquedaAplicada.trim() && (
               <p className="flex items-center justify-between gap-2 px-0.5 text-xs text-sky-700 dark:text-sky-300">
                 <span>Buscando en <strong>todos los correos</strong> (enviados y recibidos), no solo en esta carpeta.</span>

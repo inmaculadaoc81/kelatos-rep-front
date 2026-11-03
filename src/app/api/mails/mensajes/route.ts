@@ -3,7 +3,7 @@ import { kelatosApiGet } from "@/lib/kelatos-api";
 import { accesoMails, buzonesPropios } from "@/lib/mails-auth";
 import { CONTADORES_VACIOS, type ContadoresMensajes, type MensajeLista } from "@/lib/mails";
 
-const PARAMETROS = ["vista", "buzon", "sinLeer", "agrupar", "q", "cliente", "lead", "email", "limit", "offset"];
+const PARAMETROS = ["vista", "buzon", "sinLeer", "agrupar", "q", "cliente", "lead", "email", "desde", "hasta", "limit", "offset"];
 
 /** Lista paginada de mensajes (sin cuerpo) + contadores. Filtra el servidor.
     Una cuenta accesoCompleto nunca puede pedir "todos los buzones" ni el
