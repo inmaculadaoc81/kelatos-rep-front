@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Add, ArrowLeft2, ArrowRight2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ export default function CalendarioPage() {
   });
   const [seleccionada, setSeleccionada] = useState<number | null>(null);
   const [nuevaEn, setNuevaEn] = useState<string | null>(null);
+  const [diaAbierto, setDiaAbierto] = useState<string | null>(null);
   const soloLectura = useSoloAsignadas();
 
   useEffect(() => {
@@ -157,7 +159,11 @@ export default function CalendarioPage() {
                       </button>
                     );
                   })}
-                  {lista.length > 3 && <p className="px-1 text-[11px] text-muted-foreground">+{lista.length - 3} más</p>}
+                  {lista.length > 3 && (
+                    <button type="button" onClick={() => setDiaAbierto(clave)} className="px-1 text-[11px] font-medium text-primary hover:underline">
+                      +{lista.length - 3} más
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -179,6 +185,30 @@ export default function CalendarioPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={diaAbierto !== null} onOpenChange={(o) => !o && setDiaAbierto(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-md">
+          <DialogTitle className="text-sm font-semibold">
+            {diaAbierto && new Date(`${diaAbierto}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })} · {(diaAbierto && porDia.get(diaAbierto)?.length) || 0} piezas
+          </DialogTitle>
+          <div className="space-y-1.5">
+            {(diaAbierto ? porDia.get(diaAbierto) || [] : []).map((p) => {
+              const f = fechaDePieza(p);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => { setDiaAbierto(null); setSeleccionada(p.id); }}
+                  className={cn("block w-full rounded px-2 py-1.5 text-left text-sm font-medium hover:opacity-80", COLOR_ESTADO[p.estado])}
+                >
+                  {f?.hora && <span className="mr-1.5 tabular-nums">{f.hora}</span>}
+                  {p.titulo}
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <NuevaPiezaDialog
         open={nuevaEn !== null}
