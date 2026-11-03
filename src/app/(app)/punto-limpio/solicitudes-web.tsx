@@ -121,8 +121,24 @@ export function SolicitudesWeb({ abrirId, onContadorNuevas }: { abrirId?: number
 
 function Fila({ etiqueta, valor }: { etiqueta: string; valor?: string | null }) {
   if (!valor) return null;
-  return <div className="grid grid-cols-[10rem_1fr] gap-2 py-1 text-sm"><span className="text-muted-foreground">{etiqueta}</span><span className="whitespace-pre-wrap break-words">{valor}</span></div>;
+  return (
+    <div className="flex flex-col gap-0.5 py-1.5 text-sm sm:flex-row sm:gap-3">
+      <dt className="shrink-0 text-muted-foreground sm:w-36">{etiqueta}</dt>
+      <dd className="min-w-0 font-medium break-words whitespace-pre-wrap">{valor}</dd>
+    </div>
+  );
 }
+
+function Tarjeta({ titulo, children, className }: { titulo: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn("rounded-lg border bg-card p-4", className)}>
+      <h3 className="mb-2 border-b pb-2 text-xs font-semibold tracking-wide text-primary uppercase">{titulo}</h3>
+      <dl className="divide-y divide-border/60">{children}</dl>
+    </section>
+  );
+}
+
+const botonContacto = "inline-flex h-8 items-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent";
 
 function DetalleSolicitud({ id, onClose, onCambiada }: { id: number | null; onClose: () => void; onCambiada: () => void }) {
   const [det, setDet] = useState<Detalle | null>(null);
@@ -163,79 +179,106 @@ function DetalleSolicitud({ id, onClose, onCambiada }: { id: number | null; onCl
   const wa = s ? `https://wa.me/${soloDigitos(s.telefono).replace(/^00/, "")}` : "";
   return (
     <Dialog open={id !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogTitle className="flex flex-wrap items-center gap-2">{s ? <>Solicitud {s.referencia} <BadgeEstado e={s.estado} /></> : "Solicitud de reciclaje"}</DialogTitle>
-        {!s || !d ? <Skeleton className="h-40 w-full" /> : (
-          <div className="space-y-4">
-            <section>
-              <h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Contacto</h3>
-              <Fila etiqueta="Recibida" valor={fechaHora(s.creado_en)} />
-              <Fila etiqueta="Nombre" valor={s.nombre} />
-              <Fila etiqueta="Tipo / empresa" valor={[s.tipo_solicitante, s.empresa, d.nif].filter(Boolean).join(" · ")} />
-              <Fila etiqueta="Correo" valor={s.email} />
-              <Fila etiqueta="Teléfono" valor={s.telefono} />
-              <Fila etiqueta="Prefiere" valor={s.contacto_preferido} />
-              <Fila etiqueta="Idioma / país" valor={[d.idioma, d.pais].filter(Boolean).join(" · ")} />
-              <div className="mt-2 flex flex-wrap gap-2">
-                <a className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-accent" href={`mailto:${s.email}?subject=${encodeURIComponent(`Tu solicitud de reciclaje ${s.referencia}`)}`}>Escribir por correo</a>
-                <a className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-accent" href={`tel:${s.telefono}`}>Llamar</a>
-                <a className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-accent" href={wa} target="_blank" rel="noopener noreferrer">WhatsApp</a>
-              </div>
-            </section>
-            <section>
-              <h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Qué quiere reciclar o destruir</h3>
-              <Fila etiqueta="Material" valor={d.materiales?.join(", ")} />
-              <Fila etiqueta="Cantidad" valor={d.cantidad} />
-              <Fila etiqueta="Marca y modelo" valor={d.marca_modelo} />
-              <Fila etiqueta="Estado de los equipos" valor={d.estado} />
-              <Fila etiqueta="¿Contienen datos?" valor={d.datos_personales} />
-              <Fila etiqueta="Copia de seguridad" valor={d.copia_seguridad} />
-              <Fila etiqueta="Descripción" valor={d.descripcion} />
-            </section>
-            <section>
-              <h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Servicios y entrega</h3>
-              <Fila etiqueta="Servicios" valor={d.servicios?.join(", ")} />
-              <Fila etiqueta="Nivel de destrucción" valor={d.nivel_destruccion} />
-              <Fila etiqueta="Nº de serie" valor={d.numero_serie} />
-              <Fila etiqueta="Entrega" valor={s.entrega} />
-              <Fila etiqueta="Autoriza destrucción" valor={d.c_destruccion ? "Sí, expresamente" : "No"} />
-              <Fila etiqueta="Contacto por WhatsApp" valor={d.c_whatsapp ? "Autorizado" : "No autorizado"} />
-              <Fila etiqueta="Novedades y promociones" valor={d.c_marketing ? "Sí" : "No"} />
-            </section>
-            {d.rec && (
-              <section>
-                <h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Recogida a domicilio</h3>
-                <Fila etiqueta="Dirección" valor={`${d.rec.direccion}, ${d.rec.cp} ${d.rec.localidad} (${d.rec.provincia})`} />
-                <Fila etiqueta="Piso / puerta" valor={d.rec.piso} />
-                <Fila etiqueta="Ascensor" valor={d.rec.ascensor} />
-                <Fila etiqueta="Escaleras / pesados" valor={d.rec.restricciones} />
-                <Fila etiqueta="Preferencia" valor={[d.rec.fecha, d.rec.franja].filter(Boolean).join(" · ")} />
-                <Fila etiqueta="Contacto en la recogida" valor={[d.rec.contacto, d.rec.telefono].filter(Boolean).join(" · ")} />
-              </section>
-            )}
-            {d.adicional && <section><h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Información adicional</h3><p className="text-sm whitespace-pre-wrap">{d.adicional}</p></section>}
-            {det.adjuntos.length > 0 && (
-              <section>
-                <h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Adjuntos</h3>
-                <div className="flex flex-wrap gap-2">
-                  {det.adjuntos.map((a) => (
-                    <a key={a.id} href={`/api/reciclaje/solicitudes/${s.id}/adjuntos/${a.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-sm hover:bg-accent">
-                      {a.nombre} <span className="text-xs text-muted-foreground">· {Math.max(1, Math.round(a.tamano / 1024))} KB</span>
-                    </a>
-                  ))}
+      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+        <div className="border-b px-6 py-4 pr-12">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-lg">
+            {s ? <><span className="font-mono text-primary">{s.referencia}</span> <BadgeEstado e={s.estado} /></> : "Solicitud de reciclaje"}
+          </DialogTitle>
+          {s && <p className="mt-1 text-sm text-muted-foreground">Recibida el {fechaHora(s.creado_en)} · {s.resumen || "Sin resumen"}</p>}
+        </div>
+
+        {!s || !d ? (
+          <div className="p-6"><Skeleton className="h-48 w-full" /></div>
+        ) : (
+          <>
+            <div className="grid flex-1 gap-4 overflow-y-auto bg-muted/30 p-6 md:grid-cols-2">
+              <Tarjeta titulo="Contacto">
+                <Fila etiqueta="Nombre" valor={s.nombre} />
+                <Fila etiqueta="Tipo" valor={s.tipo_solicitante} />
+                <Fila etiqueta="Empresa" valor={[s.empresa, d.nif].filter(Boolean).join(" · ")} />
+                <Fila etiqueta="Correo" valor={s.email} />
+                <Fila etiqueta="Teléfono" valor={s.telefono} />
+                <Fila etiqueta="Prefiere" valor={s.contacto_preferido} />
+                <Fila etiqueta="Idioma / país" valor={[d.idioma, d.pais].filter(Boolean).join(" · ")} />
+                <div className="flex flex-wrap gap-2 pt-3">
+                  <a className={botonContacto} href={`mailto:${s.email}?subject=${encodeURIComponent(`Tu solicitud de reciclaje ${s.referencia}`)}`}>Correo</a>
+                  <a className={botonContacto} href={`tel:${s.telefono}`}>Llamar</a>
+                  <a className={botonContacto} href={wa} target="_blank" rel="noopener noreferrer">WhatsApp</a>
                 </div>
-              </section>
-            )}
-            <section className="space-y-2 rounded-lg border bg-muted/30 p-3">
-              <h3 className="text-xs font-semibold tracking-wide text-primary uppercase">Seguimiento</h3>
-              <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={estado} onChange={(e) => setEstado(e.target.value as Estado)} aria-label="Estado">
-                {ESTADOS.map((e) => <option key={e.valor} value={e.valor}>{e.etiqueta}</option>)}
-              </select>
-              <Textarea rows={3} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas internas: a quién se llamó, día de recogida, precio acordado…" maxLength={4000} />
-              {s.atendido_por && <p className="text-xs text-muted-foreground">Último cambio: {s.atendido_por}{s.atendido_en ? ` · ${fechaHora(s.atendido_en)}` : ""}</p>}
-              <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Cerrar</Button><Button onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button></div>
-            </section>
-          </div>
+              </Tarjeta>
+
+              <Tarjeta titulo="Qué quiere reciclar">
+                <Fila etiqueta="Material" valor={d.materiales?.join(", ")} />
+                <Fila etiqueta="Cantidad" valor={d.cantidad} />
+                <Fila etiqueta="Marca y modelo" valor={d.marca_modelo} />
+                <Fila etiqueta="Estado" valor={d.estado} />
+                <Fila etiqueta="¿Contienen datos?" valor={d.datos_personales} />
+                <Fila etiqueta="Copia de seguridad" valor={d.copia_seguridad} />
+                <Fila etiqueta="Descripción" valor={d.descripcion} />
+              </Tarjeta>
+
+              <Tarjeta titulo="Servicios y entrega">
+                <Fila etiqueta="Servicios" valor={d.servicios?.join(", ")} />
+                <Fila etiqueta="Destrucción" valor={d.nivel_destruccion} />
+                <Fila etiqueta="Nº de serie" valor={d.numero_serie} />
+                <Fila etiqueta="Entrega" valor={s.entrega} />
+                <Fila etiqueta="Autoriza destrucción" valor={d.c_destruccion ? "Sí, expresamente" : "No"} />
+                <Fila etiqueta="WhatsApp" valor={d.c_whatsapp ? "Autorizado" : "No autorizado"} />
+                <Fila etiqueta="Novedades" valor={d.c_marketing ? "Sí" : "No"} />
+              </Tarjeta>
+
+              {d.rec ? (
+                <Tarjeta titulo="Recogida a domicilio">
+                  <Fila etiqueta="Dirección" valor={`${d.rec.direccion}, ${d.rec.cp} ${d.rec.localidad} (${d.rec.provincia})`} />
+                  <Fila etiqueta="Piso / puerta" valor={d.rec.piso} />
+                  <Fila etiqueta="Ascensor" valor={d.rec.ascensor} />
+                  <Fila etiqueta="Escaleras / pesados" valor={d.rec.restricciones} />
+                  <Fila etiqueta="Preferencia" valor={[d.rec.fecha, d.rec.franja].filter(Boolean).join(" · ")} />
+                  <Fila etiqueta="Contacto" valor={[d.rec.contacto, d.rec.telefono].filter(Boolean).join(" · ")} />
+                </Tarjeta>
+              ) : (
+                <Tarjeta titulo="Recogida a domicilio"><p className="py-1.5 text-sm text-muted-foreground">No solicita recogida: llevará los equipos a las instalaciones.</p></Tarjeta>
+              )}
+
+              {(d.adicional || det.adjuntos.length > 0) && (
+                <section className="space-y-3 rounded-lg border bg-card p-4 md:col-span-2">
+                  {d.adicional && (
+                    <div>
+                      <h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Información adicional</h3>
+                      <p className="text-sm whitespace-pre-wrap">{d.adicional}</p>
+                    </div>
+                  )}
+                  {det.adjuntos.length > 0 && (
+                    <div>
+                      <h3 className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">Adjuntos ({det.adjuntos.length})</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {det.adjuntos.map((a) => (
+                          <a key={a.id} href={`/api/reciclaje/solicitudes/${s.id}/adjuntos/${a.id}`} target="_blank" rel="noopener noreferrer" className={botonContacto}>
+                            {a.nombre} <span className="ml-1 text-xs font-normal text-muted-foreground">{Math.max(1, Math.round(a.tamano / 1024))} KB</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+            </div>
+
+            <div className="grid gap-3 border-t bg-background px-6 py-4 md:grid-cols-[14rem_1fr_auto] md:items-end">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground uppercase">Estado</label>
+                <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={estado} onChange={(e) => setEstado(e.target.value as Estado)}>
+                  {ESTADOS.map((e) => <option key={e.valor} value={e.valor}>{e.etiqueta}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground uppercase">Notas internas</label>
+                <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="A quién se llamó, día de recogida, precio acordado…" maxLength={4000} />
+              </div>
+              <div className="flex gap-2"><Button variant="ghost" onClick={onClose}>Cerrar</Button><Button onClick={guardar} disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button></div>
+              {s.atendido_por && <p className="text-xs text-muted-foreground md:col-span-3">Último cambio: {s.atendido_por}{s.atendido_en ? ` · ${fechaHora(s.atendido_en)}` : ""}</p>}
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
