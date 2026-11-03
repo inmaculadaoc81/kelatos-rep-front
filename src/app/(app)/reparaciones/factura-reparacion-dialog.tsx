@@ -136,6 +136,8 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
       // cada importe, igual que ya se ve en la lista de Presupuestos.
       const multiples = pressBase.length > 1;
       const etiqueta = (base: string, p: Presupuesto) => (multiples ? `${base} (v${p.version})` : base) + sufijo;
+      const equipo = (detalle.equipo?.modelo || "").trim();
+      const manoObra = equipo ? `Mano de obra — ${equipo}` : "Mano de obra";
 
       let hayPiezas = false;
       for (const p of pressBase) {
@@ -157,7 +159,7 @@ function construirLineasIniciales(detalle: ReparacionDetalle): LineaEditable[] {
         const mo = (p.manoObra || 0) * remFactor;
         if (mo > 0) {
           hayManoObra = true;
-          add(etiqueta("Mano de obra", p), 1, mo);
+          add(etiqueta(manoObra, p), 1, mo);
         }
       }
       if (!hayManoObra && !hayPiezas) add("Mano de obra", 1, 0);

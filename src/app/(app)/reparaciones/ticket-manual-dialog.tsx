@@ -110,9 +110,12 @@ function lineasDesdePresupuestos(detalle: ReparacionDetalle): LineaTicket[] {
     const anticipo = !detalle.numeroTicket && aceptados.length > 0 ? detalle.anticipoImporte || 0 : 0;
     const remFactor = anticipo > 0 && baseBruta > 0 ? Math.max(0, 1 - anticipo / baseBruta) : 1;
     const sufijo = remFactor < 1 ? ` (${Math.round(remFactor * 100)}% restante)` : "";
+    // La mano de obra lleva el nombre del equipo (como pide el usuario, 2026-11-03), para que el ticket diga de qué reparación es.
+    const equipo = (detalle.equipo?.modelo || "").trim();
+    const manoObra = equipo ? `Mano de obra — ${equipo}` : "Mano de obra";
 
     for (const p of aceptados) {
-      if (p.manoObra > 0) lineas.push({ descripcion: `Mano de obra${sufijo}`, cantidad: 1, precio: p.manoObra * remFactor, descuento: 0 });
+      if (p.manoObra > 0) lineas.push({ descripcion: `${manoObra}${sufijo}`, cantidad: 1, precio: p.manoObra * remFactor, descuento: 0 });
       for (const pz of p.piezas) {
         const precioPieza = pz.precio || pz.costo || 0;
         if (precioPieza > 0) lineas.push({ descripcion: `${pz.descripcion || "Pieza"}${sufijo}`, cantidad: 1, precio: precioPieza * remFactor, descuento: 0, referencia: pz.referenciaStock || undefined });
