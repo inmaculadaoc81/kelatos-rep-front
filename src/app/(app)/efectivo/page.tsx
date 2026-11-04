@@ -21,6 +21,12 @@ const ETIQUETA_DESTINO: Record<string, string> = {
   retirada_socio: "Retirada del socio",
   retirada_gasto: "Gasto menor",
   retirada_material: "Compra de material",
+  retirada_alimentacion_personal: "Alimentación ocasional del personal",
+  retirada_agua_personal: "Agua para consumo del personal",
+  retirada_bolsas_embalajes: "Bolsas y embalajes",
+  retirada_limpieza: "Productos y útiles de limpieza",
+  retirada_publicidad: "Publicidad, banners y carteles promocionales",
+  retirada_material_oficina: "Material de oficina",
   deposito_banco: "Ingreso en un banco",
 };
 

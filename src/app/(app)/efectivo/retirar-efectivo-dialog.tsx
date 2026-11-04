@@ -16,6 +16,12 @@ const DESTINOS: { valor: string; etiqueta: string }[] = [
   { valor: "retirada_socio", etiqueta: "Retirada del socio" },
   { valor: "retirada_gasto", etiqueta: "Gasto menor" },
   { valor: "retirada_material", etiqueta: "Compra de material" },
+  { valor: "retirada_alimentacion_personal", etiqueta: "Alimentación ocasional del personal" },
+  { valor: "retirada_agua_personal", etiqueta: "Agua para consumo del personal" },
+  { valor: "retirada_bolsas_embalajes", etiqueta: "Bolsas y embalajes" },
+  { valor: "retirada_limpieza", etiqueta: "Productos y útiles de limpieza" },
+  { valor: "retirada_publicidad", etiqueta: "Publicidad, banners y carteles promocionales" },
+  { valor: "retirada_material_oficina", etiqueta: "Material de oficina" },
   { valor: "deposito_banco", etiqueta: "Ingreso en un banco" },
 ];
 const DESTINO_SIN_SOPORTE = "deposito_banco";
@@ -224,7 +230,7 @@ export function RetirarEfectivoDialog({
             <p className="text-[11px] text-muted-foreground">
               {destino === DESTINO_SIN_SOPORTE
                 ? "No hace falta: el ingreso en el banco se corrobora en la conciliación bancaria."
-                : "Obligatorio para una retirada del socio, un gasto menor o una compra de material."}
+                : "Obligatorio para cualquier gasto o retirada (factura o ticket de compra)."}
             </p>
           </div>
           {confirmaExceso && excede && (
