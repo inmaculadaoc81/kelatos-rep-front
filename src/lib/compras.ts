@@ -181,7 +181,7 @@ export function colorProveedor(nombre: string): string {
   return encontrado ? encontrado[1] : COLOR_PROVEEDOR_OTRO;
 }
 
-export const ESTADOS_PEDIDO = ["Pendiente", "Pedido", "En Tránsito", "Recibido", "Cancelado", "Problema", "Pieza Rota", "Pieza Defectuosa"] as const;
+export const ESTADOS_PEDIDO = ["Pendiente", "Pedido", "En Tránsito", "Recibido", "Cancelado", "Problema", "Pieza Rota", "Pieza Defectuosa", "Pieza No Válida"] as const;
 
 // Mismos colores que ESTILO_BADGE_PEDIDO en reparaciones/detalle-dialog.tsx
 // (colorPedido del original), con Pendiente y Cancelado añadidos porque en
@@ -195,6 +195,7 @@ export const ESTILO_BADGE_ESTADO: Record<string, string> = {
   Problema: "border-destructive/40 text-destructive",
   "Pieza Rota": "border-destructive/40 text-destructive",
   "Pieza Defectuosa": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  "Pieza No Válida": "border-amber-500/40 text-amber-700 dark:text-amber-400",
 };
 
 export const ESTADOS_PLATAFORMA = ["Enviado", "En tránsito", "Entregado", "Incidencia"] as const;

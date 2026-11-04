@@ -83,7 +83,7 @@ const ENTREGA_CERRADA = ["ENTREGADO", "ENVIO", "RECICLAJE"];
 // Problema tapaba al nuevo pedido activo: ni la tarjeta ni los botones
 // ("Marcar En Tránsito"/"Marcar como Recibida") volvían a aparecer (bug real
 // reportado, resguardo 18500). El original filtra los inactivos primero.
-const ESTADOS_PEDIDO_INACTIVOS = ["Cancelado", "Recibido", "Problema", "Pieza Rota", "Pieza Defectuosa"];
+const ESTADOS_PEDIDO_INACTIVOS = ["Cancelado", "Recibido", "Problema", "Pieza Rota", "Pieza Defectuosa", "Pieza No Válida"];
 
 function pedidoActivoDePiezaPendiente(detalle: ReparacionDetalle): { estado: "Pedido" | "En Tránsito" | ""; pedido: Pedido | undefined } {
   const activos = detalle.pedidos.filter((p) => !ESTADOS_PEDIDO_INACTIVOS.includes(p.estado));

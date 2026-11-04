@@ -103,7 +103,7 @@ export default function ComprasPage() {
   const parametros = useCallback(
     (pag: number, porPagina: number) => {
       const p = new URLSearchParams({ pagina: String(pag), porPagina: String(porPagina) });
-      if (vista === "con_problema") p.set("estado", "Problema,Pieza Rota,Pieza Defectuosa");
+      if (vista === "con_problema") p.set("estado", "Problema,Pieza Rota,Pieza Defectuosa,Pieza No Válida");
       else if (vista === "retrasado") p.set("retrasado", "true");
       else if (vista) p.set("estado", vista);
       if (proveedorId) p.set("proveedorId", proveedorId);

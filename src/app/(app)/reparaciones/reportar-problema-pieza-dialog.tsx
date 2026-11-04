@@ -21,8 +21,9 @@ function hoyISO(): string {
 }
 
 interface FilaProblema {
-  tipoProblema: "defectuosa" | "rota";
+  tipoProblema: "defectuosa" | "rota" | "no_resuelve";
   codigoDevolucion: string;
+  motivo: string;
   descripcion: string;
   nuevoProveedor: string;
   nuevoEnlace: string;
@@ -35,6 +36,7 @@ function filaVacia(pedido: Pedido): FilaProblema {
   return {
     tipoProblema: "defectuosa",
     codigoDevolucion: "",
+    motivo: "",
     descripcion: pedido.notas || "",
     nuevoProveedor: "",
     nuevoEnlace: "",
@@ -101,7 +103,9 @@ export function ReportarProblemaPiezaDialog({
       const f = filas[pedidoId];
       const pedido = pedidosRecibidos.find((p) => p.pedidoId === pedidoId);
       const nombre = pedido?.notas || pedidoId;
+      if (f.motivo.trim().length < 5) return toast.error(`${nombre}: indica el motivo (mínimo 5 caracteres)`);
       if (f.tipoProblema === "defectuosa" && !f.codigoDevolucion.trim()) return toast.error(`${nombre}: el código de devolución es obligatorio para piezas defectuosas`);
+      if (f.tipoProblema === "no_resuelve") continue; // sin pedido de reemplazo: la pieza queda en devolución al proveedor
       if (!f.descripcion.trim()) return toast.error(`${nombre}: la descripción es obligatoria`);
       if (!f.nuevoProveedor) return toast.error(`${nombre}: el proveedor es obligatorio`);
       if (!f.nuevoEnlace.trim()) return toast.error(`${nombre}: el enlace de compra es obligatorio`);
@@ -122,6 +126,7 @@ export function ReportarProblemaPiezaDialog({
           body: JSON.stringify({
             tipoProblema: f.tipoProblema,
             codigoDevolucion: f.codigoDevolucion,
+            motivo: f.motivo,
             descripcion: f.descripcion,
             nuevoProveedor: f.nuevoProveedor,
             nuevoEnlace: f.nuevoEnlace,
@@ -134,7 +139,8 @@ export function ReportarProblemaPiezaDialog({
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || "Error desconocido");
       }
-      toast.success(`Problema(s) reportado(s). ${seleccionados.size} pedido(s) de reemplazo registrado(s).`);
+      const conReemplazo = [...seleccionados].filter((id) => filas[id]?.tipoProblema !== "no_resuelve").length;
+      toast.success(`Problema(s) reportado(s). ${conReemplazo} pedido(s) de reemplazo registrado(s); ${seleccionados.size - conReemplazo} pieza(s) en devolución al proveedor.`);
       onOpenChange(false);
       onReportado();
     } catch (e) {
@@ -181,14 +187,23 @@ export function ReportarProblemaPiezaDialog({
 
                       <div className="space-y-1.5">
                         <Label>Tipo de Problema *</Label>
-                        <RadioGroup value={f.tipoProblema} onValueChange={(v) => actualizarFila(pedido.pedidoId, "tipoProblema", v as "defectuosa" | "rota")} className="flex gap-4">
+                        <RadioGroup value={f.tipoProblema} onValueChange={(v) => actualizarFila(pedido.pedidoId, "tipoProblema", v as "defectuosa" | "rota" | "no_resuelve")} className="flex flex-wrap gap-x-4 gap-y-1.5">
                           <label className="flex items-center gap-1.5 text-sm">
                             <RadioGroupItem value="defectuosa" /> Defectuosa
                           </label>
                           <label className="flex items-center gap-1.5 text-sm">
                             <RadioGroupItem value="rota" /> Rota
                           </label>
+                          <label className="flex items-center gap-1.5 text-sm">
+                            <RadioGroupItem value="no_resuelve" /> No resolvió el problema (era otro fallo)
+                          </label>
                         </RadioGroup>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`motivo-${pedido.pedidoId}`}>Motivo *</Label>
+                        <Input id={`motivo-${pedido.pedidoId}`} placeholder={f.tipoProblema === "no_resuelve" ? "Ej: el fallo era la placa, no la pantalla" : "Ej: no enciende / llegó con el cristal roto"} value={f.motivo} onChange={(e) => actualizarFila(pedido.pedidoId, "motivo", e.target.value)} />
+                        <p className="text-[11px] text-muted-foreground">Queda en el historial de la reparación y en Stock de piezas mientras la pieza esté en devolución.</p>
                       </div>
 
                       {f.tipoProblema === "defectuosa" && (
@@ -198,6 +213,12 @@ export function ReportarProblemaPiezaDialog({
                         </div>
                       )}
 
+                      {f.tipoProblema === "no_resuelve" ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                          La pieza pasa a «devolución al proveedor» y deja de estar disponible. No se pide una nueva: la reparación sigue su curso.
+                        </p>
+                      ) : (
+                      <>
                       <hr />
                       <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Nuevo Pedido de Reemplazo</p>
 
@@ -241,6 +262,8 @@ export function ReportarProblemaPiezaDialog({
                         <Label htmlFor={`costo-${pedido.pedidoId}`}>Precio de Compra (€) *</Label>
                         <DecimalInput id={`costo-${pedido.pedidoId}`} placeholder="0,00" value={f.nuevoCosto} onChange={(n) => actualizarFila(pedido.pedidoId, "nuevoCosto", n)} />
                       </div>
+                      </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -252,7 +275,7 @@ export function ReportarProblemaPiezaDialog({
         <footer className="flex justify-end gap-2 border-t bg-muted/50 px-5 py-3">
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={enviando}>Cancelar</Button>
           <Button className="gap-1.5 bg-amber-500 text-white hover:bg-amber-600" onClick={confirmar} disabled={enviando || pedidosRecibidos.length === 0}>
-            <TickCircle className="size-3.5" /> {enviando ? "Reportando..." : "Reportar y Pedir Nueva Pieza"}
+            <TickCircle className="size-3.5" /> {enviando ? "Reportando..." : "Reportar problema"}
           </Button>
         </footer>
       </DialogContent>

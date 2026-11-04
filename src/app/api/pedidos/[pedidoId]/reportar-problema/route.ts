@@ -19,6 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ pedidoI
   const body = (await req.json()) as {
     tipoProblema?: string;
     codigoDevolucion?: string;
+    motivo?: string;
     descripcion?: string;
     nuevoProveedor?: string;
     nuevoEnlace?: string;
@@ -28,7 +29,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ pedidoI
     piezaId?: string;
   };
 
-  if (body.nuevoCosto === undefined || body.nuevoCosto === null || !(body.nuevoCosto > 0)) {
+  // Una pieza que no resolvió el problema no lleva pedido de reemplazo: entonces no hace falta el precio de uno nuevo.
+  const sinReemplazo = body.tipoProblema === "no_resuelve";
+  if (!sinReemplazo && (body.nuevoCosto === undefined || body.nuevoCosto === null || !(body.nuevoCosto > 0))) {
     return NextResponse.json({ ok: false, error: "El precio de compra es obligatorio" }, { status: 400 });
   }
 
@@ -36,19 +39,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ pedidoI
     const resultado = await kelatosApiPost<{
       ok: boolean;
       pedidoAnterior: Record<string, unknown>;
-      pedidoReemplazo: Record<string, unknown>;
-      reparacion: Record<string, unknown>;
+      pedidoReemplazo: Record<string, unknown> | null;
+      reparacion: Record<string, unknown> | null;
     }>(`/v1/pedidos/${encodeURIComponent(pedidoId)}/reportar-problema`, {
       requestId: crypto.randomUUID(),
       usuario,
       tipoProblema: body.tipoProblema || "defectuosa",
       codigoDevolucion: body.codigoDevolucion || "",
+      motivo: body.motivo || "",
       descripcion: body.descripcion || "",
       nuevoProveedor: body.nuevoProveedor || "",
       nuevoEnlace: body.nuevoEnlace || "",
       nuevoNumeroPedido: body.nuevoNumeroPedido || "",
       nuevaFechaEstimada: body.nuevaFechaEstimada || "",
-      nuevoCosto: body.nuevoCosto,
+      nuevoCosto: body.nuevoCosto ?? 0,
       piezaId: body.piezaId || "",
     });
     return NextResponse.json({

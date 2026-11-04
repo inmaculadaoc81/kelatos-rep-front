@@ -99,6 +99,7 @@ const ESTILO_PEDIDO: Record<string, string> = {
   Problema: "border-destructive/40 bg-destructive/5",
   "Pieza Rota": "border-destructive/40 bg-destructive/5",
   "Pieza Defectuosa": "border-amber-500/40 bg-amber-500/5",
+  "Pieza No Válida": "border-amber-500/40 bg-amber-500/5",
 };
 
 const ESTILO_BADGE_PEDIDO: Record<string, string> = {
@@ -108,6 +109,7 @@ const ESTILO_BADGE_PEDIDO: Record<string, string> = {
   Problema: "border-destructive/40 text-destructive",
   "Pieza Rota": "border-destructive/40 text-destructive",
   "Pieza Defectuosa": "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  "Pieza No Válida": "border-amber-500/40 text-amber-700 dark:text-amber-400",
 };
 
 /** Fila etiqueta/valor de las tablas del original (`table table-sm`). */
