@@ -28,6 +28,11 @@ export const HREF_POR_TIPO_AGENTE: Record<string, string> = {
   campaign_pipeline: "/agentes/campanas",
 };
 
+/** Los agentes también se abren dentro de Gestión MAILS (solo superadmins): los enlaces internos mantienen el sitio desde el que se entró. */
+export function baseAgentes(pathname: string | null | undefined): string {
+  return pathname?.startsWith("/mails/agentes") ? "/mails/agentes" : "/agentes";
+}
+
 export function hrefParaTipoAgente(type: string): string {
   return HREF_POR_TIPO_AGENTE[type] || `/agentes/${type}`;
 }

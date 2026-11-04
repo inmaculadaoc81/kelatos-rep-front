@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Search, CircleX, Square, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PillBadge } from "@/components/pill-badge";
 import { useConfirm } from "@/components/confirm-provider";
-import { AgentRun, AgentStep, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import { AgentRun, AgentStep, ESTADO_RUN_LABEL, baseAgentes } from "@/lib/agentes";
 import type { AgentEvent, CampaignPlan } from "@/lib/campanas";
 import {
   ChainOfThought,
@@ -315,6 +315,7 @@ export function TrazaAgente({
   plan?: CampaignPlan | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const confirmar = useConfirm();
   const [enviando, setEnviando] = useState(false);
 
@@ -370,7 +371,7 @@ export function TrazaAgente({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success("Nuevo run creado");
-      router.push(`/agentes/${agentType}/${data.runId}`);
+      router.push(`${baseAgentes(pathname)}/${agentType}/${data.runId}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {

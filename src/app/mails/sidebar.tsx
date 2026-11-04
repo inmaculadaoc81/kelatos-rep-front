@@ -14,7 +14,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ItemDirecto, GrupoColapsable, type GrupoNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { Sms, Setting2, Building, CloseCircle, Send2, Magicpen, Flash, Edit2 } from "@/lib/icons";
+import { Sms, Setting2, Building, CloseCircle, Send2, Magicpen, Flash, Edit2, SecuritySafe, Video, Microphone } from "@/lib/icons";
+import { esSuperadmin } from "@/lib/superadmin";
 import { NavUser } from "../(app)/nav-user";
 
 const GRUPOS: GrupoNavegacionBase[] = [
@@ -53,6 +54,17 @@ const GRUPOS: GrupoNavegacionBase[] = [
   },
 ];
 
+/** Los agentes operativos (antes en «Seguridad»): solo superadmins. */
+const GRUPO_AGENTES: GrupoNavegacionBase = {
+  titulo: "Agentes",
+  icon: SecuritySafe,
+  items: [
+    { label: "Auditoría de seguridad", href: "/mails/agentes/security_audit", icon: SecuritySafe },
+    { label: "SEO de vídeo", href: "/mails/agentes/video_seo", icon: Video },
+    { label: "Oportunidades de PR", href: "/mails/agentes/pr_opportunities", icon: Microphone },
+  ],
+};
+
 // Una cuenta accesoCompleto (migración 160, p.ej. soporte@kelatos.com) ve una
 // vista recortada: solo "Centro de mails", nada de Buzones/Leads/Direcciones
 // inválidas/Tipos de correo. Petición del usuario, 2026-09-30.
@@ -64,7 +76,7 @@ const GRUPOS_RECORTADOS: GrupoNavegacionBase[] = [
     trigger arriba, menú, NavUser abajo). */
 export function MailsSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
-  const grupos = session?.user?.accesoCompleto ? GRUPOS_RECORTADOS : GRUPOS;
+  const grupos = session?.user?.accesoCompleto ? GRUPOS_RECORTADOS : esSuperadmin(session?.user?.email) ? [...GRUPOS, GRUPO_AGENTES] : GRUPOS;
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">

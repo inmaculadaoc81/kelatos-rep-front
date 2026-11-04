@@ -89,6 +89,11 @@ export default auth(async (req) => {
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Agentes operativos (auditoría de seguridad, SEO de vídeo, oportunidades de PR): solo superadmins (viven en Gestión MAILS).
+  // /agentes/redes (analítica de Instagram de siempre) y /agentes-v2 conservan su acceso.
+  if (/^\/agentes(\/|$)/.test(req.nextUrl.pathname) && !req.nextUrl.pathname.startsWith("/agentes/redes") && !esSuperadmin(req.auth?.user?.email)) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Gestión MAILS — vista aparte, solo administradores (mismo criterio que
   // Agentes; los buzones guardan credenciales de correo), salvo cuentas
   // accesoCompleto (petición del usuario, 2026-09-30: soporte@kelatos.com

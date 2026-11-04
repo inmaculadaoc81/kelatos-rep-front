@@ -192,12 +192,6 @@ export function NavUser({ session }: { session: Session | null }) {
                   Webs Kelatos
                 </DropdownMenuItem>
               )}
-              {puedeVerAgentes && !enAgentes && (
-                <DropdownMenuItem render={<Link href="/agentes" />}>
-                  <IconoDashboard icon={SecuritySafe} className="from-cyan-500 to-teal-600" />
-                  Seguridad
-                </DropdownMenuItem>
-              )}
               {esUsuarioRedes(session?.user) && !puedeVerAgentes && !enAgentes && !enRedesSociales && (
                 <DropdownMenuItem render={<Link href={esProgramadorContenido(session?.user) ? "/redes-sociales" : "/agentes/redes"} />}>
                   <IconoDashboard icon={Chart} className="from-pink-500 to-rose-600" />

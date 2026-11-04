@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AgentRun, AgentStep } from "@/lib/agentes";
+import { AgentRun, AgentStep, baseAgentes } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
 import { ResumenAccesos, ResumenInfra, ResumenNpmAudit, TarjetaAccesos, TarjetaInfra, TarjetaNpm } from "./seguridad-componentes";
 
@@ -14,6 +15,7 @@ import { ResumenAccesos, ResumenInfra, ResumenNpmAudit, TarjetaAccesos, TarjetaI
     pasos del run más reciente vía GET /api/agentes/runs/:id (misma ruta que
     usa la vista de detalle) — sin endpoint propio nuevo. */
 export function SeguridadDashboard({ runs, cargando, onEjecutado }: { runs: AgentRun[]; cargando: boolean; onEjecutado: () => void }) {
+  const pathname = usePathname();
   const [pasos, setPasos] = useState<AgentStep[] | null>(null);
   const [cargandoPasos, setCargandoPasos] = useState(true);
   const [ejecutando, setEjecutando] = useState(false);
@@ -85,7 +87,7 @@ export function SeguridadDashboard({ runs, cargando, onEjecutado }: { runs: Agen
       )}
       {ultimoCompletado && (
         <p className="text-xs text-muted-foreground">
-          <Link href={`/agentes/security_audit/${ultimoCompletado.id}`} className="text-primary underline-offset-2 hover:underline">Ver el detalle paso a paso →</Link>
+          <Link href={`${baseAgentes(pathname)}/security_audit/${ultimoCompletado.id}`} className="text-primary underline-offset-2 hover:underline">Ver el detalle paso a paso →</Link>
         </p>
       )}
     </div>

@@ -17,6 +17,7 @@ const SECCIONES: Record<string, string> = {
   "/mails/buzones": "Buzones",
   "/mails/respuestas": "Respuestas a presupuestos",
   "/mails/formularios": "Respuestas a formularios",
+  "/mails/agentes": "Agentes",
 };
 
 /** Mismo header que Agentes/Webs Kelatos/Transferencias (h-14, bg-primary,

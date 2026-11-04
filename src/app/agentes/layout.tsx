@@ -12,12 +12,14 @@ import { AgentesHeader } from "./header";
 export default async function AgentesLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const esAdmin = session?.user?.role === "admin" || esSuperadmin(session?.user?.email);
+  // Los agentes operativos viven ahora en Gestión MAILS y son solo para superadmins; aquí queda la analítica de Instagram de siempre.
+  const esSuper = esSuperadmin(session?.user?.email);
   // Carlo, Cielo, Gean y Jeannie también pasan, pero solo ven «Redes sociales» (el proxy bloquea el resto de rutas de Agentes).
   if (!esAdmin && !puedeVerRedesSociales(session?.user)) redirect("/");
 
   return (
     <SidebarProvider>
-      <AgentesSidebar session={session} soloRedes={!esAdmin} />
+      <AgentesSidebar session={session} soloRedes={!esSuper} />
       <SidebarInset>
         <AgentesHeader />
         <main className="flex-1 bg-white p-6">{children}</main>

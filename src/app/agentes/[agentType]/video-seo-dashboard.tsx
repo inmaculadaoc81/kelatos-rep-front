@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AgentRun, AgentStep } from "@/lib/agentes";
+import { AgentRun, AgentStep, baseAgentes } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
 import {
   Recomendaciones, ResumenInstagram, ResumenTikTokSnapchat, ResumenYoutube,
@@ -20,6 +21,7 @@ import {
     usuario: demasiado "entreverado" antes, resumen y tabla sin relación
     visual con sus recomendaciones). */
 export function VideoSeoDashboard({ runs, cargando, onEjecutado }: { runs: AgentRun[]; cargando: boolean; onEjecutado: () => void }) {
+  const pathname = usePathname();
   const [pasos, setPasos] = useState<AgentStep[] | null>(null);
   const [cargandoPasos, setCargandoPasos] = useState(true);
   const [ejecutando, setEjecutando] = useState(false);
@@ -94,7 +96,7 @@ export function VideoSeoDashboard({ runs, cargando, onEjecutado }: { runs: Agent
       )}
       {ultimoCompletado && (
         <p className="text-xs text-muted-foreground">
-          <Link href={`/agentes/video_seo/${ultimoCompletado.id}`} className="text-primary underline-offset-2 hover:underline">Ver el detalle paso a paso →</Link>
+          <Link href={`${baseAgentes(pathname)}/video_seo/${ultimoCompletado.id}`} className="text-primary underline-offset-2 hover:underline">Ver el detalle paso a paso →</Link>
         </p>
       )}
     </div>

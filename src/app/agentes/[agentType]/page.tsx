@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PillBadge } from "@/components/pill-badge";
-import { AgentRun, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL } from "@/lib/agentes";
+import { AgentRun, ESTADO_RUN_COLOR, ESTADO_RUN_LABEL, baseAgentes } from "@/lib/agentes";
 import { Refresh2 } from "@/lib/icons";
 import { SeguridadDashboard } from "./seguridad-dashboard";
 import { VideoSeoDashboard } from "./video-seo-dashboard";
@@ -186,6 +186,7 @@ function NuevoRunLinkedIn({ onLanzada }: { onLanzada: (campaignId: number) => vo
 export default function AgenteTipoPage() {
   const params = useParams<{ agentType: string }>();
   const router = useRouter();
+  const pathname = usePathname();
   const agentType = params.agentType;
 
   const [runs, setRuns] = useState<AgentRun[]>([]);
@@ -261,7 +262,7 @@ export default function AgenteTipoPage() {
           {agentType === "linkedin_intelligence" ? (
             <NuevoRunLinkedIn onLanzada={(campaignId) => setPendienteCampaignId(campaignId)} />
           ) : (
-            <NuevoRunLeadResearch agentType={agentType} onCreado={(runId) => router.push(`/agentes/${agentType}/${runId}`)} />
+            <NuevoRunLeadResearch agentType={agentType} onCreado={(runId) => router.push(`${baseAgentes(pathname)}/${agentType}/${runId}`)} />
           )}
         </Card>
       )}
@@ -335,7 +336,7 @@ export default function AgenteTipoPage() {
                         </>
                       )}
                       <TableCell>
-                        <Button variant="link" size="xs" render={<Link href={`/agentes/${agentType}/${run.id}`} />}>
+                        <Button variant="link" size="xs" render={<Link href={`${baseAgentes(pathname)}/${agentType}/${run.id}`} />}>
                           Ver detalle
                         </Button>
                       </TableCell>
