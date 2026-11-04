@@ -99,6 +99,22 @@ export default function ProveedoresPage() {
 
   const haySinMarca = proveedores.some((p) => p.marcas.length === 0);
 
+  async function mostrarEnListas(p: Proveedor) {
+    try {
+      const res = await fetch(`/api/proveedores/${p.proveedorId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notas: "Registrado a mano (antes creado automáticamente)" }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error desconocido");
+      toast.success("Ahora sale en las listas de pedidos");
+      cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
+
   async function alternarActivo(p: Proveedor) {
     try {
       const res = await fetch(`/api/proveedores/${p.proveedorId}`, {
@@ -231,7 +247,7 @@ export default function ProveedoresPage() {
             {!cargando &&
               filtrados.map((p) => (
                 <TableRow key={p.proveedorId} className={p.activo ? undefined : "opacity-60"}>
-                  <TableCell className="font-medium">{p.nombre}</TableCell>
+                  <TableCell className="font-medium">{p.nombre}{p.automatico && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground" title="Lo creó la IA al leer una factura o un pantallazo. No sale en los selectores de pedidos; sí en Facturas Recibidas.">Automático · oculto en pedidos</span>}</TableCell>
                   <TableCell className="text-sm">
                     {p.marcas.length ? (
                       <div className="flex flex-wrap gap-1">
@@ -252,6 +268,11 @@ export default function ProveedoresPage() {
                     <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => { setEditando(p); setFormAbierto(true); }}>
                       <Edit2 className="size-3.5" /> Editar
                     </Button>
+                    {p.automatico && (
+                      <Button size="sm" variant="ghost" className="h-7" title="Dejarlo en las listas de pedidos" onClick={() => mostrarEnListas(p)}>
+                        Mostrar en pedidos
+                      </Button>
+                    )}
                     <Button size="sm" variant="ghost" className="h-7" onClick={() => alternarActivo(p)}>
                       {p.activo ? "Desactivar" : "Activar"}
                     </Button>

@@ -30,6 +30,7 @@ import {
   ESTILO_ESTADO_ITEM_VENTA,
 } from "@/lib/ventas";
 import type { Proveedor } from "@/app/api/proveedores/route";
+import { proveedoresParaSelector } from "@/lib/proveedores";
 import { esUrlValida } from "@/lib/validacion";
 import { TicketManualDialog } from "../reparaciones/ticket-manual-dialog";
 import { VentaTicketModalShell } from "./venta-ticket-modal-shell";
@@ -464,7 +465,7 @@ export function DetalleVentaDialog({
                   <Select value={nuevoProveedor} onValueChange={(v) => { setNuevoProveedor(v || ""); setNuevoProveedorOtro(""); }}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Proveedor *" /></SelectTrigger>
                     <SelectContent>
-                      {proveedores.map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
+                      {proveedoresParaSelector(proveedores, nuevoProveedor).map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {esOtro(nuevoProveedor) ? (
@@ -513,7 +514,7 @@ export function DetalleVentaDialog({
                   <Select value={pedProveedor} onValueChange={(v) => { setPedProveedor(v || ""); setPedProveedorOtro(""); const nf = formatoDe(v || ""); if (nf) setPedNumero((n) => nf.formatear(n)); }}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Proveedor *" /></SelectTrigger>
                     <SelectContent>
-                      {proveedores.map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
+                      {proveedoresParaSelector(proveedores, pedProveedor).map((p) => <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Input placeholder="Nº Pedido *" value={pedNumero} inputMode={formatoDe(pedProveedor) ? "numeric" : undefined} maxLength={formatoDe(pedProveedor)?.maxLength} onChange={(e) => { const nf = formatoDe(pedProveedor); setPedNumero(nf ? nf.formatear(e.target.value) : e.target.value); }} />

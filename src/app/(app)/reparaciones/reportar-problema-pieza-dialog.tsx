@@ -13,6 +13,7 @@ import { DecimalInput } from "@/components/ui/decimal-input";
 import { toast } from "sonner";
 import type { Pedido } from "@/lib/reparacion-detalle";
 import type { Proveedor } from "@/app/api/proveedores/route";
+import { proveedoresParaSelector } from "@/lib/proveedores";
 import { esUrlValida } from "@/lib/validacion";
 
 function hoyISO(): string {
@@ -215,7 +216,7 @@ export function ReportarProblemaPiezaDialog({
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              {proveedores.map((prov) => <SelectItem key={prov.proveedorId} value={prov.proveedorId}>{prov.nombre}</SelectItem>)}
+                              {proveedoresParaSelector(proveedores, f.nuevoProveedor).map((prov) => <SelectItem key={prov.proveedorId} value={prov.proveedorId}>{prov.nombre}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>

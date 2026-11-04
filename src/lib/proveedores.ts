@@ -22,6 +22,8 @@ export interface Proveedor {
   /** Marcas de equipos (HP, Dell, Lenovo...) de las que el proveedor vende piezas o servicio. */
   marcas: string[];
   activo: boolean;
+  /** Lo creó la IA al leer una factura o un pantallazo (suele ser el vendedor de una plataforma): no sale en los selectores de pedidos. */
+  automatico: boolean;
 }
 
 export interface ProveedorFormData {
@@ -80,7 +82,18 @@ export function mapearProveedor(row: FilaProveedorSql): Proveedor {
     notas: row.notas || "",
     marcas: normalizarMarcas(row.marcas),
     activo: row.activo !== false,
+    automatico: /^creado autom[aá]ticamente/i.test(row.notas || ""),
   };
+}
+
+/**
+ * Proveedores que se ofrecen al elegir «¿a quién se lo pido?» (piezas por pedido, pedidos…): solo los registrados a propósito
+ * (plataformas como Amazon, AliExpress o eBay, y proveedores directos dados de alta). Los vendedores sueltos de esas plataformas
+ * que crea la IA al leer una factura siguen existiendo para la contabilidad, pero no llenan la lista.
+ * Si el valor ya elegido es uno de ellos, se mantiene en la lista para no perderlo al editar.
+ */
+export function proveedoresParaSelector(lista: Proveedor[], seleccionado?: string | null): Proveedor[] {
+  return lista.filter((p) => !p.automatico || p.proveedorId === seleccionado);
 }
 
 /** "aliexpress-4f2a" — slug del nombre + sufijo aleatorio corto, para no

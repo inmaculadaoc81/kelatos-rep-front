@@ -22,6 +22,7 @@ import { Presupuesto } from "@/lib/reparacion-detalle";
 import { DatosPresupuestoForm, PiezaForm, TipoPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
 import { Proveedor } from "@/app/api/proveedores/route";
+import { proveedoresParaSelector } from "@/lib/proveedores";
 import { StockPieza } from "@/lib/stock-piezas";
 import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 
@@ -454,7 +455,7 @@ export function PresupuestoFormDialog({
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              {proveedores.map((pv) => <SelectItem key={pv.proveedorId} value={pv.proveedorId}>{pv.nombre}</SelectItem>)}
+                              {proveedoresParaSelector(proveedores, p.proveedorId).map((pv) => <SelectItem key={pv.proveedorId} value={pv.proveedorId}>{pv.nombre}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>

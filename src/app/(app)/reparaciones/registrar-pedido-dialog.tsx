@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import type { DatosRegistrarPedido, PiezaPedidoForm } from "@/app/api/reparaciones/[resguardo]/pedidos/route";
 import type { Empleado } from "@/app/api/empleados/route";
 import type { Proveedor } from "@/app/api/proveedores/route";
+import { proveedoresParaSelector } from "@/lib/proveedores";
 import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { usuarioIdentificado } from "@/lib/usuario-identificado";
 import { esProveedorOtro, formatoPedidoDe } from "@/lib/formato-pedido";
@@ -302,7 +303,7 @@ export function RegistrarPedidoDialog({
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {proveedores.map((prov) => <SelectItem key={prov.proveedorId} value={prov.proveedorId}>{prov.nombre}</SelectItem>)}
+                            {proveedoresParaSelector(proveedores, p.proveedor).map((prov) => <SelectItem key={prov.proveedorId} value={prov.proveedorId}>{prov.nombre}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         {esOtro(p.proveedor) && (
