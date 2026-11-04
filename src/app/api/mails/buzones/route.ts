@@ -12,7 +12,7 @@ export async function GET() {
   if (!a.ok) return a.respuesta;
   try {
     const data = await kelatosApiGet<{ ok: boolean; buzones: Buzon[] }>("/v1/mails/buzones");
-    const buzones = a.accesoCompleto ? data.buzones.filter((b) => b.email.toLowerCase() === a.email) : data.buzones;
+    const buzones = a.accesoCompleto ? data.buzones.filter((b) => b.email.toLowerCase() === a.buzonEmail) : data.buzones;
     // puedeGestionar: dar de alta/editar/sincronizar buzones (credenciales) —
     // sigue siendo solo superadmin. puedeEnviar: redactar/responder/reenviar
     // dentro del propio buzón — una cuenta accesoCompleto sí puede (petición

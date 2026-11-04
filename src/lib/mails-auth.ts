@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, aterrizaEnFichaje } from "@/lib/superadmin";
 import { kelatosApiGet } from "@/lib/kelatos-api";
 import type { Buzon } from "@/lib/mails";
 
@@ -18,7 +18,7 @@ import type { Buzon } from "@/lib/mails";
  * igual que a cualquier cuenta sin ese privilegio.
  */
 export async function accesoMails(): Promise<
-  { ok: true; email: string; superadmin: boolean; accesoCompleto: boolean } | { ok: false; respuesta: NextResponse }
+  { ok: true; email: string; buzonEmail: string; superadmin: boolean; accesoCompleto: boolean } | { ok: false; respuesta: NextResponse }
 > {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
@@ -27,7 +27,10 @@ export async function accesoMails(): Promise<
   if (!email || (session?.user?.role !== "admin" && !superadmin && !accesoCompleto)) {
     return { ok: false, respuesta: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 }) };
   }
-  return { ok: true, email, superadmin, accesoCompleto };
+  // Iván, Romer y Ricardo ven EXACTAMENTE lo mismo que soporte: su buzón de Gestión MAILS es el de soporte@kelatos.com, no uno con su propio correo.
+  // `email` sigue siendo el suyo (quién hace cada acción); `buzonEmail` decide qué buzón ven.
+  const buzonEmail = accesoCompleto && !superadmin && aterrizaEnFichaje(email) ? "soporte@kelatos.com" : email;
+  return { ok: true, email, buzonEmail, superadmin, accesoCompleto };
 }
 
 export function soloSuperadmin(a: { superadmin: boolean }): NextResponse | null {
@@ -43,11 +46,11 @@ export function soloSuperadmin(a: { superadmin: boolean }): NextResponse | null 
  * Hoy no existe ningún buzón con el email de soporte@kelatos.com, así que
  * esa cuenta ve una lista vacía hasta que se configure.
  */
-export async function buzonesPropios(a: { email: string; accesoCompleto: boolean }): Promise<number[] | null> {
+export async function buzonesPropios(a: { email: string; buzonEmail?: string; accesoCompleto: boolean }): Promise<number[] | null> {
   if (!a.accesoCompleto) return null;
   try {
     const data = await kelatosApiGet<{ ok: boolean; buzones: Buzon[] }>("/v1/mails/buzones");
-    return data.buzones.filter((b) => b.email.toLowerCase() === a.email).map((b) => b.id);
+    return data.buzones.filter((b) => b.email.toLowerCase() === (a.buzonEmail ?? a.email)).map((b) => b.id);
   } catch {
     return [];
   }
