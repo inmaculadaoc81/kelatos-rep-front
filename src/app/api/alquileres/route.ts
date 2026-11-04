@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { DatosNuevoAlquiler } from "@/lib/equipos";
+import { validarTransferenciaConfirmada, vincularTransferenciaConfirmada } from "@/lib/transferencia-confirmada";
 
 function hashCanonico(payload: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -13,13 +14,20 @@ export async function POST(req: Request) {
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
-  const { equipoId, datos } = (await req.json()) as { equipoId: string; datos: DatosNuevoAlquiler };
+  const { equipoId, datos } = (await req.json()) as { equipoId: string; datos: DatosNuevoAlquiler & { transferenciaId?: number | null } };
   if (!equipoId) return NextResponse.json({ ok: false, error: "equipoId es obligatorio" }, { status: 400 });
   if (!datos.clienteNombre?.trim()) return NextResponse.json({ ok: false, error: "El nombre del cliente es obligatorio" }, { status: 400 });
   if (!datos.clienteTelefono?.trim()) return NextResponse.json({ ok: false, error: "El teléfono es obligatorio" }, { status: 400 });
   if (!datos.clienteDNI?.trim()) return NextResponse.json({ ok: false, error: "El DNI es obligatorio" }, { status: 400 });
   if (datos.meses + datos.semanas + datos.dias <= 0) {
     return NextResponse.json({ ok: false, error: "Indica al menos 1 día, semana o mes" }, { status: 400 });
+  }
+
+  // Pagado por transferencia: hace falta el número de una transferencia confirmada por el banco antes de crear el alquiler y su factura.
+  const exigeTransferencia = datos.formaPago === "transferencia";
+  if (exigeTransferencia) {
+    const motivo = await validarTransferenciaConfirmada(datos.transferenciaId);
+    if (motivo) return NextResponse.json({ ok: false, error: motivo }, { status: 400 });
   }
 
   const requestId = crypto.randomUUID();
@@ -51,7 +59,8 @@ export async function POST(req: Request) {
       recogidaActivada: datos.recogidaActivada === true,
     });
 
-    return NextResponse.json({ ok: true, alquiler: resultado.alquiler, alquilerId: resultado.alquiler.alquiler_id, total: resultado.total });
+    const aviso = exigeTransferencia ? await vincularTransferenciaConfirmada("alquiler", String(resultado.alquiler.alquiler_id), datos.transferenciaId, usuario) : null;
+    return NextResponse.json({ ok: true, alquiler: resultado.alquiler, alquilerId: resultado.alquiler.alquiler_id, total: resultado.total, ...(aviso ? { aviso } : {}) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });

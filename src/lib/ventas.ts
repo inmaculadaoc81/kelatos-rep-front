@@ -346,6 +346,8 @@ export interface ItemPedidoForm {
 }
 
 export interface DatosNuevoPedido {
+  /** Nº de la transferencia confirmada por el banco (obligatorio si se paga por transferencia). */
+  transferenciaId?: number | null;
   esGarantia: boolean;
   /** Tercera opción junto a Factura real y Garantía — venta pagada de
       verdad pero documentada con un Ticket de Venta (Serie 4, no fiscal)

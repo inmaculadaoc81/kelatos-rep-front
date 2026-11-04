@@ -99,6 +99,8 @@ export interface DatosNuevoEquipo {
 }
 
 export interface DatosNuevoAlquiler {
+  /** Nº de la transferencia confirmada por el banco (obligatorio si se paga por transferencia). */
+  transferenciaId?: number | null;
   clienteNombre: string;
   clienteTelefono: string;
   clienteDNI: string;

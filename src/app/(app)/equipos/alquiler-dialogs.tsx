@@ -195,6 +195,7 @@ export function NuevoAlquilerDialog({
     if (!esEmailValido(factu.clienteEmail)) return toast.error("El email no tiene un formato válido");
     const errorPago = validarFormaPago(pago, totalesPaso2.total);
     if (errorPago) return toast.error(errorPago);
+    if (pago.metodo === "transferencia" && !soporte.movimientoId) return toast.error("Indica el nº de una transferencia confirmada (la que sube Gisela por Telegram)");
 
     setEnviando(true);
     try {
@@ -211,6 +212,7 @@ export function NuevoAlquilerDialog({
         dias: duracion.dias,
         metodoPago: ETIQUETA_METODO_PAGO[pago.metodo] || (pago.metodo === "multiforma" ? "Multiforma" : pago.metodo),
         ...formaPagoParaPayload(pago),
+        transferenciaId: pago.metodo === "transferencia" ? soporte.movimientoId : null,
         observaciones: factu.observaciones.trim(),
         envioActivado: factu.envioActivado,
         recogidaActivada: factu.recogidaActivada,
@@ -226,7 +228,8 @@ export function NuevoAlquilerDialog({
 
       const alquilerId = dataCrear.alquilerId as string;
 
-      if (pago.metodo === "transferencia" && (soporte.archivo || soporte.movimientoId)) {
+      if (dataCrear.aviso) toast.warning(dataCrear.aviso);
+      if (pago.metodo === "transferencia" && soporte.archivo) {
         const aviso = await vincularSoporteTransferencia("alquiler", alquilerId, soporte);
         if (aviso) toast.warning(aviso);
       }
@@ -358,7 +361,7 @@ export function NuevoAlquilerDialog({
                 </div>
                 {pago.metodo === "transferencia" && (
                   <div className="sm:col-span-full">
-                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={enviando} />
+                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={enviando} total={totalesPaso2.total} />
                   </div>
                 )}
                 <div className="space-y-1.5">

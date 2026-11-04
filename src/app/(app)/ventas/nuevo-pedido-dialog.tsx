@@ -170,6 +170,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
     if (!datos.esGarantia) {
       const errorPago = validarFormaPago(valorFormaPagoDeDatos(datos), total);
       if (errorPago) return toast.error(errorPago);
+      if (datos.formaPago === "transferencia" && !soporte.movimientoId) return toast.error("Indica el nº de una transferencia confirmada (la que sube Gisela por Telegram)");
     }
 
     setEnviando(true);
@@ -177,12 +178,13 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       const res = await fetch("/api/ventas/nuevo-pedido", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId: crypto.randomUUID(), datos }),
+        body: JSON.stringify({ requestId: crypto.randomUUID(), datos: { ...datos, transferenciaId: soporte.movimientoId } }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
+      if (data.aviso) toast.warning(data.aviso);
       if (data.urlPdf) window.open(data.urlPdf, "_blank");
-      if (!datos.esGarantia && datos.formaPago === "transferencia" && data.ventaId && (soporte.archivo || soporte.movimientoId)) {
+      if (!datos.esGarantia && datos.formaPago === "transferencia" && data.ventaId && soporte.archivo) {
         const aviso = await vincularSoporteTransferencia("venta", String(data.ventaId), soporte);
         if (aviso) toast.warning(aviso);
       }
@@ -280,7 +282,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                 </div>
                 {datos.formaPago === "transferencia" && (
                   <div className="sm:col-span-5">
-                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={!!resultadoTicket} />
+                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={!!resultadoTicket} total={total} />
                   </div>
                 )}
               </div>

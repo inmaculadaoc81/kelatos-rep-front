@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
+import { validarTransferenciaConfirmada, vincularTransferenciaConfirmada } from "@/lib/transferencia-confirmada";
 import type { DatosNuevoPedido, ResultadoNuevoPedido } from "@/lib/ventas";
 
 const LABELS_PAGO: Record<string, string> = { efectivo: "Efectivo", tarjeta: "Tarjeta bancaria", tarjeta_virtual: "Tarjeta virtual", transferencia: "Transferencia bancaria", bizum: "Bizum", paypal: "PayPal" };
@@ -59,6 +60,26 @@ export async function POST(req: Request) {
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
+  // Pagado por transferencia: hace falta el número de una transferencia confirmada por el banco ANTES de reservar ningún número fiscal.
+  const previo = (await req.clone().json().catch(() => null)) as { datos?: DatosNuevoPedido & { transferenciaId?: number | null } } | null;
+  const pedido = previo?.datos;
+  const exigeTransferencia = !!pedido && !pedido.esGarantia && pedido.formaPago === "transferencia";
+  if (exigeTransferencia) {
+    const motivo = await validarTransferenciaConfirmada(pedido.transferenciaId);
+    if (motivo) return NextResponse.json({ ok: false, error: motivo }, { status: 400 });
+  }
+  const respuesta = await crearPedido(req, usuario);
+  if (exigeTransferencia && pedido && respuesta.ok) {
+    const data = (await respuesta.clone().json().catch(() => null)) as { ok?: boolean; ventaId?: string } | null;
+    if (data?.ok && data.ventaId) {
+      const aviso = await vincularTransferenciaConfirmada("venta", String(data.ventaId), pedido.transferenciaId, usuario);
+      if (aviso) return NextResponse.json({ ...data, aviso });
+    }
+  }
+  return respuesta;
+}
+
+async function crearPedido(req: Request, usuario: string) {
   const body = (await req.json()) as { requestId: string; datos: DatosNuevoPedido };
   const { requestId, datos } = body;
   if (!requestId || !/^[0-9a-f-]{36}$/i.test(requestId)) {
