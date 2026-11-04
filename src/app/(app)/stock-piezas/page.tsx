@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { StockPieza } from "@/lib/stock-piezas";
 import { imprimirEtiquetaPieza } from "@/lib/imprimir-etiqueta";
-import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
+import { useEsSuperadmin, usePuedeCrearPiezas } from "@/hooks/use-es-superadmin";
 import { useConfirm } from "@/components/confirm-provider";
 import { PiezaStockFormDialog } from "./pieza-stock-form-dialog";
 import { ResumenStock } from "./resumen-stock";
@@ -61,6 +61,7 @@ export default function StockPiezasPage() {
   }
   const [editando, setEditando] = useState<StockPieza | null>(null);
   const esSuperadmin = useEsSuperadmin();
+  const puedeCrearPiezas = usePuedeCrearPiezas();
 
   async function cargar() {
     setCargando(true);
@@ -115,7 +116,7 @@ export default function StockPiezasPage() {
           <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar">
             <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} />
           </Button>
-          {esSuperadmin && (
+          {puedeCrearPiezas && (
             <Button
               size="sm"
               className="gap-1.5"

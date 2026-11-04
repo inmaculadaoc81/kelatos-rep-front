@@ -59,3 +59,14 @@ const ACCESOS_TELEGRAM_EMAIL = "kelatosclaude2@gmail.com";
 export function puedeGestionarAccesosTelegram(email: string | null | undefined): boolean {
   return !!email && email.toLowerCase() === ACCESOS_TELEGRAM_EMAIL;
 }
+
+/**
+ * Alta de piezas nuevas en Stock de piezas (botón «Nueva Pieza»): superadmins y las cuentas de esta lista. Petición del usuario, 2026-11-04:
+ * ricardo@kelatos.com puede crear productos nuevos (el resto de cuentas como soporte no). Solo decide si se ve el botón; editar y borrar siguen
+ * siendo de superadmin.
+ */
+const CREAR_PIEZAS_EMAILS_EXTRA = new Set(["ricardo@kelatos.com"]);
+
+export function puedeCrearPiezas(email: string | null | undefined): boolean {
+  return esSuperadmin(email) || (!!email && CREAR_PIEZAS_EMAILS_EXTRA.has(email.toLowerCase()));
+}

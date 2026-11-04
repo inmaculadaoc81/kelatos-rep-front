@@ -13,7 +13,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * (API caída, lenta) se deja pasar. Solo la cuenta restringida puede verse afectada por un error.
  */
 
-type ConfigAccesoLocal = { cuenta: string; modo: "apagado" | "observar" | "bloquear"; ips: string[]; ipsDinamicas: string[]; equiposHash: string[] };
+type ConfigAccesoLocal = { cuenta: string; cuentas: string[]; modo: "apagado" | "observar" | "bloquear"; ips: string[]; ipsDinamicas: string[]; equiposHash: string[] };
 
 /** Cookie que lleva el navegador de un equipo del local autorizado (ver /api/acceso-local/alta). Solo se compara su hash con el del servidor. */
 export const COOKIE_EQUIPO_LOCAL = "kelatos_equipo_local";
@@ -50,7 +50,7 @@ async function configVigente(): Promise<ConfigAccesoLocal | null> {
   if (ahora < cache.hasta) return cache.valor;
   try {
     const c = (await llamarApi("/v1/seguridad/acceso-local/config")) as { ok?: boolean } & Partial<ConfigAccesoLocal>;
-    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), modo: c.modo, ips: c.ips, ipsDinamicas: Array.isArray(c.ipsDinamicas) ? c.ipsDinamicas : [], equiposHash: Array.isArray(c.equiposHash) ? c.equiposHash : [] }, hasta: ahora + TTL_CONFIG_MS };
+    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), cuentas: (Array.isArray(c.cuentas) && c.cuentas.length ? c.cuentas : [c.cuenta]).map((x) => String(x).toLowerCase()), modo: c.modo, ips: c.ips, ipsDinamicas: Array.isArray(c.ipsDinamicas) ? c.ipsDinamicas : [], equiposHash: Array.isArray(c.equiposHash) ? c.equiposHash : [] }, hasta: ahora + TTL_CONFIG_MS };
     else cache = { valor: cache.valor, hasta: ahora + REINTENTO_TRAS_FALLO_MS };
   } catch {
     // Sin poder leer la configuración se deja pasar (se conserva la última conocida).
@@ -92,7 +92,11 @@ export async function comprobarAccesoLocal(req: NextRequest, email: string | nul
   // La pantalla de aviso y la solicitud de equipo deben poder abrirse siempre (si no, un equipo bloqueado no podría pedir autorización).
   if (ruta.startsWith("/acceso-restringido") || ruta.startsWith("/api/acceso-local/solicitud")) return null;
   const cfg = await configVigente();
-  if (!cfg || cfg.modo === "apagado" || email.toLowerCase() !== cfg.cuenta) return null;
+  const correo = email.toLowerCase();
+  if (!cfg || cfg.modo === "apagado" || !cfg.cuentas.includes(correo)) return null;
+  // Las cuentas personales de la lista (no la compartida del mostrador) pueden FICHAR desde cualquier sitio, también el móvil: solo el dashboard
+  // queda limitado a los equipos del local.
+  if (correo !== cfg.cuenta && (ruta.startsWith("/asistencia/kiosk") || ruta.startsWith("/api/asistencia/kiosk"))) return null;
 
   const ip = ipDelCliente(req);
   // Dentro = equipo autorizado (su navegador lleva la cookie de alta; sirve aunque cambie la IP), IP fija de la lista o IP que el propio

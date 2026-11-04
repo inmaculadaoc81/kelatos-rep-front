@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedeCrearPiezas } from "@/lib/superadmin";
 
 /**
  * Indica si la sesión actual es una de las cuentas con permiso para borrar
@@ -16,5 +16,8 @@ export async function GET() {
   // expuesto con un nombre genérico para reutilizarlo en otras vistas
   // admin-only (p. ej. corregir la forma de pago en Facturas de Clientes).
   const esAdmin = superadmin || session?.user?.role === "admin";
-  return NextResponse.json({ ok: true, esSuperadmin: superadmin, esAdmin, puedeVerMails: esAdmin });
+  return NextResponse.json({
+    ok: true, esSuperadmin: superadmin, esAdmin, puedeVerMails: esAdmin,
+    accesoCompleto: !!session?.user?.accesoCompleto, puedeCrearPiezas: puedeCrearPiezas(session?.user?.email),
+  });
 }
