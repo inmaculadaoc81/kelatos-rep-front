@@ -21,8 +21,22 @@ interface Movimiento {
   anulada: boolean;
   contabilizado: boolean;
 }
+interface CobroEfectivo {
+  asiento_id: number;
+  fecha: string;
+  concepto: string;
+  origen_tipo: string | null;
+  origen_id: string | null;
+  estado: string;
+  importe: number;
+  contabilizado: boolean;
+}
+const ORIGEN_COBRO: Record<string, string> = { reparaciones: "Reparación", ventas: "Venta", alquileres: "Alquiler", tickets_manuales: "Ticket manual", facturas_manuales: "Factura manual" };
 interface Datos {
   movimientos: Movimiento[];
+  /** Cobros y devoluciones en efectivo de ventas, reparaciones y alquileres (apuntes de la 570), solo lectura. */
+  cobros?: CobroEfectivo[];
+  cobrosPendiente?: number;
   categorias: { retirada: string[]; ingreso: string[]; nombres: Record<string, string> };
   bancos: { id: number; nombre: string }[];
   saldoCaja: number;
@@ -104,9 +118,11 @@ export default function EfectivoPage() {
       <InfoVista>Cada retirada o ingreso de dinero en metálico, clasificado por su motivo, para que se contabilice en la cuenta correcta. Ejemplo: una retirada de 200€ para comprar material se marca como «gasto» en vez de como reparto a un socio.</InfoVista>
       <CajaError mensaje={error} />
       {datos && (
-        <div className="grid grid-cols-2 gap-2 sm:max-w-xl">
+        <div className="grid grid-cols-2 gap-2 sm:max-w-3xl sm:grid-cols-4">
           <Kpi titulo="Sin clasificar" valor={String(sinClasificar)} color={sinClasificar ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
           <Kpi titulo="Saldo contable de caja (570)" valor={eur(datos.saldoCaja)} color="" />
+          <Kpi titulo="Cobros por contabilizar" valor={eur(datos.cobrosPendiente ?? 0)} color={datos.cobrosPendiente ? "text-amber-600 dark:text-amber-400" : ""} />
+          <Kpi titulo="Caja real estimada" valor={eur(datos.saldoCaja + (datos.cobrosPendiente ?? 0))} color="" />
         </div>
       )}
       {datos && <EfectivoTransito soloLectura={!!datos.soloLectura} onCambio={cargar} />}
@@ -171,6 +187,42 @@ export default function EfectivoPage() {
           </TableBody>
         </Table>
       </div>
+      {datos && (datos.cobros?.length ?? 0) > 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="text-sm font-semibold">Cobros y devoluciones en efectivo de ventas, reparaciones y alquileres</h2>
+            <p className="text-xs text-muted-foreground">Solo lectura. Los marcados «Borrador» ya están en caja pero aún no cuentan en el saldo contable (570) hasta que se contabilicen; por eso «Caja real estimada» = saldo contable + cobros por contabilizar.</p>
+          </div>
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Origen</TableHead>
+                  <TableHead className="text-right">Importe</TableHead>
+                  <TableHead>Documento</TableHead>
+                  <TableHead>Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {datos.cobros!.map((c) => (
+                  <TableRow key={c.asiento_id}>
+                    <TableCell className="whitespace-nowrap tabular-nums">{c.fecha}</TableCell>
+                    <TableCell className="text-sm">{ORIGEN_COBRO[c.origen_tipo || ""] || c.origen_tipo || "—"}</TableCell>
+                    <TableCell className={`text-right tabular-nums ${c.importe < 0 ? "text-red-600 dark:text-red-400" : ""}`}>{num(c.importe)}</TableCell>
+                    <TableCell className="max-w-xs truncate text-sm">
+                      <span title={`Asiento nº ${c.asiento_id}`}>{c.concepto}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.contabilizado ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"}`}>{c.contabilizado ? "Contabilizado" : "Borrador"}</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
