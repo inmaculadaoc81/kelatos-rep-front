@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  Add, Edit2, Trash, Box, Category as CategoryIcon, Money, Global, Refresh2, Gallery, SearchNormal1, Link2,
+  Add, Edit2, Trash, Box, Category as CategoryIcon, Money, Global, Refresh2, Gallery, SearchNormal1, Link2, Chart,
 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,6 +232,11 @@ export default function SitioWebPage() {
                 <Badge variant="secondary" className="gap-1 font-normal">
                   <Box className="size-3" /> {productos.length} producto{productos.length !== 1 ? "s" : ""}
                 </Badge>
+              )}
+              {sitio && (
+                <Link href={`/webs-kelatos/analitica/${sitio.id}`} className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/5">
+                  <Chart className="size-3.5" /> Analítica
+                </Link>
               )}
             </div>
             {!cargando && (
