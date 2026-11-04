@@ -168,6 +168,13 @@ export function NavUser({ session }: { session: Session | null }) {
                   Reparaciones
                 </DropdownMenuItem>
               )}
+              {/* Quien tiene ficha de asistencia (p. ej. Iván, Romer o Ricardo con acceso completo) vuelve al fichaje desde aquí. */}
+              {!esSoloAsistencia && session?.user?.asistenciaEmpleadoId != null && (
+                <DropdownMenuItem render={<Link href="/asistencia/kiosk" />}>
+                  <IconoDashboard icon={Clock} className="from-violet-500 to-purple-600" />
+                  Fichar
+                </DropdownMenuItem>
+              )}
               {!esSoloAsistencia && !enTareas && !accesoCompleto && (
                 <DropdownMenuItem render={<Link href="/tareas" />}>
                   <IconoDashboard icon={ClipboardText} className="from-fuchsia-500 to-purple-600" />
