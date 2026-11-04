@@ -7,7 +7,7 @@ import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
  */
 export async function validarTransferenciaConfirmada(numero: unknown): Promise<string | null> {
   const id = Number(numero);
-  if (!Number.isInteger(id) || id <= 0) return "Indica el número de la transferencia confirmada (el de Transferencias en el dashboard)";
+  if (!Number.isInteger(id) || id <= 0) return "Indica el Nº de conciliación de la transferencia (el que figura en Transferencias → Conciliadas)";
   try {
     const r = await kelatosApiGet<{ ok: boolean; valida: boolean; motivo: string | null }>(`/v1/comprobantes-transferencia/validar/${id}`);
     return r.valida ? null : r.motivo || "La transferencia indicada no es válida";

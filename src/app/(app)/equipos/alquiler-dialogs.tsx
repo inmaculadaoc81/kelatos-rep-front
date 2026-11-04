@@ -195,7 +195,7 @@ export function NuevoAlquilerDialog({
     if (!esEmailValido(factu.clienteEmail)) return toast.error("El email no tiene un formato válido");
     const errorPago = validarFormaPago(pago, totalesPaso2.total);
     if (errorPago) return toast.error(errorPago);
-    if (pago.metodo === "transferencia" && !soporte.movimientoId) return toast.error("Indica el nº de una transferencia confirmada (la que sube Gisela por Telegram)");
+    if (pago.metodo === "transferencia" && !soporte.movimientoId) return toast.error("Indica el Nº de conciliación de la transferencia (Transferencias → Conciliadas)");
 
     setEnviando(true);
     try {

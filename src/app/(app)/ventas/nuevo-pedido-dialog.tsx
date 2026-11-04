@@ -170,7 +170,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
     if (!datos.esGarantia) {
       const errorPago = validarFormaPago(valorFormaPagoDeDatos(datos), total);
       if (errorPago) return toast.error(errorPago);
-      if (datos.formaPago === "transferencia" && !soporte.movimientoId) return toast.error("Indica el nº de una transferencia confirmada (la que sube Gisela por Telegram)");
+      if (datos.formaPago === "transferencia" && !soporte.movimientoId) return toast.error("Indica el Nº de conciliación de la transferencia (Transferencias → Conciliadas)");
     }
 
     setEnviando(true);

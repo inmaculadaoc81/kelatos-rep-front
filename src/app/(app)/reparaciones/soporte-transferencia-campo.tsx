@@ -13,7 +13,7 @@ function euros(n: number | null): string {
 }
 
 function etiquetaDe(t: TransferenciaCandidata): string {
-  return [`Nº ${t.id}`, euros(t.monto), t.fecha_valor || "s/f", t.remitente || "sin remitente", t.banco].filter(Boolean).join(" · ");
+  return [`Nº ${t.id}${t.estado === "Conciliada" ? " (conciliada)" : " (sin pareja)"}`, euros(t.monto), t.fecha_valor || "s/f", t.remitente || "sin remitente", t.banco].filter(Boolean).join(" · ");
 }
 
 type Estado = { tipo: "vacio" } | { tipo: "comprobando" } | { tipo: "valida"; t: TransferenciaCandidata } | { tipo: "invalida"; motivo: string };
@@ -88,15 +88,15 @@ export function SoporteTransferenciaCampo({
 
   return (
     <div className="space-y-2 rounded-lg border border-dashed bg-card p-3">
-      <p className="text-xs font-semibold text-muted-foreground">Transferencia confirmada</p>
+      <p className="text-xs font-semibold text-muted-foreground">Transferencia conciliada</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Nº de transferencia *</Label>
+          <Label className="text-xs text-muted-foreground">Nº de transferencia conciliada *</Label>
           <Input
             type="number"
             min={1}
             inputMode="numeric"
-            placeholder="Nº que figura en Transferencias"
+            placeholder="Nº que figura en Transferencias conciliadas"
             value={texto}
             disabled={disabled}
             onChange={(e) => setTexto(e.target.value)}
@@ -104,7 +104,7 @@ export function SoporteTransferenciaCampo({
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">O elegir de las confirmadas sin vincular</Label>
+          <Label className="text-xs text-muted-foreground">O elegir de las conciliadas sin usar</Label>
           <Select
             value={value.movimientoId === null ? NINGUNA : String(value.movimientoId)}
             onValueChange={(v) => setTexto(!v || v === NINGUNA ? "" : v)}
@@ -133,13 +133,13 @@ export function SoporteTransferenciaCampo({
       </div>
 
       {estado.tipo === "vacio" && (
-        <p className="text-[11px] text-amber-700">Para emitir el documento hace falta una transferencia confirmada por el banco (la que sube Gisela por Telegram).</p>
+        <p className="text-[11px] text-amber-700">Para emitir el documento hace falta una transferencia conciliada: escribe su «Nº de conciliación», que figura en Transferencias → Conciliadas.</p>
       )}
       {estado.tipo === "comprobando" && <p className="text-[11px] text-muted-foreground">Comprobando…</p>}
       {estado.tipo === "invalida" && <p className="text-[11px] font-medium text-red-600">{estado.motivo}</p>}
       {estado.tipo === "valida" && (
         <p className="text-[11px] font-medium text-emerald-700">
-          ✓ Confirmada: {euros(estado.t.monto)} · {estado.t.fecha_valor || "s/f"} · {estado.t.remitente || "sin remitente"}
+          ✓ Conciliada: {euros(estado.t.monto)} · {estado.t.fecha_valor || "s/f"} · {estado.t.remitente || "sin remitente"}
           {estado.t.banco ? ` · ${estado.t.banco}` : ""}
         </p>
       )}

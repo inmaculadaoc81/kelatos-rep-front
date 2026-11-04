@@ -86,15 +86,24 @@ function MontoConSigno({ origen, monto }: { origen: string | null; monto: string
 }
 
 /** Separador de grupo en la tabla de Conciliadas (colSpan=10, mismas 10 columnas de FilaConciliada). */
+/** Nº de conciliación de un par: el del ingreso del banco (el de origen «Empresa», el que sube Gisela por Telegram); si no hay, el menor de los dos. */
+function numeroConciliacion(par: Movimiento[]): number {
+  const empresa = par.find((m) => m.origen === "Empresa");
+  return empresa ? empresa.id : Math.min(...par.map((m) => m.id));
+}
+
 function FragmentoGrupo({
   etiqueta,
   icono: Icono,
   claseEtiqueta,
+  numero,
   children,
 }: {
   etiqueta: string;
   icono: typeof Link2;
   claseEtiqueta: string;
+  /** Nº de conciliación del par: es el que se escribe al facturar una venta o un alquiler pagado por transferencia. */
+  numero?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -104,6 +113,11 @@ function FragmentoGrupo({
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${claseEtiqueta}`}>
             <Icono className="size-3.5" /> {etiqueta}
           </span>
+          {numero !== undefined && (
+            <span className="ml-2 inline-flex items-center gap-1 rounded-md border bg-background px-2 py-0.5 text-xs" title="Escribe este número al facturar una venta o un alquiler pagado por transferencia">
+              Nº de conciliación: <strong className="font-mono text-sm">{numero}</strong>
+            </span>
+          )}
         </TableCell>
       </TableRow>
       {children}
@@ -508,7 +522,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
             </TableHeader>
             <TableBody>
               {gruposConciliados.pares.map((grupo, i) => (
-                <FragmentoGrupo key={`par-${i}`} etiqueta="Par conciliado" icono={Link2} claseEtiqueta="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                <FragmentoGrupo key={`par-${i}`} etiqueta="Par conciliado" icono={Link2} claseEtiqueta="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" numero={numeroConciliacion(grupo)}>
                   {grupo.map((m) => <FilaConciliada key={m.id} m={m} enPar onRevertir={setARevertir} />)}
                 </FragmentoGrupo>
               ))}
