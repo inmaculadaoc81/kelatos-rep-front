@@ -11,7 +11,6 @@ import {
   Bank,
   ExportSquare,
   Box,
-  Ticket,
   ArrowLeft2,
   ArrowLeft3,
   ArrowRight2,
@@ -45,6 +44,8 @@ import {
   FacturaCliente,
   TipoFactura,
   ETIQUETA_TIPO_FACTURA,
+  etiquetaTipo,
+  tipoVisible,
   serieFactura,
   montoConIva,
   estadoFacturaDerivado,
@@ -97,7 +98,7 @@ function valorColumna(f: FacturaCliente, columna: ColumnaFiltrable): string {
       return m ? euros(m) : "—";
     }
     case "tipo":
-      return ETIQUETA_TIPO_FACTURA[f.tipo] || "—";
+      return etiquetaTipo(f) || "—";
     case "formaPago":
       return formaPagoLabel(f);
   }
@@ -171,21 +172,12 @@ const TIPO_BADGE_ESTILO: Partial<Record<TipoFactura, { bg: string; color: string
 };
 
 function TipoBadge({ f }: { f: FacturaCliente }) {
-  // Una factura "corregida" reproduce el badge de su tipo de origen en vez
-  // de tener uno propio — así se ve en el original (tipoBadge()).
-  const tipoEfectivo: TipoFactura =
-    f.tipo === "corregida"
-      ? (f.tipoOriginal === "revision" || f.tipoOriginal === "ticket_revision" ? "revision"
-          : f.tipoOriginal === "ticket" || f.tipoOriginal === "venta_ticket" ? "ticket"
-          : f.tipoOriginal === "venta" ? "venta"
-          : "reparacion")
-      : f.tipo;
+  // El tipo que se enseña es de qué es el documento (Reparación, Venta, Anticipo, Revisión…): un ticket ya se reconoce por su Serie 4.
+  const tipoEfectivo = tipoVisible(f);
   const estilo = TIPO_BADGE_ESTILO[tipoEfectivo] ?? { bg: "#e9ecef", color: "#6c757d" };
-  const esDocTicket = f.tipo === "ticket" || f.esTicket || (f.tipo === "corregida" && (f.tipoOriginal === "ticket" || f.tipoOriginal === "ticket_revision" || f.tipoOriginal === "venta_ticket"));
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ backgroundColor: estilo.bg, color: estilo.color }}>
       {f.tipo === "recogida" && <Box className="size-3" />}
-      {esDocTicket && <Ticket className="size-3" />}
       {ETIQUETA_TIPO_FACTURA[tipoEfectivo]}
     </span>
   );

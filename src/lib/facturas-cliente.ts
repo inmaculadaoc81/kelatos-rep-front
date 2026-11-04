@@ -39,6 +39,28 @@ export const ETIQUETA_TIPO_FACTURA: Record<TipoFactura, string> = {
   ticket: "Ticket",
 };
 
+/**
+ * Qué es el documento para quien lo lee. Los tickets ya se reconocen por la Serie 4, así que en «Tipo» no se repite «Ticket»: se dice de qué es
+ * (Reparación, Venta, Manual…). Revisión, mensajería y anticipo se quedan como estaban, aunque salgan de un ticket.
+ */
+export function tipoVisible(f: Pick<FacturaCliente, "tipo" | "tipoOriginal" | "esTicketManual" | "esVenta">): TipoFactura {
+  const efectivo: TipoFactura =
+    f.tipo === "corregida"
+      ? f.tipoOriginal === "revision" || f.tipoOriginal === "ticket_revision" ? "revision"
+        : f.tipoOriginal === "ticket" || f.tipoOriginal === "venta_ticket" ? "ticket"
+        : f.tipoOriginal === "venta" ? "venta"
+        : "reparacion"
+      : f.tipo;
+  if (efectivo !== "ticket") return efectivo;
+  if (f.esTicketManual) return "manual";
+  if (f.esVenta || f.tipoOriginal === "venta_ticket") return "venta";
+  return "reparacion";
+}
+
+export function etiquetaTipo(f: Pick<FacturaCliente, "tipo" | "tipoOriginal" | "esTicketManual" | "esVenta">): string {
+  return ETIQUETA_TIPO_FACTURA[tipoVisible(f)];
+}
+
 export interface FacturaCliente {
   resguardo: string;
   cliente: string;

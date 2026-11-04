@@ -11,6 +11,7 @@ import { formatearFecha } from "@/lib/dias-entrega";
 import {
   FacturaCliente,
   ETIQUETA_TIPO_FACTURA,
+  etiquetaTipo,
   serieFactura,
   montoConIva,
   estadoFacturaDerivado,
@@ -628,7 +629,7 @@ function DetalleFacturaSimple({
 
         <dl className="divide-y">
           <Fila etiqueta="Serie" valor={serieFactura(factura.numero) === "3" ? "Serie 3 — Rectificativas" : "Serie 1 — Cobros"} />
-          <Fila etiqueta="Tipo" valor={ETIQUETA_TIPO_FACTURA[factura.tipo]} />
+          <Fila etiqueta="Tipo" valor={etiquetaTipo(factura)} />
           <Fila etiqueta="Cliente" valor={factura.cliente || "-"} />
           {factura.dniCif && <Fila etiqueta="DNI/CIF" valor={factura.dniCif} />}
           {factura.equipo && <Fila etiqueta="Equipo" valor={factura.equipo} />}
