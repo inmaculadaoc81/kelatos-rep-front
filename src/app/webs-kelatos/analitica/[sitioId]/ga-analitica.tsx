@@ -5,7 +5,8 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { n, variacion } from "@/lib/webs-analitica";
+import { GLOSARIO, n, variacion } from "@/lib/webs-analitica";
+import { Termino } from "../termino";
 
 interface TotalesGa {
   sesiones: number | null;
@@ -29,14 +30,14 @@ interface RespuestaGa {
   paginas?: { pagina: string; vistas: number | null; usuarios: number | null }[];
 }
 
-const CONFIG = { sesiones: { label: "Sesiones", color: "#2a9d6f" }, usuarios: { label: "Usuarios", color: "#9aa5b8" } } satisfies ChartConfig;
+const CONFIG = { sesiones: { label: "Visitas", color: "#2a9d6f" }, usuarios: { label: "Personas", color: "#9aa5b8" } } satisfies ChartConfig;
 const duracion = (s: number | null) => (s === null ? "—" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
 
-function Tarjeta({ titulo, valor, actual, anterior }: { titulo: string; valor: string; actual?: number | null; anterior?: number | null }) {
+function Tarjeta({ titulo, ayuda, valor, actual, anterior }: { titulo: string; ayuda: string; valor: string; actual?: number | null; anterior?: number | null }) {
   const v = variacion(actual, anterior);
   return (
     <div className="rounded-lg border bg-card p-3">
-      <p className="text-xs text-muted-foreground">{titulo}</p>
+      <p className="text-xs text-muted-foreground"><Termino etiqueta={titulo} ayuda={ayuda} /></p>
       <p className="mt-1 text-2xl leading-none font-semibold tabular-nums">{valor}</p>
       {v !== null && <p className={cn("mt-1.5 text-[11px]", v >= 0 ? "text-emerald-600" : "text-red-600")}>{v >= 0 ? "▲" : "▼"} {Math.abs(Math.round(v))}% frente al periodo anterior</p>}
     </div>
@@ -87,14 +88,14 @@ export function GoogleAnalyticsWeb({ sitioId, dias, dominio }: { sitioId: string
         {d.propiedad && <p className="text-[11px] text-muted-foreground">Propiedad: {d.propiedad.nombre} ({d.propiedad.cuenta})</p>}
       </div>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-        <Tarjeta titulo="Sesiones" valor={n(t.sesiones)} actual={t.sesiones} anterior={a.sesiones} />
-        <Tarjeta titulo="Usuarios" valor={n(t.usuarios)} actual={t.usuarios} anterior={a.usuarios} />
-        <Tarjeta titulo="Páginas vistas" valor={n(t.vistas)} actual={t.vistas} anterior={a.vistas} />
-        <Tarjeta titulo="Tasa de interacción" valor={t.tasa_interaccion === null ? "—" : `${n(t.tasa_interaccion, 1)} %`} actual={t.tasa_interaccion} anterior={a.tasa_interaccion} />
-        <Tarjeta titulo="Duración media" valor={duracion(t.duracion_media)} actual={t.duracion_media} anterior={a.duracion_media} />
+        <Tarjeta titulo="Visitas totales" ayuda={GLOSARIO.sesiones} valor={n(t.sesiones)} actual={t.sesiones} anterior={a.sesiones} />
+        <Tarjeta titulo="Personas" ayuda={GLOSARIO.usuarios} valor={n(t.usuarios)} actual={t.usuarios} anterior={a.usuarios} />
+        <Tarjeta titulo="Páginas vistas" ayuda={GLOSARIO.vistas} valor={n(t.vistas)} actual={t.vistas} anterior={a.vistas} />
+        <Tarjeta titulo="Visitas con interés" ayuda={GLOSARIO.tasaInteraccion} valor={t.tasa_interaccion === null ? "—" : `${n(t.tasa_interaccion, 1)} %`} actual={t.tasa_interaccion} anterior={a.tasa_interaccion} />
+        <Tarjeta titulo="Tiempo en la web" ayuda={GLOSARIO.duracionMedia} valor={duracion(t.duracion_media)} actual={t.duracion_media} anterior={a.duracion_media} />
       </div>
       <div className="rounded-lg border bg-card p-3">
-        <p className="mb-2 text-sm font-semibold">Sesiones y usuarios por día</p>
+        <p className="mb-2 text-sm font-semibold">Visitas y personas por día</p>
         <ChartContainer config={CONFIG} className="h-48 w-full">
           <LineChart data={d.tendencia ?? []} margin={{ left: -8, right: 8, top: 4 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -113,7 +114,7 @@ export function GoogleAnalyticsWeb({ sitioId, dias, dominio }: { sitioId: string
             {(d.canales ?? []).map((c) => (
               <li key={c.canal} className="flex items-center justify-between px-3 py-1.5">
                 <span>{c.canal}</span>
-                <span className="tabular-nums text-muted-foreground"><span className="font-medium text-foreground">{n(c.sesiones)}</span> sesiones</span>
+                <span className="tabular-nums text-muted-foreground"><span className="font-medium text-foreground">{n(c.sesiones)}</span> visitas</span>
               </li>
             ))}
             {(d.canales ?? []).length === 0 && <li className="px-3 py-5 text-center text-muted-foreground">Sin datos en este periodo.</li>}

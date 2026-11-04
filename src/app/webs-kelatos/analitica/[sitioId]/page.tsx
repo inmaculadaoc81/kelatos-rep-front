@@ -11,38 +11,40 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { n, variacion, type ConsultaGsc, type DetalleWeb } from "@/lib/webs-analitica";
+import { GLOSARIO, lugarEnGoogle, n, variacion, type ConsultaGsc, type DetalleWeb } from "@/lib/webs-analitica";
 import { GoogleAnalyticsWeb } from "./ga-analitica";
+import { Termino } from "../termino";
 
 const PERIODOS = [28, 90] as const;
-const CONFIG = { clics: { label: "Clics", color: "#2a6df4" }, impresiones: { label: "Impresiones", color: "#9aa5b8" } } satisfies ChartConfig;
+const CONFIG = { clics: { label: "Visitas", color: "#2a6df4" }, impresiones: { label: "Apariciones", color: "#9aa5b8" } } satisfies ChartConfig;
 
-function Tarjeta({ titulo, valor, actual, anterior, invertir }: { titulo: string; valor: string; actual?: number | null; anterior?: number | null; invertir?: boolean }) {
+function Tarjeta({ titulo, ayuda, pie, valor, actual, anterior, invertir }: { titulo: string; ayuda: string; pie: string; valor: string; actual?: number | null; anterior?: number | null; invertir?: boolean }) {
   const v = variacion(actual, anterior);
   const bueno = v === null ? true : invertir ? v <= 0 : v >= 0;
   return (
     <div className="rounded-lg border bg-card p-3">
-      <p className="text-xs text-muted-foreground">{titulo}</p>
+      <p className="text-xs text-muted-foreground"><Termino etiqueta={titulo} ayuda={ayuda} /></p>
       <p className="mt-1 text-2xl leading-none font-semibold tabular-nums">{valor}</p>
-      {v !== null && <p className={cn("mt-1.5 text-[11px]", bueno ? "text-emerald-600" : "text-red-600")}>{v >= 0 ? "▲" : "▼"} {Math.abs(Math.round(v))}% frente al periodo anterior</p>}
+      <p className="mt-1.5 text-[11px] text-muted-foreground">{pie}</p>
+      {v !== null && <p className={cn("mt-1 text-[11px] font-medium", bueno ? "text-emerald-600" : "text-red-600")}>{v >= 0 ? "▲" : "▼"} {Math.abs(Math.round(v))}% frente al periodo anterior</p>}
     </div>
   );
 }
 
-function TablaConsultas({ titulo, ayuda, filas, vacio }: { titulo: string; ayuda?: string; filas: ConsultaGsc[]; vacio: string }) {
+function TablaConsultas({ titulo, explicacion, ayuda, filas, vacio }: { titulo: string; explicacion: string; ayuda?: string; filas: ConsultaGsc[]; vacio: string }) {
   return (
     <div className="rounded-lg border bg-card">
       <div className="border-b px-3 py-2">
-        <p className="text-sm font-semibold">{titulo}</p>
+        <p className="text-sm font-semibold"><Termino etiqueta={titulo} ayuda={explicacion} /></p>
         {ayuda && <p className="text-[11px] text-muted-foreground">{ayuda}</p>}
       </div>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Consulta</TableHead>
-            <TableHead className="text-right">Clics</TableHead>
-            <TableHead className="text-right">Impr.</TableHead>
-            <TableHead className="text-right">Pos.</TableHead>
+            <TableHead><Termino etiqueta="Búsqueda" ayuda={GLOSARIO.consultas} /></TableHead>
+            <TableHead className="text-right"><Termino etiqueta="Visitas" ayuda={GLOSARIO.clics} /></TableHead>
+            <TableHead className="text-right"><Termino etiqueta="Apariciones" ayuda={GLOSARIO.impresiones} /></TableHead>
+            <TableHead className="text-right"><Termino etiqueta="Posición" ayuda={GLOSARIO.posicion} /></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -54,7 +56,10 @@ function TablaConsultas({ titulo, ayuda, filas, vacio }: { titulo: string; ayuda
               <TableCell className="max-w-xs whitespace-normal text-sm">{c.consulta}</TableCell>
               <TableCell className="text-right tabular-nums">{n(c.clics)}</TableCell>
               <TableCell className="text-right tabular-nums">{n(c.impresiones)}</TableCell>
-              <TableCell className="text-right tabular-nums">{n(c.posicion, 1)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {n(c.posicion, 1)}
+                {lugarEnGoogle(c.posicion) && <span className={cn("ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium", lugarEnGoogle(c.posicion)!.clase)}>{lugarEnGoogle(c.posicion)!.texto}</span>}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -127,7 +132,7 @@ export default function AnaliticaWebPage() {
 
       <div className="flex flex-wrap items-end gap-2 rounded-lg border bg-card p-3">
         <div className="min-w-60 flex-1">
-          <p className="mb-1 text-xs font-medium text-muted-foreground">Dominio de la web (propiedad de Search Console)</p>
+          <p className="mb-1 text-xs font-medium text-muted-foreground"><Termino etiqueta="Dirección de la web (dominio)" ayuda={GLOSARIO.dominio} /></p>
           <Input value={dominio} onChange={(e) => setDominio(e.target.value)} placeholder="ejemplo.es" />
         </div>
         <Button size="sm" disabled={guardando || dominio.trim() === (datos.web.dominio ?? "")} onClick={guardarDominio}>{guardando ? "Guardando…" : "Guardar dominio"}</Button>
@@ -148,15 +153,15 @@ export default function AnaliticaWebPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <Tarjeta titulo="Clics" valor={n(t.clics)} actual={t.clics} anterior={a.clics} />
-            <Tarjeta titulo="Impresiones" valor={n(t.impresiones)} actual={t.impresiones} anterior={a.impresiones} />
-            <Tarjeta titulo="CTR" valor={t.ctr === null ? "—" : `${n(t.ctr, 1)} %`} actual={t.ctr} anterior={a.ctr} />
-            <Tarjeta titulo="Posición media" valor={n(t.posicion, 1)} actual={t.posicion} anterior={a.posicion} invertir />
+            <Tarjeta titulo="Visitas desde Google" ayuda={GLOSARIO.clics} pie="personas que han entrado en la web" valor={n(t.clics)} actual={t.clics} anterior={a.clics} />
+            <Tarjeta titulo="Apariciones en Google" ayuda={GLOSARIO.impresiones} pie="veces que la web ha salido en una búsqueda" valor={n(t.impresiones)} actual={t.impresiones} anterior={a.impresiones} />
+            <Tarjeta titulo="CTR" ayuda={GLOSARIO.ctr} pie="de cada 100 apariciones, cuántas acaban en visita" valor={t.ctr === null ? "—" : `${n(t.ctr, 1)} %`} actual={t.ctr} anterior={a.ctr} />
+            <Tarjeta titulo="Posición media" ayuda={GLOSARIO.posicion} pie={lugarEnGoogle(t.posicion) ? `de media sale en la ${lugarEnGoogle(t.posicion)!.texto === "Más atrás" ? "parte baja de Google" : lugarEnGoogle(t.posicion)!.texto}` : "lugar en que sale en Google"} valor={n(t.posicion, 1)} actual={t.posicion} anterior={a.posicion} invertir />
           </div>
           {datos.ultimaSync && <p className="text-[11px] text-muted-foreground">Última descarga: {new Date(datos.ultimaSync).toLocaleString("es-ES")}{datos.ultimoError ? ` · último error: ${datos.ultimoError}` : ""}</p>}
 
           <div className="rounded-lg border bg-card p-3">
-            <p className="mb-2 text-sm font-semibold">Clics e impresiones por día</p>
+            <p className="mb-2 text-sm font-semibold">Visitas y apariciones por día <span className="font-normal text-muted-foreground">(línea azul: visitas · línea gris: apariciones)</span></p>
             <ChartContainer config={CONFIG} className="h-56 w-full">
               <LineChart data={datos.tendencia ?? []} margin={{ left: -8, right: 8, top: 4 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -171,18 +176,18 @@ export default function AnaliticaWebPage() {
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2">
-            <TablaConsultas titulo="Oportunidades" ayuda="Ya salen entre las posiciones 8 y 20 y tienen búsquedas: las más fáciles de subir." filas={datos.oportunidades ?? []} vacio="No hay oportunidades en este periodo." />
-            <TablaConsultas titulo="Consultas nuevas" ayuda="Aparecen esta última semana y antes no salían." filas={datos.nuevas ?? []} vacio="Ninguna consulta nueva esta semana." />
-            <TablaConsultas titulo="Consultas principales" filas={datos.principales ?? []} vacio="Sin consultas en este periodo." />
+            <TablaConsultas titulo="Oportunidades" explicacion={GLOSARIO.oportunidades} ayuda="Búsquedas en las que ya sales en la segunda página: con un empujón pueden subir a la primera." filas={datos.oportunidades ?? []} vacio="No hay oportunidades en este periodo." />
+            <TablaConsultas titulo="Búsquedas nuevas" explicacion={GLOSARIO.nuevas} ayuda="Con estas búsquedas has aparecido por primera vez esta última semana." filas={datos.nuevas ?? []} vacio="Ninguna búsqueda nueva esta semana." />
+            <TablaConsultas titulo="Búsquedas principales" explicacion={GLOSARIO.consultas} ayuda="Lo que más escribe la gente en Google para llegar a la web." filas={datos.principales ?? []} vacio="Sin búsquedas en este periodo." />
             <div className="rounded-lg border bg-card">
-              <div className="border-b px-3 py-2"><p className="text-sm font-semibold">Páginas que más visitas reciben</p></div>
+              <div className="border-b px-3 py-2"><p className="text-sm font-semibold"><Termino etiqueta="Páginas que más visitas reciben" ayuda={GLOSARIO.paginas} /></p></div>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Página</TableHead>
-                    <TableHead className="text-right">Clics</TableHead>
-                    <TableHead className="text-right">Impr.</TableHead>
-                    <TableHead className="text-right">Pos.</TableHead>
+                    <TableHead className="text-right"><Termino etiqueta="Visitas" ayuda={GLOSARIO.clics} /></TableHead>
+                    <TableHead className="text-right"><Termino etiqueta="Apariciones" ayuda={GLOSARIO.impresiones} /></TableHead>
+                    <TableHead className="text-right"><Termino etiqueta="Posición" ayuda={GLOSARIO.posicion} /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
