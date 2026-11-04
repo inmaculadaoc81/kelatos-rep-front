@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { kelatosApiGet } from "@/lib/kelatos-api";
-import { accesoMails, buzonesPropios } from "@/lib/mails-auth";
+import { accesoMails, buzonesEnviadosVisibles, buzonesPropios } from "@/lib/mails-auth";
 import { CONTADORES_VACIOS, type ContadoresMensajes, type MensajeLista } from "@/lib/mails";
 
 const PARAMETROS = ["vista", "buzon", "sinLeer", "agrupar", "q", "cliente", "lead", "email", "desde", "hasta", "limit", "offset"];
@@ -23,7 +23,11 @@ export async function GET(req: Request) {
       const v = p.get(k);
       if (v) params[k] = v;
     }
-    if (propios) params.buzon = String(propios[0]);
+    if (propios) {
+      params.buzon = String(propios[0]);
+      const extra = await buzonesEnviadosVisibles(a);
+      if (extra.length) params.tambien = extra.join(",");
+    }
     const data = await kelatosApiGet<{ ok: boolean; total: number; contadores: ContadoresMensajes; mensajes: MensajeLista[] }>("/v1/mails/mensajes", params);
     return NextResponse.json(data);
   } catch (error) {

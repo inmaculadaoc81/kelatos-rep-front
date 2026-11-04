@@ -52,3 +52,22 @@ export async function buzonesPropios(a: { email: string; accesoCompleto: boolean
     return [];
   }
 }
+
+/** Buzón del que una cuenta accesoCompleto ve ADEMÁS los correos enviados por una persona (petición del usuario, 2026-11-04):
+    nunca los recibidos, ni los automáticos, ni los de prospección. */
+const BUZON_ENVIADOS_VISIBLES_EMAIL = "automatizacion@desarrolladorpowerautomate.com";
+
+export async function buzonesEnviadosVisibles(a: { accesoCompleto: boolean }): Promise<number[]> {
+  if (!a.accesoCompleto) return [];
+  try {
+    const data = await kelatosApiGet<{ ok: boolean; buzones: Buzon[] }>("/v1/mails/buzones");
+    return data.buzones.filter((b) => b.email.toLowerCase() === BUZON_ENVIADOS_VISIBLES_EMAIL).map((b) => b.id);
+  } catch {
+    return [];
+  }
+}
+
+/** ¿Es un correo enviado por una persona desde la app (no automático ni de prospección)? */
+export function esEnviadoPorPersona(m: { direccion?: string; enviado_por?: string | null }): boolean {
+  return m.direccion === "salida" && !!m.enviado_por && m.enviado_por.includes("@");
+}

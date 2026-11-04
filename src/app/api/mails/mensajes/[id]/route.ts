@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
-import { accesoMails, buzonesPropios } from "@/lib/mails-auth";
+import { accesoMails, buzonesEnviadosVisibles, buzonesPropios, esEnviadoPorPersona } from "@/lib/mails-auth";
 import type { MensajeDetalle } from "@/lib/mails";
 
 /** Mensaje completo (con cuerpo). Al abrirlo se marca como leído en el app:
@@ -14,7 +14,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     // Una cuenta accesoCompleto no puede abrir un mensaje de un buzón que no
     // es el suyo, aunque conozca o adivine el id (2026-09-30).
     const propios = await buzonesPropios(a);
-    if (propios && !propios.includes(data.mensaje.buzon_id)) {
+    const extra = propios ? await buzonesEnviadosVisibles(a) : [];
+    const m = data.mensaje as unknown as { buzon_id: number; direccion?: string; enviado_por?: string | null };
+    if (propios && !propios.includes(m.buzon_id) && !(extra.includes(m.buzon_id) && esEnviadoPorPersona(m))) {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
     }
     if (!data.mensaje.leido) {
