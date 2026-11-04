@@ -45,6 +45,8 @@ export interface MovimientoEfectivo {
   anuladaMotivo?: string;
   /** Solo retiradas: facturas o tickets de compra adjuntos. */
   justificantes?: JustificanteEfectivo[];
+  /** Solo retiradas: destino contable (si ya se eligió). */
+  categoria?: string | null;
   /** Solo conteos: lo que había según el sistema en el momento de contar (foto, no se recalcula después). */
   saldoSistema?: number;
 }
@@ -71,6 +73,8 @@ export interface RetiradaEfectivoApi {
   anulada_por: string | null;
   anulada_motivo: string | null;
   justificantes?: JustificanteEfectivo[];
+  /** Destino contable ya elegido (retirada_socio, retirada_gasto, retirada_material, deposito_banco…). */
+  categoria?: string | null;
 }
 
 /** "efectivo" / "Efectivo" / " EFECTIVO " — los distintos formularios lo
@@ -190,6 +194,7 @@ export function movimientosDeRetiradas(retiradas: RetiradaEfectivoApi[]): Movimi
       anulada: !!r.anulada_en,
       anuladaMotivo: r.anulada_motivo || undefined,
       justificantes: r.justificantes ?? [],
+      categoria: r.categoria ?? null,
     };
   });
 }

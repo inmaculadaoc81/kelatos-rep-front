@@ -17,6 +17,13 @@ import { JustificantesEfectivoDialog } from "./justificantes-efectivo";
 
 const TIMEZONE = "Europe/Madrid";
 
+const ETIQUETA_DESTINO: Record<string, string> = {
+  retirada_socio: "Retirada del socio",
+  retirada_gasto: "Gasto menor",
+  retirada_material: "Compra de material",
+  deposito_banco: "Ingreso en un banco",
+};
+
 type ModoConteo = "desde_inicio" | "todo";
 const CLAVE_MODO = "kelatos-efectivo-modo-conteo";
 const INICIO_ETIQUETA = EFECTIVO_INICIO_CONTEO.split("-").reverse().join("/");
@@ -501,7 +508,10 @@ export default function EfectivoPage() {
                     <TableCell className="max-w-56 text-sm">
                       <span className="line-clamp-2">{m.concepto}</span>
                       {m.retiradaId !== undefined && m.usuario && <span className="block text-xs text-muted-foreground">{m.usuario}</span>}
-                      {m.tipo === "retirada" && m.retiradaId !== undefined && !m.anulada && (
+                      {m.tipo === "retirada" && m.retiradaId !== undefined && !m.anulada && m.categoria && (
+                        <span className="block text-xs text-muted-foreground">{ETIQUETA_DESTINO[m.categoria] || m.categoria}</span>
+                      )}
+                      {m.tipo === "retirada" && m.retiradaId !== undefined && !m.anulada && m.categoria !== "deposito_banco" && (
                         <button
                           type="button"
                           onClick={() => setVerJustificantes(m.retiradaId ?? null)}
