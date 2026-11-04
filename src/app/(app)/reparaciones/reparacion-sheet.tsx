@@ -35,6 +35,8 @@ import { Empleado } from "@/app/api/empleados/route";
 import { ReparacionDetalle, clienteEligioTicketSinFactura } from "@/lib/reparacion-detalle";
 import { esEmailValido } from "@/lib/validacion";
 import { FacturaRevisionDialog } from "./factura-revision-dialog";
+import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
+import type { StockPieza } from "@/lib/stock-piezas";
 import { METODOS_PAGO, BANCOS } from "./factura-acciones-tabs";
 import {
   DatosReparacionSheet,
@@ -253,6 +255,20 @@ export function ReparacionSheet({
       presupuestoInmediato: { ...prev.presupuestoInmediato, piezas: prev.presupuestoInmediato.piezas.map((p, idx) => (idx === i ? { ...p, [campo]: valor } : p)) },
     }));
   }
+  // Fila de pieza para la que se está buscando en Stock de piezas (null = buscador cerrado).
+  const [buscandoStock, setBuscandoStock] = useState<number | null>(null);
+  function elegirDeStock(pieza: StockPieza) {
+    if (buscandoStock === null) return;
+    const i = buscandoStock;
+    setDatos((prev) => ({
+      ...prev,
+      presupuestoInmediato: {
+        ...prev.presupuestoInmediato,
+        piezas: prev.presupuestoInmediato.piezas.map((p, idx) => (idx === i ? { ...p, tipo: "stock", descripcion: pieza.nombre || pieza.referencia, costo: pieza.costeInterno, precio: pieza.precioCliente, referenciaStock: pieza.referencia } : p)),
+      },
+    }));
+    setBuscandoStock(null);
+  }
   function agregarPieza() {
     setDatos((prev) => ({
       ...prev,
@@ -261,6 +277,7 @@ export function ReparacionSheet({
         piezas: [...prev.presupuestoInmediato.piezas, { descripcion: "", tipo: "stock", costo: 0, precio: 0, enlace: "", proveedorId: "", referenciaStock: "", notas: "" }],
       },
     }));
+    setBuscandoStock(datos.presupuestoInmediato.piezas.length); // la nueva fila es «En stock»: se abre el buscador para elegir la pieza
   }
   function quitarPieza(i: number) {
     setDatos((prev) => ({ ...prev, presupuestoInmediato: { ...prev.presupuestoInmediato, piezas: prev.presupuestoInmediato.piezas.filter((_, idx) => idx !== i) } }));
@@ -299,6 +316,7 @@ export function ReparacionSheet({
         if (datos.necesitaPieza) {
           if (datos.presupuestoInmediato.piezas.length === 0) return "Añade al menos una pieza";
           if (datos.presupuestoInmediato.piezas.some((p) => !p.descripcion.trim())) return "Todas las piezas deben tener descripción";
+          if (datos.presupuestoInmediato.piezas.some((p) => p.tipo === "stock" && !(p.referenciaStock || "").trim())) return 'Las piezas "En stock" deben elegirse del stock (botón «Buscar en stock») para que el inventario disminuya';
           if (datos.presupuestoInmediato.piezas.some((p) => p.tipo === "pedido" && !p.enlace.trim())) return 'Las piezas "Por pedido" deben tener enlace de compra';
           if (datos.presupuestoInmediato.piezas.some((p) => !(p.costo > 0))) return "Todas las piezas deben tener un costo mayor a 0";
           if (datos.presupuestoInmediato.piezas.some((p) => !(p.precio > 0))) return "Todas las piezas deben tener un precio de venta mayor a 0";
@@ -667,7 +685,11 @@ export function ReparacionSheet({
                         {datos.presupuestoInmediato.piezas.map((p, i) => (
                           <div key={i} className="grid grid-cols-2 gap-2 rounded-md border bg-card p-2 sm:grid-cols-6">
                             <Input className="col-span-2" placeholder="Descripción" value={p.descripcion} onChange={(e) => actualizarPieza(i, "descripcion", e.target.value)} />
-                            <Select value={p.tipo} onValueChange={(v) => actualizarPieza(i, "tipo", v as TipoLineaPieza)}>
+                            <Select value={p.tipo} onValueChange={(v) => {
+                              actualizarPieza(i, "tipo", v as TipoLineaPieza);
+                              if (v === "stock") setBuscandoStock(i);
+                              else actualizarPieza(i, "referenciaStock", "");
+                            }}>
                               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="stock">En stock</SelectItem>
@@ -681,6 +703,16 @@ export function ReparacionSheet({
                             </Button>
                             {p.tipo === "pedido" && (
                               <Input className="col-span-2 sm:col-span-6" placeholder="Enlace de compra *" value={p.enlace} onChange={(e) => actualizarPieza(i, "enlace", e.target.value)} />
+                            )}
+                            {p.tipo === "stock" && (
+                              <div className="col-span-2 flex items-center justify-between gap-2 sm:col-span-6">
+                                {p.referenciaStock ? (
+                                  <span className="text-xs text-emerald-700 dark:text-emerald-400">Pieza de stock: <b>{p.referenciaStock}</b> — su stock bajará al aceptar el presupuesto</span>
+                                ) : (
+                                  <span className="text-xs text-amber-700 dark:text-amber-400">Elige la pieza del stock para que el inventario disminuya</span>
+                                )}
+                                <Button type="button" size="sm" variant="outline" className="h-7 shrink-0" onClick={() => setBuscandoStock(i)}>{p.referenciaStock ? "Cambiar pieza" : "Buscar en stock"}</Button>
+                              </div>
                             )}
                           </div>
                         ))}
@@ -770,6 +802,8 @@ export function ReparacionSheet({
         </footer>
       </SheetContent>
     </Sheet>
+
+    <BuscarPiezaStockDialog open={buscandoStock !== null} onOpenChange={(o) => { if (!o) setBuscandoStock(null); }} onSeleccionar={elegirDeStock} />
 
     {detalleParaRevision && (
       <FacturaRevisionDialog

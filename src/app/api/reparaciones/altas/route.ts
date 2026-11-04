@@ -29,7 +29,7 @@ function construirPresupuestoInmediato(datos: DatosReparacionSheet) {
     return { elaboradoPor: inm.elaboradoPor, descripcion: inm.descripcion };
   }
   const piezas = datos.necesitaPieza
-    ? inm.piezas.map((p) => ({ tipo: p.tipo, descripcion: p.descripcion.trim(), costo: Number(p.costo) || 0, precio: Number(p.precio) || 0, enlace: p.tipo === "pedido" ? p.enlace.trim() : "" }))
+    ? inm.piezas.map((p) => ({ tipo: p.tipo, descripcion: p.descripcion.trim(), costo: Number(p.costo) || 0, precio: Number(p.precio) || 0, enlace: p.tipo === "pedido" ? p.enlace.trim() : "", referenciaStock: p.tipo === "stock" ? (p.referenciaStock || "").trim() : "" }))
     : [];
   let tipoPieza: string = "no";
   if (datos.necesitaPieza && piezas.length > 0) {
