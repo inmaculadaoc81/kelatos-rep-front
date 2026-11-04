@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { n, variacion, type ConsultaGsc, type DetalleWeb } from "@/lib/webs-analitica";
+import { GoogleAnalyticsWeb } from "./ga-analitica";
 
 const PERIODOS = [28, 90] as const;
 const CONFIG = { clics: { label: "Clics", color: "#2a6df4" }, impresiones: { label: "Impresiones", color: "#9aa5b8" } } satisfies ChartConfig;
@@ -203,11 +204,9 @@ export default function AnaliticaWebPage() {
         </>
       )}
 
+      <GoogleAnalyticsWeb sitioId={String(sitioId)} dias={dias} dominio={datos.web.dominio} />
+
       <div className="grid gap-2 sm:grid-cols-2">
-        <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm">
-          <p className="font-medium">Google Analytics <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-normal text-muted-foreground">sin conectar</span></p>
-          <p className="mt-1 text-xs text-muted-foreground">Falta activar la API de Google Analytics y dar acceso de lector a la cuenta de lectura en la propiedad de GA4 de esta web.</p>
-        </div>
         <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm">
           <p className="font-medium">Ficha de Google (local business) <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px] font-normal text-muted-foreground">sin conectar</span></p>
           <p className="mt-1 text-xs text-muted-foreground">Falta solicitar a Google el acceso a la API de Business Profile para ver búsquedas, llamadas y rutas de la ficha.</p>
