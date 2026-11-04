@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarTrigger } from "@/components/ui/sidebar";
 import { ItemDirecto, type ItemNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { Calendar, Category, Chart, Cpu, Folder2, Gallery, Global, Home, DocumentText, SearchNormal1, TickCircle, Video } from "@/lib/icons";
+import { Calendar, Category, Chart, Cpu, Folder2, Gallery, Global, Home, Shop, DocumentText, SearchNormal1, TickCircle, Video } from "@/lib/icons";
 import { NavUser } from "@/app/(app)/nav-user";
 import { OrganizacionSwitcher } from "../agentes-v2/organizacion-switcher";
 import type { RolRedes } from "./acceso";
@@ -20,6 +20,7 @@ const GENERAL: Item[] = [
   { label: "Subidos y pendientes", href: "/redes-sociales/contenido", icon: DocumentText },
   { label: "Calendario", href: "/redes-sociales/calendario", icon: Calendar },
   { label: "Recursos", href: "/redes-sociales/recursos", icon: Folder2 },
+  { label: "Mercado (general)", href: "/redes-sociales/mercado", icon: Chart, soloAdmin: true },
 ];
 
 /** Lo que cambia con la organización elegida arriba: sus carruseles, su SEO local y su analítica. */
@@ -30,6 +31,7 @@ const POR_ORGANIZACION: Item[] = [
   { label: "Aprobaciones", href: "/redes-sociales/aprobaciones", icon: TickCircle, soloAdmin: true },
   { label: "SEO local", href: "/redes-sociales/seo-local", icon: SearchNormal1, soloAdmin: true },
   { label: "Analítica", href: "/redes-sociales/analitica", icon: Chart },
+  { label: "Estudio de mercado", href: "/redes-sociales/estudio-mercado", icon: Shop, soloAdmin: true },
 ];
 
 /** Sidebar de Redes sociales: arriba lo general, debajo lo de cada organización (con su selector). */

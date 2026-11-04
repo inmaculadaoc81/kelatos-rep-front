@@ -16,6 +16,8 @@ const SECCIONES: Record<string, { titulo: string; porOrganizacion: boolean }> = 
   aprobaciones: { titulo: "Aprobaciones", porOrganizacion: true },
   "seo-local": { titulo: "SEO local", porOrganizacion: true },
   analitica: { titulo: "Analítica", porOrganizacion: true },
+  mercado: { titulo: "Mercado (general)", porOrganizacion: false },
+  "estudio-mercado": { titulo: "Estudio de mercado", porOrganizacion: true },
 };
 
 export function RedesHeader() {
