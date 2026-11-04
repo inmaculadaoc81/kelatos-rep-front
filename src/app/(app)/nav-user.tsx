@@ -80,6 +80,7 @@ export function NavUser({ session }: { session: Session | null }) {
   const enAsistencia = pathname?.startsWith("/asistencia") ?? false;
   const enWebsKelatos = pathname?.startsWith("/webs-kelatos") ?? false;
   const enAgentesV2 = pathname?.startsWith("/agentes-v2") ?? false;
+  const enRedesSociales = pathname?.startsWith("/redes-sociales") ?? false;
   const enAgentes = (pathname?.startsWith("/agentes") ?? false) && !enAgentesV2;
   const enMails = pathname?.startsWith("/mails") ?? false;
   const enTareas = pathname?.startsWith("/tareas") ?? false;
@@ -198,6 +199,12 @@ export function NavUser({ session }: { session: Session | null }) {
               )}
               {esUsuarioRedes(session?.user) && !puedeVerAgentes && !enAgentes && (
                 <DropdownMenuItem render={<Link href="/agentes/redes" />}>
+                  <IconoDashboard icon={Chart} className="from-pink-500 to-rose-600" />
+                  Redes sociales
+                </DropdownMenuItem>
+              )}
+              {puedeVerAgentes && !enRedesSociales && (
+                <DropdownMenuItem render={<Link href="/redes-sociales" />}>
                   <IconoDashboard icon={Chart} className="from-pink-500 to-rose-600" />
                   Redes sociales
                 </DropdownMenuItem>
