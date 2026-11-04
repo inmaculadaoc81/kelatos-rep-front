@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { kelatosApiPost } from "@/lib/kelatos-api";
+import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
+import { BUZON_REDACTAR_EMAIL, type Buzon } from "@/lib/mails";
 import { accesoMails, buzonesPropios } from "@/lib/mails-auth";
 
 /** Envía o responde un correo por SMTP con un buzón guardado. Superadmin, o
@@ -19,6 +20,14 @@ export async function POST(req: Request) {
   }
   try {
     const b = (await req.json()) as Record<string, unknown>;
+    // Un correo nuevo solo puede salir desde Soporte (petición del usuario, 2026-11-04); responder usa el buzón del mensaje original.
+    if (!b.respondeA) {
+      const lista = await kelatosApiGet<{ ok: boolean; buzones: Buzon[] }>("/v1/mails/buzones");
+      const elegido = lista.buzones.find((x) => x.id === Number(b.buzonId));
+      if (!elegido || elegido.email.toLowerCase() !== BUZON_REDACTAR_EMAIL) {
+        return NextResponse.json({ ok: false, error: `Los correos nuevos solo se envían desde ${BUZON_REDACTAR_EMAIL}` }, { status: 403 });
+      }
+    }
     // Solo los campos que el backend espera; el usuario sale de la sesión, nunca del cuerpo.
     const data = await kelatosApiPost<{ ok: boolean; id: number | null; aceptados: string[]; rechazados: string[]; aviso: string | null }>(
       "/v1/mails/mensajes/enviar",

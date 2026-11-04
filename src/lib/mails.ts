@@ -130,6 +130,9 @@ export interface ContadoresMensajes {
   papelera: number;
 }
 
+/** Único buzón desde el que se redacta un correo nuevo (petición del usuario, 2026-11-04): las respuestas siguen saliendo del buzón del mensaje original. */
+export const BUZON_REDACTAR_EMAIL = "soporte@kelatos.com";
+
 export const CONTADORES_VACIOS: ContadoresMensajes = { todos: 0, entrada: 0, sin_leer: 0, destacados: 0, enviados: 0, archivo: 0, compras: 0, ofertas: 0, spam: 0, rebotes: 0, papelera: 0 };
 
 // ── Leads ────────────────────────────────────────────────────────────────

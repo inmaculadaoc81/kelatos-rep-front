@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Buzon, tamanoLegible } from "@/lib/mails";
+import { Buzon, BUZON_REDACTAR_EMAIL, tamanoLegible } from "@/lib/mails";
 import { BotonMejorarRedaccion } from "@/components/boton-mejorar-redaccion";
 
 export interface BorradorCorreo {
@@ -114,8 +114,13 @@ export function RedactarDialog({
   onOpenChange: (open: boolean) => void;
   onEnviado: () => void;
 }) {
-  const activos = buzones.filter((b) => b.activo);
-  const [f, setF] = useState<BorradorCorreo>({ ...borrador, buzonId: borrador.buzonId ?? activos[0]?.id ?? null });
+  // Un correo nuevo (o reenvío) solo sale desde Soporte; una respuesta sale del buzón del mensaje original.
+  const esRespuestaInicial = borrador.respondeA !== null;
+  const activos = buzones.filter((b) => b.activo && (esRespuestaInicial || b.email.toLowerCase() === BUZON_REDACTAR_EMAIL));
+  const [f, setF] = useState<BorradorCorreo>({
+    ...borrador,
+    buzonId: esRespuestaInicial ? borrador.buzonId ?? activos[0]?.id ?? null : activos[0]?.id ?? null,
+  });
   const [adjuntos, setAdjuntos] = useState<AdjuntoNuevo[]>([]);
   const [enviando, setEnviando] = useState(false);
   // Direcciones que ya rebotaron: el backend avisa y hace falta confirmar para enviar igualmente.
