@@ -182,6 +182,16 @@ export function PiezaStockFormDialog({
 
   async function guardar() {
     if (!datos.referencia.trim()) return toast.error("La referencia es obligatoria");
+    // Mismas reglas que el servidor, pero diciendo exactamente qué falla (antes solo salía «entre 3 y 60 caracteres»).
+    if (!esEdicion) {
+      const ref = datos.referencia.trim();
+      if (ref.length < 3) return toast.error(`La referencia es demasiado corta (${ref.length}): mínimo 3 caracteres.`);
+      if (ref.length > 60) return toast.error(`La referencia es demasiado larga (${ref.length}): máximo 60 caracteres. Usa un código corto y pon el nombre completo en «Nombre comercial».`);
+      if (/\s/.test(ref)) return toast.error("La referencia no puede llevar espacios: usa guiones, p. ej. TM-001.");
+      if (!/^[A-Za-z0-9]/.test(ref)) return toast.error("La referencia debe empezar por una letra o un número.");
+      const raro = ref.match(/[^A-Za-z0-9._\/-]/);
+      if (raro) return toast.error(`La referencia lleva un carácter no permitido («${raro[0]}»): solo letras, números, punto, guion o barra.`);
+    }
     if (!datos.nombre.trim() && !datos.nombreInternoProveedor.trim()) {
       return toast.error("Pon al menos el nombre comercial o el nombre interno de proveedor");
     }
