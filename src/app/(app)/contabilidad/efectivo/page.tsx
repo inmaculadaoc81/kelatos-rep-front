@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiC, eur, num } from "@/lib/contabilidad";
 import { Cabecera, CajaError, FilaVacia, FilasCarga, InfoVista, Kpi } from "../_ui";
+import { EfectivoTransito } from "./efectivo-transito";
 
 interface Movimiento {
   id: number;
@@ -35,7 +36,13 @@ const ETIQUETA: Record<string, string> = {
   retirada_gasto: "Gasto menor",
   retirada_socio: "Retirada del socio",
   retirada_material: "Compra de material",
-  deposito_banco: "Ingreso en un banco",
+  retirada_alimentacion_personal: "Alimentación ocasional del personal",
+  retirada_agua_personal: "Agua para consumo del personal",
+  retirada_bolsas_embalajes: "Bolsas y embalajes",
+  retirada_limpieza: "Productos y útiles de limpieza",
+  retirada_publicidad: "Publicidad, banners y carteles promocionales",
+  retirada_material_oficina: "Material de oficina",
+  deposito_banco: "Retirada para ingreso en banco (efectivo en tránsito)",
   apertura_caja: "Efectivo de apertura (ya estaba en caja)",
   aportacion_socio: "Aportación del socio",
 };
@@ -102,6 +109,7 @@ export default function EfectivoPage() {
           <Kpi titulo="Saldo contable de caja (570)" valor={eur(datos.saldoCaja)} color="" />
         </div>
       )}
+      {datos && <EfectivoTransito soloLectura={!!datos.soloLectura} onCambio={cargar} />}
       <div className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>

@@ -27,7 +27,7 @@ const ETIQUETA_DESTINO: Record<string, string> = {
   retirada_limpieza: "Productos y útiles de limpieza",
   retirada_publicidad: "Publicidad, banners y carteles promocionales",
   retirada_material_oficina: "Material de oficina",
-  deposito_banco: "Ingreso en un banco",
+  deposito_banco: "Retirada para ingreso en banco",
 };
 
 type ModoConteo = "desde_inicio" | "todo";

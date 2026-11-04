@@ -22,7 +22,7 @@ const DESTINOS: { valor: string; etiqueta: string }[] = [
   { valor: "retirada_limpieza", etiqueta: "Productos y útiles de limpieza" },
   { valor: "retirada_publicidad", etiqueta: "Publicidad, banners y carteles promocionales" },
   { valor: "retirada_material_oficina", etiqueta: "Material de oficina" },
-  { valor: "deposito_banco", etiqueta: "Ingreso en un banco" },
+  { valor: "deposito_banco", etiqueta: "Retirada para ingreso en banco" },
 ];
 const DESTINO_SIN_SOPORTE = "deposito_banco";
 
@@ -190,7 +190,7 @@ export function RetirarEfectivoDialog({
           </div>
           {destino === DESTINO_SIN_SOPORTE && (
             <div className="space-y-1.5">
-              <Label>Banco *</Label>
+              <Label>Banco donde se ingresará *</Label>
               <select
                 className={`h-9 w-full rounded-md border bg-background px-2 text-sm ${bancoId ? "" : "border-amber-400"}`}
                 value={bancoId}
@@ -229,7 +229,7 @@ export function RetirarEfectivoDialog({
             />
             <p className="text-[11px] text-muted-foreground">
               {destino === DESTINO_SIN_SOPORTE
-                ? "No hace falta: el ingreso en el banco se corrobora en la conciliación bancaria."
+                ? "No hace falta: el efectivo queda en tránsito (5709) y el ingreso se confirma en la conciliación bancaria."
                 : "Obligatorio para cualquier gasto o retirada (factura o ticket de compra)."}
             </p>
           </div>
