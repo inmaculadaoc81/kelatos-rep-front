@@ -23,6 +23,8 @@ import { DatosNuevoPedido, ItemPedidoForm, FormaPagoPedido } from "@/lib/ventas"
 import { esEmailValido } from "@/lib/validacion";
 import { guardarSuReferencia } from "@/lib/su-referencia";
 import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, type ValorFormaPago } from "../reparaciones/selector-forma-pago";
+import { SoporteTransferenciaCampo } from "../reparaciones/soporte-transferencia-campo";
+import { SOPORTE_TRANSFERENCIA_VACIO, vincularSoporteTransferencia, type SoporteTransferencia } from "@/lib/soporte-transferencia";
 
 function valorFormaPagoDeDatos(datos: DatosNuevoPedido): ValorFormaPago {
   const d = datos.formaPagoDesglose;
@@ -78,6 +80,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   const [open, setOpen] = useState(false);
   const [datos, setDatos] = useState<DatosNuevoPedido>(vacio());
   const [suReferencia, setSuReferencia] = useState("");
+  const [soporte, setSoporte] = useState<SoporteTransferencia>(SOPORTE_TRANSFERENCIA_VACIO);
   const [enviando, setEnviando] = useState(false);
   const [numeroPreview, setNumeroPreview] = useState("");
   // Resultado del modo Ticket — a diferencia de Factura/Garantía, el
@@ -179,6 +182,11 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       if (data.urlPdf) window.open(data.urlPdf, "_blank");
+      if (!datos.esGarantia && datos.formaPago === "transferencia" && data.ventaId && (soporte.archivo || soporte.movimientoId)) {
+        const aviso = await vincularSoporteTransferencia("venta", String(data.ventaId), soporte);
+        if (aviso) toast.warning(aviso);
+      }
+      setSoporte(SOPORTE_TRANSFERENCIA_VACIO);
       onCreado();
       if (datos.modoTicket) {
         toast.success(`Ticket ${data.numeroTicket} generado correctamente`);
@@ -260,6 +268,11 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                   }}
                   total={total}
                 />
+                {datos.formaPago === "transferencia" && (
+                  <div className="sm:col-span-3">
+                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={!!resultadoTicket} />
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label>Estado</Label>
                   <Select value={datos.estadoFactura} onValueChange={(v) => actualizar("estadoFactura", v || "Cobrada")} disabled={!!resultadoTicket}>

@@ -16,6 +16,8 @@ import { esEmailValido } from "@/lib/validacion";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { guardarSuReferencia } from "@/lib/su-referencia";
 import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "../reparaciones/selector-forma-pago";
+import { SoporteTransferenciaCampo } from "../reparaciones/soporte-transferencia-campo";
+import { SOPORTE_TRANSFERENCIA_VACIO, vincularSoporteTransferencia, type SoporteTransferencia } from "@/lib/soporte-transferencia";
 import { METODOS_PAGO as ETIQUETAS_METODO_PAGO } from "../reparaciones/factura-acciones-tabs";
 
 const PORTE_MENSAJERIA = 12.4;
@@ -113,6 +115,7 @@ export function NuevoAlquilerDialog({
   const [duracion, setDuracion] = useState<DuracionForm>(duracionVacia());
   const [factu, setFactu] = useState<FacturacionForm>(facturacionVacia());
   const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
+  const [soporte, setSoporte] = useState<SoporteTransferencia>(SOPORTE_TRANSFERENCIA_VACIO);
   const [enviando, setEnviando] = useState(false);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
 
@@ -122,6 +125,7 @@ export function NuevoAlquilerDialog({
       setDuracion(duracionVacia());
       setFactu(facturacionVacia());
       setPago(valorFormaPagoVacio());
+      setSoporte(SOPORTE_TRANSFERENCIA_VACIO);
     }
   }, [open]);
 
@@ -221,6 +225,11 @@ export function NuevoAlquilerDialog({
       if (!dataCrear.ok) throw new Error(dataCrear.error || "Error al registrar el alquiler");
 
       const alquilerId = dataCrear.alquilerId as string;
+
+      if (pago.metodo === "transferencia" && (soporte.archivo || soporte.movimientoId)) {
+        const aviso = await vincularSoporteTransferencia("alquiler", alquilerId, soporte);
+        if (aviso) toast.warning(aviso);
+      }
 
       const resFactura = await fetch(`/api/alquileres/${alquilerId}/facturas`, {
         method: "POST",
@@ -337,6 +346,11 @@ export function NuevoAlquilerDialog({
                   <Input disabled placeholder="Se asigna al registrar" className="bg-muted/50" />
                 </div>
                 <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={totalesPaso2.total} />
+                {pago.metodo === "transferencia" && (
+                  <div className="sm:col-span-3">
+                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={enviando} />
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label>Estado factura *</Label>
                   <Select value={factu.estadoFactura} onValueChange={(v) => actualizarFactu("estadoFactura", v || "Pendiente")}>
