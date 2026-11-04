@@ -36,7 +36,9 @@ export function BuscarPiezaStockDialog({
       .finally(() => setCargando(false));
   }, [open]);
 
+  // Las piezas reservadas para otra reparación o en devolución están en el almacén pero no disponibles: no se pueden elegir aquí.
   const filtradas = piezas.filter((p) => {
+    if (p.categoria === "COMPRA POR PEDIDO" || p.categoria === "DEVOLUCIÓN A PROVEEDOR") return false;
     const q = busqueda.toLowerCase().trim();
     if (!q) return true;
     return p.nombre.toLowerCase().includes(q) || p.referencia.toLowerCase().includes(q) || p.categoria.toLowerCase().includes(q);

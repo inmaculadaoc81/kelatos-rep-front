@@ -23,6 +23,7 @@ import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { useConfirm } from "@/components/confirm-provider";
 import { PiezaStockFormDialog } from "./pieza-stock-form-dialog";
 import { ResumenStock } from "./resumen-stock";
+import { PasarAStockDialog, CAT_RESERVADA, CAT_DEVOLUCION } from "./pasar-a-stock-dialog";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -37,6 +38,7 @@ export default function StockPiezasPage() {
   const [busqueda, setBusqueda] = useState("");
   const [categoria, setCategoria] = useState("");
   const [soloBajo, setSoloBajo] = useState(false);
+  const [pasandoAStock, setPasandoAStock] = useState<StockPieza | null>(null);
   const [formAbierto, setFormAbierto] = useState(false);
   const [imprimiendoEtiqueta, setImprimiendoEtiqueta] = useState<string | null>(null);
   const confirmar = useConfirm();
@@ -218,6 +220,8 @@ export default function StockPiezasPage() {
                           )}
                           <span className={`max-w-[65%] shrink-0 truncate font-medium ${p.nombre ? "" : "text-amber-600 dark:text-amber-400"}`}>{nombreVisible}</span>
                           {p.categoria && <span className="shrink-0 rounded bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">{p.categoria}</span>}
+                          {p.categoria === CAT_RESERVADA && p.stockDisponible > 0 && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300" title="Está en el almacén pero reservada para una reparación: no está disponible para otras">Reservada · no disponible</span>}
+                          {p.categoria === CAT_DEVOLUCION && <span className="shrink-0 rounded bg-red-500/15 px-1.5 text-[10px] font-medium text-red-700 dark:text-red-300" title="En devolución al proveedor: no está disponible">En devolución · no disponible</span>}
                           {unicos.length > 0 && <span className="min-w-0 truncate text-xs text-muted-foreground">{unicos.join(" · ")}</span>}
                         </div>
                       );
@@ -249,6 +253,17 @@ export default function StockPiezasPage() {
                       >
                         <Edit2 className="size-3.5" />
                       </Button>
+                      {((p.categoria === CAT_RESERVADA && p.stockDisponible > 0) || p.categoria === CAT_DEVOLUCION) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          title={p.categoria === CAT_DEVOLUCION ? "Está en devolución al proveedor: pásala al catálogo si te la quedas" : "Reservada para una reparación: pásala al catálogo si no se usa"}
+                          onClick={() => setPasandoAStock(p)}
+                        >
+                          Pasar a stock
+                        </Button>
+                      )}
                       {p.categoria === "CARGADOR" && (
                         <Button
                           size="icon-sm"
@@ -269,6 +284,8 @@ export default function StockPiezasPage() {
           </TableBody>
         </Table>
       </div>
+
+      <PasarAStockDialog pieza={pasandoAStock} categorias={categorias} onOpenChange={(o) => { if (!o) setPasandoAStock(null); }} onHecho={cargar} />
 
       <PiezaStockFormDialog
         key={editando?.referencia || "__nueva__"}
