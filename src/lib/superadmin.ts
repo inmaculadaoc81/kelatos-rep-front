@@ -70,3 +70,14 @@ const CREAR_PIEZAS_EMAILS_EXTRA = new Set(["ricardo@kelatos.com"]);
 export function puedeCrearPiezas(email: string | null | undefined): boolean {
   return esSuperadmin(email) || (!!email && CREAR_PIEZAS_EMAILS_EXTRA.has(email.toLowerCase()));
 }
+
+/**
+ * Cuentas que, al entrar, aterrizan en el FICHAJE (como antes de tener acceso completo) y desde ahí pasan al dashboard con el botón «Ir al dashboard».
+ * Petición del usuario, 2026-11-04: Iván, Romer y Ricardo. La cookie COOKIE_IR_DASHBOARD la pone ese botón y dura lo que dure la jornada.
+ */
+const FICHAJE_PRIMERO_EMAILS = new Set(["ivan.gonzalez@kelatos.com", "romer.ramirez@kelatos.com", "ricardo@kelatos.com"]);
+export const COOKIE_IR_DASHBOARD = "kelatos_dashboard";
+
+export function aterrizaEnFichaje(email: string | null | undefined): boolean {
+  return !!email && FICHAJE_PRIMERO_EMAILS.has(email.toLowerCase());
+}

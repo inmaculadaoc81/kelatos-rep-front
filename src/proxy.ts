@@ -1,6 +1,6 @@
 import { auth, esDominioKelatos } from "@/auth";
 import { NextResponse } from "next/server";
-import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura, aterrizaEnFichaje, COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { comprobarAccesoLocal } from "@/lib/acceso-local";
@@ -150,6 +150,15 @@ export default auth(async (req) => {
   // ajena al dominio. 2026-08-31. Excepción: accesoCompleto (petición del
   // usuario, 2026-09-30) — una cuenta así entra igual de completo por
   // Google o por contraseña, las dos puertas llevan al mismo sitio.
+  // Iván, Romer y Ricardo entran por el fichaje, como antes; el botón «Ir al dashboard» del fichaje pone la cookie que les deja ver la portada.
+  if (
+    req.nextUrl.pathname === "/" &&
+    req.auth?.user?.asistenciaEmpleadoId != null &&
+    aterrizaEnFichaje(req.auth?.user?.email) &&
+    !req.cookies.get(COOKIE_IR_DASHBOARD)
+  ) {
+    return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));
+  }
   const esSoloAsistencia = req.auth?.user?.asistenciaEmpleadoId != null &&
     !req.auth?.user?.accesoCompleto &&
     (req.auth?.user?.viaCredentials || !esDominioKelatos(req.auth?.user?.email || ""));

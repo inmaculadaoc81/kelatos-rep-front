@@ -246,7 +246,7 @@ export function NavUser({ session }: { session: Session | null }) {
               <DropdownMenuItem
                 variant="destructive"
                 disabled={cerrando}
-                onClick={() => { setCerrando(true); signOut({ redirectTo: "/login" }); }}
+                onClick={() => { setCerrando(true); document.cookie = "kelatos_dashboard=; path=/; max-age=0"; signOut({ redirectTo: "/login" }); }}
               >
                 <Logout /> {cerrando ? "Cerrando sesión..." : "Cerrar sesión"}
               </DropdownMenuItem>

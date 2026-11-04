@@ -10,6 +10,7 @@ import { GuiaModal } from "./guia-modal";
 import { Button } from "@/components/ui/button";
 import { Home, Clock, Calendar, ClipboardText, ClipboardTick, Logout, MessageQuestion, Profile2User, Video } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
 
 const TABS = [
   { href: "/asistencia/kiosk", label: "Fichar", icon: Clock },
@@ -66,7 +67,7 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
           <Image src="/logos/kelatos.png" alt="Kelatos" width={145} height={41} priority unoptimized className="h-7 w-auto" />
           <div className="flex items-center gap-1">
             {accesoCompleto && (
-              <Button variant="outline" size="sm" className="mr-1 h-7 gap-1.5 px-2 text-xs" title="Ir al dashboard" render={<Link href="/" />}>
+              <Button variant="outline" size="sm" className="mr-1 h-7 gap-1.5 px-2 text-xs" title="Ir al dashboard" render={<Link href="/" onClick={() => { document.cookie = `${COOKIE_IR_DASHBOARD}=1; path=/; max-age=43200; samesite=lax`; }} />}>
                 <Home className="size-3.5" /> Ir al dashboard
               </Button>
             )}
@@ -78,7 +79,7 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Guía de uso" onClick={() => setGuiaAbierta(true)}>
               <MessageQuestion className="size-4" />
             </Button>
-            <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Salir" disabled={cerrando} onClick={() => { setCerrando(true); signOut({ redirectTo: "/login" }); }}>
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Salir" disabled={cerrando} onClick={() => { setCerrando(true); document.cookie = "kelatos_dashboard=; path=/; max-age=0"; signOut({ redirectTo: "/login" }); }}>
               <Logout className="size-4" />
             </Button>
           </div>
