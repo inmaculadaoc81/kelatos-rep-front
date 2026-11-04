@@ -22,6 +22,7 @@ import { imprimirEtiquetaPieza } from "@/lib/imprimir-etiqueta";
 import { useEsSuperadmin } from "@/hooks/use-es-superadmin";
 import { useConfirm } from "@/components/confirm-provider";
 import { PiezaStockFormDialog } from "./pieza-stock-form-dialog";
+import { ResumenStock } from "./resumen-stock";
 
 function euros(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -101,8 +102,6 @@ export default function StockPiezasPage() {
     return lista;
   }, [piezas, busqueda, categoria, soloBajo]);
 
-  const bajoStockCount = useMemo(() => piezas.filter((p) => p.stockBajo).length, [piezas]);
-
   return (
     <div className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -129,14 +128,7 @@ export default function StockPiezasPage() {
         </div>
       </div>
 
-      {bajoStockCount > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          <Warning2 className="size-4 shrink-0" />
-          <span>
-            <strong>{bajoStockCount}</strong> {bajoStockCount === 1 ? "pieza está" : "piezas están"} por debajo de su stock mínimo.
-          </span>
-        </div>
-      )}
+      <ResumenStock piezas={piezas} soloBajo={soloBajo} onSoloBajo={setSoloBajo} onCategoria={setCategoria} />
 
       {error && (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
