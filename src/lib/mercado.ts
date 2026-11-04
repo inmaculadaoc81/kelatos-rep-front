@@ -27,3 +27,9 @@ export const AYUDA_MERCADO = {
 } as const;
 
 export const nombreMes = (m: string) => new Date(`${m}-01T12:00:00`).toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
+
+export interface RecomendacionesIA {
+  ok: boolean; error?: string; desdeCache?: boolean; generadoEn?: string; resumen: string;
+  recomendaciones: { titulo: string; por_que: string; accion: string; prioridad: "alta" | "media" | "baja"; tipo: "contenido" | "seo" | "redes" | "web" | "competencia" }[];
+  ideas_redes: { red: string; idea: string }[]; riesgos: string[]; limites: string[];
+}

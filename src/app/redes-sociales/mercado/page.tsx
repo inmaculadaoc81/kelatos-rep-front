@@ -7,6 +7,7 @@ import { n } from "@/lib/webs-analitica";
 import { AYUDA_MERCADO, type CompetenciaLocal, type GeneralMercado } from "@/lib/mercado";
 import { Termino } from "@/app/webs-kelatos/analitica/termino";
 import { GraficoMensual, ListaConsultas, Tarjeta } from "./piezas-mercado";
+import { RecomendacionesIAPanel } from "./recomendaciones-ia";
 
 const PERIODOS = [28, 90, 180] as const;
 
@@ -53,6 +54,8 @@ export default function MercadoGeneralPage() {
             <Tarjeta titulo="Marca líder" valor={orgs[0]?.nombre ?? "—"} pie={orgs[0] ? `${n(orgs[0].cuota, 1)} % de la demanda` : undefined} />
             <Tarjeta titulo="Negocios del sector en Madrid" ayuda={AYUDA_MERCADO.competencia} valor={comp ? (comp.ok ? n(comp.total) : "—") : "…"} pie="Reparación de informática y electrónica" />
           </div>
+
+          <RecomendacionesIAPanel organizacionId={null} dias={dias} />
 
           <GraficoMensual datos={d.mensual} titulo="Demanda mes a mes (todas las marcas)" />
 

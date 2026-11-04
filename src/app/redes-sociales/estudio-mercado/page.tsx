@@ -7,6 +7,7 @@ import { n } from "@/lib/webs-analitica";
 import { AYUDA_MERCADO, type OrganizacionMercado } from "@/lib/mercado";
 import { useOrganizacion } from "../../agentes-v2/organizacion-context";
 import { GraficoMensual, ListaConsultas, Tarjeta } from "../mercado/piezas-mercado";
+import { RecomendacionesIAPanel } from "../mercado/recomendaciones-ia";
 
 const PERIODOS = [28, 90, 180] as const;
 
@@ -54,6 +55,7 @@ export default function EstudioMercadoPage() {
             <Tarjeta titulo="A un paso del top 3" ayuda={AYUDA_MERCADO.casi} valor={String(d.casi.length)} pie="búsquedas en la página 1" />
             <Tarjeta titulo="De marca / genérico" ayuda={AYUDA_MERCADO.marca} valor={marca && marca.palabras.length ? `${pctMarca} % / ${100 - pctMarca} %` : "Todo genérico"} pie={marca && marca.palabras.length ? `Marca detectada: ${marca.palabras.join(", ")}` : "El nombre de esta marca no aparece en las búsquedas"} />
           </div>
+          <RecomendacionesIAPanel key={`${organizacionId}-${dias}`} organizacionId={organizacionId} dias={dias} />
           <GraficoMensual datos={d.mensual} titulo="Demanda mes a mes de esta marca" />
           <div className="grid gap-3 lg:grid-cols-2">
             <ListaConsultas titulo="Lo más buscado" filas={d.top.slice(0, 15)} vacio="Sin datos en este periodo." />
