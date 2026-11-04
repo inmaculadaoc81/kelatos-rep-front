@@ -33,7 +33,19 @@ interface MovimientoBanco {
   clase_sugerida: string | null;
   libre: number;
 }
+interface IngresoConfirmado {
+  id: number | string;
+  efectivo_id: number | string;
+  importe: number;
+  fecha_ingreso: string;
+  banco: string;
+  movimiento_id: number | string | null;
+  solo_conciliacion: boolean;
+  asiento_id: number | string | null;
+  asiento_estado: string | null;
+}
 interface DatosTransito {
+  depositos: IngresoConfirmado[];
   retiradas: RetiradaTransito[];
   movimientos: MovimientoBanco[];
   bancos: { id: number; nombre: string }[];
@@ -50,6 +62,7 @@ export function EfectivoTransito({ soloLectura, onCambio }: { soloLectura: boole
   const [datos, setDatos] = useState<DatosTransito | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogo, setDialogo] = useState<number | string | null>(null);
+  const [deshaciendo, setDeshaciendo] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -66,7 +79,22 @@ export function EfectivoTransito({ soloLectura, onCambio }: { soloLectura: boole
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!datos) return null;
   const pendientes = datos.retiradas.filter((r) => r.pendiente > 0);
-  if (!pendientes.length && datos.resumen.saldo_5709_contabilizado === 0 && datos.resumen.saldo_5709_en_borrador === 0) return null;
+  if (!pendientes.length && !datos.depositos.length && datos.resumen.saldo_5709_contabilizado === 0 && datos.resumen.saldo_5709_en_borrador === 0) return null;
+
+  async function deshacer(d: IngresoConfirmado) {
+    if (!window.confirm(`¿Deshacer el ingreso de ${num(d.importe)} € de EF-${String(d.efectivo_id)}? La retirada volverá a salir pendiente y se elimina su asiento en borrador.`)) return;
+    setDeshaciendo(String(d.id));
+    try {
+      await apiC("efectivo/transito/deshacer", { metodo: "POST", cuerpo: { deposito_id: Number(d.id) } });
+      toast.success("Ingreso deshecho: la retirada vuelve a estar pendiente");
+      await cargar();
+      onCambio();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error");
+    } finally {
+      setDeshaciendo(null);
+    }
+  }
 
   return (
     <div className="space-y-2">
@@ -121,6 +149,50 @@ export function EfectivoTransito({ soloLectura, onCambio }: { soloLectura: boole
                   </TableCell>
                 </TableRow>
               ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {datos.depositos.length > 0 && (
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <p className="border-b px-3 py-2 text-sm font-semibold">Ingresos confirmados</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ingreso real</TableHead>
+                <TableHead>Retirada</TableHead>
+                <TableHead>Banco</TableHead>
+                <TableHead className="text-right">Importe</TableHead>
+                <TableHead>Asiento</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {datos.depositos.map((d) => {
+                const borrador = d.solo_conciliacion || !d.asiento_id || d.asiento_estado === "BORRADOR";
+                return (
+                  <TableRow key={String(d.id)}>
+                    <TableCell className="whitespace-nowrap tabular-nums">{fechaCorta(d.fecha_ingreso)}</TableCell>
+                    <TableCell>EF-{String(d.efectivo_id)}</TableCell>
+                    <TableCell>{d.banco}{d.movimiento_id ? <span className="text-xs text-muted-foreground"> · con extracto</span> : null}</TableCell>
+                    <TableCell className="text-right tabular-nums">{num(d.importe)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {d.solo_conciliacion ? "Solo conciliación (ya contabilizado)" : d.asiento_id ? `#${String(d.asiento_id)} · ${(d.asiento_estado || "").toLowerCase()}` : "sin asiento"}
+                    </TableCell>
+                    <TableCell>
+                      {!soloLectura &&
+                        (borrador ? (
+                          <Button size="sm" variant="ghost" className="h-7 text-destructive" disabled={deshaciendo === String(d.id)} onClick={() => deshacer(d)}>
+                            Deshacer
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Corregir con contra-asiento</span>
+                        ))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
