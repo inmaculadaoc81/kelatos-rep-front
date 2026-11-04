@@ -53,8 +53,8 @@ export async function buzonesPropios(a: { email: string; accesoCompleto: boolean
   }
 }
 
-/** Buzón del que una cuenta accesoCompleto ve ADEMÁS los correos enviados por una persona (petición del usuario, 2026-11-04):
-    nunca los recibidos, ni los automáticos, ni los de prospección. */
+/** Buzón del que una cuenta accesoCompleto ve ADEMÁS los correos enviados por una persona y los recibidos de clientes de
+    reparaciones (petición del usuario, 2026-11-04): nunca los automáticos ni los de prospección. */
 const BUZON_ENVIADOS_VISIBLES_EMAIL = "automatizacion@desarrolladorpowerautomate.com";
 
 export async function buzonesEnviadosVisibles(a: { accesoCompleto: boolean }): Promise<number[]> {
@@ -67,7 +67,7 @@ export async function buzonesEnviadosVisibles(a: { accesoCompleto: boolean }): P
   }
 }
 
-/** ¿Es un correo enviado por una persona desde la app (no automático ni de prospección)? */
-export function esEnviadoPorPersona(m: { direccion?: string; enviado_por?: string | null }): boolean {
-  return m.direccion === "salida" && !!m.enviado_por && m.enviado_por.includes("@");
+/** El backend marca con `visible_extra` los mensajes del buzón extra que soporte puede ver: enviados por una persona o recibidos de clientes de reparaciones (nunca prospección ni automáticos). */
+export function esVisibleExtra(m: unknown): boolean {
+  return (m as { visible_extra?: boolean }).visible_extra === true;
 }
