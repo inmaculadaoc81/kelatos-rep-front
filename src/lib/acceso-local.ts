@@ -108,7 +108,7 @@ export async function comprobarAccesoLocal(req: NextRequest, email: string | nul
   anotarVisita(email.toLowerCase(), ip, req, !dentro, equipoAutorizado ? equipoHash : null);
   if (cfg.modo !== "bloquear" || dentro) return null;
 
-  return ruta.startsWith("/api/")
-    ? NextResponse.json({ ok: false, error: "Esta cuenta solo puede usarse desde el local." }, { status: 403 })
-    : NextResponse.redirect(new URL("/acceso-restringido", req.nextUrl.origin));
+  if (ruta.startsWith("/api/")) return NextResponse.json({ ok: false, error: "Esta cuenta solo puede usarse desde el local." }, { status: 403 });
+  // Las cuentas personales (no la compartida del mostrador) caen en el fichaje, que sí pueden usar desde cualquier sitio; la compartida ve el aviso.
+  return NextResponse.redirect(new URL(correo !== cfg.cuenta ? "/asistencia/kiosk" : "/acceso-restringido", req.nextUrl.origin));
 }
