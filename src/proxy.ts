@@ -151,7 +151,7 @@ export default auth(async (req) => {
   if (
     esSoloAsistencia &&
     !enAsistencia &&
-    !(esProgramadorContenido(req.auth?.user) && (enProgramarContenido || req.nextUrl.pathname.startsWith("/api/agentes-v2/"))) &&
+    !(esProgramadorContenido(req.auth?.user) && (enProgramarContenido || req.nextUrl.pathname.startsWith("/api/agentes-v2/") || req.nextUrl.pathname.startsWith("/redes-sociales"))) &&
     !(esUsuarioRedes(req.auth?.user) && (esRutaRedesSociales(req.nextUrl.pathname) || req.nextUrl.pathname.startsWith("/api/agentes-v2/")))
   ) {
     return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));

@@ -4,25 +4,38 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarTrigger } from "@/components/ui/sidebar";
-import { ItemDirecto, type GrupoNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { Calendar, Category, Chart, Gallery, Home, Video } from "@/lib/icons";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarTrigger } from "@/components/ui/sidebar";
+import { ItemDirecto, type ItemNavegacionBase } from "@/components/sidebar-grupo-colapsable";
+import { Calendar, Category, Chart, Cpu, Folder2, Gallery, Global, Home, DocumentText, SearchNormal1, TickCircle, Video } from "@/lib/icons";
 import { NavUser } from "@/app/(app)/nav-user";
 import { OrganizacionSwitcher } from "../agentes-v2/organizacion-switcher";
+import type { RolRedes } from "./acceso";
 
-/** Elementos del menú de Redes sociales. «Calendario» y «Programar» siguen en sus pantallas de siempre. */
-const ITEMS: GrupoNavegacionBase["items"] = [
+type Item = ItemNavegacionBase & { soloAdmin?: boolean };
+
+/** Lo general: no depende de la organización (las piezas y vídeos son de todas las marcas). */
+const GENERAL: Item[] = [
   { label: "Resumen", href: "/redes-sociales", icon: Home, exacto: true },
-  { label: "Contenido", href: "/redes-sociales/contenido", icon: Video },
+  { label: "Piezas", href: "/redes-sociales/piezas", icon: Video },
+  { label: "Subidos y pendientes", href: "/redes-sociales/contenido", icon: DocumentText },
+  { label: "Calendario", href: "/redes-sociales/calendario", icon: Calendar },
+  { label: "Recursos", href: "/redes-sociales/recursos", icon: Folder2 },
+];
+
+/** Lo que cambia con la organización elegida arriba: sus carruseles, su SEO local y su analítica. */
+const POR_ORGANIZACION: Item[] = [
+  { label: "Redes sociales", href: "/redes-sociales/redes", icon: Global, soloAdmin: true },
   { label: "Carruseles IA", href: "/redes-sociales/carruseles", icon: Gallery },
-  { label: "Calendario", href: "/asistencia/contenido/calendario", icon: Calendar },
-  { label: "Programar carruseles", href: "/agentes-v2/programar", icon: Category },
+  { label: "Programar carruseles", href: "/redes-sociales/programar", icon: Category },
+  { label: "Aprobaciones", href: "/redes-sociales/aprobaciones", icon: TickCircle, soloAdmin: true },
+  { label: "SEO local", href: "/redes-sociales/seo-local", icon: SearchNormal1, soloAdmin: true },
   { label: "Analítica", href: "/redes-sociales/analitica", icon: Chart },
 ];
 
-/** Sidebar de Redes sociales (logo + trigger arriba, selector de marca, menú, NavUser abajo). */
-export function RedesSidebar({ session }: { session: Session | null }) {
+/** Sidebar de Redes sociales: arriba lo general, debajo lo de cada organización (con su selector). */
+export function RedesSidebar({ session, rol }: { session: Session | null; rol: RolRedes }) {
   const pathname = usePathname();
+  const visibles = (items: Item[]) => items.filter((i) => rol === "admin" || !i.soloAdmin);
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -33,18 +46,40 @@ export function RedesSidebar({ session }: { session: Session | null }) {
           </Link>
           <SidebarTrigger className="ml-auto group-data-[collapsible=icon]:ml-0" />
         </div>
-        <OrganizacionSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
+          <SidebarGroupLabel>Contenido · todas las marcas</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
-              {ITEMS.map((item) => (
-                <ItemDirecto key={item.href} item={item} pathname={pathname} />
+              {visibles(GENERAL).map((item) => (
+                <ItemDirecto key={item.href!} item={item} pathname={pathname} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Por organización</SidebarGroupLabel>
+          <SidebarGroupContent className="space-y-2">
+            <OrganizacionSwitcher />
+            <SidebarMenu className="gap-1.5">
+              {visibles(POR_ORGANIZACION).map((item) => (
+                <ItemDirecto key={item.href!} item={item} pathname={pathname} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {rol === "admin" && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1.5">
+                <ItemDirecto item={{ label: "Agentes V2 (avanzado)", href: "/agentes-v2", icon: Cpu }} pathname={pathname} />
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <NavUser session={session} />
     </Sidebar>

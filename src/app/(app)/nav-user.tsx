@@ -9,6 +9,7 @@ import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal,
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esUsuarioRedes } from "@/lib/redes-sociales-acceso";
+import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +88,7 @@ export function NavUser({ session }: { session: Session | null }) {
   const enCrm = pathname?.startsWith("/crm") ?? false;
   const enProspeccion = pathname?.startsWith("/prospeccion") ?? false;
   const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enMails && !enTareas && !enCrm && !enProspeccion;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enTareas && !enCrm && !enProspeccion;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerCrm = esAdmin || esSuperadmin(email);
@@ -197,8 +198,8 @@ export function NavUser({ session }: { session: Session | null }) {
                   Seguridad
                 </DropdownMenuItem>
               )}
-              {esUsuarioRedes(session?.user) && !puedeVerAgentes && !enAgentes && (
-                <DropdownMenuItem render={<Link href="/agentes/redes" />}>
+              {esUsuarioRedes(session?.user) && !puedeVerAgentes && !enAgentes && !enRedesSociales && (
+                <DropdownMenuItem render={<Link href={esProgramadorContenido(session?.user) ? "/redes-sociales" : "/agentes/redes"} />}>
                   <IconoDashboard icon={Chart} className="from-pink-500 to-rose-600" />
                   Redes sociales
                 </DropdownMenuItem>
@@ -207,12 +208,6 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/redes-sociales" />}>
                   <IconoDashboard icon={Chart} className="from-pink-500 to-rose-600" />
                   Redes sociales
-                </DropdownMenuItem>
-              )}
-              {puedeVerAgentes && !enAgentesV2 && (
-                <DropdownMenuItem render={<Link href="/agentes-v2" />}>
-                  <IconoDashboard icon={Cpu} className="from-indigo-500 to-blue-600" />
-                  Agentes V2
                 </DropdownMenuItem>
               )}
               {puedeVerMails && !enMails && (
@@ -233,23 +228,14 @@ export function NavUser({ session }: { session: Session | null }) {
                   Prospección
                 </DropdownMenuItem>
               )}
-              {/* Panel de contenido de la community manager — antes solo
-                  accesible por URL directa o para una única cuenta admin
-                  (ver lib/contenido-acceso.ts); ampliado a cualquier admin
-                  y enlazado aquí, petición del usuario, 2026-10-07. */}
-              {esAdmin && !enContenido && (
-                <DropdownMenuItem render={<Link href="/asistencia/contenido" />}>
-                  <IconoDashboard icon={Video} className="from-pink-500 to-fuchsia-600" />
-                  Contenido
-                </DropdownMenuItem>
-              )}
+              {/* Contenido y Agentes V2 viven ahora dentro de Redes sociales (petición del usuario, 2026-11-04); Agentes V2 sigue accesible desde su menú «avanzado». */}
               {/* Vuelta al kiosco de fichaje desde Contenido — antes era un
                   icono suelto en ContenidoHeader; petición del usuario,
                   2026-10-07: tiene que estar aquí, igual que el resto de
                   botones de cambiar de dashboard. Fuera de los `!esSoloAsistencia`
                   de arriba a propósito: Jeannie (cuenta solo-asistencia) es
                   quien más lo necesita, para volver de Contenido al kiosco. */}
-              {enContenido && (
+              {(enContenido || (enRedesSociales && esSoloAsistencia)) && (
                 <DropdownMenuItem render={<Link href="/asistencia/kiosk" />}>
                   <IconoDashboard icon={Clock} className="from-emerald-500 to-teal-600" />
                   Fichaje
