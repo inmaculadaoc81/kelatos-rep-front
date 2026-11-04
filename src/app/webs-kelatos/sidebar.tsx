@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Add, ArrowDown2, Link2, Receipt, Sort, Tag } from "@/lib/icons";
+import { Add, ArrowDown2, Chart, Link2, Receipt, Sort, Tag } from "@/lib/icons";
 import { toast } from "sonner";
 import { SitioWeb } from "@/lib/webs-kelatos";
 import { CatalogoServicios } from "@/lib/catalogos-servicios";
@@ -211,6 +211,19 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
         </div>
       </SidebarHeader>
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive={pathname.startsWith("/webs-kelatos/analitica")} tooltip="Analítica web" render={<Link href="/webs-kelatos/analitica" />}>
+                  <Chart className="text-sidebar-primary" />
+                  <span>Analítica web</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           {/* Grupo colapsable: "Servicios" arriba, sus catálogos como
               children debajo — mismo patrón que los grupos por marca de
