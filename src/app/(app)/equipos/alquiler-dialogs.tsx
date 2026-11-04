@@ -346,11 +346,6 @@ export function NuevoAlquilerDialog({
                   <Input disabled placeholder="Se asigna al registrar" className="bg-muted/50" />
                 </div>
                 <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={totalesPaso2.total} />
-                {pago.metodo === "transferencia" && (
-                  <div className="sm:col-span-3">
-                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={enviando} />
-                  </div>
-                )}
                 <div className="space-y-1.5">
                   <Label>Estado factura *</Label>
                   <Select value={factu.estadoFactura} onValueChange={(v) => actualizarFactu("estadoFactura", v || "Pendiente")}>
@@ -361,6 +356,11 @@ export function NuevoAlquilerDialog({
                     </SelectContent>
                   </Select>
                 </div>
+                {pago.metodo === "transferencia" && (
+                  <div className="sm:col-span-full">
+                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={enviando} />
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label htmlFor="alqSuReferencia">Su Referencia</Label>
                   <Input id="alqSuReferencia" placeholder="Opcional" value={factu.suReferencia} onChange={(e) => actualizarFactu("suReferencia", e.target.value)} />

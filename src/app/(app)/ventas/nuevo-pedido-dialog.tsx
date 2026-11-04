@@ -268,11 +268,6 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                   }}
                   total={total}
                 />
-                {datos.formaPago === "transferencia" && (
-                  <div className="sm:col-span-3">
-                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={!!resultadoTicket} />
-                  </div>
-                )}
                 <div className="space-y-1.5">
                   <Label>Estado</Label>
                   <Select value={datos.estadoFactura} onValueChange={(v) => actualizar("estadoFactura", v || "Cobrada")} disabled={!!resultadoTicket}>
@@ -283,6 +278,11 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                     </SelectContent>
                   </Select>
                 </div>
+                {datos.formaPago === "transferencia" && (
+                  <div className="sm:col-span-5">
+                    <SoporteTransferenciaCampo value={soporte} onChange={setSoporte} disabled={!!resultadoTicket} />
+                  </div>
+                )}
               </div>
             )}
 
