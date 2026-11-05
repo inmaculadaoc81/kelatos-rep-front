@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { MARCAS, etiquetaDe, type Pieza } from "@/lib/contenido";
 import { NOMBRE_RED, REDES_DE, estaSubida, fechaPieza, pendienteDeSubir } from "@/lib/redes-sociales";
 import { AnaliticaRedes } from "../../agentes/redes/analitica-redes";
+import { AnaliticaFacebook } from "../../agentes/redes/analitica-facebook";
 
 const RED_ORDEN = ["instagram", "youtube", "facebook", "tiktok"] as const;
 type Red = (typeof RED_ORDEN)[number];
@@ -103,9 +104,9 @@ function Analitica() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Analítica</h1>
-          <p className="text-sm text-muted-foreground">Cómo va cada red. Instagram tiene analítica real; las demás muestran la actividad propia hasta que se conecten.</p>
+          <p className="text-sm text-muted-foreground">Cómo va cada red. Instagram y Facebook tienen analítica real; las demás muestran la actividad propia hasta que se conecten.</p>
         </div>
-        {red === "instagram" && (
+        {(red === "instagram" || red === "facebook") && (
           <div className="flex gap-1.5">
             {PERIODOS.map((p) => (
               <button key={p} type="button" aria-pressed={dias === p} onClick={() => setDias(p)} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", dias === p ? "border-primary bg-primary/10 font-medium" : "text-muted-foreground hover:text-foreground")}>
@@ -126,13 +127,15 @@ function Analitica() {
             className={cn("rounded-md px-3 py-1.5 text-sm transition-colors", red === r ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted")}
           >
             {NOMBRE_RED[r]}
-            {r !== "instagram" && <span className="ml-1.5 rounded-full bg-muted px-1.5 text-[10px] font-normal text-muted-foreground">sin conectar</span>}
+            {r !== "instagram" && r !== "facebook" && <span className="ml-1.5 rounded-full bg-muted px-1.5 text-[10px] font-normal text-muted-foreground">sin conectar</span>}
           </button>
         ))}
       </div>
 
       {red === "instagram" ? (
         <AnaliticaRedes dias={dias} />
+      ) : red === "facebook" ? (
+        <AnaliticaFacebook dias={dias} />
       ) : (
         <div className="space-y-3">
           <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm">
