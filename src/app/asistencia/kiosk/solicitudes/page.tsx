@@ -136,12 +136,13 @@ export default function SolicitudesPage() {
                 <div className="space-y-1"><Label>Desde</Label><DatePicker value={vacFechaInicio} onChange={setVacFechaInicio} /></div>
                 <div className="space-y-1"><Label>Hasta</Label><DatePicker value={vacFechaFin} onChange={setVacFechaFin} /></div>
               </div>
-              <div className="space-y-1"><Label>Motivo</Label><Textarea rows={2} value={vacMotivo} onChange={(e) => setVacMotivo(e.target.value)} /></div>
+              {/* Las vacaciones no necesitan motivo; en día libre y descanso médico sí se puede explicar. */}
+              {vacTipo !== "vacaciones" && <div className="space-y-1"><Label>Motivo</Label><Textarea rows={2} value={vacMotivo} onChange={(e) => setVacMotivo(e.target.value)} /></div>}
               <Button
                 className="w-full"
                 disabled={enviando || !vacFechaInicio || !vacFechaFin}
                 onClick={() =>
-                  enviar("/api/asistencia/kiosk/vacaciones", { fechaInicio: vacFechaInicio, fechaFin: vacFechaFin, motivo: vacMotivo, tipo: vacTipo }, () => {
+                  enviar("/api/asistencia/kiosk/vacaciones", { fechaInicio: vacFechaInicio, fechaFin: vacFechaFin, motivo: vacTipo === "vacaciones" ? "" : vacMotivo, tipo: vacTipo }, () => {
                     setVacFechaInicio(""); setVacFechaFin(""); setVacMotivo(""); setVacTipo("vacaciones");
                   })
                 }
