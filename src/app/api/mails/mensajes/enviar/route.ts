@@ -10,12 +10,13 @@ import { accesoMails, buzonesPropios } from "@/lib/mails-auth";
     confía en lo que llegue del navegador. */
 export async function POST(req: Request) {
   const a = await accesoMails();
-  if (!a.ok) return a.respuesta;
+  if (!a.ok) return NextResponse.json({ ok: false, error: "Tu sesión no tiene acceso a Gestión MAILS. Cierra sesión y vuelve a entrar; si sigue igual, avisa a un administrador." }, { status: 403 });
   if (!a.superadmin) {
     const propios = await buzonesPropios(a);
     const b0 = (await req.clone().json().catch(() => ({}))) as Record<string, unknown>;
     if (!propios || !propios.includes(Number(b0.buzonId))) {
-      return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+      // Mensaje concreto (antes solo «No autorizado»): qué buzón se intentó usar y cuál le corresponde a esta cuenta.
+      return NextResponse.json({ ok: false, error: `No puedes enviar desde ese buzón (nº ${String(b0.buzonId ?? "?")}). A tu cuenta (${a.email}) le corresponde el buzón de ${a.buzonEmail}.` }, { status: 403 });
     }
   }
   try {
