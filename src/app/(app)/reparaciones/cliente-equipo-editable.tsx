@@ -233,11 +233,13 @@ export function EquipoEditable({
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-base font-semibold">{detalle.equipo.modelo || "-"}</p>
       </div>
-      <p className="text-sm"><span className="text-muted-foreground">Síntoma:</span> {sintoma.principal || "-"}</p>
-      {/* Resto de problemas escritos por el cliente o añadidos después: mismo tamaño y tono que el síntoma, nunca como dato pequeño. */}
-      {sintoma.adicionales.map((linea, i) => (
-        <p key={`ad-${i}`} className="text-sm">{linea}</p>
-      ))}
+      {/* Síntoma y demás problemas escritos (cliente o recepción): mismo tamaño y tono pequeño que las respuestas del cuestionario de abajo. */}
+      <div className="space-y-0.5">
+        <p className="text-xs text-muted-foreground">Síntoma: {sintoma.principal || "-"}</p>
+        {sintoma.adicionales.map((linea, i) => (
+          <p key={`ad-${i}`} className="text-xs text-muted-foreground">{linea}</p>
+        ))}
+      </div>
       {sintoma.extras.length > 0 && (
         <div className="space-y-0.5">
           {sintoma.extras.map((linea, i) => (
