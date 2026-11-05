@@ -61,10 +61,13 @@ export function NuevaDevolucionDialog({
   onOpenChange,
   onCreada,
   devolucionExistente,
+  desdeTransferencia,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreada: () => void;
+  /** Si se abre desde una transferencia: se enlaza con ella y se rellenan el cliente y el importe. */
+  desdeTransferencia?: { id: number; cliente: string; importe: string; concepto: string } | null;
   /** Si se pasa, el modal edita ese registro (PATCH) en vez de crear uno nuevo — mismo modal que "Nueva devolución", igual que el original. */
   devolucionExistente?: Devolucion | null;
 }) {
@@ -89,6 +92,14 @@ export function NuevaDevolucionDialog({
     setNumeroCuenta(""); setBanco(""); setNombreBeneficiario(""); setPaisSelect("España"); setPaisOtro("");
     setComentarios(""); setFotos([]);
   }
+
+  // Desde una transferencia: cliente e importe ya rellenos y una nota que la identifica.
+  useEffect(() => {
+    if (!open || devolucionExistente || !desdeTransferencia) return;
+    setNombreCliente(desdeTransferencia.cliente);
+    setImporte(desdeTransferencia.importe);
+    setComentarios(`Devolución de la transferencia #${desdeTransferencia.id}${desdeTransferencia.concepto ? ` (${desdeTransferencia.concepto})` : ""}`);
+  }, [open, devolucionExistente, desdeTransferencia]);
 
   useEffect(() => {
     if (!devolucionExistente) return;
@@ -141,6 +152,7 @@ export function NuevaDevolucionDialog({
       nombreCliente, email, telefono, importe: Number(importe), motivo,
       motivoDetalle: motivo === "Otro" ? motivoDetalle.trim() : "",
       numeroCuenta, banco, nombreBeneficiario, pais, comentarios,
+      movimientoId: !editando && desdeTransferencia ? desdeTransferencia.id : undefined,
       fotos: fotos.map(({ base64, mime }) => ({ base64, mime })),
     };
 
@@ -180,6 +192,12 @@ export function NuevaDevolucionDialog({
             {editando ? `Editar devolución #${devolucionExistente!.id}` : "Nueva devolución"}
           </DialogTitle>
         </DialogHeader>
+
+        {desdeTransferencia && !editando && (
+          <p className="rounded-md border border-violet-500/30 bg-violet-500/5 px-3 py-2 text-xs text-violet-700 dark:text-violet-300">
+            Devolución de la <b>transferencia #{desdeTransferencia.id}</b>{desdeTransferencia.importe ? ` (${desdeTransferencia.importe} €)` : ""}: quedará enlazada y esa transferencia se marcará como devuelta.
+          </p>
+        )}
 
         <div>
           <SeccionTitulo icon={Personalcard}>Datos del cliente</SeccionTitulo>

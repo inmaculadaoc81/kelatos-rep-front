@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatCard } from "./stat-card";
 import { ConfirmarDialog } from "./confirmar-dialog";
 import { ConciliarParDialog } from "./conciliar-par-dialog";
+import { NuevaDevolucionDialog } from "./devoluciones/nueva-devolucion-dialog";
 
 export interface Movimiento {
   id: number;
@@ -38,6 +39,30 @@ export interface Movimiento {
   resguardo: string | null;
   /** Grupo de Telegram del que viene; vacío si se subió desde el dashboard. */
   chat_id: string | null;
+  /** Devoluciones registradas desde esta transferencia. */
+  devoluciones?: { id: number; estado: string; importe: string | number | null }[] | null;
+}
+
+/** «Devuelta» (pendiente de pagar) o «Devuelta y pagada», según las devoluciones enlazadas; más el botón para registrar una. */
+function DevolucionCelda({ m, onDevolver }: { m: Movimiento; onDevolver: (m: Movimiento) => void }) {
+  const devs = m.devoluciones || [];
+  const completadas = devs.filter((d) => d.estado === "Completada").length;
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {devs.length > 0 && (
+        <a
+          href="/transferencias/devoluciones"
+          className={`rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${completadas === devs.length ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"}`}
+          title={devs.map((d) => `Devolución #${d.id}: ${d.estado}`).join(" · ")}
+        >
+          {completadas === devs.length ? "Devuelta y pagada" : "Devuelta · pago pendiente"}
+        </a>
+      )}
+      <Button size="sm" variant="outline" className="h-6 px-1.5 text-[11px]" onClick={() => onDevolver(m)} title="Registrar la devolución de esta transferencia">
+        Devolver
+      </Button>
+    </div>
+  );
 }
 
 function fmtMonto(m: string | null, moneda: string | null) {
@@ -133,7 +158,7 @@ function FragmentoGrupo({
  * columna "Conciliado" con el comprobante mientras que el botón de revertir
  * queda bajo "Foto" — mismo desajuste visual que tiene el original.
  */
-function FilaConciliada({ m, enPar, onRevertir }: { m: Movimiento; enPar: boolean; onRevertir: (m: Movimiento) => void }) {
+function FilaConciliada({ m, enPar, onRevertir, onDevolver }: { m: Movimiento; enPar: boolean; onRevertir: (m: Movimiento) => void; onDevolver: (m: Movimiento) => void }) {
   return (
     <TableRow>
       <TableCell className={enPar ? "border-l-2 border-l-emerald-500" : ""}>
@@ -163,9 +188,12 @@ function FilaConciliada({ m, enPar, onRevertir }: { m: Movimiento; enPar: boolea
         )}
       </TableCell>
       <TableCell>
-        <Button size="icon-sm" variant="ghost" onClick={() => onRevertir(m)} title="Devolver a pendientes">
-          <RotateLeft className="size-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="icon-sm" variant="ghost" onClick={() => onRevertir(m)} title="Devolver a pendientes">
+            <RotateLeft className="size-4" />
+          </Button>
+          <DevolucionCelda m={m} onDevolver={onDevolver} />
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -178,6 +206,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
   const [error, setError] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
   const [contador, setContador] = useState({ pendientes: 0, conciliadas: 0 });
+  const [devolviendo, setDevolviendo] = useState<Movimiento | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -461,6 +490,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                 <TableHead>Banco</TableHead>
                 <TableHead>Confianza</TableHead>
                 <TableHead>Foto</TableHead>
+                <TableHead>Devolución</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -495,6 +525,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                       "-"
                     )}
                   </TableCell>
+                  <TableCell><DevolucionCelda m={m} onDevolver={setDevolviendo} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -523,18 +554,25 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
             <TableBody>
               {gruposConciliados.pares.map((grupo, i) => (
                 <FragmentoGrupo key={`par-${i}`} etiqueta="Par conciliado" icono={Link2} claseEtiqueta="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" numero={numeroConciliacion(grupo)}>
-                  {grupo.map((m) => <FilaConciliada key={m.id} m={m} enPar onRevertir={setARevertir} />)}
+                  {grupo.map((m) => <FilaConciliada key={m.id} m={m} enPar onRevertir={setARevertir} onDevolver={setDevolviendo} />)}
                 </FragmentoGrupo>
               ))}
               {gruposConciliados.sinPar.length > 0 && (
                 <FragmentoGrupo etiqueta="Sin par" icono={MinusCirlce} claseEtiqueta="bg-muted text-muted-foreground">
-                  {gruposConciliados.sinPar.map((m) => <FilaConciliada key={m.id} m={m} enPar={false} onRevertir={setARevertir} />)}
+                  {gruposConciliados.sinPar.map((m) => <FilaConciliada key={m.id} m={m} enPar={false} onRevertir={setARevertir} onDevolver={setDevolviendo} />)}
                 </FragmentoGrupo>
               )}
             </TableBody>
           </Table>
         )}
       </div>
+
+      <NuevaDevolucionDialog
+        open={devolviendo !== null}
+        onOpenChange={(o) => { if (!o) setDevolviendo(null); }}
+        onCreada={() => { setDevolviendo(null); cargar(); }}
+        desdeTransferencia={devolviendo ? { id: devolviendo.id, cliente: devolviendo.remitente || "", importe: devolviendo.monto ? String(Math.abs(Number(devolviendo.monto))) : "", concepto: devolviendo.concepto || "" } : null}
+      />
 
       <ConciliarParDialog
         t1={parAConciliar?.[0] || null}

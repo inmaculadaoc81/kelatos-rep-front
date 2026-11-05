@@ -20,6 +20,8 @@ export interface Devolucion {
   id: number;
   fecha_registro: string;
   nombre_cliente: string | null;
+  /** Transferencia de la que viene esta devolución (si se registró desde ella). */
+  movimiento_id?: number | null;
   email: string | null;
   telefono: string | null;
   importe: string | null;
@@ -229,7 +231,7 @@ export default function DevolucionesPage() {
                 <TableRow key={d.id}>
                   <TableCell className="font-mono text-xs">#{d.id}</TableCell>
                   <TableCell className="text-xs">{new Date(d.fecha_registro).toLocaleDateString("es-ES")}</TableCell>
-                  <TableCell className="text-sm">{d.nombre_cliente || "-"}</TableCell>
+                  <TableCell className="text-sm">{d.nombre_cliente || "-"}{d.movimiento_id ? <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title="Transferencia de la que se devuelve">Transf. #{d.movimiento_id}</span> : null}</TableCell>
                   <TableCell className="font-medium">{d.importe ? `${Number(d.importe).toFixed(2)} €` : "-"}</TableCell>
                   <TableCell className="max-w-40 truncate text-sm" title={d.motivo_detalle || ""}>{d.motivo || "-"}</TableCell>
                   <TableCell className="text-xs">{d.numero_cuenta || "-"}</TableCell>
