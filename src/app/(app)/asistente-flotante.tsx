@@ -251,8 +251,11 @@ export function AsistenteFlotante() {
   // Lo dictado se queda en la caja de texto para revisarlo: NO se envía ni se ejecuta hasta que la persona pulsa Enviar.
   const dictadoRef = useRef(false);
   const confianzaRef = useRef<number | null>(null);
+  // Dictado iniciado desde el botón de micrófono suelto (con el chat cerrado): al terminar se abre el chat con el texto.
+  const desdeBotonRef = useRef(false);
   const voz = useVoz({
     alTerminar: (texto, confianza) => {
+      if (desdeBotonRef.current) { desdeBotonRef.current = false; setAbierto(true); }
       dictadoRef.current = true;
       confianzaRef.current = confianza;
       setEntrada((previo) => (previo.trim() ? `${previo.trim()} ${texto}` : texto));
@@ -912,6 +915,34 @@ export function AsistenteFlotante() {
         </div>
       )}
 
+      <div className={`flex items-center gap-2 ${alineadoIzquierda ? "flex-row-reverse" : ""}`}>
+      {voz.soportaMicrofono && (!abierto || voz.escuchando) && (
+        <button
+          type="button"
+          onClick={() => {
+            if (voz.escuchando) { voz.parar(); return; }
+            desdeBotonRef.current = true;
+            voz.iniciar();
+          }}
+          aria-label={voz.escuchando ? "Dejar de escuchar" : "Dictar por voz sin abrir el chat"}
+          aria-pressed={voz.escuchando}
+          title={voz.escuchando ? "Escuchando… pulsa para terminar" : "Dictar por voz (se abrirá el chat con lo que digas)"}
+          style={{ boxShadow: "0 6px 20px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12)" }}
+          className={`relative flex size-10 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${voz.escuchando ? "bg-red-500 text-white" : "bg-card text-foreground hover:bg-muted"}`}
+        >
+          {voz.escuchando && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-red-500/40" />}
+          {voz.escuchando ? (
+            <span aria-hidden className="relative flex h-5 items-center gap-[3px]">
+              <style>{`@keyframes asistente-barra{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}`}</style>
+              {[0, 0.2, 0.4, 0.1, 0.3].map((d, i) => (
+                <span key={i} className="h-full w-[3px] origin-center rounded-full bg-white" style={{ animation: `asistente-barra 0.9s ease-in-out ${d}s infinite` }} />
+              ))}
+            </span>
+          ) : (
+            <Microphone className="size-5" />
+          )}
+        </button>
+      )}
       <button
         type="button"
         onClick={() => { if (ignorarClic.current) return; setAbierto((a) => !a); }}
@@ -951,6 +982,7 @@ export function AsistenteFlotante() {
       >
         {abierto ? <CloseCircle className="size-6" /> : <IconoDestellos className="size-6" />}
       </button>
+      </div>
     </div>
   );
 }
