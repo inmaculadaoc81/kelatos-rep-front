@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
 
 /**
  * Acceso restringido al local: UNA cuenta concreta (la de los empleados del local, hoy soporte@kelatos.com) solo puede usar el dashboard
@@ -110,5 +111,7 @@ export async function comprobarAccesoLocal(req: NextRequest, email: string | nul
 
   if (ruta.startsWith("/api/")) return NextResponse.json({ ok: false, error: "Esta cuenta solo puede usarse desde el local." }, { status: 403 });
   // Las cuentas personales (no la compartida del mostrador) caen en el fichaje, que sí pueden usar desde cualquier sitio; la compartida ve el aviso.
-  return NextResponse.redirect(new URL(correo !== cfg.cuenta ? "/asistencia/kiosk" : "/acceso-restringido", req.nextUrl.origin));
+  // Recién iniciada la sesión no pidieron el dashboard: caen en el fichaje. Si ya pulsaron «Ir al dashboard» (cookie), se les explica por qué no entra.
+  const pidioDashboard = !!req.cookies.get(COOKIE_IR_DASHBOARD);
+  return NextResponse.redirect(new URL(correo !== cfg.cuenta && !pidioDashboard ? "/asistencia/kiosk" : "/acceso-restringido", req.nextUrl.origin));
 }
