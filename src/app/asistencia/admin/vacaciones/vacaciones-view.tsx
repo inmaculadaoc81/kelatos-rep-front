@@ -135,7 +135,6 @@ export function VacacionesView({ soloRemotos = false }: { soloRemotos?: boolean 
               <TableHead>Desde</TableHead>
               <TableHead>Hasta</TableHead>
               <TableHead>Días</TableHead>
-              <TableHead>Motivo</TableHead>
               <TableHead>
                 <span className="inline-flex items-center">
                   Estado
@@ -147,9 +146,9 @@ export function VacacionesView({ soloRemotos = false }: { soloRemotos?: boolean 
           </TableHeader>
           <TableBody>
             {cargando && Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 8 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              <TableRow key={i}>{Array.from({ length: 7 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
             ))}
-            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
+            {!cargando && listaFiltrada.length === 0 && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Sin solicitudes</TableCell></TableRow>}
             {!cargando && listaFiltrada.map((v) => (
               <TableRow key={v.id}>
                 <TableCell className="font-medium">
@@ -168,7 +167,6 @@ export function VacacionesView({ soloRemotos = false }: { soloRemotos?: boolean 
                 <TableCell className="text-sm">{fecha(v.fecha_inicio)}</TableCell>
                 <TableCell className="text-sm">{fecha(v.fecha_fin)}</TableCell>
                 <TableCell className="text-sm">{v.dias_totales}</TableCell>
-                <TableCell className="max-w-48 truncate text-sm" title={v.motivo}>{v.motivo}</TableCell>
                 <TableCell><EstadoPill estado={v.state} /></TableCell>
                 <TableCell>
                   {v.state === "pendiente" && (
