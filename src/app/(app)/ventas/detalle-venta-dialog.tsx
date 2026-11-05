@@ -446,7 +446,11 @@ export function DetalleVentaDialog({
 
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Piezas</h3>
-              {!finalizado && (
+              {!finalizado && (venta.numeroFactura || venta.numeroTicket) ? (
+                <span className="max-w-xs text-right text-[11px] leading-tight text-amber-700">
+                  Venta ya facturada: para añadir más piezas crea un pedido nuevo (se cobra y se factura antes).
+                </span>
+              ) : !finalizado && (
                 <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={abrirAgregar} disabled={enviando}>
                   <Add className="size-3.5" /> Agregar Pieza
                 </Button>
