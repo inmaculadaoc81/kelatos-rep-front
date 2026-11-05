@@ -248,11 +248,14 @@ function Campo({
   label,
   required,
   error,
+  ayuda,
   children,
 }: {
   label: string;
   required?: boolean;
   error?: string;
+  /** Aviso en pequeño bajo el título del campo. */
+  ayuda?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -260,6 +263,7 @@ function Campo({
       <Label className="mb-1.5 text-sm font-semibold text-foreground">
         {label} {required && <span className="text-destructive">*</span>}
       </Label>
+      {ayuda && <p className="mb-1.5 text-xs text-muted-foreground">{ayuda}</p>}
       {children}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
@@ -885,7 +889,7 @@ export default function FormularioClientePage() {
               <p className="text-sm text-muted-foreground">La digitalización y conversión de cintas no requiere descripción de avería.</p>
             ) : (
               <>
-                <Campo label="Describe el síntoma de la avería" required error={errores.sintoma}>
+                <Campo label="DESCRIPCIÓN DEL PROBLEMA" ayuda="(indique todos los problemas, lo que no se indique aquí no se revisará)" required error={errores.sintoma}>
                   <Textarea
                     className="min-h-24 text-base"
                     value={datos.sintoma}
