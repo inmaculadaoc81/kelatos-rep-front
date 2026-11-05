@@ -135,10 +135,15 @@ export function calcularFases(
  * ¿Golpe?, Nº Serie…) en un mismo campo separadas por saltos de línea;
  * mostrarSintomaDetalle() las separaba para no dejar un párrafo ilegible.
  */
-export function separarSintoma(sintoma: string): { principal: string; extras: string[] } {
-  const lineas = String(sintoma || "").split("\n");
+export function separarSintoma(sintoma: string): { principal: string; adicionales: string[]; extras: string[] } {
+  // Las líneas del cuestionario del formulario (¿Enciende?, ¿Golpe?, Nº Serie, ¿Deja cargador?…) son datos de apoyo y van pequeñas;
+  // TODO lo demás lo ha escrito el cliente o recepción (varias líneas de problemas, notas añadidas después…) y debe verse igual de claro que el síntoma.
+  const esCuestionario = (l: string) => /^(¿[^?]{1,60}\?|N[º°o]\.?\s*(de\s*)?serie\s*:|contraseña\s*\/\s*pin\s*:)/i.test(l);
+  const lineas = String(sintoma || "").split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean);
+  const libres = lineas.filter((l) => !esCuestionario(l));
   return {
-    principal: lineas[0]?.trim() || "No especificado",
-    extras: lineas.slice(1).map((l) => l.trim()).filter(Boolean),
+    principal: libres[0] || "No especificado",
+    adicionales: libres.slice(1),
+    extras: lineas.filter(esCuestionario),
   };
 }

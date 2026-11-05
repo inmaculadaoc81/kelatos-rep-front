@@ -162,7 +162,7 @@ export function EquipoEditable({
   bloqueado = false,
 }: {
   detalle: ReparacionDetalle;
-  sintoma: { principal: string; extras: string[] };
+  sintoma: { principal: string; adicionales: string[]; extras: string[] };
   onActualizado: () => void;
   /** Reparación ya entregada y facturada: el equipo ya salió del taller, no tiene sentido seguir editando su ficha. */
   bloqueado?: boolean;
@@ -234,6 +234,10 @@ export function EquipoEditable({
         <p className="text-base font-semibold">{detalle.equipo.modelo || "-"}</p>
       </div>
       <p className="text-sm"><span className="text-muted-foreground">Síntoma:</span> {sintoma.principal || "-"}</p>
+      {/* Resto de problemas escritos por el cliente o añadidos después: mismo tamaño y tono que el síntoma, nunca como dato pequeño. */}
+      {sintoma.adicionales.map((linea, i) => (
+        <p key={`ad-${i}`} className="text-sm">{linea}</p>
+      ))}
       {sintoma.extras.length > 0 && (
         <div className="space-y-0.5">
           {sintoma.extras.map((linea, i) => (
