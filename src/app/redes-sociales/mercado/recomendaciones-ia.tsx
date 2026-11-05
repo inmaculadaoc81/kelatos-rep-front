@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Magicpen } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,16 @@ const TIPO: Record<string, string> = { contenido: "Contenido", seo: "SEO", redes
 export function RecomendacionesIAPanel({ organizacionId, dias }: { organizacionId: string | null; dias: number }) {
   const [cargando, setCargando] = useState(false);
   const [r, setR] = useState<RecomendacionesIA | null>(null);
+
+  // Al abrir la página se muestra la última recomendación guardada (si la hay), sin llamar a la IA ni gastar nada.
+  useEffect(() => {
+    let vigente = true;
+    fetch(`/api/mercado/recomendaciones?dias=${dias}${organizacionId ? `&organizacion=${organizacionId}` : ""}`)
+      .then((res) => res.json())
+      .then((data) => { if (vigente && data.ok && !data.vacio) setR(data as RecomendacionesIA); })
+      .catch(() => {});
+    return () => { vigente = false; };
+  }, [organizacionId, dias]);
 
   async function pedir(refrescar: boolean) {
     setCargando(true);
@@ -66,7 +76,7 @@ export function RecomendacionesIAPanel({ organizacionId, dias }: { organizacionI
           )}
           {r.riesgos.length > 0 && <div><p className="mb-1 text-xs font-semibold">Ojo con</p><ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">{r.riesgos.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
           {r.limites.length > 0 && <div><p className="mb-1 text-xs font-semibold">Lo que estos datos no permiten saber</p><ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">{r.limites.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
-          <p className="text-[11px] text-muted-foreground">{r.desdeCache ? "Guardado de una consulta reciente. " : ""}Generado {r.generadoEn ? new Date(r.generadoEn).toLocaleString("es-ES") : ""}. Son sugerencias: revísalas antes de aplicarlas.</p>
+          <p className="text-[11px] text-muted-foreground">{r.desdeCache ? "Guardada de una consulta anterior. " : ""}Generada {r.generadoEn ? new Date(r.generadoEn).toLocaleString("es-ES") : ""}. Son sugerencias: revísalas antes de aplicarlas.</p>
         </div>
       )}
     </div>

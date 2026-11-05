@@ -55,7 +55,7 @@ export default function MercadoGeneralPage() {
             <Tarjeta titulo="Negocios del sector en Madrid" ayuda={AYUDA_MERCADO.competencia} valor={comp ? (comp.ok ? n(comp.total) : "—") : "…"} pie="Reparación de informática y electrónica" />
           </div>
 
-          <RecomendacionesIAPanel organizacionId={null} dias={dias} />
+          <RecomendacionesIAPanel key={dias} organizacionId={null} dias={dias} />
 
           <GraficoMensual datos={d.mensual} titulo="Demanda mes a mes (todas las marcas)" />
 
