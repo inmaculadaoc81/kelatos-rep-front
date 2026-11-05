@@ -65,6 +65,16 @@ function DevolucionCelda({ m, onDevolver }: { m: Movimiento; onDevolver: (m: Mov
   );
 }
 
+/** Sin comprobante: si viene de Telegram es que se registró escribiendo los datos como TEXTO (sin adjuntar imagen ni PDF); se deja anotado para que no parezca que falta. */
+function SinComprobante({ m }: { m: Movimiento }) {
+  if (!m.chat_id) return <>-</>;
+  return (
+    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-muted-foreground" title="Registrada desde un mensaje de texto de Telegram: no se adjuntó imagen ni PDF, por eso no hay comprobante que ver.">
+      Solo texto
+    </span>
+  );
+}
+
 function fmtMonto(m: string | null, moneda: string | null) {
   if (!m) return "-";
   return `${Number(m).toFixed(2)} ${moneda || "EUR"}`;
@@ -184,7 +194,7 @@ function FilaConciliada({ m, enPar, onRevertir, onDevolver }: { m: Movimiento; e
             <DocumentText className="size-4" />
           </a>
         ) : (
-          "-"
+          <SinComprobante m={m} />
         )}
       </TableCell>
       <TableCell>
@@ -522,7 +532,7 @@ export function TablaMovimientos({ estado, titulo, subtitulo }: { estado: "Pendi
                         Ver <ExportSquare className="size-3" />
                       </a>
                     ) : (
-                      "-"
+                      <SinComprobante m={m} />
                     )}
                   </TableCell>
                   <TableCell><DevolucionCelda m={m} onDevolver={setDevolviendo} /></TableCell>
