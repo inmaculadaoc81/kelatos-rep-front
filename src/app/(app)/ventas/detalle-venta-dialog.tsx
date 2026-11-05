@@ -518,7 +518,10 @@ export function DetalleVentaDialog({
                     </SelectContent>
                   </Select>
                   <Input placeholder="Nº Pedido *" value={pedNumero} inputMode={formatoDe(pedProveedor) ? "numeric" : undefined} maxLength={formatoDe(pedProveedor)?.maxLength} onChange={(e) => { const nf = formatoDe(pedProveedor); setPedNumero(nf ? nf.formatear(e.target.value) : e.target.value); }} />
-                  <Input type="date" placeholder="Fecha estimada *" min={new Date().toISOString().slice(0, 10)} value={pedFecha} onChange={(e) => setPedFecha(e.target.value)} />
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-medium text-muted-foreground">Fecha estimada de llegada * <span className="font-normal">(la fecha del pedido es hoy)</span></label>
+                    <Input type="date" aria-label="Fecha estimada de llegada del pedido" min={new Date().toISOString().slice(0, 10)} value={pedFecha} onChange={(e) => setPedFecha(e.target.value)} />
+                  </div>
                 </div>
                 {esOtro(pedProveedor) && (
                   <Input placeholder="¿Qué plataforma? *" value={pedProveedorOtro} onChange={(e) => setPedProveedorOtro(e.target.value)} />
