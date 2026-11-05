@@ -235,15 +235,15 @@ export function EquipoEditable({
       </div>
       {/* Síntoma y demás problemas escritos (cliente o recepción): mismo tamaño y tono pequeño que las respuestas del cuestionario de abajo. */}
       <div className="space-y-0.5">
-        <p className="text-xs text-muted-foreground">Síntoma: {sintoma.principal || "-"}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">Síntoma: {sintoma.principal || "-"}</p>
         {sintoma.adicionales.map((linea, i) => (
-          <p key={`ad-${i}`} className="text-xs text-muted-foreground">{linea}</p>
+          <p key={`ad-${i}`} className="text-xs text-gray-400 dark:text-gray-500">{linea}</p>
         ))}
       </div>
       {sintoma.extras.length > 0 && (
         <div className="space-y-0.5">
           {sintoma.extras.map((linea, i) => (
-            <p key={i} className="text-xs text-muted-foreground">{linea}</p>
+            <p key={i} className="text-xs text-gray-400 dark:text-gray-500">{linea}</p>
           ))}
         </div>
       )}
