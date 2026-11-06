@@ -343,6 +343,10 @@ export interface ItemPedidoForm {
   descripcion: string;
   cantidad: number;
   precioUnitario: number;
+  /** Referencia de Stock de piezas: la línea sale del stock de la tienda (no genera pedido a proveedor). */
+  referenciaStock?: string;
+  /** Unidades disponibles cuando se eligió la pieza (solo para avisar antes de reservar el número de factura). */
+  stockDisponible?: number;
 }
 
 export interface DatosNuevoPedido {

@@ -22,6 +22,8 @@ import type { Cliente } from "@/lib/clientes";
 import { DatosNuevoPedido, ItemPedidoForm, FormaPagoPedido } from "@/lib/ventas";
 import { esEmailValido } from "@/lib/validacion";
 import { guardarSuReferencia } from "@/lib/su-referencia";
+import { BuscarPiezaStockDialog } from "../reparaciones/buscar-pieza-stock-dialog";
+import type { StockPieza } from "@/lib/stock-piezas";
 import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, type ValorFormaPago } from "../reparaciones/selector-forma-pago";
 import { SoporteTransferenciaCampo } from "../reparaciones/soporte-transferencia-campo";
 import { SOPORTE_TRANSFERENCIA_VACIO, vincularSoporteTransferencia, type SoporteTransferencia } from "@/lib/soporte-transferencia";
@@ -92,6 +94,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
   const [resultadoTicket, setResultadoTicket] = useState<{ ventaId: string; numeroTicket: string; urlTicket: string } | null>(null);
   const [enviandoTicket, setEnviandoTicket] = useState(false);
   const [buscarClienteAbierto, setBuscarClienteAbierto] = useState(false);
+  const [buscarStockAbierto, setBuscarStockAbierto] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -122,6 +125,18 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
     const ivaCalc = (baseDesc * 21) / 100;
     return { base: baseCalc, descuentoAmt: descAmt, iva: ivaCalc, total: baseDesc + ivaCalc };
   }, [datos.items, datos.descuentoPct]);
+
+  /** Añade una línea tomada del stock de la tienda: no genera pedido a proveedor y descuenta del stock al generar el documento. */
+  function agregarLineaDesdeStock(p: StockPieza) {
+    const linea: ItemPedidoForm = { descripcion: p.descripcion || p.nombre, cantidad: 1, precioUnitario: p.precioCliente || 0, referenciaStock: p.referencia, stockDisponible: p.stockDisponible };
+    setDatos((prev) => {
+      const sinVacia = prev.items.length === 1 && !prev.items[0].descripcion.trim() && !prev.items[0].precioUnitario && !prev.items[0].referenciaStock ? [] : prev.items;
+      const nuevas = [...sinVacia, linea];
+      if ((p.manoObra || 0) > 0) nuevas.push({ descripcion: `Mano de obra — ${p.descripcion || p.nombre}`, cantidad: 1, precioUnitario: p.manoObra });
+      return { ...prev, items: nuevas };
+    });
+    setBuscarStockAbierto(false);
+  }
 
   function seleccionarCliente(c: Cliente) {
     setDatos((prev) => ({
@@ -165,6 +180,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
     if (datos.items.length === 0) return toast.error("Añade al menos una pieza");
     for (const [i, it] of datos.items.entries()) {
       if (!it.descripcion.trim()) return toast.error(`La descripción de la pieza ${i + 1} es obligatoria`);
+      if (it.referenciaStock && typeof it.stockDisponible === "number" && it.cantidad > it.stockDisponible) return toast.error(`Stock insuficiente de ${it.referenciaStock}: hay ${it.stockDisponible} y pides ${it.cantidad}`);
       if (!datos.esGarantia && it.precioUnitario <= 0) return toast.error(`El precio de la pieza ${i + 1} debe ser mayor que 0`);
     }
     if (!datos.esGarantia) {
@@ -365,9 +381,14 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                 <div className="rounded-lg border bg-card shadow-sm">
                   <div className="flex items-center justify-between rounded-t-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
                     <span>Conceptos</span>
-                    <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => actualizar("items", [...datos.items, itemVacio()])}>
-                      <Add className="size-3" /> Añadir pieza
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => setBuscarStockAbierto(true)} disabled={!!resultadoTicket} title="Añadir una pieza que ya está en el stock de la tienda (no genera pedido a proveedor)">
+                        <SearchNormal1 className="size-3" /> Del stock
+                      </Button>
+                      <Button size="sm" variant="secondary" className="h-6 gap-1 px-2 text-xs" onClick={() => actualizar("items", [...datos.items, itemVacio()])}>
+                        <Add className="size-3" /> Añadir pieza (pedido)
+                      </Button>
+                    </div>
                   </div>
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-xs text-muted-foreground">
@@ -383,7 +404,12 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
                       {datos.items.map((it, i) => (
                         <tr key={i} className="border-t">
                           <td className="p-1">
-                            <Input className="h-8 border-0 text-sm" placeholder="Descripción de la pieza" value={it.descripcion} onChange={(e) => actualizarItem(i, "descripcion", e.target.value)} />
+                            <div className="flex items-center gap-1.5">
+                              <Input className="h-8 border-0 text-sm" placeholder="Descripción de la pieza (se pedirá al proveedor)" value={it.descripcion} onChange={(e) => actualizarItem(i, "descripcion", e.target.value)} />
+                              {it.referenciaStock && (
+                                <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800" title={`Sale del stock de la tienda: ${it.referenciaStock}`}>STOCK</span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-1">
                             <DecimalInput className="h-8 border-0 text-center text-sm" value={it.cantidad} onChange={(n) => actualizarItem(i, "cantidad", n || 1)} />
@@ -485,6 +511,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
       </DialogContent>
 
       <BuscarClienteDialog open={buscarClienteAbierto} onOpenChange={setBuscarClienteAbierto} onSeleccionar={seleccionarCliente} />
+      <BuscarPiezaStockDialog open={buscarStockAbierto} onOpenChange={setBuscarStockAbierto} onSeleccionar={agregarLineaDesdeStock} />
     </Dialog>
   );
 }

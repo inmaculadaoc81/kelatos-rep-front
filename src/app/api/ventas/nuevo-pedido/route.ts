@@ -98,7 +98,7 @@ async function crearPedido(req: Request, usuario: string) {
     // ── Modo garantía: sin saga fiscal ──────────────────────────────────
     if (datos.esGarantia) {
       await registrarClienteVenta(usuario, datos);
-      const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: 0 }));
+      const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: 0, ...(it.referenciaStock ? { referencia_stock: it.referenciaStock, cantidad: it.cantidad } : {}) }));
       const resVenta = await kelatosApiPost<{ ok: boolean; venta_id: string }>("/v1/ventas", {
         requestId,
         usuario,
@@ -123,7 +123,7 @@ async function crearPedido(req: Request, usuario: string) {
       if (datos.formaPago === "tarjeta" && !datos.banco) return NextResponse.json({ ok: false, error: "Selecciona el banco" }, { status: 400 });
 
       await registrarClienteVenta(usuario, datos);
-      const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: it.cantidad * it.precioUnitario }));
+      const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: it.cantidad * it.precioUnitario, ...(it.referenciaStock ? { referencia_stock: it.referenciaStock, cantidad: it.cantidad } : {}) }));
       const resVenta = await kelatosApiPost<{ ok: boolean; venta_id: string }>("/v1/ventas", {
         requestId,
         usuario,
@@ -235,7 +235,7 @@ async function crearPedido(req: Request, usuario: string) {
     // descuento (el descuento solo afecta a las líneas de la factura, no
     // a los items de la venta) — se replica esa misma inconsistencia real.
     const metodoPagoFinal = datos.formaPago === "tarjeta" && datos.banco ? `${datos.banco} · Tarjeta bancaria` : LABELS_PAGO[datos.formaPago] || datos.formaPago;
-    const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: it.cantidad * it.precioUnitario }));
+    const itemsVenta = datos.items.map((it) => ({ descripcion: it.descripcion.trim(), costo: 0, precio: it.cantidad * it.precioUnitario, ...(it.referenciaStock ? { referencia_stock: it.referenciaStock, cantidad: it.cantidad } : {}) }));
 
     // Cliente exactamente como se imprimió en el PDF — se guarda como foto
     // (cliente_factura) para poder precargar el formulario de devolución/
