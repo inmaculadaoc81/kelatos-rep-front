@@ -171,6 +171,8 @@ export function DetalleVentaDialog({
   if (!ventaId) return null;
 
   const finalizado = venta ? venta.estado === "Entregado" || venta.estado === "Cancelado" : false;
+  /** Venta ya facturada (factura o ticket): descripción, costo y precio constan en el documento y no se pueden modificar. */
+  const facturada = !!venta && !!(venta.numeroFactura || venta.numeroTicket);
   const todasRecibidas = !!venta && venta.items.length > 0 && venta.items.every((i) => i.estadoPedido === "Pieza Recibida");
   const estadoInfo = venta ? estadoVentaMostrado(venta) : null;
 
@@ -494,10 +496,11 @@ export function DetalleVentaDialog({
             {itemEditando && (
               <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
                 <p className="text-xs font-semibold">Editar pieza</p>
+                {facturada && <p className="rounded bg-amber-500/15 px-2 py-1 text-xs text-amber-800 dark:text-amber-300">Esta venta ya está facturada: la descripción, el costo y el precio constan en el documento y no se pueden modificar. Si hay que corregirlos, haz una rectificativa.</p>}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <Input placeholder="Descripción" className="col-span-2" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
-                  <DecimalInput placeholder="Costo" value={editCosto} onChange={setEditCosto} />
-                  <DecimalInput placeholder="Precio" value={editPrecio} onChange={setEditPrecio} />
+                  <Input placeholder="Descripción" className="col-span-2" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} disabled={facturada} />
+                  <DecimalInput placeholder="Costo" value={editCosto} onChange={setEditCosto} disabled={facturada} />
+                  <DecimalInput placeholder="Precio" value={editPrecio} onChange={setEditPrecio} disabled={facturada} />
                 </div>
                 {(() => {
                   const it = venta?.items.find((i) => i.itemId === itemEditando);
