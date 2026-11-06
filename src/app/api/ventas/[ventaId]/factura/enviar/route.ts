@@ -23,7 +23,7 @@ export async function POST(
   try {
     const resultado = await kelatosApiPost<{ ok: boolean; enviado: boolean; motivo?: string }>(
       `/v1/ventas/${encodeURIComponent(ventaId)}/factura/enviar`,
-      { tipo: body.tipo || "normal", emailDestino: body.emailDestino || "" }
+      { tipo: body.tipo || "normal", emailDestino: body.emailDestino || "", usuario: session.user.email }
     );
     return NextResponse.json(resultado);
   } catch (error) {
