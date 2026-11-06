@@ -4,6 +4,7 @@ import { ComprobanteTransferenciaBoton } from "../reparaciones/comprobante-trans
 import { numeroPedidoEsEnlace, MENSAJE_NUMERO_PEDIDO_ENLACE } from "@/lib/numero-pedido";
 import { esProveedorOtro, formatoPedidoDe } from "@/lib/formato-pedido";
 import { useEffect, useState } from "react";
+import { HistorialInternoVenta } from "./historial-interno-venta";
 import { ShoppingCart, CloseCircle, Edit2, Truck, TickCircle, Trash, Add, DocumentText, Ticket, ScanBarcode } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -625,6 +626,8 @@ export function DetalleVentaDialog({
             </div>
           </div>
         )}
+
+        {venta && <HistorialInternoVenta ventaId={String(venta.ventaId)} version={venta.ultimoUsuario + String(venta.estado)} />}
 
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/50 px-4 py-3">
           <div className="flex flex-wrap gap-2">
