@@ -680,7 +680,7 @@ export default function CentroMailsPage() {
                     Abrir en pestaña
                   </Button>
                 )}
-                {puedeEnviar && seleccionado.direccion === "entrada" && !mensajeActivo.es_rebote && buzones.some((b) => b.id === mensajeActivo.buzon_id && b.activo) && (
+                {puedeEnviar && (seleccionado.direccion === "entrada" || !!hilo?.some((x) => x.direccion === "entrada")) && !mensajeActivo.es_rebote && buzones.some((b) => b.id === mensajeActivo.buzon_id && b.activo) && (
                   <Button
                     size="sm"
                     className="h-7 gap-1.5"
