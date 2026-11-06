@@ -128,7 +128,7 @@ export function NuevoPedidoDialog({ onCreado }: { onCreado: () => void }) {
 
   /** Añade una línea tomada del stock de la tienda: no genera pedido a proveedor y descuenta del stock al generar el documento. */
   function agregarLineaDesdeStock(p: StockPieza) {
-    const linea: ItemPedidoForm = { descripcion: p.descripcion || p.nombre, cantidad: 1, precioUnitario: p.precioCliente || 0, referenciaStock: p.referencia, stockDisponible: p.stockDisponible };
+    const linea: ItemPedidoForm = { descripcion: p.descripcion || p.nombre, cantidad: 1, precioUnitario: p.precioCliente || 0, referenciaStock: p.referencia, stockDisponible: Math.max(0, p.stockDisponible - (p.stockReservado || 0)) };
     setDatos((prev) => {
       const sinVacia = prev.items.length === 1 && !prev.items[0].descripcion.trim() && !prev.items[0].precioUnitario && !prev.items[0].referenciaStock ? [] : prev.items;
       const nuevas = [...sinVacia, linea];

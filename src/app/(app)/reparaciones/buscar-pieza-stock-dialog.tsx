@@ -67,9 +67,10 @@ export function BuscarPiezaStockDialog({
                     <p className="truncate font-medium">{p.nombre}</p>
                     <p className="flex items-center gap-2 text-xs text-muted-foreground">
                       <code>{p.referencia}</code>
-                      <Badge variant={p.stockDisponible > 0 ? "default" : "destructive"} className="h-4 px-1 text-[10px]">
-                        {p.stockDisponible}
+                      <Badge variant={p.stockDisponible - (p.stockReservado || 0) > 0 ? "default" : "destructive"} className="h-4 px-1 text-[10px]" title={(p.stockReservado || 0) > 0 ? `En almacén ${p.stockDisponible}, reservadas para reparaciones ${p.stockReservado}` : undefined}>
+                        {Math.max(0, p.stockDisponible - (p.stockReservado || 0))}
                       </Badge>
+                      {(p.stockReservado || 0) > 0 && <span className="text-amber-700 dark:text-amber-300">{p.stockReservado} reservadas de {p.stockDisponible}</span>}
                       <span>Coste: {euros(p.costeInterno)}</span>
                       <span>Precio: {euros(p.precioCliente)}</span>
                     </p>

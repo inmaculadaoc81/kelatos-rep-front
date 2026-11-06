@@ -31,6 +31,8 @@ interface FilaStockPiezaSql {
   precio_cliente: string | number | null;
   mano_obra: string | number | null;
   stock_disponible: number | null;
+  /** Unidades asignadas a reparaciones en curso (presupuesto aceptado, aún sin descontar). */
+  stock_reservado?: number | null;
   stock_minimo: number | null;
   proveedor: string | null;
   categoria: string | null;
@@ -56,6 +58,8 @@ export interface StockPieza {
   /** (precioCliente + manoObra) * 1.21 — mismo cálculo que _spEuro()/total del original. */
   totalCliente: number;
   stockDisponible: number;
+  /** Unidades ya asignadas a reparaciones en curso: están en el almacén pero no se pueden usar para otra cosa. */
+  stockReservado?: number;
   stockMinimo: number;
   proveedor: string;
   categoria: string;
@@ -210,6 +214,7 @@ export function mapearStockPieza(row: FilaStockPiezaSql): StockPieza {
     manoObra,
     totalCliente: (precioCliente + manoObra) * 1.21,
     stockDisponible,
+    stockReservado: numero(row.stock_reservado),
     stockMinimo,
     proveedor: row.proveedor || "",
     categoria: row.categoria || "",

@@ -174,7 +174,7 @@ export default function StockPiezasPage() {
               <TableHead className="text-right" title="Precio cliente (sin IVA)">Precio</TableHead>
               <TableHead className="text-right">M. obra</TableHead>
               <TableHead className="text-right" title="Total cliente, con IVA incluido">Total</TableHead>
-              <TableHead className="text-right">Stock</TableHead>
+              <TableHead className="text-right" title="En almacén · reservadas para reparaciones en curso · libres para usar">Stock</TableHead>
               <TableHead>Proveedor</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -237,6 +237,11 @@ export default function StockPiezasPage() {
                   <TableCell className={`py-1 text-right text-sm tabular-nums ${p.stockBajo ? "font-semibold text-destructive" : ""}`}>
                     {p.stockDisponible}
                     {p.stockMinimo > 0 && <span className="text-xs text-muted-foreground" title="Stock mínimo"> / {p.stockMinimo}</span>}
+                    {(p.stockReservado || 0) > 0 && (
+                      <span className={`block text-[10px] font-medium ${p.stockDisponible - (p.stockReservado || 0) <= 0 ? "text-destructive" : "text-amber-700 dark:text-amber-300"}`} title="Reservadas: ya asignadas a reparaciones en curso con presupuesto aceptado. Libres = en almacén − reservadas">
+                        {p.stockReservado} reserv. · {Math.max(0, p.stockDisponible - (p.stockReservado || 0))} libres
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="py-1 max-w-[7rem] truncate text-sm text-muted-foreground" title={p.proveedor || undefined}>{p.proveedor || "-"}</TableCell>
                   <TableCell className="py-1">
