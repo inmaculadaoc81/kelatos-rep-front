@@ -142,10 +142,10 @@ export default function WhatsappPage() {
   }
 
   return (
-    <div className="p-6">
+    <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-lg font-semibold"><Message className="size-5" /> WhatsApp</h1>
+          <h1 className="flex items-center gap-2 text-lg font-semibold"><Message className="size-5" /> Conversaciones</h1>
           <p className="text-sm text-muted-foreground">Conversaciones de WhatsApp de Kelatos (la misma bandeja de Chatwoot, que sigue funcionando igual)</p>
         </div>
         <Button variant="outline" size="icon" className="size-8" onClick={() => cargarLista()} title="Actualizar">

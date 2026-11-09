@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2, Chart } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2, Chart, Message } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esUsuarioRedes } from "@/lib/redes-sociales-acceso";
@@ -84,17 +84,20 @@ export function NavUser({ session }: { session: Session | null }) {
   const enRedesSociales = pathname?.startsWith("/redes-sociales") ?? false;
   const enAgentes = (pathname?.startsWith("/agentes") ?? false) && !enAgentesV2;
   const enMails = pathname?.startsWith("/mails") ?? false;
+  const enWhatsapp = pathname?.startsWith("/whatsapp") ?? false;
   const enTareas = pathname?.startsWith("/tareas") ?? false;
   const enCrm = pathname?.startsWith("/crm") ?? false;
   const enProspeccion = pathname?.startsWith("/prospeccion") ?? false;
   const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enTareas && !enCrm && !enProspeccion;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enWhatsapp && !enTareas && !enCrm && !enProspeccion;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerCrm = esAdmin || esSuperadmin(email);
   // accesoCompleto ve Gestión MAILS, pero con una vista restringida a solo
   // "Centro de mails" y su propio buzón — ver GestionMailsSidebar.
   const puedeVerMails = esAdmin || esSuperadmin(email) || accesoCompleto;
+  // WhatsApp (conversaciones de Chatwoot dentro del dashboard): mismo acceso que Gestión MAILS.
+  const puedeVerWhatsapp = puedeVerMails;
 
   return (
     <SidebarFooter className="border-t border-sidebar-border">
@@ -215,6 +218,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/mails" />}>
                   <IconoDashboard icon={Sms} className="from-rose-500 to-pink-600" />
                   Gestión MAILS
+                </DropdownMenuItem>
+              )}
+              {puedeVerWhatsapp && !enWhatsapp && (
+                <DropdownMenuItem render={<Link href="/whatsapp" />}>
+                  <IconoDashboard icon={Message} className="from-green-500 to-emerald-600" />
+                  WhatsApp
                 </DropdownMenuItem>
               )}
               {puedeVerCrm && !enCrm && (
