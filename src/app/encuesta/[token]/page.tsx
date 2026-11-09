@@ -59,11 +59,15 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
     }
   }
 
-  const tarjeta = "mx-auto w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900";
+  const tarjeta = "mx-auto w-full max-w-md overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900";
 
   return (
     <main className={tarjeta}>
-      <p className="mb-4 text-sm font-semibold tracking-wide text-emerald-700 dark:text-emerald-400">Kelatos Informática</p>
+      <header className="bg-[#1768ea] px-6 py-5 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="https://kelatos.com/wp-content/uploads/2021/12/logo_web_kelatos.png" alt="Kelatos" height={40} className="mx-auto h-10 brightness-0 invert" />
+      </header>
+      <div className="p-6">
 
       {estado === "cargando" && <p className="text-sm text-slate-500">Cargando…</p>}
 
@@ -94,11 +98,11 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
             <>
               <h1 className="text-xl font-bold">¡Muchas gracias!</h1>
               <p className="mt-3 text-base">Nos alegra que haya ido bien. Si tienes un minuto, nos ayudarías mucho dejando tu opinión en nuestra ficha de Google.</p>
-              <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+              <p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-200">
                 Por responder nuestra encuesta tienes un <strong>5 % de descuento</strong> en tu próxima reparación. Te lo hemos enviado también por correo: para canjearlo, presenta ese correo o una captura en el local y usa el mismo correo electrónico con el que te hemos escrito. Válido para un solo uso, no acumulable ni transferible.
               </p>
               {siguiente.url && (
-                <a href={siguiente.url} className="mt-5 inline-block rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white hover:bg-emerald-700">
+                <a href={siguiente.url} className="mt-5 inline-block rounded-xl bg-[#1768ea] px-5 py-3 font-semibold text-white hover:bg-[#1254c0]">
                   Dejar mi reseña en Google
                 </a>
               )}
@@ -109,7 +113,7 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
               <h1 className="text-xl font-bold">Gracias por decírnoslo</h1>
               <p className="mt-3 text-base">Sentimos que la experiencia no haya sido la esperada. Cuéntanos qué pasó para que podamos mejorarlo y ponernos en contacto contigo.</p>
               {siguiente.url && (
-                <a href={siguiente.url} className="mt-5 inline-block rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white hover:bg-emerald-700">
+                <a href={siguiente.url} className="mt-5 inline-block rounded-xl bg-[#1768ea] px-5 py-3 font-semibold text-white hover:bg-[#1254c0]">
                   Contarnos qué pasó
                 </a>
               )}
@@ -144,6 +148,17 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
         </>
       )}
       {estado === "error" && <p className="text-base text-rose-600">{error || "No se pudo cargar la encuesta. Inténtalo de nuevo en unos minutos."}</p>}
+
+      <hr className="my-6 border-slate-200 dark:border-slate-800" />
+      <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+        <p><strong>📍 Dirección:</strong> C. de Joaquín María López, 26, Chamberí, 28015 Madrid</p>
+        <p><strong>🕒 Horario:</strong> Lunes a Viernes de 9:30 a 18:00</p>
+        <p><strong>📞 Fijo:</strong> +34 918 294 660 · <strong>WhatsApp (solo mensajes):</strong> +34 649 97 01 28</p>
+      </div>
+      </div>
+      <footer className="border-t bg-slate-50 px-6 py-3 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950">
+        Kelatos · <a href="https://kelatos.com" className="underline">https://kelatos.com</a>
+      </footer>
     </main>
   );
 }
