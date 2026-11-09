@@ -70,7 +70,7 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
     <main className={tarjeta}>
       <header className="bg-[#1768ea] px-6 py-5 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="https://kelatos.com/wp-content/uploads/2021/12/logo_web_kelatos.png" alt="Kelatos" height={40} className="mx-auto h-10 brightness-0 invert" />
+        <span className="mx-auto inline-block rounded-md bg-white px-3 py-1.5"><img src="/logos/kelatos.png" alt="Kelatos" height={40} className="h-9 w-auto" /></span>
       </header>
       <div className="p-6">
 
@@ -104,7 +104,7 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
               <h1 className="text-xl font-bold">¡Muchas gracias!</h1>
               <p className="mt-3 text-base">Nos alegra que haya ido bien. Si tienes un minuto, nos ayudarías mucho dejando tu opinión en nuestra ficha de Google.</p>
               <p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-200">
-                Por responder nuestra encuesta tienes un <strong>5 % de descuento</strong> en tu próxima reparación. Te lo hemos enviado también por correo: para canjearlo, presenta ese correo o una captura en el local y usa el mismo correo electrónico con el que te hemos escrito. Válido para un solo uso, no acumulable ni transferible.
+                Por dejar una reseña en la ficha de Google tienes un <strong>5 % de descuento</strong> en tu próxima reparación: para canjearlo, presenta ese correo o una captura en el local y usa el mismo correo electrónico con el que te hemos escrito. Válido para un solo uso, no acumulable ni transferible.
               </p>
               {siguiente.url && (
                 <a href={siguiente.url} className="mt-5 inline-block rounded-xl bg-[#1768ea] px-5 py-3 font-semibold text-white hover:bg-[#1254c0]">
