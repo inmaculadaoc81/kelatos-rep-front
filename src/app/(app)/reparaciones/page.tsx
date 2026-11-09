@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Refresh2, Filter, ArrowDown2, Eye, ClipboardTick, CloseCircle, AddCircle, SearchNormal1, Calendar, Receipt, Trash, Ticket, Copy, Wallet } from "@/lib/icons";
 import { toast } from "sonner";
@@ -236,6 +236,9 @@ export default function ReparacionesPage() {
   const [filtroEquipo, setFiltroEquipo] = useState<string[]>([]);
   const [filtroEntrega, setFiltroEntrega] = useState<string[]>([]);
   const [filtroDescuento, setFiltroDescuento] = useState<string[]>([]);
+  // Teléfonos (últimos 9 dígitos) con WhatsApp en Chatwoot; null = aún no cargados o sin acceso (entonces el filtro no se muestra).
+  const [telefonosWa, setTelefonosWa] = useState<Set<string> | null>(null);
+  const [filtroWhatsapp, setFiltroWhatsapp] = useState<string[]>([]);
   // Filtro por comprobante de transferencia (columna «Pago»): SIN = ninguno subido, PENDIENTE = subido sin emparejar con el banco, CONCILIADA = pago realizado.
   const [filtroPago, setFiltroPago] = useState<string[]>([]);
   // Filtros de texto y de fecha en los encabezados de la tabla.
@@ -263,6 +266,18 @@ export default function ReparacionesPage() {
 
   const [metricas, setMetricas] = useState<MetricasDashboard | null>(null);
   const [errorMetricas, setErrorMetricas] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/whatsapp/telefonos", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (d?.ok && Array.isArray(d.telefonos)) setTelefonosWa(new Set<string>(d.telefonos)); })
+      .catch(() => {});
+  }, []);
+
+  const tieneWhatsapp = useCallback((r: Reparacion) => {
+    const dig = String(r.cliente.telefono || "").replace(/\D/g, "");
+    return !!telefonosWa && dig.length >= 9 && telefonosWa.has(dig.slice(-9));
+  }, [telefonosWa]);
 
   async function cargar() {
     setCargando(true);
@@ -340,6 +355,7 @@ export default function ReparacionesPage() {
     if (filtroEquipo.length) lista = lista.filter((r) => filtroEquipo.includes(r.equipoEnLocal));
     if (filtroEntrega.length) lista = lista.filter((r) => filtroEntrega.includes(r.entregaMensajeria));
     if (filtroDescuento.length) lista = lista.filter((r) => (r.descuentoPct ?? 0) > 0 || (r.descuentoImporte ?? 0) > 0);
+    if (filtroWhatsapp.length === 1) lista = lista.filter((r) => tieneWhatsapp(r) === (filtroWhatsapp[0] === "CON"));
     if (filtroPago.length) {
       lista = lista.filter((r) => {
         const e = comprobantesEstado[r.resguardo];
@@ -414,7 +430,7 @@ export default function ReparacionesPage() {
       });
     }
     return lista;
-  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroDescuento, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, comprobantesEstado, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
+  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroDescuento, filtroWhatsapp, tieneWhatsapp, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, comprobantesEstado, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
 
   function alternarOrden(campo: "resguardo" | "fecha") {
     setOrden((prev) => {
@@ -454,6 +470,7 @@ export default function ReparacionesPage() {
     setFiltroEquipo([]);
     setFiltroEntrega([]);
     setFiltroDescuento([]);
+    setFiltroWhatsapp([]);
     setFiltroPago([]);
     setFiltroResguardo("");
     setFiltroCliente("");
@@ -476,6 +493,7 @@ export default function ReparacionesPage() {
     if (filtroEquipo.length) desc.push(`Equipo: ${filtroEquipo.map((v) => (v === "SI" ? "En local" : "Cliente se llevó")).join(", ")}`);
     if (filtroEntrega.length) desc.push(`Entrega: ${filtroEntrega.map((v) => (v === "SI" ? "Mensajería" : "Local")).join(", ")}`);
     if (filtroDescuento.length) desc.push("Con descuento aplicado");
+    if (filtroWhatsapp.length) desc.push(`WhatsApp: ${filtroWhatsapp.map((v) => (v === "CON" ? "Con WhatsApp" : "Sin WhatsApp")).join(", ")}`);
     if (filtroPago.length) desc.push(`Pago: ${filtroPago.map((v) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido, pendiente" : "Pago realizado")).join(", ")}`);
     if (filtroResguardo.trim()) desc.push(`Resguardo: "${filtroResguardo.trim()}"`);
     if (filtroCliente.trim()) desc.push(`Cliente: "${filtroCliente.trim()}"`);
@@ -485,7 +503,7 @@ export default function ReparacionesPage() {
     if (busqueda.trim()) desc.push(`Búsqueda: "${busqueda.trim()}"`);
     if (fechaDesde || fechaHasta) desc.push(`Fecha: ${fechaDesde || "*"} - ${fechaHasta || "*"}`);
     return desc.join(" | ");
-  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroDescuento, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, busqueda, fechaDesde, fechaHasta]);
+  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroDescuento, filtroWhatsapp, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, busqueda, fechaDesde, fechaHasta]);
 
   const hayFiltrosActivos = descripcionFiltros.length > 0;
 
@@ -594,6 +612,17 @@ export default function ReparacionesPage() {
           seleccionados={filtroDescuento}
           onCambiar={setFiltroDescuento}
         />
+        {telefonosWa && (
+          <MultiselectFiltro
+            label="WhatsApp"
+            opciones={[
+              { value: "CON", label: `Con WhatsApp (${reparaciones.filter(tieneWhatsapp).length})` },
+              { value: "SIN", label: `Sin WhatsApp (${reparaciones.filter((r) => !tieneWhatsapp(r)).length})` },
+            ]}
+            seleccionados={filtroWhatsapp}
+            onCambiar={setFiltroWhatsapp}
+          />
+        )}
         {hayFiltrosActivos && (
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltros}>
             <CloseCircle className="size-3.5" /> Limpiar
