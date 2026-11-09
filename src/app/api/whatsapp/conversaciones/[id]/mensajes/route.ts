@@ -14,6 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const data = await kelatosApiGet<{ ok: boolean; mensajes: MensajeWa[]; conversacion: ConversacionWa | null; hayMas: boolean }>(`/v1/whatsapp/conversaciones/${id}/mensajes`, {
       antes: new URL(request.url).searchParams.get("antes") ?? undefined,
+      leer: new URL(request.url).searchParams.get("leer") ?? undefined,
     });
     return NextResponse.json({ ok: true, mensajes: data.mensajes, conversacion: data.conversacion, hayMas: data.hayMas });
   } catch (error) {
@@ -28,9 +29,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
   if (!/^\d{1,12}$/.test(id)) return NextResponse.json({ ok: false, error: "Conversación no válida" }, { status: 400 });
   try {
-    const b = (await request.json()) as { texto?: unknown };
+    const b = (await request.json()) as { texto?: unknown; privado?: unknown; adjuntos?: unknown };
     const texto = typeof b.texto === "string" ? b.texto : "";
-    const data = await kelatosApiPost<{ ok: boolean; mensaje: MensajeWa }>(`/v1/whatsapp/conversaciones/${id}/mensajes`, { texto, usuario: a.email });
+    const data = await kelatosApiPost<{ ok: boolean; mensaje: MensajeWa }>(`/v1/whatsapp/conversaciones/${id}/mensajes`, {
+      texto, usuario: a.email, privado: b.privado === true, adjuntos: Array.isArray(b.adjuntos) ? b.adjuntos : [],
+    });
     return NextResponse.json({ ok: true, mensaje: data.mensaje });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Error desconocido" }, { status: 502 });

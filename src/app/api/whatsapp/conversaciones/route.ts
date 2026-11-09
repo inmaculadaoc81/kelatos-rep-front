@@ -15,6 +15,10 @@ export async function GET(request: NextRequest) {
       estado: sp.get("estado") ?? "open",
       pagina: sp.get("pagina") ?? "1",
       q: sp.get("q") ?? undefined,
+      bandeja: sp.get("bandeja") ?? undefined,
+      asignacion: sp.get("asignacion") ?? undefined,
+      etiqueta: sp.get("etiqueta") ?? undefined,
+      usuario: a.email,
     });
     return NextResponse.json({ ok: true, configurado: data.configurado, conversaciones: data.conversaciones, total: data.total });
   } catch (error) {
