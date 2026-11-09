@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { SearchNormal1 } from "@/lib/icons";
+import { SearchNormal1, DocumentDownload } from "@/lib/icons";
+import { descargarXlsxSolicitudesWeb } from "@/lib/punto-limpio-xlsx";
 import { cn } from "@/lib/utils";
 
 type Estado = "nueva" | "contactada" | "programada" | "recogida" | "completada" | "descartada";
@@ -49,6 +50,7 @@ export function SolicitudesWeb({ abrirId, onContadorNuevas }: { abrirId?: number
   const [filtro, setFiltro] = useState<"" | Estado>("");
   const [q, setQ] = useState("");
   const [abierta, setAbierta] = useState<number | null>(abrirId ?? null);
+  const [exportando, setExportando] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -71,6 +73,19 @@ export function SolicitudesWeb({ abrirId, onContadorNuevas }: { abrirId?: number
   const texto = q.trim().toLowerCase();
   const visibles = filas.filter((f) => (!filtro || f.estado === filtro) && (!texto || [f.referencia, f.nombre, f.empresa ?? "", f.email, f.telefono, f.resumen ?? ""].join(" ").toLowerCase().includes(texto)));
 
+  async function exportarExcel() {
+    if (!visibles.length) return toast.error("No hay solicitudes que exportar");
+    setExportando(true);
+    try {
+      await descargarXlsxSolicitudesWeb(visibles, (e) => ESTADOS.find((x) => x.valor === e)?.etiqueta ?? e);
+      toast.success(`${visibles.length} solicitud(es) exportadas a Excel`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el Excel");
+    } finally {
+      setExportando(false);
+    }
+  }
+
   return (
     <div className="space-y-3">
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">No se pudo cargar: {error}</div>}
@@ -79,6 +94,9 @@ export function SolicitudesWeb({ abrirId, onContadorNuevas }: { abrirId?: number
           <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Referencia, nombre, correo, material…" className="w-72 pl-7" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={exportarExcel} disabled={cargando || exportando || visibles.length === 0} title="Descarga en Excel las solicitudes que se ven en pantalla (con el filtro aplicado)">
+          <DocumentDownload className="size-4" /> {exportando ? "Exportando…" : "Exportar a Excel"}
+        </Button>
         <div className="flex flex-wrap gap-1.5">
           <button type="button" onClick={() => setFiltro("")} className={cn("rounded-full border px-2.5 py-1 text-xs", filtro === "" ? "border-primary bg-primary/10 font-medium text-primary" : "hover:bg-accent")}>Todas ({filas.length})</button>
           {ESTADOS.map((e) => (

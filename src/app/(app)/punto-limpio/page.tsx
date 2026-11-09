@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Refresh2, Trash, SearchNormal1 } from "@/lib/icons";
+import { Refresh2, Trash, SearchNormal1, DocumentDownload } from "@/lib/icons";
+import { toast } from "sonner";
+import { descargarXlsxEquiposPuntoLimpio } from "@/lib/punto-limpio-xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +39,7 @@ export default function PuntoLimpioPage() {
   const [vista, setVista] = useState<"equipos" | "solicitudes">("equipos");
   const [abrirSolicitud, setAbrirSolicitud] = useState<number | null>(null);
   const [nuevas, setNuevas] = useState(0);
+  const [exportando, setExportando] = useState(false);
 
   // Enlace desde la campana de notificaciones: /punto-limpio?tab=solicitudes&id=…
   useEffect(() => {
@@ -70,6 +73,19 @@ export default function PuntoLimpioPage() {
   const filtrados = texto
     ? items.filter((i) => [i.resguardo, i.clienteNombre, i.equipoModelo, i.presupuesto?.concepto ?? ""].join(" ").toLowerCase().includes(texto))
     : items;
+
+  async function exportarExcel() {
+    if (!filtrados.length) return toast.error("No hay equipos que exportar");
+    setExportando(true);
+    try {
+      await descargarXlsxEquiposPuntoLimpio(filtrados);
+      toast.success(`${filtrados.length} equipo(s) exportados a Excel`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el Excel");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   return (
     <div className="p-6">
@@ -107,6 +123,9 @@ export default function PuntoLimpioPage() {
           <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Resguardo, cliente, equipo, concepto..." className="w-64 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={exportarExcel} disabled={cargando || exportando || filtrados.length === 0} title="Descarga en Excel los equipos que se ven en pantalla (con el filtro aplicado)">
+          <DocumentDownload className="size-4" /> {exportando ? "Exportando…" : "Exportar a Excel"}
+        </Button>
         {!cargando && <span className="ml-auto text-sm text-muted-foreground">{filtrados.length} casos</span>}
       </div>
 
