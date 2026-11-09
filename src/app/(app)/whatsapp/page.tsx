@@ -27,6 +27,9 @@ export default function WhatsappPage() {
   const [configurado, setConfigurado] = useState(true);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hayMas, setHayMas] = useState(false);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const paginaActual = useRef(1);
   const [abierta, setAbierta] = useState<ConversacionWa | null>(null);
   const [mensajes, setMensajes] = useState<MensajeWa[]>([]);
   const [cargandoHilo, setCargandoHilo] = useState(false);
@@ -51,7 +54,15 @@ export default function WhatsappPage() {
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "Error desconocido");
       setConfigurado(d.configurado !== false);
-      setConversaciones(d.conversaciones as ConversacionWa[]);
+      const nuevas = d.conversaciones as ConversacionWa[];
+      if (silencioso && paginaActual.current > 1) {
+        // Refresco automático con páginas ya ampliadas: se renuevan las primeras y se conservan las que el usuario ya había cargado.
+        setConversaciones((prev) => { const ids = new Set(nuevas.map((x) => x.id)); return [...nuevas, ...prev.filter((x) => !ids.has(x.id))]; });
+      } else {
+        paginaActual.current = 1;
+        setConversaciones(nuevas);
+        setHayMas(!busquedaAplicada && nuevas.length >= 25);
+      }
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
@@ -61,6 +72,26 @@ export default function WhatsappPage() {
   }, [filtro, busquedaAplicada]);
 
   useEffect(() => { cargarLista(); }, [cargarLista]);
+
+  async function cargarMas() {
+    if (cargandoMas) return;
+    setCargandoMas(true);
+    try {
+      const sig = paginaActual.current + 1;
+      const qs = new URLSearchParams({ estado: filtro, pagina: String(sig) });
+      const res = await fetch(`/api/whatsapp/conversaciones?${qs}`, { cache: "no-store" });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "Error desconocido");
+      const nuevas = d.conversaciones as ConversacionWa[];
+      paginaActual.current = sig;
+      setConversaciones((prev) => { const ids = new Set(prev.map((x) => x.id)); return [...prev, ...nuevas.filter((x) => !ids.has(x.id))]; });
+      setHayMas(nuevas.length >= 25);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudieron cargar más conversaciones");
+    } finally {
+      setCargandoMas(false);
+    }
+  }
   useSondeoVisible(() => { cargarLista(true); }, REFRESCO_LISTA_MS, configurado);
 
   const cargarHilo = useCallback(async (id: number, inicial: boolean) => {
@@ -174,6 +205,11 @@ export default function WhatsappPage() {
                 </span>
               </button>
             ))}
+            {!cargando && hayMas && (
+              <div className="p-3 text-center">
+                <Button variant="outline" size="sm" disabled={cargandoMas} onClick={cargarMas}>{cargandoMas ? "Cargando…" : `Cargar más (${conversaciones.length} mostradas)`}</Button>
+              </div>
+            )}
           </div>
         </div>
 
