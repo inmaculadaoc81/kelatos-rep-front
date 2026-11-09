@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const data = await kelatosApiGet<RespuestaCompras>("/v1/compras", {
       estado: searchParams.get("estado") ?? undefined,
       retrasado: searchParams.get("retrasado") ?? undefined,
+      sinCliente: searchParams.get("sinCliente") ?? undefined,
       proveedorId: searchParams.get("proveedorId") ?? undefined,
       compradoPor: searchParams.get("compradoPor") ?? undefined,
       busqueda: searchParams.get("busqueda") ?? undefined,

@@ -144,9 +144,11 @@ export interface KpisCompras {
   cancelado: number;
   con_problema: number;
   retrasado: number;
+  /** Pedidos de cliente cuyo resguardo/venta ya no existe o no tiene nombre de cliente. */
+  sin_cliente: number;
 }
 
-export const KPIS_COMPRAS_VACIOS: KpisCompras = { total: 0, pendiente: 0, pedido: 0, en_transito: 0, recibido: 0, cancelado: 0, con_problema: 0, retrasado: 0 };
+export const KPIS_COMPRAS_VACIOS: KpisCompras = { total: 0, pendiente: 0, pedido: 0, en_transito: 0, recibido: 0, cancelado: 0, con_problema: 0, retrasado: 0, sin_cliente: 0 };
 
 // Un color por proveedor — se reconoce por el nombre (normalizado, igual
 // criterio que formatoPedidoDe en lib/formato-pedido.ts) para que un

@@ -26,7 +26,7 @@ import type { Empleado } from "@/app/api/empleados/route";
 
 const FILAS_POR_PAGINA_OPCIONES = ["15", "20", "30", "40", "50", "100"];
 
-type Vista = "" | "Pendiente" | "Pedido" | "En Tránsito" | "Recibido" | "Cancelado" | "con_problema" | "retrasado";
+type Vista = "" | "Pendiente" | "Pedido" | "En Tránsito" | "Recibido" | "Cancelado" | "con_problema" | "retrasado" | "sin_cliente";
 
 const TARJETAS: { clave: keyof KpisCompras; etiqueta: string; vista: Vista; icono: typeof Truck; color: string }[] = [
   { clave: "total", etiqueta: "Todos", vista: "", icono: Category, color: "bg-slate-500/10 text-slate-600 dark:text-slate-300" },
@@ -37,6 +37,7 @@ const TARJETAS: { clave: keyof KpisCompras; etiqueta: string; vista: Vista; icon
   { clave: "cancelado", etiqueta: "Cancelado", vista: "Cancelado", icono: CloseCircle, color: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400" },
   { clave: "con_problema", etiqueta: "Con problema", vista: "con_problema", icono: Warning2, color: "bg-red-500/10 text-red-700 dark:text-red-400" },
   { clave: "retrasado", etiqueta: "Retrasados", vista: "retrasado", icono: Timer1, color: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
+  { clave: "sin_cliente", etiqueta: "Sin cliente", vista: "sin_cliente", icono: Warning2, color: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400" },
 ];
 
 function fechaCorta(iso: string | null): string {
@@ -105,6 +106,7 @@ export default function ComprasPage() {
       const p = new URLSearchParams({ pagina: String(pag), porPagina: String(porPagina) });
       if (vista === "con_problema") p.set("estado", "Problema,Pieza Rota,Pieza Defectuosa,Pieza No Válida");
       else if (vista === "retrasado") p.set("retrasado", "true");
+      else if (vista === "sin_cliente") p.set("sinCliente", "true");
       else if (vista) p.set("estado", vista);
       if (proveedorId) p.set("proveedorId", proveedorId);
       if (compradoPor) p.set("compradoPor", compradoPor);
@@ -242,7 +244,7 @@ export default function ComprasPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-9">
         {TARJETAS.map((t) => {
           const activa = vista === t.vista;
           return (
