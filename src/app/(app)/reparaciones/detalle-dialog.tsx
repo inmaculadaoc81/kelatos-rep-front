@@ -21,6 +21,7 @@ import {
   Gallery,
   Shop,
   Sms,
+  Message,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -41,6 +42,7 @@ import { ReparacionDetalle, type Pedido, clienteEligioTicketSinFactura } from "@
 import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } from "@/lib/animacion";
 import { LogisticaPanel } from "./logistica-panel";
 import { PanelMensajeAbierto, PanelMensajes, useMensajesCliente } from "./mensajes-reparacion";
+import { PanelWhatsapp, useWhatsappCliente } from "./whatsapp-reparacion";
 import { cn } from "@/lib/utils";
 import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog, MarcarEnviadoDialog } from "./finalizar-dialog";
 import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
@@ -374,6 +376,7 @@ export function DetalleReparacionDialog({
   const [soloEstaReparacion, setSoloEstaReparacion] = useState(false);
   const [mensajeAbiertoId, setMensajeAbiertoId] = useState<number | null>(null);
   const mensajes = useMensajesCliente(detalle?.cliente.email, detalle ? String(detalle.resguardo) : "", soloEstaReparacion);
+  const whatsapp = useWhatsappCliente(detalle?.cliente.telefono);
   // El asistente de ayuda sabe qué resguardo está abierto ("¿cuándo se generó este resguardo?").
   useContextoAsistente(detalle ? { tipo: "resguardo", id: String(detalle.resguardo) } : null);
   const [error, setError] = useState<string | null>(null);
@@ -820,6 +823,10 @@ export function DetalleReparacionDialog({
                     <Sms className="size-4" /> Mensajes
                     {mensajes.sinLeer > 0 && <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white" title={`${mensajes.sinLeer} sin leer`}>{mensajes.sinLeer}</span>}
                   </TabsTrigger>
+                  <TabsTrigger value="whatsapp" className="gap-1.5">
+                    <Message className="size-4" /> WhatsApp
+                    {whatsapp.sinLeer > 0 && <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white" title={`${whatsapp.sinLeer} sin leer`}>{whatsapp.sinLeer}</span>}
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Dos columnas como renderizarInfoDetallada(): a la izquierda
@@ -1059,6 +1066,10 @@ export function DetalleReparacionDialog({
 
                 <TabsContent value="mensajes" className="pt-3">
                   <PanelMensajes resguardo={String(detalle.resguardo)} datos={mensajes} soloEstaReparacion={soloEstaReparacion} onCambiarAlcance={setSoloEstaReparacion} abiertoId={mensajeAbiertoId} onAbrir={(m) => setMensajeAbiertoId(m.id)} />
+                </TabsContent>
+
+                <TabsContent value="whatsapp" className="pt-3">
+                  <PanelWhatsapp datos={whatsapp} />
                 </TabsContent>
                 </Tabs>
               </m.div>
