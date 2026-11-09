@@ -115,6 +115,11 @@ export default function CentroMailsPage() {
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seleccionado, setSeleccionado] = useState<MensajeLista | null>(null);
+  // Selección múltiple (acciones masivas: spam, archivar, leído…). Petición del usuario, 2026-11-09: «tengo que marcar uno por uno».
+  const [modoSel, setModoSel] = useState(false);
+  const [marcados, setMarcados] = useState<Set<number>>(new Set());
+  const [ultimoMarcado, setUltimoMarcado] = useState<number | null>(null);
+  const [aplicandoMasivo, setAplicandoMasivo] = useState(false);
   const [hilo, setHilo] = useState<MensajeHilo[] | null>(null);
   const [detalle, setDetalle] = useState<MensajeDetalle | null>(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
@@ -326,6 +331,60 @@ export default function CentroMailsPage() {
     }
   }
 
+  /** Marca/desmarca una fila; con Mayús marca todo el rango desde la última marcada. */
+  function alternarMarca(m: MensajeLista, indice: number, rango: boolean) {
+    setMarcados((prev) => {
+      const sig = new Set(prev);
+      if (rango && ultimoMarcado !== null) {
+        const [a, b] = [Math.min(ultimoMarcado, indice), Math.max(ultimoMarcado, indice)];
+        for (let i = a; i <= b; i++) if (mensajes[i]) sig.add(mensajes[i].id);
+      } else if (sig.has(m.id)) sig.delete(m.id);
+      else sig.add(m.id);
+      return sig;
+    });
+    setUltimoMarcado(indice);
+  }
+
+  function salirDeSeleccion() {
+    setModoSel(false);
+    setMarcados(new Set());
+    setUltimoMarcado(null);
+  }
+
+  /** Aplica una acción a todos los correos marcados (de 200 en 200, que es el máximo del servidor) y recarga la lista una sola vez. */
+  async function accionMasiva(acc: string, mensajeOk: string) {
+    const ids = [...marcados];
+    if (!ids.length) return toast.error("Marca primero algún correo");
+    setAplicandoMasivo(true);
+    try {
+      let afectados = 0;
+      for (let i = 0; i < ids.length; i += 200) {
+        const res = await fetch("/api/mails/mensajes/accion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: ids.slice(i, i + 200), accion: acc, conHilo: true }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error desconocido");
+        afectados += Number(data.afectados) || 0;
+      }
+      toast.success(`${mensajeOk} (${ids.length} correo${ids.length === 1 ? "" : "s"})`);
+      if (seleccionado && ids.includes(seleccionado.id) && acc !== "leido" && acc !== "no_leido") {
+        setSeleccionado(null);
+        setDetalle(null);
+        setHilo(null);
+      }
+      setMarcados(new Set());
+      setUltimoMarcado(null);
+      await Promise.all([cargar(true, Math.min(200, Math.max(PAGINA, mensajes.length))), cargarBuzones()]);
+      return afectados;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setAplicandoMasivo(false);
+    }
+  }
+
   async function accionSeleccion(acc: string, mensaje: string, sale = false) {
     if (!seleccionado) return;
     const ids = hilo ? hilo.map((x) => x.id) : [seleccionado.id];
@@ -337,6 +396,11 @@ export default function CentroMailsPage() {
       setHilo(null);
     }
   }
+
+  useEffect(() => {
+    setMarcados(new Set());
+    setUltimoMarcado(null);
+  }, [vista, buzonSel, busquedaAplicada, soloSinLeer, desde, hasta]);
 
   const buzonActual = useMemo(() => buzones.find((b) => b.id === buzonSel) || null, [buzones, buzonSel]);
   const totalSinLeerBuzones = buzones.reduce((a, b) => a + b.sin_leer, 0);
@@ -584,7 +648,55 @@ export default function CentroMailsPage() {
               />
               Agrupar por conversación
             </label>
+            <button
+              type="button"
+              className={`rounded border px-2 py-0.5 text-xs ${modoSel ? "border-primary bg-primary/10 font-medium text-primary" : "hover:bg-accent"}`}
+              onClick={() => (modoSel ? salirDeSeleccion() : setModoSel(true))}
+              title="Marca varios correos para actuar sobre todos a la vez (Mayús + clic marca un rango)"
+            >
+              {modoSel ? "Cancelar selección" : "Seleccionar varios"}
+            </button>
           </div>
+          {modoSel && (
+            <div className="space-y-1.5 border-b bg-primary/5 px-3 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <label className="flex cursor-pointer items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    className="size-3.5"
+                    checked={mensajes.length > 0 && marcados.size === mensajes.length}
+                    onChange={(e) => setMarcados(e.target.checked ? new Set(mensajes.map((x) => x.id)) : new Set())}
+                  />
+                  Todos los cargados ({mensajes.length})
+                </label>
+                <span className="font-medium">{marcados.size} marcado{marcados.size === 1 ? "" : "s"}</span>
+                {marcados.size > 0 && <button type="button" className="text-muted-foreground underline-offset-2 hover:underline" onClick={() => setMarcados(new Set())}>Quitar marcas</button>}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button size="sm" variant="outline" className="h-7 gap-1 border-orange-400 text-orange-700 hover:bg-orange-50" disabled={!marcados.size || aplicandoMasivo}
+                  onClick={() => accionMasiva(vista === "spam" ? "no_spam" : "spam", vista === "spam" ? "Devueltos a la bandeja (no son spam)" : "Marcados como spam")}>
+                  <Danger className="size-3.5" /> {vista === "spam" ? "No es spam" : "Marcar como spam"}
+                </Button>
+                {vista !== "papelera" && (
+                  <Button size="sm" variant="outline" className="h-7 gap-1" disabled={!marcados.size || aplicandoMasivo}
+                    onClick={() => accionMasiva(vista === "archivo" ? "desarchivar" : "archivar", vista === "archivo" ? "Devueltos a la bandeja" : "Archivados")}>
+                    <Folder2 className="size-3.5" /> {vista === "archivo" ? "Desarchivar" : "Archivar"}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="h-7 gap-1" disabled={!marcados.size || aplicandoMasivo} onClick={() => accionMasiva("leido", "Marcados como leídos")}>
+                  <Eye className="size-3.5" /> Leído
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 gap-1" disabled={!marcados.size || aplicandoMasivo} onClick={() => accionMasiva("no_leido", "Marcados como no leídos")}>
+                  <Eye className="size-3.5" /> No leído
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 gap-1" disabled={!marcados.size || aplicandoMasivo}
+                  onClick={() => accionMasiva(vista === "ofertas" ? "no_ofertas" : "ofertas", vista === "ofertas" ? "Devueltos a la bandeja (no son ofertas)" : "Movidos a Ofertas")}>
+                  <Tag className="size-3.5" /> {vista === "ofertas" ? "No es oferta" : "Ofertas"}
+                </Button>
+                {aplicandoMasivo && <span className="text-muted-foreground">Aplicando…</span>}
+              </div>
+            </div>
+          )}
           {hayFiltroExterno && (
             <div className="flex items-center justify-between gap-2 border-b bg-cyan-500/5 px-3 py-1.5 text-xs">
               <span className="min-w-0 truncate">
@@ -607,10 +719,21 @@ export default function CentroMailsPage() {
               <p className="p-6 text-center text-sm text-muted-foreground">{busquedaAplicada ? "Ningún mensaje coincide con la búsqueda" : "No hay mensajes en esta carpeta"}</p>
             )}
             {!cargando &&
-              mensajes.map((m) => {
+              mensajes.map((m, indice) => {
                 const sinLeer = m.no_leidos > 0;
+                const marcado = marcados.has(m.id);
                 return (
-                  <div key={m.id} className={`flex items-start gap-1 border-b hover:bg-muted/50 ${seleccionado?.id === m.id ? "bg-muted" : ""}`}>
+                  <div key={m.id} className={`flex items-start gap-1 border-b hover:bg-muted/50 ${marcado ? "bg-primary/10" : seleccionado?.id === m.id ? "bg-muted" : ""}`}>
+                    {modoSel && (
+                      <input
+                        type="checkbox"
+                        aria-label="Marcar este correo"
+                        className="mt-3 ml-2 size-4 shrink-0 cursor-pointer"
+                        checked={marcado}
+                        onChange={() => { /* lo gestiona onClick para poder leer Mayús */ }}
+                        onClick={(ev) => alternarMarca(m, indice, ev.shiftKey)}
+                      />
+                    )}
                     <button
                       type="button"
                       title={m.destacado ? "Quitar de destacados" : "Destacar"}
@@ -619,7 +742,7 @@ export default function CentroMailsPage() {
                     >
                       <Star className={`size-4 ${m.destacado ? "fill-amber-400 text-amber-500" : ""}`} />
                     </button>
-                    <button type="button" onClick={() => abrir(m)} onDoubleClick={() => abrirEnPestana(m)} title="Doble clic: abrir en una pestaña" className="block min-w-0 flex-1 px-2 py-2.5 text-left">
+                    <button type="button" onClick={(ev) => (modoSel ? alternarMarca(m, indice, ev.shiftKey) : abrir(m))} onDoubleClick={() => { if (!modoSel) abrirEnPestana(m); }} title={modoSel ? "Clic: marcar · Mayús + clic: marcar un rango" : "Doble clic: abrir en una pestaña"} className="block min-w-0 flex-1 px-2 py-2.5 text-left">
                       <div className="flex items-center justify-between gap-2">
                         <span className={`truncate text-sm ${sinLeer ? "font-semibold" : ""}`}>
                           {m.direccion === "salida" ? `Para: ${m.destinatarios || "—"}` : nombreOCorreo(m)}
