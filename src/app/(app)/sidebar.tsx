@@ -24,7 +24,7 @@ export function AppSidebar({ session }: { session: Session | null }) {
   const superadmin = esSuperadmin(session?.user?.email);
   const esAdmin = session?.user?.role === "admin" || superadmin;
   const efectivoSoloLectura = puedeVerEfectivoSoloLectura(session?.user?.email);
-  const grupos = gruposVisibles({ esAdmin, superadmin, efectivoSoloLectura, equiposEntregados: puedeVerEquiposEntregados(session?.user) });
+  const grupos = gruposVisibles({ esAdmin, superadmin, efectivoSoloLectura, equiposEntregados: puedeVerEquiposEntregados(session?.user), whatsapp: esAdmin || !!session?.user?.accesoCompleto });
 
   return (
     <Sidebar collapsible="icon">

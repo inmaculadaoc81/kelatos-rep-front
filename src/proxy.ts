@@ -102,7 +102,7 @@ export default auth(async (req) => {
   // solo deja pasar la ruta). Las rutas de API repiten la comprobación
   // (src/lib/mails-auth.ts), que también necesita la excepción.
   if (
-    (req.nextUrl.pathname.startsWith("/mails") || req.nextUrl.pathname.startsWith("/api/mails")) &&
+    (req.nextUrl.pathname.startsWith("/mails") || req.nextUrl.pathname.startsWith("/api/mails") || req.nextUrl.pathname.startsWith("/whatsapp") || req.nextUrl.pathname.startsWith("/api/whatsapp")) &&
     req.auth?.user?.role !== "admin" &&
     !esSuperadmin(req.auth?.user?.email) &&
     !req.auth?.user?.accesoCompleto

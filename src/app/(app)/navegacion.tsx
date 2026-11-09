@@ -32,6 +32,7 @@ import {
   Star1,
   Diagram,
   Calendar,
+  Message,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -185,9 +186,17 @@ const GRUPO_EFECTIVO_SOLO_LECTURA: GrupoNavegacion = {
 /** Entrada "Equipos entregados" de Reparaciones: solo administradores y la cuenta de empleados (ver puedeVerEquiposEntregados). */
 const ITEM_EQUIPOS_ENTREGADOS: ItemNavegacion = { label: "Equipos entregados", href: "/equipos-entregados", icon: BoxTick };
 
+/** Enlace directo «WhatsApp» (conversaciones de Chatwoot dentro del dashboard). Verde, como la marca de WhatsApp. */
+const GRUPO_WHATSAPP: GrupoNavegacion = {
+  titulo: "WhatsApp",
+  icon: Message,
+  claseIcono: "text-green-600 dark:text-green-400",
+  items: [{ label: "WhatsApp", href: "/whatsapp", icon: Message }],
+};
+
 export function gruposVisibles({
-  esAdmin, superadmin, efectivoSoloLectura = false, equiposEntregados = false,
-}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean }): GrupoNavegacion[] {
+  esAdmin, superadmin, efectivoSoloLectura = false, equiposEntregados = false, whatsapp = false,
+}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean; whatsapp?: boolean }): GrupoNavegacion[] {
   const base = GRUPOS.flatMap((g) => {
     if (equiposEntregados && g.titulo === "Reparaciones") {
       // Va justo después de "Recogidas" (antes de "Punto Limpio").
@@ -199,6 +208,8 @@ export function gruposVisibles({
     if (esAdmin && g.titulo === "Facturación") return [g, GRUPO_CONTABILIDAD];
     if (!esAdmin && efectivoSoloLectura && g.titulo === "Facturación") return [g, GRUPO_EFECTIVO_SOLO_LECTURA];
     if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS] }];
+    // «WhatsApp» va justo después de Reparaciones (es donde más se usa).
+    if (whatsapp && g.titulo === "Reparaciones") return [g, GRUPO_WHATSAPP];
     return [g];
   });
   return superadmin ? [...base, GRUPO_ADMIN] : base;
