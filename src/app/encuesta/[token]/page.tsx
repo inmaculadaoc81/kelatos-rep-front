@@ -52,7 +52,6 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
       if (!d.ok) throw new Error(d.error || "No se pudo enviar");
       setSiguiente({ destino: d.destino, url: d.url });
       setEstado("gracias");
-      if (d.url) setTimeout(() => window.location.assign(d.url), 2500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo enviar. Inténtalo de nuevo.");
     } finally {
@@ -122,7 +121,7 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
               <p className="mt-3 text-base">Hemos registrado tu respuesta. Nos ayuda a seguir mejorando.</p>
             </>
           )}
-          {siguiente.url && <p className="mt-3 text-xs text-slate-500">Te llevamos allí automáticamente en unos segundos…</p>}
+          {siguiente.url && <p className="mt-3 text-xs text-slate-500">También te hemos enviado este enlace por correo.</p>}
         </>
       )}
 
