@@ -50,6 +50,11 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
       const res = await fetch(`/api/encuesta/${token}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ respuesta }) });
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "No se pudo enviar");
+      // Respuesta mala → directo al formulario de valoración, sin pantalla intermedia.
+      if (d.destino === "formulario" && d.url) {
+        window.location.assign(d.url);
+        return;
+      }
       setSiguiente({ destino: d.destino, url: d.url });
       setEstado("gracias");
     } catch (e) {
