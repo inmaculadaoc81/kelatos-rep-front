@@ -78,6 +78,9 @@ export interface Reparacion {
   numeroTicketMensajeria: string;
   resena: string;
   tipoIngreso: string;
+  /** Descuento aplicado al cliente (% de línea y/o importe en €). 0 = ninguno. */
+  descuentoPct?: number;
+  descuentoImporte?: number;
   pptoDescripcion: string;
   presupuestos: PresupuestoResumen[];
   pedidos: PedidoResumen[];
@@ -117,6 +120,9 @@ interface FilaReparacionSql {
   numero_ticket_mensajeria: string | null;
   resena: string | null;
   tipo_ingreso: string | null;
+  /** % de descuento más alto en las líneas de factura/ticket, e importe de las líneas negativas manuales (parking…). Sin contar el crédito de la revisión pagada. */
+  descuento_pct?: number;
+  descuento_importe?: number;
 }
 
 interface PptoAceptado {
@@ -185,6 +191,8 @@ export function mapearFilaReparacion(
     numeroTicketMensajeria: row.numero_ticket_mensajeria || "",
     resena: row.resena || "",
     tipoIngreso: row.tipo_ingreso || "",
+    descuentoPct: Number(row.descuento_pct) || 0,
+    descuentoImporte: Number(row.descuento_importe) || 0,
     pptoDescripcion: ppto?.descripcion || "",
     // presupuestos (histórico completo) no viene en este endpoint — solo el
     // resumen del presupuesto aceptado (pptoAceptadoSummary), igual que

@@ -137,6 +137,7 @@ export default function HistorialPage() {
   const [filtroFactura, setFiltroFactura] = useState("");
   // Comprobante de transferencia de cada resguardo (columna «Pago»): SIN = ninguno subido, PENDIENTE = subido sin emparejar con el banco, CONCILIADA = pago realizado.
   const [filtroPago, setFiltroPago] = useState("");
+  const [filtroDescuento, setFiltroDescuento] = useState("");
   const [comprobantesEstado, setComprobantesEstado] = useState<Record<string, "Pendiente" | "Conciliada">>({});
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [reparandoFechas, setReparandoFechas] = useState(false);
@@ -200,12 +201,14 @@ export default function HistorialPage() {
   }, [reparaciones]);
 
   const visibles = useMemo(() => {
-    if (!filtroPago) return reparaciones;
-    return reparaciones.filter((r) => {
+    let lista = reparaciones;
+    if (filtroDescuento) lista = lista.filter((r) => (r.descuentoPct ?? 0) > 0 || (r.descuentoImporte ?? 0) > 0);
+    if (!filtroPago) return lista;
+    return lista.filter((r) => {
       const e = comprobantesEstado[r.resguardo];
       return (!e ? "SIN" : e === "Pendiente" ? "PENDIENTE" : "CONCILIADA") === filtroPago;
     });
-  }, [reparaciones, filtroPago, comprobantesEstado]);
+  }, [reparaciones, filtroPago, filtroDescuento, comprobantesEstado]);
 
   const conteo = visibles.length;
 
@@ -255,6 +258,15 @@ export default function HistorialPage() {
             <SelectItem value="sin">Sin factura</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={filtroDescuento || "__todos__"} onValueChange={(v) => setFiltroDescuento(!v || v === "__todos__" ? "" : v)}>
+          <SelectTrigger className="w-44">
+            <SelectValue>{(v: string) => (v === "con" ? "Con descuento" : "Descuento: Todos")}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__todos__">Descuento: Todos</SelectItem>
+            <SelectItem value="con">Con descuento (% o importe)</SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           variant="outline"
           size="sm"
@@ -265,7 +277,7 @@ export default function HistorialPage() {
         >
           <Setting2 className={`size-3.5 ${reparandoFechas ? "animate-spin" : ""}`} /> {reparandoFechas ? "Reparando..." : "Reparar fechas"}
         </Button>
-        {(busqueda || fechaDesde || fechaHasta || filtroEntrega || filtroFactura || filtroPago) && (
+        {(busqueda || fechaDesde || fechaHasta || filtroEntrega || filtroFactura || filtroPago || filtroDescuento) && (
           <Button
             variant="ghost"
             size="sm"
@@ -277,6 +289,7 @@ export default function HistorialPage() {
               setFiltroEntrega("");
               setFiltroFactura("");
               setFiltroPago("");
+              setFiltroDescuento("");
             }}
           >
             Limpiar
@@ -347,7 +360,14 @@ export default function HistorialPage() {
                   onClick={() => setResguardoDetalle(r.resguardo)}
                   title={`Abrir reparación ${r.resguardo}`}
                 >
-                  <TableCell className="font-semibold">{r.resguardo}</TableCell>
+                  <TableCell className="font-semibold">
+                    {r.resguardo}
+                    {((r.descuentoPct ?? 0) > 0 || (r.descuentoImporte ?? 0) > 0) && (
+                      <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300" title="Descuento aplicado al cliente">
+                        Dto {(r.descuentoPct ?? 0) > 0 ? `${r.descuentoPct} %` : `${(r.descuentoImporte ?? 0).toLocaleString("es-ES")} €`}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="max-w-40 text-sm">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate">{r.cliente.nombre || "N/A"}</span>

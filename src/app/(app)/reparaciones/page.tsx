@@ -235,6 +235,7 @@ export default function ReparacionesPage() {
   const [filtroTecnico, setFiltroTecnico] = useState<string[]>([]);
   const [filtroEquipo, setFiltroEquipo] = useState<string[]>([]);
   const [filtroEntrega, setFiltroEntrega] = useState<string[]>([]);
+  const [filtroDescuento, setFiltroDescuento] = useState<string[]>([]);
   // Filtro por comprobante de transferencia (columna «Pago»): SIN = ninguno subido, PENDIENTE = subido sin emparejar con el banco, CONCILIADA = pago realizado.
   const [filtroPago, setFiltroPago] = useState<string[]>([]);
   // Filtros de texto y de fecha en los encabezados de la tabla.
@@ -338,6 +339,7 @@ export default function ReparacionesPage() {
     if (filtroTecnico.length) lista = lista.filter((r) => filtroTecnico.includes(r.tecnicoAsignado));
     if (filtroEquipo.length) lista = lista.filter((r) => filtroEquipo.includes(r.equipoEnLocal));
     if (filtroEntrega.length) lista = lista.filter((r) => filtroEntrega.includes(r.entregaMensajeria));
+    if (filtroDescuento.length) lista = lista.filter((r) => (r.descuentoPct ?? 0) > 0 || (r.descuentoImporte ?? 0) > 0);
     if (filtroPago.length) {
       lista = lista.filter((r) => {
         const e = comprobantesEstado[r.resguardo];
@@ -412,7 +414,7 @@ export default function ReparacionesPage() {
       });
     }
     return lista;
-  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, comprobantesEstado, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
+  }, [reparaciones, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroDescuento, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, comprobantesEstado, cardFiltro, busqueda, fechaDesde, fechaHasta, orden, resguardosPptoRetrasado, resguardosEntregaRetrasada]);
 
   function alternarOrden(campo: "resguardo" | "fecha") {
     setOrden((prev) => {
@@ -451,6 +453,7 @@ export default function ReparacionesPage() {
     setFiltroTecnico([]);
     setFiltroEquipo([]);
     setFiltroEntrega([]);
+    setFiltroDescuento([]);
     setFiltroPago([]);
     setFiltroResguardo("");
     setFiltroCliente("");
@@ -472,6 +475,7 @@ export default function ReparacionesPage() {
     if (filtroTecnico.length) desc.push(`Técnico: ${filtroTecnico.join(", ")}`);
     if (filtroEquipo.length) desc.push(`Equipo: ${filtroEquipo.map((v) => (v === "SI" ? "En local" : "Cliente se llevó")).join(", ")}`);
     if (filtroEntrega.length) desc.push(`Entrega: ${filtroEntrega.map((v) => (v === "SI" ? "Mensajería" : "Local")).join(", ")}`);
+    if (filtroDescuento.length) desc.push("Con descuento aplicado");
     if (filtroPago.length) desc.push(`Pago: ${filtroPago.map((v) => (v === "SIN" ? "Sin comprobante" : v === "PENDIENTE" ? "Comprobante subido, pendiente" : "Pago realizado")).join(", ")}`);
     if (filtroResguardo.trim()) desc.push(`Resguardo: "${filtroResguardo.trim()}"`);
     if (filtroCliente.trim()) desc.push(`Cliente: "${filtroCliente.trim()}"`);
@@ -481,7 +485,7 @@ export default function ReparacionesPage() {
     if (busqueda.trim()) desc.push(`Búsqueda: "${busqueda.trim()}"`);
     if (fechaDesde || fechaHasta) desc.push(`Fecha: ${fechaDesde || "*"} - ${fechaHasta || "*"}`);
     return desc.join(" | ");
-  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, busqueda, fechaDesde, fechaHasta]);
+  }, [cardFiltro, filtroEstado, filtroTecnico, filtroEquipo, filtroEntrega, filtroDescuento, filtroPago, filtroResguardo, filtroCliente, filtroModelo, filtroObs, entregaDesde, entregaHasta, busqueda, fechaDesde, fechaHasta]);
 
   const hayFiltrosActivos = descripcionFiltros.length > 0;
 
@@ -583,6 +587,12 @@ export default function ReparacionesPage() {
           opciones={[{ value: "SI", label: "Mensajería" }, { value: "NO", label: "Local" }]}
           seleccionados={filtroEntrega}
           onCambiar={setFiltroEntrega}
+        />
+        <MultiselectFiltro
+          label="Descuento"
+          opciones={[{ value: "CON", label: "Con descuento (% o importe)" }]}
+          seleccionados={filtroDescuento}
+          onCambiar={setFiltroDescuento}
         />
         {hayFiltrosActivos && (
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={limpiarFiltros}>
@@ -692,7 +702,14 @@ export default function ReparacionesPage() {
                     }
                     title={`Abrir reparación ${rep.resguardo}`}
                   >
-                    <TableCell className="font-semibold">{rep.resguardo}</TableCell>
+                    <TableCell className="font-semibold">
+                      {rep.resguardo}
+                      {((rep.descuentoPct ?? 0) > 0 || (rep.descuentoImporte ?? 0) > 0) && (
+                        <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300" title="Descuento aplicado al cliente">
+                          Dto {(rep.descuentoPct ?? 0) > 0 ? `${rep.descuentoPct} %` : `${(rep.descuentoImporte ?? 0).toLocaleString("es-ES")} €`}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm">{formatearFecha(rep.fechaRecepcion)}</TableCell>
                     <TableCell className="max-w-47.5">
                       <div className="truncate" title={rep.cliente.nombre || "N/A"}>{rep.cliente.nombre || "N/A"}</div>
