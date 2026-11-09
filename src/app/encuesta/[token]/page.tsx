@@ -95,7 +95,7 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
               <h1 className="text-xl font-bold">¡Muchas gracias!</h1>
               <p className="mt-3 text-base">Nos alegra que haya ido bien. Si tienes un minuto, nos ayudarías mucho dejando tu opinión en nuestra ficha de Google.</p>
               <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
-                Por responder nuestra encuesta tienes un <strong>5 % de descuento</strong> en tu próxima reparación. Te lo hemos enviado también por correo: para canjearlo, presenta ese correo o una captura en el local y usa el mismo correo electrónico con el que te hemos escrito. Válido 12 meses, un solo uso, no acumulable ni transferible.
+                Por responder nuestra encuesta tienes un <strong>5 % de descuento</strong> en tu próxima reparación. Te lo hemos enviado también por correo: para canjearlo, presenta ese correo o una captura en el local y usa el mismo correo electrónico con el que te hemos escrito. Válido para un solo uso, no acumulable ni transferible.
               </p>
               {siguiente.url && (
                 <a href={siguiente.url} className="mt-5 inline-block rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white hover:bg-emerald-700">
