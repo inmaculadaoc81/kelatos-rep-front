@@ -130,7 +130,6 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
               <p className="mt-3 text-base">Hemos registrado tu respuesta. Nos ayuda a seguir mejorando.</p>
             </>
           )}
-          {siguiente.url && <p className="mt-3 text-xs text-slate-500">También te hemos enviado este enlace por correo.</p>}
         </>
       )}
 
