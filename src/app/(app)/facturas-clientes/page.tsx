@@ -387,6 +387,9 @@ export default function FacturasClientesPage() {
   const [estDevol, setEstDevol] = useState(true);
   const [filtroBanco, setFiltroBanco] = useState("");
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>("todas");
+  // Rango de fechas libre (YYYY-MM-DD, ambos incluidos, hora de Madrid). Si hay rango, los botones rápidos/meses/trimestres se quitan, y al revés.
+  const [rangoDesde, setRangoDesde] = useState("");
+  const [rangoHasta, setRangoHasta] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [filtrosColumna, setFiltrosColumna] = useState<Partial<Record<ColumnaFiltrable, Set<string>>>>({});
 
@@ -497,6 +500,12 @@ export default function FacturasClientesPage() {
       });
     }
     out = out.filter((f) => dentroDeRango(f.fecha, filtroFecha));
+    if (rangoDesde || rangoHasta) {
+      out = out.filter((f) => {
+        const d = fechaMadrid(f.fecha);
+        return !!d && (!rangoDesde || d >= rangoDesde) && (!rangoHasta || d <= rangoHasta);
+      });
+    }
     if (filtroBanco) out = out.filter((f) => (f.banco || "").trim() === filtroBanco);
     if (busqueda.trim()) {
       const q = busqueda.trim().toLowerCase();
@@ -526,7 +535,7 @@ export default function FacturasClientesPage() {
   const listaBase = useMemo(
     () => aplicarFiltrosBase(facturas),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [facturas, filtroSerie, estPend, estCobr, estAnul, estDevol, filtroFecha, filtroBanco, busqueda]
+    [facturas, filtroSerie, estPend, estCobr, estAnul, estDevol, filtroFecha, rangoDesde, rangoHasta, filtroBanco, busqueda]
   );
 
   const listaFiltrada = useMemo(() => {
@@ -610,7 +619,7 @@ export default function FacturasClientesPage() {
             <Folder2 className="size-4" /> Carpeta de Drive
           </Button>
           {esAdmin && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportAbierto(true)} disabled={cargando || facturas.length === 0}>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { if (rangoDesde) setExpDesde(rangoDesde); if (rangoHasta) setExpHasta(rangoHasta); setExportAbierto(true); }} disabled={cargando || facturas.length === 0}>
               <DocumentDownload className="size-4" /> Descargar Excel
             </Button>
           )}
@@ -768,6 +777,8 @@ export default function FacturasClientesPage() {
               )}
               onClick={() => {
                 setFiltroFecha(v as FiltroFecha);
+                setRangoDesde("");
+                setRangoHasta("");
                 setPagina(1);
               }}
             >
@@ -785,6 +796,8 @@ export default function FacturasClientesPage() {
               )}
               onClick={() => {
                 setFiltroFecha(`mes${i + 1}`);
+                setRangoDesde("");
+                setRangoHasta("");
                 setPagina(1);
               }}
             >
@@ -802,12 +815,56 @@ export default function FacturasClientesPage() {
               )}
               onClick={() => {
                 setFiltroFecha(`trim${t}`);
+                setRangoDesde("");
+                setRangoHasta("");
                 setPagina(1);
               }}
             >
               {t}T
             </button>
           ))}
+          <span className="mx-1 h-4 w-px bg-border" />
+          <span className="text-xs font-medium text-muted-foreground">Rango:</span>
+          <Input
+            type="date"
+            aria-label="Desde"
+            title="Desde"
+            className={cn("h-7 w-36 text-xs", rangoDesde && "border-primary")}
+            value={rangoDesde}
+            max={rangoHasta || undefined}
+            onChange={(e) => {
+              setRangoDesde(e.target.value);
+              setFiltroFecha("todas");
+              setPagina(1);
+            }}
+          />
+          <span className="text-xs text-muted-foreground">a</span>
+          <Input
+            type="date"
+            aria-label="Hasta"
+            title="Hasta"
+            className={cn("h-7 w-36 text-xs", rangoHasta && "border-primary")}
+            value={rangoHasta}
+            min={rangoDesde || undefined}
+            onChange={(e) => {
+              setRangoHasta(e.target.value);
+              setFiltroFecha("todas");
+              setPagina(1);
+            }}
+          />
+          {(rangoDesde || rangoHasta) && (
+            <button
+              type="button"
+              className="rounded-md border border-input px-2 py-1 text-xs font-medium hover:bg-muted"
+              onClick={() => {
+                setRangoDesde("");
+                setRangoHasta("");
+                setPagina(1);
+              }}
+            >
+              Quitar rango
+            </button>
+          )}
         </div>
       </div>
 
