@@ -53,6 +53,7 @@ import {
   formaPagoLabel,
 } from "@/lib/facturas-cliente";
 import { BANCOS } from "@/lib/bancos";
+import { descargarXlsxFacturasClientes, facturasEnRango } from "@/lib/facturas-clientes-xlsx";
 import { ColumnaFiltro } from "./columna-filtro";
 import { EditarFormaPagoPopover } from "./editar-forma-pago-popover";
 import { DetalleFacturaDialog } from "./detalle-factura-dialog";
@@ -392,6 +393,33 @@ export default function FacturasClientesPage() {
   const [pagina, setPagina] = useState(1);
   const [filasPorPagina, setFilasPorPagina] = useState(15);
 
+  // Descarga en Excel (solo administradores): por defecto desde el 1 de octubre hasta hoy.
+  const [exportAbierto, setExportAbierto] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const hoyIso = fechaMadrid(new Date()) || "";
+  const [expDesde, setExpDesde] = useState(() => {
+    const hoy = fechaMadrid(new Date()) || "";
+    const anio = Number(hoy.slice(0, 4)) || new Date().getFullYear();
+    return `${Number(hoy.slice(5, 7)) >= 10 ? anio : anio - 1}-10-01`;
+  });
+  const [expHasta, setExpHasta] = useState(hoyIso);
+  const nDocsExport = useMemo(() => (esAdmin ? facturasEnRango(facturas, expDesde, expHasta).length : 0), [esAdmin, facturas, expDesde, expHasta]);
+
+  async function exportarExcel() {
+    if (!esAdmin) return;
+    if (!expDesde || !expHasta || expDesde > expHasta) { toast.error("Elige un rango de fechas válido"); return; }
+    setExportando(true);
+    try {
+      const n = await descargarXlsxFacturasClientes(facturas, expDesde, expHasta);
+      toast.success(`Excel descargado: ${n} documento${n === 1 ? "" : "s"}`);
+      setExportAbierto(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el Excel");
+    } finally {
+      setExportando(false);
+    }
+  }
+
   const [facturaAcciones, setFacturaAcciones] = useState<FacturaCliente | null>(null);
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [ventaVerId, setVentaVerId] = useState<string | null>(null);
@@ -581,11 +609,44 @@ export default function FacturasClientesPage() {
           <Button variant="outline" size="sm" className="gap-1.5" nativeButton={false} render={<Link href={CARPETA_FACTURAS_DRIVE_URL} target="_blank" rel="noreferrer" />}>
             <Folder2 className="size-4" /> Carpeta de Drive
           </Button>
+          {esAdmin && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportAbierto(true)} disabled={cargando || facturas.length === 0}>
+              <DocumentDownload className="size-4" /> Descargar Excel
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={actualizar}>
             <Refresh2 className={cn("size-4", cargando && "animate-spin")} /> Actualizar
           </Button>
         </div>
       </div>
+
+      {esAdmin && (
+        <Dialog open={exportAbierto} onOpenChange={setExportAbierto}>
+          <DialogContent className="max-w-md">
+            <DialogTitle>Descargar facturas en Excel</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Todas las facturas, tickets y rectificativas del rango elegido, con base, IVA, total, forma de pago, banco y estado. Incluye una hoja de resumen con los ingresos cobrados por forma de pago y por mes.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="exp-desde">Desde</label>
+                <Input id="exp-desde" type="date" value={expDesde} max={expHasta || undefined} onChange={(e) => setExpDesde(e.target.value)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="exp-hasta">Hasta</label>
+                <Input id="exp-hasta" type="date" value={expHasta} min={expDesde || undefined} onChange={(e) => setExpHasta(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-sm">{nDocsExport.toLocaleString("es-ES")} documento{nDocsExport === 1 ? "" : "s"} en ese rango.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setExportAbierto(false)}>Cancelar</Button>
+              <Button className="gap-1.5" onClick={exportarExcel} disabled={exportando || nDocsExport === 0}>
+                <DocumentDownload className="size-4" /> {exportando ? "Generando…" : "Descargar"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {error && (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
