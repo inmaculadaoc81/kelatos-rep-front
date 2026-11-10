@@ -26,6 +26,8 @@ import {
 } from "@/lib/reportes";
 import { Barras, FilaBarra } from "./barras";
 import { GananciaMensualChart } from "./ganancia-chart";
+import { IngresosPorFormaPago } from "./ingresos-por-forma-pago";
+import { useEsAdmin } from "@/hooks/use-es-admin";
 
 const MESES = [
   ["01", "Enero"], ["02", "Febrero"], ["03", "Marzo"], ["04", "Abril"],
@@ -142,6 +144,7 @@ function Tarjeta({ titulo, children }: { titulo: React.ReactNode; children: Reac
 }
 
 export default function ReportesPage() {
+  const esAdmin = useEsAdmin();
   const [datos, setDatos] = useState<DatosReportes | null>(null);
   const [alertas, setAlertas] = useState<AlertasReportes | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -262,6 +265,9 @@ export default function ReportesPage() {
           <Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} /> Actualizar
         </Button>
       </div>
+
+      {/* Ingresos del día / rango por forma de pago (solo administradores) */}
+      {esAdmin && <IngresosPorFormaPago />}
 
       {/* Una sola fila de filtros por encima de todo lo que condiciona */}
       <div className="mb-4 flex flex-wrap items-end gap-2 rounded-xl border bg-card p-3">

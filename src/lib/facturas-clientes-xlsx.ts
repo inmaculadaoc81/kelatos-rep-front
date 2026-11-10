@@ -61,6 +61,48 @@ export function facturasEnRango(lista: FacturaCliente[], desde: string, hasta: s
     .sort((a, b) => (Date.parse(a.fecha || "") || 0) - (Date.parse(b.fecha || "") || 0) || a.numero.localeCompare(b.numero, "es", { numeric: true }));
 }
 
+export interface ResumenIngresos {
+  docs: FacturaCliente[];
+  porForma: { etiqueta: string; n: number; importe: number }[];
+  totalIngresos: number;
+  porMes: { mes: string; cobradas: number; importeCobrado: number; devoluciones: number; importeDevuelto: number }[];
+  otros: { estado: string; n: number; importe: number }[];
+}
+
+/** Ingresos del rango: solo cuentan los documentos Cobrados menos las Devoluciones; pendientes y anulados van aparte. */
+export function resumenIngresos(lista: FacturaCliente[], desde: string, hasta: string): ResumenIngresos {
+  const docs = facturasEnRango(lista, desde, hasta);
+  const cobrados = docs.filter((f) => ["Cobrada", "Devolución"].includes(estadoFacturaDerivado(f)));
+  const porFormaMap = new Map<string, { n: number; importe: number }>();
+  for (const f of cobrados) for (const p of partesPago(f)) {
+    const a = porFormaMap.get(p.etiqueta) || { n: 0, importe: 0 };
+    a.n += 1; a.importe += p.importe; porFormaMap.set(p.etiqueta, a);
+  }
+  const porMesMap = new Map<string, { cobradas: number; importeCobrado: number; devoluciones: number; importeDevuelto: number }>();
+  for (const f of cobrados) {
+    const mes = (fechaMadrid(f.fecha) || "").slice(0, 7);
+    const a = porMesMap.get(mes) || { cobradas: 0, importeCobrado: 0, devoluciones: 0, importeDevuelto: 0 };
+    const t = importeFirmado(f);
+    if (t < 0) { a.devoluciones += 1; a.importeDevuelto += t; } else { a.cobradas += 1; a.importeCobrado += t; }
+    porMesMap.set(mes, a);
+  }
+  const otrosMap = new Map<string, { n: number; importe: number }>();
+  for (const f of docs) {
+    const e = estadoFacturaDerivado(f);
+    if (e === "Cobrada" || e === "Devolución") continue;
+    const a = otrosMap.get(e) || { n: 0, importe: 0 };
+    a.n += 1; a.importe += importeFirmado(f); otrosMap.set(e, a);
+  }
+  const porForma = [...porFormaMap.entries()].sort((a, b) => a[0].localeCompare(b[0], "es")).map(([etiqueta, v]) => ({ etiqueta, ...v }));
+  return {
+    docs,
+    porForma,
+    totalIngresos: porForma.reduce((s, x) => s + x.importe, 0),
+    porMes: [...porMesMap.entries()].sort().map(([mes, v]) => ({ mes, ...v })),
+    otros: [...otrosMap.entries()].sort().map(([estado, v]) => ({ estado, ...v })),
+  };
+}
+
 /**
  * Excel para verificar ingresos: hoja «Facturas» (una fila por documento, con base, IVA, total, forma de pago, banco y estado) y hoja «Resumen»
  * (ingresos cobrados por forma de pago y por mes; lo pendiente y lo anulado va aparte para que no se mezcle con lo cobrado).
@@ -96,28 +138,7 @@ export async function descargarXlsxFacturasClientes(lista: FacturaCliente[], des
     ]);
   }
 
-  // ── Resumen ──
-  const cobrados = docs.filter((f) => ["Cobrada", "Devolución"].includes(estadoFacturaDerivado(f)));
-  const porForma = new Map<string, { n: number; importe: number }>();
-  for (const f of cobrados) for (const p of partesPago(f)) {
-    const a = porForma.get(p.etiqueta) || { n: 0, importe: 0 };
-    a.n += 1; a.importe += p.importe; porForma.set(p.etiqueta, a);
-  }
-  const porMes = new Map<string, { cobradas: number; importeCobrado: number; devoluciones: number; importeDevuelto: number }>();
-  for (const f of cobrados) {
-    const mes = (fechaMadrid(f.fecha) || "").slice(0, 7);
-    const a = porMes.get(mes) || { cobradas: 0, importeCobrado: 0, devoluciones: 0, importeDevuelto: 0 };
-    const t = importeFirmado(f);
-    if (t < 0) { a.devoluciones += 1; a.importeDevuelto += t; } else { a.cobradas += 1; a.importeCobrado += t; }
-    porMes.set(mes, a);
-  }
-  const otros = new Map<string, { n: number; importe: number }>();
-  for (const f of docs) {
-    const e = estadoFacturaDerivado(f);
-    if (e === "Cobrada" || e === "Devolución") continue;
-    const a = otros.get(e) || { n: 0, importe: 0 };
-    a.n += 1; a.importe += importeFirmado(f); otros.set(e, a);
-  }
+  const res = resumenIngresos(lista, desde, hasta);
 
   const resumen: Celda[][] = [
     [negrita(`Facturas de clientes del ${fechaES(`${desde}T12:00:00Z`)} al ${fechaES(`${hasta}T12:00:00Z`)}`)],
@@ -125,16 +146,15 @@ export async function descargarXlsxFacturasClientes(lista: FacturaCliente[], des
     [],
     [cab("INGRESOS POR FORMA DE PAGO"), cab("Nº de pagos"), cab("Importe con IVA")],
   ];
-  let totalIngresos = 0;
-  for (const [k, v] of [...porForma.entries()].sort((a, b) => a[0].localeCompare(b[0], "es"))) { resumen.push([k, v.n, euro(v.importe)]); totalIngresos += v.importe; }
-  resumen.push([negrita("TOTAL INGRESOS (cobrado − devoluciones)"), "", euroNegrita(totalIngresos)]);
+  for (const v of res.porForma) resumen.push([v.etiqueta, v.n, euro(v.importe)]);
+  resumen.push([negrita("TOTAL INGRESOS (cobrado − devoluciones)"), "", euroNegrita(res.totalIngresos)]);
   resumen.push([]);
   resumen.push([cab("INGRESOS POR MES"), cab("Cobradas"), cab("Importe cobrado"), cab("Devoluciones"), cab("Importe devuelto"), cab("Neto")]);
-  for (const [mes, v] of [...porMes.entries()].sort()) resumen.push([mes, v.cobradas, euro(v.importeCobrado), v.devoluciones, euro(v.importeDevuelto), euro(v.importeCobrado + v.importeDevuelto)]);
+  for (const v of res.porMes) resumen.push([v.mes, v.cobradas, euro(v.importeCobrado), v.devoluciones, euro(v.importeDevuelto), euro(v.importeCobrado + v.importeDevuelto)]);
   resumen.push([]);
   resumen.push([cab("NO CUENTAN COMO INGRESO"), cab("Nº"), cab("Importe con IVA")]);
-  for (const [k, v] of [...otros.entries()].sort()) resumen.push([k, v.n, euro(v.importe)]);
-  if (!otros.size) resumen.push(["(ninguno)"]);
+  for (const v of res.otros) resumen.push([v.estado, v.n, euro(v.importe)]);
+  if (!res.otros.length) resumen.push(["(ninguno)"]);
 
   await guardar([
     { data: filas as SheetData, sheet: "Facturas", anchos: [12, 9, 14, 9, 14, 14, 30, 14, 26, 14, 12, 14, 26, 14, 12, 50] },
