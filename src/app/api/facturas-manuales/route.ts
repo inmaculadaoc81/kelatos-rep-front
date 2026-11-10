@@ -90,7 +90,7 @@ export async function POST(req: Request) {
           formaPago: formaPagoPdf,
           banco: bancoPdf,
           lineas,
-          // Importe negativo (devolución manual): el PDF lleva siempre «Anulación» en vez de «Cobrada» (2026-11-10). Solo cambia lo que se imprime: el estado que se guarda
+          // Importe negativo (devolución manual): el PDF lleva siempre «Devolución» en vez de «Cobrada» (2026-11-10). Solo cambia lo que se imprime: el estado que se guarda
           // en BD sigue siendo el elegido, para no alterar la caja, la contabilidad ni los filtros.
           // Sin esto, generarFacturaPdfDesdeSheet() (server.js) nunca recibe
           // datos.estadoFactura y cae a su propio valor por defecto (serie
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
           // eligiera "Cobrada" en el modal (bug real reportado; el estado sí
           // se guardaba bien en BD vía /confirmar más abajo, solo el PDF
           // impreso quedaba mal).
-          estadoFactura: totalLineas < 0 ? "Anulación" : estadoFactura,
+          estadoFactura: totalLineas < 0 ? "Devolución" : estadoFactura,
         },
       });
     } catch (errorPdf) {
