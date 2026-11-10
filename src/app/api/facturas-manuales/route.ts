@@ -32,8 +32,10 @@ export async function POST(req: Request) {
     formaPagoDesglose?: { forma: string; monto: number; banco?: string }[];
     estadoFactura: string;
     lineas: LineaFactura[];
+    motivo?: string;
   };
   const { requestId, serie, cliente, formaPago, banco, formaPagoDesglose, estadoFactura, lineas } = body;
+  const motivo = typeof body.motivo === "string" ? body.motivo.trim().slice(0, 500) : "";
 
   if (!requestId || !/^[0-9a-f-]{36}$/i.test(requestId)) {
     return NextResponse.json({ ok: false, error: "requestId inválido" }, { status: 400 });
@@ -46,6 +48,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "El desglose de Multiforma debe traer al menos 2 formas de pago" }, { status: 400 });
   }
   if (!lineas?.length) return NextResponse.json({ ok: false, error: "Añade al menos un concepto" }, { status: 400 });
+  // Devolución manual (importe negativo): el motivo es obligatorio. Se comprueba aquí, ANTES de reservar el número de factura.
+  const totalLineas = lineas.reduce((s, l) => s + (Number(l.cantidad) || 0) * (Number(l.precio) || 0) * (1 - (Number((l as { descuento?: number }).descuento) || 0) / 100), 0);
+  if (totalLineas < 0 && !motivo) {
+    return NextResponse.json({ ok: false, error: "El motivo de la devolución es obligatorio cuando el importe es negativo" }, { status: 400 });
+  }
 
   const payloadHash = crypto.createHash("sha256").update(JSON.stringify({ tipo: "manual", serie, lineas })).digest("hex");
 
@@ -109,6 +116,7 @@ export async function POST(req: Request) {
           cliente, lineas, formaPago, banco: formaPago === "tarjeta" ? banco : "",
           formaPagoDesglose: formaPago === "multiforma" ? formaPagoDesglose : undefined,
           estadoFactura,
+          ...(totalLineas < 0 ? { motivo } : {}),
         },
       }
     );

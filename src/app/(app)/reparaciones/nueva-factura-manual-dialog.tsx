@@ -7,6 +7,7 @@ import { Receipt, CloseCircle, Building, Profile, SearchNormal1, Add, Trash, Arr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -101,6 +102,8 @@ export function NuevaFacturaManualDialog({
   // (ver generar()) para que quede reflejado en el PDF y en el total real,
   // en vez de perderse silenciosamente.
   const [descuentoGlobalPct, setDescuentoGlobalPct] = useState(0);
+  // Devolución manual (total negativo): el motivo es obligatorio, igual que en los tickets en negativo.
+  const [motivoDevolucion, setMotivoDevolucion] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [resultado, setResultado] = useState<{ numeroFactura: string; urlPdf: string; entidadId: string } | null>(null);
@@ -157,6 +160,7 @@ export function NuevaFacturaManualDialog({
     setPago(valorFormaPagoVacio()); setEstadoFactura("Cobrada");
     setLineas([{ descripcion: "", cantidad: 1, precio: 0 }]);
     setDescuentoGlobalPct(0);
+    setMotivoDevolucion("");
     setRequestId(null); setResultado(null);
   }
 
@@ -170,6 +174,7 @@ export function NuevaFacturaManualDialog({
     const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
     if (validas.length === 0) return toast.error("Añade al menos un concepto");
     if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    if (base < 0 && !motivoDevolucion.trim()) return toast.error("Indica el motivo de la devolución: es obligatorio cuando el importe es negativo");
     const errorPago = validarFormaPago(pago, totalConIva);
     if (errorPago) return toast.error(errorPago);
 
@@ -191,6 +196,7 @@ export function NuevaFacturaManualDialog({
           ...formaPagoParaPayload(pago),
           estadoFactura,
           lineas: lineasConDescuento,
+          ...(base < 0 ? { motivo: motivoDevolucion.trim() } : {}),
         }),
       });
       const data = await res.json();
@@ -277,6 +283,22 @@ export function NuevaFacturaManualDialog({
                 <Input value={suReferencia} onChange={(e) => setSuReferencia(e.target.value)} placeholder="Opcional" disabled={!!resultado} />
               </div>
               <SelectorFormaPago value={pago} onChange={setPago} total={totalConIva} disabled={!!resultado} />
+              {base < 0 && (
+                <div className="space-y-1.5 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                  <Label htmlFor="fmMotivoDevolucion" className="text-amber-800 dark:text-amber-400">
+                    Motivo de la devolución *
+                  </Label>
+                  <Textarea
+                    id="fmMotivoDevolucion"
+                    rows={2}
+                    maxLength={500}
+                    value={motivoDevolucion}
+                    onChange={(e) => setMotivoDevolucion(e.target.value)}
+                    disabled={!!resultado}
+                    placeholder="Por qué se devuelve este importe (equipo no reparado, cobro duplicado, error de precio…)"
+                  />
+                </div>
+              )}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Estado</Label>
                 <Select value={estadoFactura} onValueChange={(v) => setEstadoFactura(v || "Cobrada")} disabled={!!resultado}>
