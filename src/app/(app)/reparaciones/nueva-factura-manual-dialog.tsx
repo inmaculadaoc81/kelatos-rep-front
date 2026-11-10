@@ -301,13 +301,20 @@ export function NuevaFacturaManualDialog({
               )}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Estado</Label>
-                <Select value={estadoFactura} onValueChange={(v) => setEstadoFactura(v || "Cobrada")} disabled={!!resultado}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Cobrada">Cobrada</SelectItem>
-                    <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  </SelectContent>
-                </Select>
+                {base < 0 ? (
+                  // Importe negativo (devolución): el PDF sale siempre como «Anulación», sin elegir.
+                  <div className="flex h-9 items-center rounded-md border bg-muted px-3 text-sm font-medium text-amber-700 dark:text-amber-400" title="Con importe negativo el estado se pone solo">
+                    Anulación (automático)
+                  </div>
+                ) : (
+                  <Select value={estadoFactura} onValueChange={(v) => setEstadoFactura(v || "Cobrada")} disabled={!!resultado}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cobrada">Cobrada</SelectItem>
+                      <SelectItem value="Pendiente">Pendiente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
