@@ -1,6 +1,6 @@
 import { auth, esDominioKelatos } from "@/auth";
 import { NextResponse } from "next/server";
-import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura, aterrizaEnFichaje, COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
+import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura, aterrizaEnFichaje, esCuentaEmpleadosRestringida, COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { comprobarAccesoLocal } from "@/lib/acceso-local";
@@ -169,6 +169,14 @@ export default auth(async (req) => {
     !(esUsuarioRedes(req.auth?.user) && (esRutaRedesSociales(req.nextUrl.pathname) || req.nextUrl.pathname.startsWith("/api/agentes-v2/")))
   ) {
     return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));
+  }
+  // La cuenta compartida del local no ficha ni modifica fichajes: ninguna escritura del kiosco (2026-11-11).
+  if (
+    req.nextUrl.pathname.startsWith("/api/asistencia/kiosk/") &&
+    req.method !== "GET" &&
+    esCuentaEmpleadosRestringida(req.auth?.user?.email)
+  ) {
+    return NextResponse.json({ ok: false, error: "La cuenta compartida del local (soporte@kelatos.com) no sirve para fichar. Cierra sesión y entra con tu cuenta personal." }, { status: 403 });
   }
   if (enAsistenciaAdmin && req.auth?.user?.role !== "admin" && !esSuperadmin(req.auth?.user?.email)) {
     return NextResponse.redirect(new URL("/asistencia/kiosk", req.nextUrl.origin));

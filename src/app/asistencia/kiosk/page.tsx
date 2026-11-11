@@ -22,6 +22,8 @@ interface MiInfo {
       Pausar/Reanudar/Finalizar jornada. Mismos 4 botones y mismo tipo_fichaje
       de siempre, nada cambia en el backend salvo este campo informativo. */
   horario_flexible: boolean;
+  /** Es la cuenta compartida del local (soporte@): no puede fichar, solo ver. */
+  cuentaCompartida?: boolean;
 }
 
 /** Mismo indicador Activo/Reunión/Inactivo que ya existe en la pestaña
@@ -266,7 +268,12 @@ export default function KioskPage() {
           )}
         </CardHeader>
         <CardContent>
-          {estadoAusencia?.tiene_regreso_pendiente ? (
+          {info?.cuentaCompartida ? (
+            <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+              <p className="text-sm font-semibold text-red-900">Esta es la cuenta compartida del local</p>
+              <p className="text-xs text-red-800">No sirve para fichar. Cierra sesión y entra con tu cuenta personal para fichar tu jornada.</p>
+            </div>
+          ) : estadoAusencia?.tiene_regreso_pendiente ? (
             <div className="space-y-3 text-center">
               <div className="rounded-lg bg-amber-50 p-4">
                 <p className="text-sm font-medium text-amber-900">Estás en ausencia</p>
