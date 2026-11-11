@@ -121,6 +121,12 @@ export function FacturaManualModalShell({
           </span>
         </div>
 
+        {detalle.motivoRectificativa && (
+          <p className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            <span className="font-semibold">Motivo de la devolución:</span> {detalle.motivoRectificativa}
+          </p>
+        )}
+
         <div className="p-4">
           <Tabs defaultValue="pdf" className="w-full">
             <TabsList className="w-full">
