@@ -36,7 +36,7 @@ export default auth(async (req) => {
   // propia ruta ya exige además GET para esas cuentas) — ninguna otra
   // sección de Contabilidad. Petición del usuario, 2026-10-05.
   if (
-    (["/importaciones", "/api/importaciones", "/reporte-resenas", "/api/resenas", "/contabilidad", "/api/contabilidad"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
+    (["/importaciones", "/api/importaciones", "/reporte-resenas", "/api/resenas", "/llamadas", "/api/llamadas", "/contabilidad", "/api/contabilidad"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
     req.auth?.user?.role !== "admin" &&
     !esSuperadmin(req.auth?.user?.email) &&
     !(
