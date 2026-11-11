@@ -43,6 +43,7 @@ import { m, lista as listaAnim, elementoLista, entrada, ProveedorAnimacion } fro
 import { LogisticaPanel } from "./logistica-panel";
 import { PanelMensajeAbierto, PanelMensajes, useMensajesCliente } from "./mensajes-reparacion";
 import { PanelWhatsapp, useWhatsappCliente } from "./whatsapp-reparacion";
+import { TelefonoLlamar } from "./telefono-llamar";
 import { cn } from "@/lib/utils";
 import { FinalizarReparacionDialog, ConfirmarEntregaLocalDialog, MarcarEnviadoDialog } from "./finalizar-dialog";
 import { EntregarConFacturaDialog } from "./entregar-con-factura-dialog";
@@ -842,7 +843,7 @@ export function DetalleReparacionDialog({
                         <FilaDato etiqueta="Resguardo" valor={detalle.resguardo} />
                         <FilaDato etiqueta="Fecha Recepción" valor={formatearFecha(detalle.fechaRecepcion)} />
                         <FilaDato etiqueta="Cliente" valor={detalle.cliente.nombre} />
-                        <FilaDato etiqueta="Teléfono" valor={detalle.cliente.telefono} />
+                        <FilaDato etiqueta="Teléfono" valor={<TelefonoLlamar telefono={detalle.cliente.telefono} resguardo={detalle.resguardo} />} />
                         <FilaDato etiqueta="Email" valor={detalle.cliente.email} />
                         <FilaDato etiqueta="Equipo" valor={detalle.equipo.modelo} />
                         <FilaDato etiqueta="Síntoma" valor={detalle.equipo.sintoma} />

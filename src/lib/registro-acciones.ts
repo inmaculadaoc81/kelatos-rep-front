@@ -23,6 +23,7 @@ const PREFIJOS_ENTIDAD: [string, string][] = [
   ["correo", "Correo / mensajes"],
   ["whatsapp", "Correo / mensajes"],
   ["resena", "Correo / mensajes"],
+  ["llamada", "Correo / mensajes"],
   ["rectificativa", "Factura"],
   ["ticket_manual", "Factura"],
   ["estado_cobrada", "Factura"],
