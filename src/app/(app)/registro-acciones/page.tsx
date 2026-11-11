@@ -84,6 +84,10 @@ export default function RegistroAccionesPage() {
   const [busqueda, setBusqueda] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
+  const [usuario, setUsuario] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [usuarios, setUsuarios] = useState<{ usuario: string; n: number }[]>([]);
+  const [categorias, setCategorias] = useState<{ categoria: string; n: number }[]>([]);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [total, setTotal] = useState(0);
@@ -96,6 +100,8 @@ export default function RegistroAccionesPage() {
       if (busqueda.trim()) qs.set("busqueda", busqueda.trim());
       if (fechaDesde) qs.set("fechaDesde", fechaDesde);
       if (fechaHasta) qs.set("fechaHasta", fechaHasta);
+      if (usuario) qs.set("usuario", usuario);
+      if (categoria) qs.set("categoria", categoria);
       const res = await fetch(`/api/registro-acciones?${qs.toString()}`);
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -116,7 +122,14 @@ export default function RegistroAccionesPage() {
     }, 350);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busqueda, fechaDesde, fechaHasta]);
+  }, [busqueda, fechaDesde, fechaHasta, usuario, categoria]);
+
+  useEffect(() => {
+    fetch("/api/registro-acciones/filtros")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) { setUsuarios(d.usuarios); setCategorias(d.categorias); } })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="p-6">
@@ -157,8 +170,22 @@ export default function RegistroAccionesPage() {
             <Input type="date" className="w-36" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
           </div>
         </div>
-        {(busqueda || fechaDesde || fechaHasta) && (
-          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setBusqueda(""); setFechaDesde(""); setFechaHasta(""); }}>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Usuario</label>
+          <select className="h-9 w-56 rounded-md border bg-background px-2 text-sm" value={usuario} onChange={(e) => setUsuario(e.target.value)} aria-label="Usuario">
+            <option value="">Todos los usuarios</option>
+            {usuarios.map((u) => <option key={u.usuario} value={u.usuario}>{u.usuario} ({u.n.toLocaleString("es-ES")})</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Tipo de acción</label>
+          <select className="h-9 w-48 rounded-md border bg-background px-2 text-sm" value={categoria} onChange={(e) => setCategoria(e.target.value)} aria-label="Tipo de acción">
+            <option value="">Todas</option>
+            {categorias.map((c) => <option key={c.categoria} value={c.categoria}>{c.categoria} ({c.n.toLocaleString("es-ES")})</option>)}
+          </select>
+        </div>
+        {(busqueda || fechaDesde || fechaHasta || usuario || categoria) && (
+          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setBusqueda(""); setFechaDesde(""); setFechaHasta(""); setUsuario(""); setCategoria(""); }}>
             Limpiar filtros
           </Button>
         )}

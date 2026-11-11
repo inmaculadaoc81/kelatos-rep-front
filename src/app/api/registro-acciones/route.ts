@@ -18,6 +18,8 @@ export async function GET(req: Request) {
       busqueda: searchParams.get("busqueda") || undefined,
       fechaDesde: searchParams.get("fechaDesde") || undefined,
       fechaHasta: searchParams.get("fechaHasta") || undefined,
+      usuario: searchParams.get("usuario") || undefined,
+      categoria: searchParams.get("categoria") || undefined,
       pagina: searchParams.get("pagina") || undefined,
       porPagina: 200,
     });

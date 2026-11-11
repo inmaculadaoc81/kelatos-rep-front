@@ -7,6 +7,7 @@ import {
   Receipt,
   Box1,
   Setting2,
+  Sms,
   type Icon,
 } from "@/lib/icons";
 
@@ -25,6 +26,7 @@ export const ESTILO_ENTIDAD: Record<string, EstiloEntidad> = {
   Presupuesto: { icon: DocumentText, badge: "bg-violet-500/10 text-violet-700 dark:text-violet-400", dot: "bg-violet-500" },
   Factura: { icon: Receipt, badge: "bg-teal-500/10 text-teal-700 dark:text-teal-400", dot: "bg-teal-500" },
   Pedido: { icon: Box1, badge: "bg-orange-500/10 text-orange-700 dark:text-orange-400", dot: "bg-orange-500" },
+  "Correo / mensajes": { icon: Sms, badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400", dot: "bg-rose-500" },
   Reparación: { icon: Setting2, badge: "bg-sky-500/10 text-sky-700 dark:text-sky-400", dot: "bg-sky-500" },
 };
 

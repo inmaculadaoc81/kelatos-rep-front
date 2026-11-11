@@ -20,6 +20,13 @@ export interface EventoRegistro {
 // cualquier tipo no reconocido cae en "Reparación" (categoría por defecto,
 // ya que la mayoría de tipos son eventos de reparación).
 const PREFIJOS_ENTIDAD: [string, string][] = [
+  ["correo", "Correo / mensajes"],
+  ["whatsapp", "Correo / mensajes"],
+  ["resena", "Correo / mensajes"],
+  ["rectificativa", "Factura"],
+  ["ticket_manual", "Factura"],
+  ["estado_cobrada", "Factura"],
+  ["ticket_venta", "Venta"],
   ["cliente", "Cliente"],
   ["equipo_", "Equipo"],
   ["alquiler", "Alquiler"],
