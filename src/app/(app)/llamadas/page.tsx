@@ -4,6 +4,8 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Call, Refresh2, SearchNormal1, ArrowLeft2, ArrowRight2, DocumentText, Clock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -12,7 +14,25 @@ import { useSoftphone } from "../softphone";
 import { DetalleLlamada, ETIQUETA_ESTADO, FilaLlamada, ListadoLlamadas, duracionTexto, tiempoTotalTexto } from "@/lib/llamadas";
 
 const POR_PAGINA = 25;
-const CLASE_SELECT = "h-9 rounded-md border bg-background px-2 text-sm";
+const TODOS = "__todos";
+
+/** Desplegable shadcn para los filtros: «» (todos) se guarda como valor vacío fuera de aquí. */
+function Filtro({ etiqueta, valor, onCambio, opciones, ancho }: { etiqueta: string; valor: string; onCambio: (v: string) => void; opciones: { valor: string; texto: string }[]; ancho: string }) {
+  const actual = valor || TODOS;
+  return (
+    <div>
+      <label className="mb-1 block text-xs text-muted-foreground">{etiqueta}</label>
+      <Select value={actual} onValueChange={(v) => onCambio(!v || v === TODOS ? "" : v)}>
+        <SelectTrigger className={cn("h-9", ancho)} aria-label={etiqueta}>
+          <SelectValue>{(v: string) => opciones.find((o) => o.valor === v)?.texto ?? "Todos"}</SelectValue>
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false}>
+          {opciones.map((o) => <SelectItem key={o.valor} value={o.valor}>{o.texto}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 const COLOR_ESTADO: Record<string, string> = {
   completada: "bg-green-500/10 text-green-700 dark:text-green-400",
@@ -104,21 +124,32 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCerrar(); }}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] gap-4 overflow-y-auto sm:max-w-2xl">
         <DialogTitle className="flex items-center gap-2"><Call className="size-5 text-primary" /> Llamada {det ? `· ${fechaHora(det.inicio)}` : ""}</DialogTitle>
         <DialogDescription className="sr-only">Datos de la llamada y su transcripción</DialogDescription>
         {cargando && <div className="space-y-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-24 w-full" /></div>}
         {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
         {det && (
           <div className="space-y-4">
-            <dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1.5 rounded-xl border p-3 text-sm">
-              <dt className="text-muted-foreground">Origen</dt><dd>{det.origen === "ia" ? "Agente de IA" : "Persona"} · {det.direccion === "entrante" ? "Entrante" : "Saliente"} · {det.proveedor}</dd>
-              <dt className="text-muted-foreground">{det.origen === "ia" ? "Agente" : "Usuario"}</dt><dd>{det.usuario || "—"}</dd>
-              <dt className="text-muted-foreground">Cliente</dt><dd>{det.cliente_nombre || "—"}{det.resguardo ? ` · resguardo ${det.resguardo}` : ""}</dd>
-              <dt className="text-muted-foreground">Teléfono</dt><dd>{det.telefono || "—"}</dd>
-              <dt className="text-muted-foreground">Duración</dt><dd>{duracionTexto(det.duracion_seg)}</dd>
-              <dt className="text-muted-foreground">Estado</dt><dd>{ETIQUETA_ESTADO[det.estado] || det.estado}{det.sentimiento ? ` · sentimiento ${det.sentimiento}` : ""}</dd>
-            </dl>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", COLOR_ESTADO[det.estado] || "bg-muted text-muted-foreground")}>{ETIQUETA_ESTADO[det.estado] || det.estado}</span>
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{det.origen === "ia" ? "Agente de IA" : "Persona"}</span>
+              <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{det.direccion === "entrante" ? "Entrante" : "Saliente"} · {det.proveedor}</span>
+              {det.sentimiento && <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Sentimiento {det.sentimiento}</span>}
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { t: det.origen === "ia" ? "Agente" : "Usuario", v: det.usuario || "—" },
+                { t: "Cliente", v: `${det.cliente_nombre || "—"}${det.resguardo ? ` · ${det.resguardo}` : ""}` },
+                { t: "Teléfono", v: det.telefono || "—" },
+                { t: "Duración", v: duracionTexto(det.duracion_seg) },
+              ].map((x) => (
+                <div key={x.t} className="rounded-xl border bg-muted/30 p-2.5">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{x.t}</div>
+                  <div className="mt-0.5 break-words text-sm font-semibold">{x.v}</div>
+                </div>
+              ))}
+            </div>
             {det.grabacion_url && (
               <div>
                 <h4 className="mb-1 text-sm font-semibold text-primary">Grabación</h4>
@@ -128,7 +159,7 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
             {det.resumen && (
               <div>
                 <h4 className="mb-1 text-sm font-semibold text-primary">Resumen</h4>
-                <p className="rounded-xl border bg-muted/30 p-3 text-sm">{det.resumen}</p>
+                <p className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm leading-relaxed">{det.resumen}</p>
               </div>
             )}
             <div>
@@ -273,32 +304,14 @@ export default function LlamadasPage() {
           <SearchNormal1 className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar en la transcripción, teléfono, resguardo…" className="w-72 pl-8" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Usuario / agente</label>
-          <select className={cn(CLASE_SELECT, "w-52")} value={usuario} onChange={(e) => setUsuario(e.target.value)} aria-label="Usuario">
-            <option value="">Todos</option>
-            {datos?.usuarios.map((u) => <option key={u.usuario} value={u.usuario}>{u.usuario} ({u.n})</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Origen</label>
-          <select className={CLASE_SELECT} value={origen} onChange={(e) => setOrigen(e.target.value)} aria-label="Origen">
-            <option value="">Todos</option><option value="persona">Personas</option><option value="ia">Agentes de IA</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Dirección</label>
-          <select className={CLASE_SELECT} value={direccion} onChange={(e) => setDireccion(e.target.value)} aria-label="Dirección">
-            <option value="">Todas</option><option value="saliente">Salientes</option><option value="entrante">Entrantes</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Estado</label>
-          <select className={CLASE_SELECT} value={estado} onChange={(e) => setEstado(e.target.value)} aria-label="Estado">
-            <option value="">Todos</option>
-            {datos?.estados.map((e) => <option key={e.estado} value={e.estado}>{ETIQUETA_ESTADO[e.estado] || e.estado} ({e.n})</option>)}
-          </select>
-        </div>
+        <Filtro etiqueta="Usuario / agente" valor={usuario} onCambio={setUsuario} ancho="w-56"
+          opciones={[{ valor: TODOS, texto: "Todos" }, ...(datos?.usuarios.map((u) => ({ valor: u.usuario, texto: `${u.usuario} (${u.n})` })) ?? [])]} />
+        <Filtro etiqueta="Origen" valor={origen} onCambio={setOrigen} ancho="w-40"
+          opciones={[{ valor: TODOS, texto: "Todos" }, { valor: "persona", texto: "Personas" }, { valor: "ia", texto: "Agentes de IA" }]} />
+        <Filtro etiqueta="Dirección" valor={direccion} onCambio={setDireccion} ancho="w-36"
+          opciones={[{ valor: TODOS, texto: "Todas" }, { valor: "saliente", texto: "Salientes" }, { valor: "entrante", texto: "Entrantes" }]} />
+        <Filtro etiqueta="Estado" valor={estado} onCambio={setEstado} ancho="w-44"
+          opciones={[{ valor: TODOS, texto: "Todos" }, ...(datos?.estados.map((e) => ({ valor: e.estado, texto: `${ETIQUETA_ESTADO[e.estado] || e.estado} (${e.n})` })) ?? [])]} />
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Desde</label>
           <Input type="date" className="w-36" value={desde} onChange={(e) => setDesde(e.target.value)} />
@@ -311,7 +324,7 @@ export default function LlamadasPage() {
           <label className="mb-1 block text-xs text-muted-foreground">Duración mín. (min)</label>
           <Input type="number" min="0" step="1" className="w-28" value={minDur} onChange={(e) => setMinDur(e.target.value)} />
         </div>
-        <label className="mb-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={soloTranscripcion} onChange={(e) => setSoloTranscripcion(e.target.checked)} /> Solo con transcripción</label>
+        <label className="mb-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox checked={soloTranscripcion} onCheckedChange={(c) => setSoloTranscripcion(!!c)} /> Solo con transcripción</label>
         {hayFiltros && <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={limpiar}>Limpiar filtros</Button>}
         {datos && <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">{total.toLocaleString("es-ES")} llamadas</span>}
       </div>
