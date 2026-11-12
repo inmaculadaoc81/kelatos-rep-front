@@ -27,3 +27,15 @@ export function usePuedeCrearPiezas(): boolean {
   }, []);
   return puede;
 }
+
+/** Si la sesión puede EDITAR piezas de Stock de piezas (superadmins y ricardo@kelatos.com). Borrar sigue siendo solo de superadmin. */
+export function usePuedeEditarPiezas(): boolean {
+  const [puede, setPuede] = useState(false);
+  useEffect(() => {
+    fetch("/api/auth/superadmin")
+      .then((r) => r.json())
+      .then((data) => setPuede(!!data.puedeEditarPiezas))
+      .catch(() => setPuede(false));
+  }, []);
+  return puede;
+}

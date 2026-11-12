@@ -72,6 +72,16 @@ export function puedeCrearPiezas(email: string | null | undefined): boolean {
 }
 
 /**
+ * Editar una pieza de Stock de piezas (nombre, precios, stock disponible y mínimo): superadmins y las cuentas de esta lista. Petición del usuario,
+ * 2026-11-12: ricardo@kelatos.com también puede EDITAR, y nada más (borrar piezas y añadir enlaces siguen siendo solo de superadmin).
+ */
+const EDITAR_PIEZAS_EMAILS_EXTRA = new Set(["ricardo@kelatos.com"]);
+
+export function puedeEditarPiezas(email: string | null | undefined): boolean {
+  return esSuperadmin(email) || (!!email && EDITAR_PIEZAS_EMAILS_EXTRA.has(email.toLowerCase()));
+}
+
+/**
  * Cuentas que, al entrar, aterrizan en el FICHAJE (como antes de tener acceso completo) y desde ahí pasan al dashboard con el botón «Ir al dashboard».
  * Petición del usuario, 2026-11-04: Iván, Romer y Ricardo. La cookie COOKIE_IR_DASHBOARD la pone ese botón y dura lo que dure la jornada.
  */

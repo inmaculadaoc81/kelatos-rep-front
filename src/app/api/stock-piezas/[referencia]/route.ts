@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearStockPieza, alternativosParaApi, DatosStockPiezaForm } from "@/lib/stock-piezas";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedeEditarPiezas } from "@/lib/superadmin";
 
 /** Reproduce actualizarStockPieza() (backend/StockPiezas.js) — la referencia
     no se puede cambiar (readOnly en el modal de edición del original). */
@@ -10,7 +10,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ refere
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  if (!esSuperadmin(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!puedeEditarPiezas(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { referencia } = await params;
   const datos = (await req.json()) as DatosStockPiezaForm;

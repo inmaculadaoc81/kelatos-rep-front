@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { StockPieza } from "@/lib/stock-piezas";
 import { imprimirEtiquetaPieza } from "@/lib/imprimir-etiqueta";
-import { useEsSuperadmin, usePuedeCrearPiezas } from "@/hooks/use-es-superadmin";
+import { usePuedeCrearPiezas, usePuedeEditarPiezas } from "@/hooks/use-es-superadmin";
 import { useConfirm } from "@/components/confirm-provider";
 import { PiezaStockFormDialog } from "./pieza-stock-form-dialog";
 import { ResumenStock } from "./resumen-stock";
@@ -60,8 +60,8 @@ export default function StockPiezasPage() {
     }
   }
   const [editando, setEditando] = useState<StockPieza | null>(null);
-  const esSuperadmin = useEsSuperadmin();
   const puedeCrearPiezas = usePuedeCrearPiezas();
+  const puedeEditarPiezas = usePuedeEditarPiezas();
 
   async function cargar() {
     setCargando(true);
@@ -250,8 +250,8 @@ export default function StockPiezasPage() {
                         size="icon-sm"
                         variant="ghost"
                         className="h-7 w-7"
-                        title={esSuperadmin ? "Editar" : "Ver"}
-                        aria-label={esSuperadmin ? "Editar" : "Ver"}
+                        title={puedeEditarPiezas ? "Editar" : "Ver"}
+                        aria-label={puedeEditarPiezas ? "Editar" : "Ver"}
                         onClick={() => {
                           setEditando(p);
                           setFormAbierto(true);
@@ -297,7 +297,7 @@ export default function StockPiezasPage() {
         key={editando?.referencia || "__nueva__"}
         piezaExistente={editando}
         categorias={categorias}
-        puedeEditarCatalogo={esSuperadmin}
+        puedeEditarCatalogo={puedeEditarPiezas}
         open={formAbierto}
         onOpenChange={setFormAbierto}
         onGuardado={cargar}
