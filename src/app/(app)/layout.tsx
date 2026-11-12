@@ -9,6 +9,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { puedeUsarAsistente } from "@/lib/asistente/permisos";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { CodigoAccesoProvider } from "./codigo-acceso-context";
+import { SoftphoneProvider } from "./softphone";
 import { EscanerCodigoBarras } from "./escaner-codigo-barras";
 import { AsistenteFlotante } from "./asistente-flotante";
 import { SolicitudEquipoLocal } from "@/components/acceso-local/solicitud-equipo";
@@ -20,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth();
   return (
     <CodigoAccesoProvider>
+      <SoftphoneProvider>
       {/* Solo para la cuenta restringida al local: da (o anota) la marca de equipo de este navegador; no muestra nada. */}
       {esCuentaEmpleadosRestringida(session?.user?.email) && <SolicitudEquipoLocal />}
       <EscanerCodigoBarras recepcionEquipos={!!session?.user?.email && !esCuentaEmpleadosRestringida(session.user.email)} />
@@ -50,6 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {puedeUsarAsistente(session?.user) && <AsistenteFlotante />}
         </SidebarInset>
       </SidebarProvider>
+      </SoftphoneProvider>
     </CodigoAccesoProvider>
   );
 }

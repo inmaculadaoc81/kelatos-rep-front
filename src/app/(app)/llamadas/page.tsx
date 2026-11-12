@@ -83,7 +83,7 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
             {det.grabacion_url && (
               <div>
                 <h4 className="mb-1 text-sm font-semibold text-primary">Grabación</h4>
-                <audio controls preload="none" src={det.grabacion_url} className="w-full" />
+                <audio controls preload="none" src={/^https?:/i.test(det.grabacion_url) ? det.grabacion_url : `/api/llamadas/${det.id}/audio`} className="w-full" />
               </div>
             )}
             {det.resumen && (

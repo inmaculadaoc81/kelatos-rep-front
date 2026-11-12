@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { Call, Copy } from "@/lib/icons";
+import { useSoftphone } from "../softphone";
 
 /** Número en formato marcable: solo dígitos y «+». Un número español de 9 cifras sin prefijo se marca con +34. */
 function numeroMarcable(tel: string): string {
@@ -16,7 +17,8 @@ function numeroMarcable(tel: string): string {
  * Teléfono del cliente con botón «Llamar» (abre la app de llamadas del equipo: móvil, Teléfono de Windows, Teams, softphone…)
  * y «Copiar». Al pulsar Llamar se anota en el historial quién lo hizo.
  */
-export function TelefonoLlamar({ telefono, resguardo }: { telefono: string | null | undefined; resguardo: string }) {
+export function TelefonoLlamar({ telefono, resguardo, nombre }: { telefono: string | null | undefined; resguardo: string; nombre?: string | null }) {
+  const softphone = useSoftphone();
   const tel = String(telefono || "").trim();
   if (!tel) return <span>-</span>;
   const marcable = numeroMarcable(tel);
@@ -44,14 +46,26 @@ export function TelefonoLlamar({ telefono, resguardo }: { telefono: string | nul
       <span>{tel}</span>
       {marcable && (
         <>
-          <a
-            href={`tel:${marcable}`}
-            onClick={anotarLlamada}
-            className="inline-flex items-center gap-1 rounded-md border bg-primary/5 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
-            title={`Llamar al ${marcable}`}
-          >
-            <Call className="size-3.5" /> Llamar
-          </a>
+          {softphone.disponible ? (
+            <button
+              type="button"
+              disabled={softphone.ocupado}
+              onClick={() => void softphone.llamar({ telefono: marcable, resguardo, nombre: nombre || undefined })}
+              className="inline-flex items-center gap-1 rounded-md border bg-primary/5 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+              title={`Llamar al ${marcable} desde el dashboard (con grabación)`}
+            >
+              <Call className="size-3.5" /> Llamar
+            </button>
+          ) : (
+            <a
+              href={`tel:${marcable}`}
+              onClick={anotarLlamada}
+              className="inline-flex items-center gap-1 rounded-md border bg-primary/5 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+              title={`Llamar al ${marcable}`}
+            >
+              <Call className="size-3.5" /> Llamar
+            </a>
+          )}
           <button
             type="button"
             onClick={copiar}

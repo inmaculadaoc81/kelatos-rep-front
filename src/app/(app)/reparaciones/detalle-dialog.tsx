@@ -843,7 +843,7 @@ export function DetalleReparacionDialog({
                         <FilaDato etiqueta="Resguardo" valor={detalle.resguardo} />
                         <FilaDato etiqueta="Fecha Recepción" valor={formatearFecha(detalle.fechaRecepcion)} />
                         <FilaDato etiqueta="Cliente" valor={detalle.cliente.nombre} />
-                        <FilaDato etiqueta="Teléfono" valor={<TelefonoLlamar telefono={detalle.cliente.telefono} resguardo={detalle.resguardo} />} />
+                        <FilaDato etiqueta="Teléfono" valor={<TelefonoLlamar telefono={detalle.cliente.telefono} resguardo={detalle.resguardo} nombre={detalle.cliente.nombre} />} />
                         <FilaDato etiqueta="Email" valor={detalle.cliente.email} />
                         <FilaDato etiqueta="Equipo" valor={detalle.equipo.modelo} />
                         <FilaDato etiqueta="Síntoma" valor={detalle.equipo.sintoma} />
