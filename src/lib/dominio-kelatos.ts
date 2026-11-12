@@ -8,7 +8,7 @@
  * (secretos incluidos) en el bundle del navegador.
  */
 const DOMINIO_ADMIN = "kelatos.com";
-export const EMAILS_ADMIN = new Set(["kelatoscielo@gmail.com", "kelatosclaude2@gmail.com"]);
+export const EMAILS_ADMIN = new Set(["kelatoscielo@gmail.com", "kelatosclaude2@gmail.com", "kelatosclaude1@gmail.com"]);
 
 export function esDominioKelatos(email: string): boolean {
   const e = email.toLowerCase();
