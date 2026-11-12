@@ -29,6 +29,10 @@ export default auth(async (req) => {
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Llamadas (transcripciones y grabaciones) — SOLO superadmins; las rutas /api/telefonia (llamar) siguen abiertas a cualquier empleado.
+  if (["/llamadas", "/api/llamadas"].some((r) => req.nextUrl.pathname.startsWith(r)) && !esSuperadmin(req.auth?.user?.email)) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Contabilidad (Importaciones / DUA…) — solo administradores; el menú ya la
   // oculta al resto (navegacion.tsx) y aquí se cierra también la ruta directa.
   // Excepción estrecha: cuentas con puedeVerEfectivoSoloLectura pueden entrar
@@ -36,7 +40,7 @@ export default auth(async (req) => {
   // propia ruta ya exige además GET para esas cuentas) — ninguna otra
   // sección de Contabilidad. Petición del usuario, 2026-10-05.
   if (
-    (["/importaciones", "/api/importaciones", "/reporte-resenas", "/api/resenas", "/llamadas", "/api/llamadas", "/contabilidad", "/api/contabilidad"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
+    (["/importaciones", "/api/importaciones", "/reporte-resenas", "/api/resenas", "/contabilidad", "/api/contabilidad"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
     req.auth?.user?.role !== "admin" &&
     !esSuperadmin(req.auth?.user?.email) &&
     !(

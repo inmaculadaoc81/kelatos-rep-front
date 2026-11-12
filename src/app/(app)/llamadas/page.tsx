@@ -283,7 +283,7 @@ export default function LlamadasPage() {
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Call className="size-5" /></span>
           <div>
             <h1 className="text-lg font-semibold">Llamadas</h1>
-            <p className="text-sm text-muted-foreground">Llamadas de personas y de agentes de IA, con su transcripción. Solo administradores.</p>
+            <p className="text-sm text-muted-foreground">Llamadas de personas y de agentes de IA, con su transcripción. Solo superadmins.</p>
           </div>
         </div>
         <Button variant="outline" size="icon" className="size-8" onClick={() => cargar(pagina)} title="Actualizar"><Refresh2 className={cn("size-4", cargando && "animate-spin")} /></Button>

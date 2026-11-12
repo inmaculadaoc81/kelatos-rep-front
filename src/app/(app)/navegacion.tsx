@@ -161,7 +161,7 @@ export const GRUPO_ADMIN: GrupoNavegacion = {
 
 /** Solo administradores: se añade al final de "Informes". Amarillo, como las
     opciones destacadas (Compras en rojo, Efectivo en verde). */
-/** Solo administradores: llamadas de personas e IA con su transcripción. */
+/** Solo superadmins: llamadas de personas e IA con su transcripción. */
 export const ITEM_LLAMADAS: ItemNavegacion = { label: "Llamadas", href: "/llamadas", icon: Call };
 
 export const ITEM_RESENAS: ItemNavegacion = {
@@ -202,7 +202,7 @@ export function gruposVisibles({
     }
     if (esAdmin && g.titulo === "Facturación") return [g, GRUPO_CONTABILIDAD];
     if (!esAdmin && efectivoSoloLectura && g.titulo === "Facturación") return [g, GRUPO_EFECTIVO_SOLO_LECTURA];
-    if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS, ITEM_LLAMADAS] }];
+    if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS, ...(superadmin ? [ITEM_LLAMADAS] : [])] }];
     return [g];
   });
   return superadmin ? [...base, GRUPO_ADMIN] : base;

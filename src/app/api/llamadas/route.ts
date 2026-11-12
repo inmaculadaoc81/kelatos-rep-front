@@ -6,11 +6,11 @@ import type { ListadoLlamadas } from "@/lib/llamadas";
 
 const PARAMETROS = ["q", "usuario", "origen", "direccion", "estado", "desde", "hasta", "conTranscripcion", "duracionMin", "duracionMax", "limit", "offset"];
 
-/** Listado de llamadas — solo administradores (repetido aquí y en src/proxy.ts). */
+/** Listado de llamadas — solo superadmins (repetido aquí y en src/proxy.ts). */
 export async function GET(req: Request) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (!email || (session?.user?.role !== "admin" && !esSuperadmin(email))) {
+  if (!esSuperadmin(email)) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   }
   try {

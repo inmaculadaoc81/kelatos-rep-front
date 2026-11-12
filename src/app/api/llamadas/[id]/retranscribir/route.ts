@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { esSuperadmin } from "@/lib/superadmin";
 
-/** Vuelve a transcribir la grabación de una llamada — solo administradores (repetido aquí y en src/proxy.ts). */
+/** Vuelve a transcribir la grabación de una llamada — solo superadmins (repetido aquí y en src/proxy.ts). */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (!email || (session?.user?.role !== "admin" && !esSuperadmin(email))) {
+  if (!esSuperadmin(email)) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   }
   const { id } = await params;
