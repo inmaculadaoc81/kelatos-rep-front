@@ -112,13 +112,25 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
   // Mientras la llamada sigue en curso o se está transcribiendo, se vuelve a consultar sola.
   const faseTranscripcion = det?.datos?.transcripcion_estado as string | undefined;
   const hayTexto = !!(det?.transcripcion || (det?.transcripcion_json && det.transcripcion_json.length > 0));
-  const trabajando = !!det && !hayTexto && faseTranscripcion !== "error" && faseTranscripcion !== "sin_voz" && recarga < 45 && (faseTranscripcion === "procesando" || ["iniciada", "contestada"].includes(det.estado) || (!det.grabacion_url && det.estado === "completada"));
+  const trabajando = !!det && (faseTranscripcion === "procesando" || !hayTexto) && faseTranscripcion !== "error" && faseTranscripcion !== "sin_voz" && recarga < 45 && (faseTranscripcion === "procesando" || ["iniciada", "contestada"].includes(det.estado) || (!det.grabacion_url && det.estado === "completada"));
   useEffect(() => {
     if (!trabajando) return;
     const t = setInterval(() => setRecarga((n) => n + 1), 4000);
     return () => clearInterval(t);
   }, [trabajando]);
 
+  const [reintentando, setReintentando] = useState(false);
+  const retranscribir = async () => {
+    setReintentando(true); setError(null);
+    try {
+      const r = await fetch(`/api/llamadas/${encodeURIComponent(id)}/retranscribir`, { method: "POST" });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "No se pudo iniciar");
+      setDet((x) => (x ? { ...x, datos: { ...x.datos, transcripcion_estado: "procesando" } } : x));
+      setRecarga(0);
+    } catch (e) { setError(e instanceof Error ? e.message : "Error desconocido"); }
+    finally { setReintentando(false); }
+  };
   const turnos = det?.transcripcion_json && det.transcripcion_json.length > 0 ? det.transcripcion_json : null;
   const esCliente = (h?: string) => /cliente|customer|user/i.test(h || "");
 
@@ -163,8 +175,17 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
               </div>
             )}
             <div>
-              <h4 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-primary"><DocumentText className="size-4" /> Transcripción</h4>
-              {turnos ? (
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-primary"><DocumentText className="size-4" /> Transcripción</h4>
+                {det.grabacion_url && faseTranscripcion !== "procesando" && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" disabled={reintentando} onClick={retranscribir} title="Vuelve a procesar el audio con la limpieza de ruido">
+                    <Refresh2 className={cn("mr-1 size-3.5", reintentando && "animate-spin")} /> Volver a transcribir
+                  </Button>
+                )}
+              </div>
+              {faseTranscripcion === "procesando" ? (
+                <MensajeTranscripcion fase={faseTranscripcion} estado={det.estado} trabajando grabada={!!det.grabacion_url} />
+              ) : turnos ? (
                 <div className="space-y-2 rounded-xl border p-3">
                   {turnos.map((t, i) => (
                     <div key={i} className={cn("flex", esCliente(t.hablante) ? "justify-end" : "justify-start")}>
