@@ -22,6 +22,7 @@ import {
   Shop,
   Sms,
   Message,
+  Call,
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -69,6 +70,7 @@ import { RecepcionPedidosDialog } from "./recepcion-pedidos-dialog";
 import { GestionPresupuestosDialog } from "./gestion-presupuestos-dialog";
 import { CasilleroBoton } from "./casillero-boton";
 import { GarantiaNuevoResguardoDialog } from "./garantia-nuevo-resguardo-dialog";
+import { PanelLlamadas } from "./llamadas-tab";
 import { useContextoAsistente } from "@/lib/asistente/contexto";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
 import { imprimirEtiquetaResguardoConFeedback } from "@/lib/imprimir-etiqueta";
@@ -820,6 +822,9 @@ export function DetalleReparacionDialog({
                   <TabsTrigger value="informacion">Información</TabsTrigger>
                   <TabsTrigger value="observaciones">Observaciones</TabsTrigger>
                   <TabsTrigger value="historial">Historial</TabsTrigger>
+                  <TabsTrigger value="llamadas" className="gap-1.5">
+                    <Call className="size-4" /> Llamadas
+                  </TabsTrigger>
                   <TabsTrigger value="mensajes" className="gap-1.5">
                     <Sms className="size-4" /> Mensajes
                     {mensajes.sinLeer > 0 && <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white" title={`${mensajes.sinLeer} sin leer`}>{mensajes.sinLeer}</span>}
@@ -1063,6 +1068,10 @@ export function DetalleReparacionDialog({
                       );
                     })}
                   </ol>
+                </TabsContent>
+
+                <TabsContent value="llamadas" className="pt-3">
+                  <PanelLlamadas resguardo={String(detalle.resguardo)} esSuperadmin={esSuperadmin} />
                 </TabsContent>
 
                 <TabsContent value="mensajes" className="pt-3">
