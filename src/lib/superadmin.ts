@@ -6,7 +6,7 @@
  * backend Node (ver SUPERADMIN_EMAIL en kelatos-rep-back/src/server.js,
  * que debe mantenerse en el mismo conjunto).
  */
-export const SUPERADMIN_EMAILS = new Set(["kelatoscielo@gmail.com", "kelatosclaude2@gmail.com", "kelatosclaude1@gmail.com"]);
+export const SUPERADMIN_EMAILS = new Set(["kelatoscielo@gmail.com", "kelatosclaude2@gmail.com", "kelatosclaude1@gmail.com", "carlogfn@gmail.com"]);
 
 export function esSuperadmin(email: string | null | undefined): boolean {
   return !!email && SUPERADMIN_EMAILS.has(email.toLowerCase());
