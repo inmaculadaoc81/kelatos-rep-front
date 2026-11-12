@@ -206,6 +206,18 @@ export default function LlamadasPage() {
     return () => clearTimeout(t);
   }, [cargar]);
 
+  // La lista se actualiza sola: cada 8 s con la pestaña visible, y al colgar una llamada.
+  const ocupadoLlamada = softphone.ocupado;
+  useEffect(() => {
+    const t = setInterval(() => { if (document.visibilityState === "visible") cargar(pagina); }, 8000);
+    return () => clearInterval(t);
+  }, [cargar, pagina]);
+  useEffect(() => {
+    if (ocupadoLlamada) return;
+    const t = setTimeout(() => cargar(pagina), 1500);
+    return () => clearTimeout(t);
+  }, [ocupadoLlamada, cargar, pagina]);
+
   const hayFiltros = !!(q || usuario || origen || direccion || estado || desde || hasta || minDur || soloTranscripcion);
   const limpiar = () => { setQ(""); setUsuario(""); setOrigen(""); setDireccion(""); setEstado(""); setDesde(""); setHasta(""); setMinDur(""); setSoloTranscripcion(false); };
   const total = datos?.total ?? 0;
