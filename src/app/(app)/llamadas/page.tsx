@@ -23,6 +23,14 @@ const COLOR_ESTADO: Record<string, string> = {
   fallida: "bg-red-500/10 text-red-700 dark:text-red-400",
 };
 
+/** Número marcable: acepta espacios y guiones; un móvil/fijo español de 9 cifras se completa con +34; «00…» pasa a «+…». */
+function numeroMarcable(texto: string): string {
+  const limpio = texto.replace(/[^\d+]/g, "");
+  if (limpio.startsWith("+")) return limpio;
+  if (limpio.startsWith("00")) return "+" + limpio.slice(2);
+  return /^[6789]\d{8}$/.test(limpio) ? "+34" + limpio : limpio;
+}
+
 function fechaHora(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
@@ -190,10 +198,10 @@ export default function LlamadasPage() {
       {softphone.disponible && (
         <div className="mb-3 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3.5 shadow-sm">
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Llamada de prueba (con prefijo, p. ej. +34600111222)</label>
-            <Input className="w-64" placeholder="+34…" value={numeroPrueba} onChange={(e) => setNumeroPrueba(e.target.value)} />
+            <label className="mb-1 block text-xs text-muted-foreground">Llamada de prueba (si es de España, basta con el número; fuera de España, con prefijo +…)</label>
+            <Input className="w-64" placeholder="600 111 222" value={numeroPrueba} onChange={(e) => setNumeroPrueba(e.target.value)} />
           </div>
-          <Button size="sm" disabled={softphone.ocupado || !/^\+\d{8,15}$/.test(numeroPrueba.replace(/[^\d+]/g, ""))} onClick={() => void softphone.llamar({ telefono: numeroPrueba.replace(/[^\d+]/g, "") })}>
+          <Button size="sm" disabled={softphone.ocupado || !/^\+\d{8,15}$/.test(numeroMarcable(numeroPrueba))} onClick={() => void softphone.llamar({ telefono: numeroMarcable(numeroPrueba) })}>
             <Call className="size-4" /> Llamar
           </Button>
           <span className="text-xs text-muted-foreground">Sale con el número de la empresa y se graba.</span>
