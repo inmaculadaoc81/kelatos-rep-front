@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { Equipo, DatosNuevoEquipo, TARIFAS_EQUIPO } from "@/lib/equipos";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedePonerPrecioVenta } from "@/lib/superadmin";
 
 function hashCanonico(payload: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -15,7 +15,8 @@ export async function GET() {
     // Solo los administradores cambian tarifas y fianza (lo aplica también PATCH /api/equipos/[id]).
     const puedeEditarTarifas = session?.user?.role === "admin" || esSuperadmin(session?.user?.email);
     const data = await kelatosApiGet<{ ok: boolean; equipos: Equipo[] }>("/v1/equipos");
-    return NextResponse.json({ ok: true, equipos: data.equipos, puedeEditarTarifas });
+    const puedeEditarPrecioVenta = puedeEditarTarifas || puedePonerPrecioVenta(session?.user?.email);
+    return NextResponse.json({ ok: true, equipos: data.equipos, puedeEditarTarifas, puedeEditarPrecioVenta });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });

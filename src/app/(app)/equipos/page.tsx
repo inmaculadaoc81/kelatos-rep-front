@@ -118,6 +118,7 @@ export default function EquiposPage() {
   // Ficha del equipo (se abre al pulsar la fila); se guarda el id para que se refresque con la lista.
   const [fichaId, setFichaId] = useState<string | null>(null);
   const [puedeEditarTarifas, setPuedeEditarTarifas] = useState(false);
+  const [puedeEditarPrecioVenta, setPuedeEditarPrecioVenta] = useState(false);
   const [confirmarAccion, setConfirmarAccion] = useState<{ equipo: Equipo; estado: EstadoEquipo } | null>(null);
   const [confirmado, setConfirmado] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -142,6 +143,7 @@ export default function EquiposPage() {
         pendienteRef.current = null;
       }
       setPuedeEditarTarifas(data.puedeEditarTarifas === true);
+      setPuedeEditarPrecioVenta(data.puedeEditarPrecioVenta === true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -540,6 +542,7 @@ export default function EquiposPage() {
       <EquipoDetalleDialog
         equipo={fichaEquipo}
         puedeEditarTarifas={puedeEditarTarifas}
+        puedeEditarPrecioVenta={puedeEditarPrecioVenta}
         open={fichaEquipo !== null}
         onOpenChange={(o) => !o && setFichaId(null)}
         onActualizado={cargar}

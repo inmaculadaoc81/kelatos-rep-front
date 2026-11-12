@@ -82,6 +82,16 @@ export function puedeEditarPiezas(email: string | null | undefined): boolean {
 }
 
 /**
+ * Poner o cambiar el PRECIO DE VENTA de un equipo (Equipos → ficha): administradores/superadmins y las cuentas de esta lista. Petición del usuario,
+ * 2026-11-12: Iván, Romer y Ricardo, solo para eso (las tarifas de alquiler y la fianza siguen siendo de administrador).
+ */
+const PRECIO_VENTA_EMAILS_EXTRA = new Set(["ivan.gonzalez@kelatos.com", "romer.ramirez@kelatos.com", "ricardo@kelatos.com"]);
+
+export function puedePonerPrecioVenta(email: string | null | undefined): boolean {
+  return !!email && PRECIO_VENTA_EMAILS_EXTRA.has(email.toLowerCase());
+}
+
+/**
  * Cuentas que, al entrar, aterrizan en el FICHAJE (como antes de tener acceso completo) y desde ahí pasan al dashboard con el botón «Ir al dashboard».
  * Petición del usuario, 2026-11-04: Iván, Romer y Ricardo. La cookie COOKIE_IR_DASHBOARD la pone ese botón y dura lo que dure la jornada.
  */

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
-import { esSuperadmin } from "@/lib/superadmin";
+import { esSuperadmin, puedePonerPrecioVenta } from "@/lib/superadmin";
 
 function hashCanonico(payload: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -26,8 +26,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ("modelo" in datos && !String(datos.modelo).trim()) return NextResponse.json({ ok: false, error: "El modelo es obligatorio" }, { status: 400 });
   if (!Object.keys(datos).length) return NextResponse.json({ ok: false, error: "No hay nada que guardar" }, { status: 400 });
   const esAdmin = session?.user?.role === "admin" || esSuperadmin(usuario);
-  if (!esAdmin && CAMPOS_NUMERO.some((c) => c in datos)) {
-    return NextResponse.json({ ok: false, error: "Solo un administrador puede cambiar las tarifas, el precio de venta y la fianza" }, { status: 403 });
+  // Fuera de los administradores, solo las cuentas autorizadas pueden cambiar el PRECIO DE VENTA, y nada más de lo numérico (tarifas y fianza).
+  const soloPrecioVenta = CAMPOS_NUMERO.filter((c) => c in datos).every((c) => c === "precioVenta");
+  if (!esAdmin && CAMPOS_NUMERO.some((c) => c in datos) && !(soloPrecioVenta && puedePonerPrecioVenta(usuario))) {
+    return NextResponse.json({ ok: false, error: "Solo un administrador puede cambiar las tarifas y la fianza (el precio de venta, solo las cuentas autorizadas)" }, { status: 403 });
   }
 
   const requestId = crypto.randomUUID();

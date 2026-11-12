@@ -65,6 +65,7 @@ const euros = (n: number) => (n || 0).toLocaleString("es-ES", { minimumFractionD
 export function EquipoDetalleDialog({
   equipo,
   puedeEditarTarifas,
+  puedeEditarPrecioVenta = false,
   open,
   onOpenChange,
   onActualizado,
@@ -73,6 +74,8 @@ export function EquipoDetalleDialog({
   equipo: Equipo | null;
   /** Solo los administradores cambian tarifas y fianza. */
   puedeEditarTarifas: boolean;
+  /** Además de los administradores, algunas cuentas pueden poner el precio de venta (y solo eso). */
+  puedeEditarPrecioVenta?: boolean;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onActualizado: () => void;
@@ -114,7 +117,7 @@ export function EquipoDetalleDialog({
     try {
       const enviar: Record<string, string | number> = {};
       for (const k of cambios) {
-        if (CAMPOS_TARIFA.includes(k) && !puedeEditarTarifas) continue;
+        if (CAMPOS_TARIFA.includes(k) && !puedeEditarTarifas && !(k === "precioVenta" && puedeEditarPrecioVenta)) continue;
         enviar[k] = CAMPOS_TARIFA.includes(k) ? Number(String(f[k]).replace(",", ".")) : f[k];
       }
       const res = await fetch(`/api/equipos/${encodeURIComponent(equipo.id)}`, {
@@ -236,14 +239,16 @@ export function EquipoDetalleDialog({
               ).map(([campo, etiqueta]) => (
                 <div key={campo} className="space-y-1">
                   <span className="text-xs text-muted-foreground">{etiqueta}</span>
-                  <Input inputMode="decimal" className="tabular-nums" value={f[campo]} onChange={(e) => poner(campo, e.target.value)} aria-label={etiqueta} disabled={!puedeEditarTarifas} />
+                  <Input inputMode="decimal" className="tabular-nums" value={f[campo]} onChange={(e) => poner(campo, e.target.value)} aria-label={etiqueta} disabled={!(puedeEditarTarifas || (campo === "precioVenta" && puedeEditarPrecioVenta))} />
                 </div>
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
               {puedeEditarTarifas
                 ? "Los cambios de tarifa solo afectan a los alquileres nuevos; cada alquiler ya creado conserva sus precios."
-                : "Solo un administrador puede cambiar las tarifas, el precio de venta y la fianza."}
+                : puedeEditarPrecioVenta
+                  ? "Puedes poner el precio de venta. Las tarifas de alquiler y la fianza solo las cambia un administrador."
+                  : "Solo un administrador puede cambiar las tarifas, el precio de venta y la fianza."}
             </p>
           </div>
 
