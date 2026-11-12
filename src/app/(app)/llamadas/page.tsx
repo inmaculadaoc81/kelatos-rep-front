@@ -54,10 +54,30 @@ function Resaltado({ texto, busca }: { texto: string; busca: string }) {
   );
 }
 
+function MensajeTranscripcion({ fase, estado, trabajando, grabada }: { fase?: string; estado: string; trabajando: boolean; grabada: boolean }) {
+  if (fase === "error") return <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">La transcripción falló. El audio está guardado; se puede volver a intentar.</p>;
+  if (fase === "sin_voz") return <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">No se detectó voz en la grabación, así que no hay nada que transcribir.</p>;
+  if (!trabajando) return <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Esta llamada no tiene transcripción.</p>;
+  const enCurso = ["iniciada", "contestada"].includes(estado) && !grabada;
+  const pasos = ["Llamada", "Audio subido", "Transcribiendo", "Listo"];
+  const actual = fase === "procesando" ? 2 : grabada ? 2 : enCurso ? 0 : 1;
+  return (
+    <div className="space-y-2 rounded-xl border p-3 text-sm">
+      <div className="flex items-center gap-2 font-medium"><span className="size-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />{enCurso ? "La llamada sigue en curso…" : actual === 1 ? "Esperando que termine de subirse el audio…" : "Transcribiendo y resumiendo la llamada…"}</div>
+      <ol className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        {pasos.map((p, i) => <li key={p} className={cn(i < actual && "text-primary", i === actual && "font-semibold text-foreground")}>{i < actual ? "✓" : i === actual ? "●" : "○"} {p}</li>)}
+      </ol>
+      <p className="text-xs text-muted-foreground">Suele tardar de uno a dos minutos tras colgar. Esta ventana se actualiza sola.</p>
+    </div>
+  );
+}
+
 function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onCerrar: () => void }) {
   const [det, setDet] = useState<DetalleLlamada | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [recarga, setRecarga] = useState(0);
 
   useEffect(() => {
     let vivo = true;
@@ -67,7 +87,17 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
       .catch((e) => { if (vivo) setError(e instanceof Error ? e.message : "Error desconocido"); })
       .finally(() => { if (vivo) setCargando(false); });
     return () => { vivo = false; };
-  }, [id]);
+  }, [id, recarga]);
+
+  // Mientras la llamada sigue en curso o se está transcribiendo, se vuelve a consultar sola.
+  const faseTranscripcion = det?.datos?.transcripcion_estado as string | undefined;
+  const hayTexto = !!(det?.transcripcion || (det?.transcripcion_json && det.transcripcion_json.length > 0));
+  const trabajando = !!det && !hayTexto && faseTranscripcion !== "error" && faseTranscripcion !== "sin_voz" && recarga < 45 && (faseTranscripcion === "procesando" || ["iniciada", "contestada"].includes(det.estado) || (!det.grabacion_url && det.estado === "completada"));
+  useEffect(() => {
+    if (!trabajando) return;
+    const t = setInterval(() => setRecarga((n) => n + 1), 4000);
+    return () => clearInterval(t);
+  }, [trabajando]);
 
   const turnos = det?.transcripcion_json && det.transcripcion_json.length > 0 ? det.transcripcion_json : null;
   const esCliente = (h?: string) => /cliente|customer|user/i.test(h || "");
@@ -117,7 +147,7 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
               ) : det.transcripcion ? (
                 <p className="whitespace-pre-wrap rounded-xl border p-3 text-sm"><Resaltado texto={det.transcripcion} busca={busca} /></p>
               ) : (
-                <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Esta llamada no tiene transcripción todavía.</p>
+                <MensajeTranscripcion fase={faseTranscripcion} estado={det.estado} trabajando={trabajando} grabada={!!det.grabacion_url} />
               )}
             </div>
           </div>
