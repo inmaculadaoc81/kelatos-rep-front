@@ -6,14 +6,24 @@ import { toast } from "sonner";
 import { Call } from "@/lib/icons";
 
 /**
- * TELÉFONO DEL DASHBOARD. El empleado habla desde el navegador (micrófono y auriculares); LiveKit marca al cliente por el SIP Trunk de la empresa.
+ * TELÉFONO DEL DASHBOARD. El empleado habla desde el navegador (micrófono y auriculares) y el cliente recibe la llamada con el número de la empresa.
+ * Dos motores, según lo que esté configurado en el servidor:
+ *   - «sip»: el navegador se registra DIRECTAMENTE en la Línea SIP de Netelip por WebRTC (WSS) con SIP.js. Sin intermediarios ni coste extra.
+ *   - «livekit»: puente (LiveKit) que marca por el SIP Trunk de Netelip. Reserva por si Netelip no admite el motor directo.
  * El propio navegador graba las dos voces (mezcla para escuchar + cada voz por separado para transcribir) y las sube al terminar.
  * Si la telefonía no está activada en el servidor, `disponible` es false y la ficha sigue usando el enlace «tel:».
  */
 
 type Fase = "reposo" | "conectando" | "llamando" | "en_llamada" | "terminando";
+type Resultado = "completada" | "no_contesta" | "ocupado" | "fallida";
 export interface OpcionesLlamada { telefono: string; resguardo?: string; nombre?: string }
 interface Contexto { disponible: boolean; ocupado: boolean; llamar: (o: OpcionesLlamada) => Promise<void> }
+interface Motor { colgar: () => Promise<void>; silenciar: (silenciado: boolean) => Promise<void> }
+interface RespuestaIniciar {
+  id: string; modo: "sip" | "livekit";
+  url?: string; token?: string;                                                   // livekit
+  sip?: { wss: string; dominio: string; usuario: string; clave: string }; numeroMarcado?: string;   // sip
+}
 
 const SoftphoneContext = createContext<Contexto>({ disponible: false, ocupado: false, llamar: async () => {} });
 export const useSoftphone = () => useContext(SoftphoneContext);
@@ -36,9 +46,7 @@ function aBase64(blob: Blob): Promise<string> {
   });
 }
 
-function mmss(s: number) {
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-}
+const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 interface Grabadora { clave: "mezcla" | "empleado" | "cliente"; rec: MediaRecorder; trozos: Blob[] }
 
@@ -50,12 +58,13 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
   const [segundos, setSegundos] = useState(0);
   const [silenciado, setSilenciado] = useState(false);
 
-  const sala = useRef<Room | null>(null);
+  const motor = useRef<Motor | null>(null);
   const idLlamada = useRef<string | null>(null);
   const contestada = useRef(false);
   const inicioConversacion = useRef(0);
   const terminada = useRef(false);
   const remoto = useRef<MediaStreamTrack | null>(null);
+  const pistaMic = useRef<MediaStreamTrack | null>(null);
   const grabadoras = useRef<Grabadora[]>([]);
   const contexto = useRef<AudioContext | null>(null);
   const temporizador = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -75,14 +84,13 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const empezarGrabacion = useCallback(() => {
-    const room = sala.current;
     const pistaRemota = remoto.current;
-    const pistaMic = room?.localParticipant.getTrackPublication(Track.Source.Microphone)?.track?.mediaStreamTrack;
-    if (!pistaRemota || !pistaMic || grabadoras.current.length) return;
+    const pistaPropia = pistaMic.current;
+    if (!pistaRemota || !pistaPropia || grabadoras.current.length) return;
     try {
       const ctx = new AudioContext();
       const destino = ctx.createMediaStreamDestination();
-      ctx.createMediaStreamSource(new MediaStream([pistaMic])).connect(destino);
+      ctx.createMediaStreamSource(new MediaStream([pistaPropia])).connect(destino);
       ctx.createMediaStreamSource(new MediaStream([pistaRemota])).connect(destino);
       contexto.current = ctx;
       const tipo = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
@@ -93,7 +101,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
         rec.start(1000);
         return g;
       };
-      grabadoras.current = [crear("mezcla", destino.stream), crear("empleado", new MediaStream([pistaMic])), crear("cliente", new MediaStream([pistaRemota]))];
+      grabadoras.current = [crear("mezcla", destino.stream), crear("empleado", new MediaStream([pistaPropia])), crear("cliente", new MediaStream([pistaRemota]))];
     } catch (e) {
       console.error("No se pudo empezar la grabación", e);
     }
@@ -114,7 +122,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     return Object.keys(salida).length ? salida : null;
   }, []);
 
-  const terminar = useCallback(async (resultado: "completada" | "no_contesta" | "ocupado" | "fallida", aviso?: string) => {
+  const terminar = useCallback(async (resultado: Resultado, aviso?: string) => {
     if (terminada.current) return;
     terminada.current = true;
     limpiarTemporizadores();
@@ -123,9 +131,9 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     const duracion = contestada.current ? Math.max(0, Math.round((Date.now() - inicioConversacion.current) / 1000)) : 0;
     const id = idLlamada.current;
     const audios = await pararGrabacion();
-    try { await sala.current?.disconnect(); } catch { /* ya estaba desconectada */ }
+    try { await motor.current?.colgar(); } catch { /* ya estaba colgada */ }
     elementosAudio.current.forEach((el) => el.remove()); elementosAudio.current = [];
-    sala.current = null; remoto.current = null;
+    motor.current = null; remoto.current = null; pistaMic.current = null;
     if (id) {
       try { await post(`/api/telefonia/${id}/fin`, { resultado, duracionSeg: duracion }); } catch (e) { console.error(e); }
       if (audios && contestada.current) {
@@ -152,6 +160,87 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     empezarGrabacion();
   }, [empezarGrabacion]);
 
+  const esperarRespuesta = useCallback(() => {
+    esperaContestar.current = setTimeout(() => { if (!contestada.current) void terminar("no_contesta", "El cliente no ha contestado"); }, SEGUNDOS_SIN_CONTESTAR * 1000);
+  }, [terminar]);
+
+  // ── Motor directo con Netelip (SIP.js, WebRTC sobre WebSocket)
+  const llamarSip = useCallback(async (ini: RespuestaIniciar) => {
+    const { UserAgent, Inviter, SessionState } = await import("sip.js");
+    const s = ini.sip!;
+    const uri = UserAgent.makeURI(`sip:${s.usuario}@${s.dominio}`);
+    if (!uri) throw new Error("La configuración SIP no es válida (usuario o dominio)");
+    const ua = new UserAgent({
+      uri, transportOptions: { server: s.wss }, authorizationUsername: s.usuario, authorizationPassword: s.clave, logLevel: "error",
+      sessionDescriptionHandlerFactoryOptions: { peerConnectionConfiguration: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } },
+    });
+    setMensaje("Conectando con la centralita…");
+    await ua.start();
+    const destino = UserAgent.makeURI(`sip:${ini.numeroMarcado}@${s.dominio}`);
+    if (!destino) throw new Error("Número no válido");
+    const inviter = new Inviter(ua, destino, { sessionDescriptionHandlerOptions: { constraints: { audio: true, video: false } } });
+    motor.current = {
+      colgar: async () => {
+        try { if (inviter.state === SessionState.Established) await inviter.bye(); else if (inviter.state === SessionState.Initial || inviter.state === SessionState.Establishing) await inviter.cancel(); } catch { /* ya terminada */ }
+        try { await ua.stop(); } catch { /* ya parada */ }
+      },
+      silenciar: async (silenciar) => { if (pistaMic.current) pistaMic.current.enabled = !silenciar; },
+    };
+    inviter.stateChange.addListener((estado) => {
+      if (estado === SessionState.Established) {
+        const pc = (inviter.sessionDescriptionHandler as unknown as { peerConnection?: RTCPeerConnection } | undefined)?.peerConnection;
+        const rx = pc?.getReceivers().find((r) => r.track?.kind === "audio")?.track;
+        const tx = pc?.getSenders().find((x) => x.track?.kind === "audio")?.track;
+        if (rx) {
+          const el = document.createElement("audio");
+          el.autoplay = true; el.srcObject = new MediaStream([rx]); el.style.display = "none";
+          document.body.appendChild(el); elementosAudio.current.push(el);
+          remoto.current = rx;
+        }
+        pistaMic.current = tx ?? null;
+        alContestar();
+      }
+      if (estado === SessionState.Terminated) void terminar(contestada.current ? "completada" : "no_contesta", contestada.current ? undefined : "El cliente no ha contestado");
+    });
+    setFase("llamando"); setMensaje("Marcando…");
+    await inviter.invite({
+      requestDelegate: {
+        onProgress: () => setMensaje("Sonando…"),
+        onReject: (resp) => {
+          const codigo = resp.message.statusCode;
+          void terminar(codigo === 486 || codigo === 600 || codigo === 603 ? "ocupado" : "fallida", codigo === 486 || codigo === 600 ? "El número está ocupado" : `No se pudo completar la llamada (${codigo} ${resp.message.reasonPhrase || ""})`);
+        },
+      },
+    });
+    esperarRespuesta();
+  }, [alContestar, esperarRespuesta, terminar]);
+
+  // ── Motor puente (LiveKit)
+  const llamarLiveKit = useCallback(async (ini: RespuestaIniciar) => {
+    const room = new Room({ audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    motor.current = { colgar: async () => { await room.disconnect(); }, silenciar: async (silenciar) => { await room.localParticipant.setMicrophoneEnabled(!silenciar); } };
+    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub, participante: RemoteParticipant) => {
+      if (track.kind !== Track.Kind.Audio) return;
+      const el = track.attach() as HTMLMediaElement;
+      el.style.display = "none"; document.body.appendChild(el); elementosAudio.current.push(el);
+      if (participante.identity === "cliente") { remoto.current = track.mediaStreamTrack; if (contestada.current) empezarGrabacion(); }
+    });
+    room.on(RoomEvent.ParticipantAttributesChanged, (_cambios, participante) => {
+      if (participante.identity !== "cliente") return;
+      const estado = participante.attributes["sip.callStatus"];
+      if (estado === "ringing" || estado === "dialing") setMensaje("Sonando…");
+      if (estado === "active") { pistaMic.current = room.localParticipant.getTrackPublication(Track.Source.Microphone)?.track?.mediaStreamTrack ?? null; alContestar(); }
+      if (estado === "hangup") void terminar(contestada.current ? "completada" : "no_contesta", contestada.current ? undefined : "El cliente no ha contestado");
+    });
+    room.on(RoomEvent.ParticipantDisconnected, (p) => { if (p.identity === "cliente") void terminar(contestada.current ? "completada" : "no_contesta", contestada.current ? undefined : "El cliente no ha contestado"); });
+    room.on(RoomEvent.Disconnected, () => { void terminar(contestada.current ? "completada" : "fallida"); });
+    await room.connect(ini.url!, ini.token!);
+    await room.localParticipant.setMicrophoneEnabled(true);
+    setFase("llamando"); setMensaje("Marcando…");
+    await post(`/api/telefonia/${ini.id}/marcar`);
+    esperarRespuesta();
+  }, [alContestar, empezarGrabacion, esperarRespuesta, terminar]);
+
   const llamar = useCallback(async (o: OpcionesLlamada) => {
     if (fase !== "reposo") { toast.info("Ya hay una llamada en curso."); return; }
     terminada.current = false; contestada.current = false; setSegundos(0); setSilenciado(false);
@@ -159,46 +248,25 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     try {
       try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach((t) => t.stop()); }
       catch { throw new Error("Hace falta permitir el micrófono del navegador (icono del candado, junto a la dirección)."); }
-      const ini = await post<{ id: string; url: string; token: string }>("/api/telefonia/iniciar", { telefono: o.telefono, resguardo: o.resguardo });
+      const ini = await post<RespuestaIniciar>("/api/telefonia/iniciar", { telefono: o.telefono, resguardo: o.resguardo });
       idLlamada.current = ini.id;
-      const room = new Room({ audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-      sala.current = room;
-      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub, participante: RemoteParticipant) => {
-        if (track.kind !== Track.Kind.Audio) return;
-        const el = track.attach() as HTMLMediaElement;
-        el.style.display = "none"; document.body.appendChild(el); elementosAudio.current.push(el);
-        if (participante.identity === "cliente") { remoto.current = track.mediaStreamTrack; if (contestada.current) empezarGrabacion(); }
-      });
-      room.on(RoomEvent.ParticipantAttributesChanged, (_cambios, participante) => {
-        if (participante.identity !== "cliente") return;
-        const estado = participante.attributes["sip.callStatus"];
-        if (estado === "ringing" || estado === "dialing") setMensaje("Sonando…");
-        if (estado === "active") alContestar();
-        if (estado === "hangup") void terminar(contestada.current ? "completada" : "no_contesta", contestada.current ? undefined : "El cliente no ha contestado");
-      });
-      room.on(RoomEvent.ParticipantDisconnected, (p) => { if (p.identity === "cliente") void terminar(contestada.current ? "completada" : "no_contesta", contestada.current ? undefined : "El cliente no ha contestado"); });
-      room.on(RoomEvent.Disconnected, () => { void terminar(contestada.current ? "completada" : "fallida"); });
-      await room.connect(ini.url, ini.token);
-      await room.localParticipant.setMicrophoneEnabled(true);
-      setFase("llamando"); setMensaje("Marcando…");
-      await post(`/api/telefonia/${ini.id}/marcar`);
-      esperaContestar.current = setTimeout(() => { if (!contestada.current) void terminar("no_contesta", "El cliente no ha contestado"); }, SEGUNDOS_SIN_CONTESTAR * 1000);
+      if (ini.modo === "sip") await llamarSip(ini); else await llamarLiveKit(ini);
     } catch (e) {
       const texto = e instanceof Error ? e.message : "No se pudo llamar";
       toast.error(texto);
       await terminar("fallida", texto);
     }
-  }, [fase, alContestar, empezarGrabacion, terminar]);
+  }, [fase, llamarSip, llamarLiveKit, terminar]);
 
   const colgar = useCallback(() => { void terminar(contestada.current ? "completada" : "no_contesta", contestada.current ? undefined : "Llamada cancelada"); }, [terminar]);
 
   const alternarSilencio = useCallback(async () => {
     const nuevo = !silenciado;
-    await sala.current?.localParticipant.setMicrophoneEnabled(!nuevo);
+    await motor.current?.silenciar(nuevo);
     setSilenciado(nuevo);
   }, [silenciado]);
 
-  useEffect(() => () => { limpiarTemporizadores(); void sala.current?.disconnect(); }, [limpiarTemporizadores]);
+  useEffect(() => () => { limpiarTemporizadores(); void motor.current?.colgar(); }, [limpiarTemporizadores]);
 
   const valor = useMemo<Contexto>(() => ({ disponible, ocupado: fase !== "reposo", llamar }), [disponible, fase, llamar]);
 
