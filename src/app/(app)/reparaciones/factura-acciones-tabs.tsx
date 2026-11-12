@@ -24,6 +24,7 @@ import { BuscarPiezaStockDialog } from "./buscar-pieza-stock-dialog";
 import type { StockPieza } from "@/lib/stock-piezas";
 import { useConfirm } from "@/components/confirm-provider";
 import { guardarSuReferencia } from "@/lib/su-referencia";
+import { useEsAdmin } from "@/hooks/use-es-admin";
 import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, type ValorFormaPago } from "./selector-forma-pago";
 
 export type TipoFacturaBase =
@@ -1196,6 +1197,7 @@ function FaseCorregidaTicket({
   const [estado, setEstado] = useState<"Cobrada" | "Pendiente">("Cobrada");
   const [pago, setPago] = useState<ValorFormaPago>({ metodo: formaPagoOriginal, banco: "", referencia: "", desglose: [{ forma: "", monto: 0 }, { forma: "", monto: 0 }] });
   const [suReferencia, setSuReferencia] = useState("");
+  const esAdmin = useEsAdmin();
   const [enviando, setEnviando] = useState(false);
 
   // Precarga las líneas del documento original (si están disponibles,
@@ -1284,7 +1286,7 @@ function FaseCorregidaTicket({
                 </SelectContent>
               </Select>
             </div>
-            <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={total} />
+            <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={total} metodoBloqueado={!esAdmin && !!formaPagoOriginal} />
           </div>
 
           <div className="rounded-lg border bg-card shadow-sm">
@@ -1444,6 +1446,7 @@ function FaseCorregida({
   duracionAlquiler?: { inicial: { meses: number; semanas: number; dias: number }; tarifas: { precioDia: number; precioSemana: number; precioMes: number }; equipoNombre: string };
   onGenerada: () => void;
 }) {
+  const esAdmin = useEsAdmin();
   const [nombre, setNombre] = useState(clienteOriginal.nombre);
   const [direccion, setDireccion] = useState(clienteOriginal.direccion);
   const [dni, setDni] = useState(clienteOriginal.dni);
@@ -1600,7 +1603,7 @@ function FaseCorregida({
               <CampoLecturaCorr label="Tipo de factura" valor="Serie 1 — Cobros" />
               <CampoLecturaCorr label="N.º Factura" valor="Se asignará al generar" />
               <CampoLecturaCorr label="Fecha de factura" valor={new Date().toLocaleDateString("es-ES")} />
-              <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={totalConIva} />
+              <SelectorFormaPago etiqueta="Forma de pago *" value={pago} onChange={setPago} total={totalConIva} metodoBloqueado={!esAdmin && !!formaPagoOriginal} />
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Estado</Label>
                 <Select value={estado} onValueChange={(v) => setEstado((v || "Cobrada") as "Cobrada" | "Pendiente")}>

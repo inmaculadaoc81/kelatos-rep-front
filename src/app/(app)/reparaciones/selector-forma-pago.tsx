@@ -210,7 +210,7 @@ function SubFormaPago({
 }
 
 export function SelectorFormaPago({
-  value, onChange, total, disabled, etiqueta = "Forma de pago", metodos = METODOS_PAGO, className,
+  value, onChange, total, disabled, etiqueta = "Forma de pago", metodos = METODOS_PAGO, className, metodoBloqueado = false,
 }: {
   value: ValorFormaPago;
   onChange: (valor: ValorFormaPago) => void;
@@ -221,6 +221,8 @@ export function SelectorFormaPago({
   /** Lista de métodos del selector principal (p.ej. METODOS_PAGO_RECT con Redsys en flujos de rectificativa). Los sub-selectores de Multiforma siempre usan METODOS_PAGO. */
   metodos?: { value: string; label: string }[];
   className?: string;
+  /** Deja fija la forma de pago de partida (solo el banco/referencia siguen editables): para quien no es administrador al corregir un documento. */
+  metodoBloqueado?: boolean;
 }) {
   const esMultiforma = value.metodo === METODO_MULTIFORMA;
   const [a, b] = value.desglose;
@@ -242,7 +244,7 @@ export function SelectorFormaPago({
       <Label className="text-xs text-muted-foreground">{etiqueta}</Label>
       <div className="flex flex-wrap items-start gap-2">
         <div className="w-full sm:w-auto sm:min-w-44 sm:flex-1">
-          <Select value={value.metodo} onValueChange={setMetodo} disabled={disabled}>
+          <Select value={value.metodo} onValueChange={setMetodo} disabled={disabled || metodoBloqueado}>
             <SelectTrigger className="w-full"><SelectValue placeholder="— Selecciona —" /></SelectTrigger>
             <SelectContent>
               {metodos.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
@@ -260,6 +262,7 @@ export function SelectorFormaPago({
               </Select>
             </div>
           )}
+          {metodoBloqueado && <p className="mt-1 text-[11px] text-muted-foreground">Solo un administrador puede cambiar la forma de pago.</p>}
           {value.metodo === "efectivo" && total !== undefined && <CalculoCambio importe={total} disabled={disabled} />}
           {value.metodo === "transferencia" && (
             <div className="mt-1.5 space-y-1">
