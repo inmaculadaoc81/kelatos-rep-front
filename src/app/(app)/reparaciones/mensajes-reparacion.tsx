@@ -31,7 +31,9 @@ async function pedir(correo: string, q?: string): Promise<Estado> {
     El aviso de «sin leer» cuenta siempre todos los correos del cliente; `soloEstaReparacion`
     solo cambia la lista, limitándola a los que mencionan el resguardo. */
 export function useMensajesCliente(email: string | null | undefined, resguardo: string, soloEstaReparacion: boolean) {
-  const correo = String(email || "").trim().toLowerCase();
+  // Un campo como «No tiene» no es un correo: se trata como "sin correo" (antes se pedía igualmente y el servidor devolvía los correos de todo el buzón).
+  const bruto = String(email || "").trim().toLowerCase();
+  const correo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bruto) ? bruto : "";
   const [todos, setTodos] = useState<Estado>(INICIAL);
   const [esta, setEsta] = useState<Estado>(INICIAL);
 
