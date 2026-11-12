@@ -17,7 +17,26 @@ export interface FilaLlamada {
   tiene_transcripcion: boolean;
   resumen: string | null;
   sentimiento: string | null;
+  motivo?: string | null;
+  queja?: boolean | null;
+  queja_revisada?: boolean | null;
 }
+
+export interface AcuerdoLlamada { texto: string; quien: "empleado" | "cliente" | "ambos"; plazo: string | null }
+
+/** Análisis automático de la transcripción (lo calcula la API al transcribir). */
+export interface AnalisisLlamada {
+  motivo: string;
+  decision_presupuesto: "acepta" | "rechaza" | "lo_piensa" | "no_aplica";
+  acuerdos: AcuerdoLlamada[];
+  queja: { hay: boolean; motivo: string | null };
+  datos_cliente: { telefono: string | null; email: string | null; direccion: string | null; nombre: string | null };
+  checklist: { se_presento: boolean | null; aviso_grabacion: boolean | null; dio_plazo: boolean | null };
+  linea_historial: string | null;
+}
+
+export interface QuejaPendiente { id: string; inicio: string; usuario: string | null; resguardo: string | null; cliente_nombre: string | null; motivo: string | null }
+export interface TiemposUsuario { usuario: string; n: number; dur_media: number | null; espera_media: number | null; quejas: number }
 
 export interface ListadoLlamadas {
   ok: boolean;
@@ -28,6 +47,9 @@ export interface ListadoLlamadas {
   resumen: { hoy: number; semana: number; segundos_semana: number; total_global: number };
   usuarios: { usuario: string; n: number }[];
   estados: { estado: string; n: number }[];
+  motivos: { motivo: string; n: number }[];
+  por_usuario: TiemposUsuario[];
+  quejas_pendientes: QuejaPendiente[];
 }
 
 export interface TurnoLlamada {
@@ -64,3 +86,20 @@ export function tiempoTotalTexto(seg: number): string {
   const m = Math.round((seg % 3600) / 60);
   return h > 0 ? `${h} h ${m} min` : `${m} min`;
 }
+
+export const ETIQUETA_MOTIVO: Record<string, string> = {
+  presupuesto: "Presupuesto",
+  retraso_plazo: "Plazo / retraso",
+  recogida_entrega: "Recogida / entrega",
+  queja: "Queja",
+  garantia: "Garantía",
+  consulta_estado: "Estado de la reparación",
+  pago_factura: "Pago / factura",
+  otro: "Otro",
+};
+
+export const ETIQUETA_DECISION: Record<string, string> = {
+  acepta: "Acepta el presupuesto",
+  rechaza: "Rechaza el presupuesto",
+  lo_piensa: "Lo piensa",
+};

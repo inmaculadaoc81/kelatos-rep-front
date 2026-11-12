@@ -62,6 +62,8 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
   const idLlamada = useRef<string | null>(null);
   const contestada = useRef(false);
   const inicioConversacion = useRef(0);
+  const inicioMarcado = useRef(0);
+  const esperaSeg = useRef<number | null>(null);
   const terminada = useRef(false);
   const remoto = useRef<MediaStreamTrack | null>(null);
   const pistaMic = useRef<MediaStreamTrack | null>(null);
@@ -135,7 +137,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     elementosAudio.current.forEach((el) => el.remove()); elementosAudio.current = [];
     motor.current = null; remoto.current = null; pistaMic.current = null;
     if (id) {
-      try { await post(`/api/telefonia/${id}/fin`, { resultado, duracionSeg: duracion }); } catch (e) { console.error(e); }
+      try { await post(`/api/telefonia/${id}/fin`, { resultado, duracionSeg: duracion, esperaSeg: contestada.current ? esperaSeg.current : null }); } catch (e) { console.error(e); }
       if (audios && contestada.current) {
         setMensaje("Guardando la grabación…");
         try {
@@ -154,6 +156,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     if (contestada.current || terminada.current) return;
     contestada.current = true;
     inicioConversacion.current = Date.now();
+    esperaSeg.current = inicioMarcado.current ? Math.max(0, Math.round((Date.now() - inicioMarcado.current) / 1000)) : null;
     if (esperaContestar.current) clearTimeout(esperaContestar.current);
     setFase("en_llamada"); setMensaje("");
     temporizador.current = setInterval(() => setSegundos(Math.round((Date.now() - inicioConversacion.current) / 1000)), 500);
@@ -243,7 +246,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
 
   const llamar = useCallback(async (o: OpcionesLlamada) => {
     if (fase !== "reposo") { toast.info("Ya hay una llamada en curso."); return; }
-    terminada.current = false; contestada.current = false; setSegundos(0); setSilenciado(false);
+    terminada.current = false; contestada.current = false; esperaSeg.current = null; inicioMarcado.current = Date.now(); setSegundos(0); setSilenciado(false);
     setInfo(o); setFase("conectando"); setMensaje("Conectando…");
     try {
       try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach((t) => t.stop()); }

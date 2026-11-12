@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Call, Refresh2, SearchNormal1, ArrowLeft2, ArrowRight2, Clock } from "@/lib/icons";
+import { Call, Warning2, Refresh2, SearchNormal1, ArrowLeft2, ArrowRight2, Clock } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { cn } from "@/lib/utils";
 import { DetalleLlamadaContenido, COLOR_ESTADO, fechaHora } from "./detalle-llamada";
 import { useSoftphone } from "../softphone";
-import { ETIQUETA_ESTADO, FilaLlamada, ListadoLlamadas, duracionTexto, tiempoTotalTexto } from "@/lib/llamadas";
+import { ETIQUETA_MOTIVO, ETIQUETA_ESTADO, FilaLlamada, ListadoLlamadas, duracionTexto, tiempoTotalTexto } from "@/lib/llamadas";
 
 const POR_PAGINA = 25;
 const TODOS = "__todos";
@@ -70,6 +70,11 @@ export default function LlamadasPage() {
   const [origen, setOrigen] = useState("");
   const [direccion, setDireccion] = useState("");
   const [estado, setEstado] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [pregunta, setPregunta] = useState("");
+  const [respuesta, setRespuesta] = useState<{ texto: string; llamadas: number[]; revisadas: number; total: number } | null>(null);
+  const [preguntando, setPreguntando] = useState(false);
+  const [verTiempos, setVerTiempos] = useState(false);
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [minDur, setMinDur] = useState("");
@@ -88,6 +93,7 @@ export default function LlamadasPage() {
       if (origen) p.set("origen", origen);
       if (direccion) p.set("direccion", direccion);
       if (estado) p.set("estado", estado);
+      if (motivo) p.set("motivo", motivo);
       if (desde) p.set("desde", desde);
       if (hasta) p.set("hasta", hasta);
       if (Number(minDur) > 0) p.set("duracionMin", String(Math.round(Number(minDur) * 60)));
@@ -101,7 +107,7 @@ export default function LlamadasPage() {
     } finally {
       if (mio === reqId.current) setCargando(false);
     }
-  }, [q, usuario, origen, direccion, estado, desde, hasta, minDur, soloTranscripcion]);
+  }, [q, usuario, origen, direccion, estado, motivo, desde, hasta, minDur, soloTranscripcion]);
 
   useEffect(() => {
     const t = setTimeout(() => { setPagina(1); cargar(1); }, 350);
@@ -120,8 +126,21 @@ export default function LlamadasPage() {
     return () => clearTimeout(t);
   }, [ocupadoLlamada, cargar, pagina]);
 
-  const hayFiltros = !!(q || usuario || origen || direccion || estado || desde || hasta || minDur || soloTranscripcion);
-  const limpiar = () => { setQ(""); setUsuario(""); setOrigen(""); setDireccion(""); setEstado(""); setDesde(""); setHasta(""); setMinDur(""); setSoloTranscripcion(false); };
+  async function preguntar() {
+    const texto = pregunta.trim();
+    if (texto.length < 4 || preguntando) return;
+    setPreguntando(true); setRespuesta(null);
+    try {
+      const r = await fetch("/api/llamadas/preguntar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pregunta: texto }) });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "No se pudo responder");
+      setRespuesta({ texto: d.respuesta as string, llamadas: (d.llamadas as number[]) || [], revisadas: d.revisadas as number, total: d.total as number });
+    } catch (e) { setError(e instanceof Error ? e.message : "No se pudo responder"); }
+    finally { setPreguntando(false); }
+  }
+
+  const hayFiltros = !!(q || usuario || origen || direccion || estado || motivo || desde || hasta || minDur || soloTranscripcion);
+  const limpiar = () => { setQ(""); setUsuario(""); setOrigen(""); setDireccion(""); setEstado(""); setMotivo(""); setDesde(""); setHasta(""); setMinDur(""); setSoloTranscripcion(false); };
   const total = datos?.total ?? 0;
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
   const irA = (p: number) => { setPagina(p); cargar(p); };
@@ -152,6 +171,41 @@ export default function LlamadasPage() {
         </div>
       )}
 
+      {datos && datos.quejas_pendientes?.length > 0 && (
+        <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+          <div className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400"><Warning2 className="size-4" /> {datos.quejas_pendientes.length} {datos.quejas_pendientes.length === 1 ? "llamada con un cliente molesto, pendiente de revisar" : "llamadas con clientes molestos, pendientes de revisar"}</div>
+          <ul className="space-y-1">
+            {datos.quejas_pendientes.map((x) => (
+              <li key={x.id}>
+                <button type="button" onClick={() => setAbierta(String(x.id))} className="flex w-full flex-wrap items-center gap-x-3 rounded-md px-2 py-1 text-left text-sm hover:bg-red-500/10">
+                  <span className="tabular-nums">{fechaHora(x.inicio)}</span>
+                  <span>{x.cliente_nombre || "Cliente"}{x.resguardo ? ` · resguardo ${x.resguardo}` : ""}</span>
+                  <span className="text-muted-foreground">{x.motivo || ""}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{x.usuario || ""}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mb-3 rounded-xl border bg-card p-3.5 shadow-sm">
+        <label className="mb-1 block text-xs text-muted-foreground">Pregunta a las llamadas (por ejemplo: «¿qué clientes preguntaron por el plazo esta semana?»)</label>
+        <div className="flex flex-wrap gap-2">
+          <Input className="min-w-64 flex-1" placeholder="Escribe tu pregunta…" value={pregunta} onChange={(e) => setPregunta(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void preguntar(); }} />
+          <Button onClick={() => void preguntar()} disabled={preguntando || pregunta.trim().length < 4}>{preguntando ? "Buscando…" : "Preguntar"}</Button>
+        </div>
+        {respuesta && (
+          <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm leading-relaxed">
+            <p className="whitespace-pre-wrap">{respuesta.texto}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {respuesta.llamadas.map((n) => <button key={n} type="button" onClick={() => setAbierta(String(n))} className="rounded-full bg-background px-2 py-0.5 font-medium text-primary hover:bg-primary/10">Llamada #{n}</button>)}
+              <span>Revisadas {respuesta.revisadas} de {respuesta.total} llamadas. Respuesta orientativa: comprueba en la transcripción.</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {datos && (
         <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
@@ -165,6 +219,34 @@ export default function LlamadasPage() {
               <div className="text-xl font-semibold tabular-nums">{c.v}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {datos && datos.por_usuario?.length > 0 && (
+        <div className="mb-3 rounded-xl border bg-card shadow-sm">
+          <button type="button" onClick={() => setVerTiempos((v) => !v)} className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm font-medium">
+            <span>Tiempos por empleado (últimos 30 días)</span>
+            <span className="text-xs text-muted-foreground">{verTiempos ? "Ocultar" : "Ver"}</span>
+          </button>
+          {verTiempos && (
+            <div className="overflow-x-auto border-t">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs text-muted-foreground"><th className="px-3.5 py-1.5 font-medium">Empleado</th><th className="px-3 py-1.5 font-medium">Llamadas</th><th className="px-3 py-1.5 font-medium">Duración media</th><th className="px-3 py-1.5 font-medium">Espera hasta que contestan</th><th className="px-3 py-1.5 font-medium">Con cliente molesto</th></tr></thead>
+                <tbody>
+                  {datos.por_usuario.map((u) => (
+                    <tr key={u.usuario} className="border-t">
+                      <td className="px-3.5 py-1.5">{u.usuario}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{u.n}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{u.dur_media != null ? duracionTexto(u.dur_media) : "—"}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{u.espera_media != null ? `${u.espera_media} s` : "—"}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{u.quejas}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="px-3.5 py-2 text-xs text-muted-foreground">Sirve para ver la carga y la calidad del servicio, no para evaluar a las personas por una sola llamada.</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -183,6 +265,8 @@ export default function LlamadasPage() {
           opciones={[{ valor: TODOS, texto: "Todas" }, { valor: "saliente", texto: "Salientes" }, { valor: "entrante", texto: "Entrantes" }]} />
         <Filtro etiqueta="Estado" valor={estado} onCambio={setEstado} ancho="w-44"
           opciones={[{ valor: TODOS, texto: "Todos" }, ...(datos?.estados.map((e) => ({ valor: e.estado, texto: `${ETIQUETA_ESTADO[e.estado] || e.estado} (${e.n})` })) ?? [])]} />
+        <Filtro etiqueta="Motivo" valor={motivo} onCambio={setMotivo} ancho="w-48"
+          opciones={[{ valor: TODOS, texto: "Todos" }, ...(datos?.motivos.map((m) => ({ valor: m.motivo, texto: `${ETIQUETA_MOTIVO[m.motivo] || m.motivo} (${m.n})` })) ?? [])]} />
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Desde</label>
           <Input type="date" className="w-36" value={desde} onChange={(e) => setDesde(e.target.value)} />
@@ -237,6 +321,8 @@ export default function LlamadasPage() {
                 <TableCell className="text-sm whitespace-nowrap"><span className="inline-flex items-center gap-1"><Clock className="size-3.5 text-muted-foreground" />{duracionTexto(f.duracion_seg)}</span></TableCell>
                 <TableCell><Insignia texto={ETIQUETA_ESTADO[f.estado] || f.estado} clase={COLOR_ESTADO[f.estado] || "bg-slate-500/10 text-slate-600 dark:text-slate-300"} /></TableCell>
                 <TableCell className="max-w-xs text-sm">
+                  {f.queja && !f.queja_revisada && <Insignia texto="Cliente molesto" clase="mb-1 bg-red-500/10 text-red-700 dark:text-red-400" />}
+                  {f.motivo && <div className="mb-0.5"><Insignia texto={ETIQUETA_MOTIVO[f.motivo] || f.motivo} clase="bg-primary/10 text-primary" /></div>}
                   {f.tiene_transcripcion ? <span className="line-clamp-2 text-muted-foreground">{f.resumen || "Ver transcripción"}</span> : <span className="text-xs text-muted-foreground">—</span>}
                 </TableCell>
               </TableRow>

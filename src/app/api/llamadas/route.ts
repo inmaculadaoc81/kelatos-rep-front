@@ -4,7 +4,7 @@ import { kelatosApiGet } from "@/lib/kelatos-api";
 import { esSuperadmin } from "@/lib/superadmin";
 import type { ListadoLlamadas } from "@/lib/llamadas";
 
-const PARAMETROS = ["q", "usuario", "origen", "direccion", "estado", "desde", "hasta", "conTranscripcion", "duracionMin", "duracionMax", "limit", "offset"];
+const PARAMETROS = ["q", "usuario", "origen", "direccion", "estado", "desde", "hasta", "conTranscripcion", "duracionMin", "duracionMax", "motivo", "queja", "quejaPendiente", "limit", "offset"];
 
 /** Listado de llamadas — solo superadmins (repetido aquí y en src/proxy.ts). */
 export async function GET(req: Request) {
