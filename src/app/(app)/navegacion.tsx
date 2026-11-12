@@ -183,7 +183,7 @@ const GRUPO_EFECTIVO_SOLO_LECTURA: GrupoNavegacion = {
   items: [{ label: "Efectivo y caja", href: "/contabilidad/efectivo", icon: Coin1 }],
 };
 
-/** Menú según el rol: Contabilidad (tras Facturación) y Reporte de reseñas
+/** Menú según el rol: Contabilidad (tras Informes) y Reporte de reseñas
     (en Informes) solo para admins; el grupo Admin solo para superadmins;
     Efectivo y caja en solitario para puedeVerEfectivoSoloLectura. */
 /** Entrada "Equipos entregados" de Reparaciones: solo administradores y la cuenta de empleados (ver puedeVerEquiposEntregados). */
@@ -200,9 +200,9 @@ export function gruposVisibles({
       items.splice(i >= 0 ? i + 1 : items.length, 0, ITEM_EQUIPOS_ENTREGADOS);
       return [{ ...g, items }];
     }
-    if (esAdmin && g.titulo === "Facturación") return [g, GRUPO_CONTABILIDAD];
-    if (!esAdmin && efectivoSoloLectura && g.titulo === "Facturación") return [g, GRUPO_EFECTIVO_SOLO_LECTURA];
-    if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS, ...(superadmin ? [ITEM_LLAMADAS] : [])] }];
+    // Contabilidad (o Efectivo y caja) va justo DESPUÉS de Informes.
+    if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS, ...(superadmin ? [ITEM_LLAMADAS] : [])] }, GRUPO_CONTABILIDAD];
+    if (!esAdmin && efectivoSoloLectura && g.titulo === "Informes") return [g, GRUPO_EFECTIVO_SOLO_LECTURA];
     return [g];
   });
   return superadmin ? [...base, GRUPO_ADMIN] : base;
