@@ -10,6 +10,19 @@ import { fechaHora, haceCuanto } from "@/lib/crm";
 import type { MensajeDetalle, MensajeLista } from "@/lib/mails";
 import { CuerpoMensaje, LinksAdjuntos } from "@/app/mails/componentes-correo";
 
+/** «Quién lo envió» en lenguaje de persona: empleado, envío automático o desconocido (correos enviados desde fuera del app no registran usuario). */
+export function quienEnvio(m: { direccion: string; enviado_por?: string | null }): string | null {
+  if (m.direccion !== "salida") return null;
+  const v = (m.enviado_por || "").trim();
+  if (!v) return "Enviado desde el correo (sin usuario registrado)";
+  if (v.includes("@")) {
+    const nombre = v.split("@")[0].split(/[._-]/).filter(Boolean).map((x) => x.charAt(0).toUpperCase() + x.slice(1)).join(" ");
+    return `Enviado por ${nombre} (${v})`;
+  }
+  if (/^automatico/i.test(v)) return `Envío automático (${v.replace(/^automatico-?/i, "") || "sistema"})`;
+  return `Enviado por ${v}`;
+}
+
 type Estado = { cargando: boolean; sinAcceso: boolean; error: string | null; mensajes: MensajeLista[] };
 const INICIAL: Estado = { cargando: true, sinAcceso: false, error: null, mensajes: [] };
 
@@ -135,6 +148,7 @@ export function PanelMensajes({
                   </div>
                   <p className={cn("mt-1 truncate text-sm", sinLeerEste && "font-semibold")}>{m.asunto || "(sin asunto)"}</p>
                   {m.resumen && <p className="truncate text-xs text-muted-foreground">{m.resumen}</p>}
+                  {quienEnvio(m) && <p className="mt-0.5 truncate text-[11px] font-medium text-emerald-700 dark:text-emerald-400">{quienEnvio(m)}</p>}
                 </button>
               </li>
             );
@@ -183,6 +197,7 @@ export function PanelMensajeAbierto({ id, correo, onCerrar, onLeido }: { id: num
             <div className="space-y-0.5 border-b px-4 py-2 text-xs text-muted-foreground">
               <p><span className="font-medium text-foreground">{m.direccion === "entrada" ? "De" : "Para"}:</span> {m.direccion === "entrada" ? (m.remitente_nombre ? `${m.remitente_nombre} <${m.remitente}>` : m.remitente) : m.destinatarios}</p>
               <p><span className="font-medium text-foreground">Fecha:</span> {fechaHora(m.fecha)}</p>
+              {quienEnvio(m) && <p><span className="font-medium text-foreground">Quién lo envió:</span> {quienEnvio(m)!.replace(/^Enviado por /, "")}</p>}
               <LinksAdjuntos adjuntos={m.adjuntos} />
             </div>
             <CuerpoMensaje m={m} altura="h-[62vh]" ajustar />

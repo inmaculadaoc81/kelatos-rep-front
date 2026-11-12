@@ -79,6 +79,8 @@ export interface MensajeLista {
   no_leidos: number;
   clientes: ClienteVinculado[];
   leads: LeadVinculado[];
+  /** Quién lo envió desde el app (correo del empleado o «automatico-…»); vacío si salió desde otro programa. */
+  enviado_por?: string | null;
 }
 
 export interface MensajeHilo {
