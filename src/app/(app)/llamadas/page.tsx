@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useSoftphone } from "../softphone";
 import { DetalleLlamada, ETIQUETA_ESTADO, FilaLlamada, ListadoLlamadas, duracionTexto, tiempoTotalTexto } from "@/lib/llamadas";
 
 const POR_PAGINA = 25;
@@ -119,6 +120,8 @@ function DetalleDialog({ id, busca, onCerrar }: { id: string; busca: string; onC
 }
 
 export default function LlamadasPage() {
+  const softphone = useSoftphone();
+  const [numeroPrueba, setNumeroPrueba] = useState("");
   const [datos, setDatos] = useState<ListadoLlamadas | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +186,19 @@ export default function LlamadasPage() {
         </div>
         <Button variant="outline" size="icon" className="size-8" onClick={() => cargar(pagina)} title="Actualizar"><Refresh2 className={cn("size-4", cargando && "animate-spin")} /></Button>
       </div>
+
+      {softphone.disponible && (
+        <div className="mb-3 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3.5 shadow-sm">
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Llamada de prueba (con prefijo, p. ej. +34600111222)</label>
+            <Input className="w-64" placeholder="+34…" value={numeroPrueba} onChange={(e) => setNumeroPrueba(e.target.value)} />
+          </div>
+          <Button size="sm" disabled={softphone.ocupado || !/^\+\d{8,15}$/.test(numeroPrueba.replace(/[^\d+]/g, ""))} onClick={() => void softphone.llamar({ telefono: numeroPrueba.replace(/[^\d+]/g, "") })}>
+            <Call className="size-4" /> Llamar
+          </Button>
+          <span className="text-xs text-muted-foreground">Sale con el número de la empresa y se graba.</span>
+        </div>
+      )}
 
       {datos && (
         <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
