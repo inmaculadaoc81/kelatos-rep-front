@@ -20,6 +20,8 @@ declare module "next-auth" {
           kelatos.com necesitaba entrar también por contraseña sin perder
           el acceso completo que ya tiene por Google). Ver proxy.ts. */
       accesoCompleto: boolean;
+      /** Cuenta de agente comercial (tabla comercial_agentes): solo ve el panel Comercial. Ver src/lib/comercial.ts y proxy.ts. */
+      comercial: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -35,5 +37,7 @@ declare module "@auth/core/jwt" {
     /** Capturado en jwt() solo al iniciar sesión por Credentials — ver
         Session.user.accesoCompleto arriba. */
     accesoCompleto?: boolean;
+    /** Agente comercial activo — se consulta junto a asistencia.empleados (ver src/auth.ts). */
+    comercial?: boolean;
   }
 }

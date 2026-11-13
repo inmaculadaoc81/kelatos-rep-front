@@ -16,7 +16,9 @@ import { Call } from "@/lib/icons";
 
 type Fase = "reposo" | "conectando" | "llamando" | "en_llamada" | "terminando";
 type Resultado = "completada" | "no_contesta" | "ocupado" | "fallida";
-export interface OpcionesLlamada { telefono: string; resguardo?: string; nombre?: string }
+/** `contactoId`: llamada desde el panel Comercial (contacto de una lista). `alTerminar` se llama al colgar, con el id de la llamada, para registrar su resultado. */
+export interface ResumenFinLlamada { llamadaId: string | null; contestada: boolean; duracionSeg: number }
+export interface OpcionesLlamada { telefono: string; resguardo?: string; nombre?: string; contactoId?: number; alTerminar?: (r: ResumenFinLlamada) => void }
 interface Contexto { disponible: boolean; ocupado: boolean; llamar: (o: OpcionesLlamada) => Promise<void> }
 interface Motor { colgar: () => Promise<void>; silenciar: (silenciado: boolean) => Promise<void> }
 interface RespuestaIniciar {
@@ -64,6 +66,7 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
   const inicioConversacion = useRef(0);
   const inicioMarcado = useRef(0);
   const esperaSeg = useRef<number | null>(null);
+  const alTerminarRef = useRef<((r: ResumenFinLlamada) => void) | null>(null);
   const terminada = useRef(false);
   const remoto = useRef<MediaStreamTrack | null>(null);
   const pistaMic = useRef<MediaStreamTrack | null>(null);
@@ -150,6 +153,8 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     }
     setFase("reposo"); setInfo(null); setMensaje(""); setSegundos(0); setSilenciado(false);
     idLlamada.current = null;
+    const aviso2 = alTerminarRef.current; alTerminarRef.current = null;
+    try { aviso2?.({ llamadaId: id, contestada: contestada.current, duracionSeg: duracion }); } catch { /* el aviso no debe romper el cierre */ }
   }, [limpiarTemporizadores, pararGrabacion]);
 
   const alContestar = useCallback(() => {
@@ -251,7 +256,8 @@ export function SoftphoneProvider({ children }: { children: ReactNode }) {
     try {
       try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach((t) => t.stop()); }
       catch { throw new Error("Hace falta permitir el micrófono del navegador (icono del candado, junto a la dirección)."); }
-      const ini = await post<RespuestaIniciar>("/api/telefonia/iniciar", { telefono: o.telefono, resguardo: o.resguardo });
+      alTerminarRef.current = o.alTerminar ?? null;
+      const ini = await post<RespuestaIniciar>("/api/telefonia/iniciar", { telefono: o.telefono, resguardo: o.resguardo, contactoId: o.contactoId });
       idLlamada.current = ini.id;
       if (ini.modo === "sip") await llamarSip(ini); else await llamarLiveKit(ini);
     } catch (e) {

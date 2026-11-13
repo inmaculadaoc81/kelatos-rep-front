@@ -45,6 +45,16 @@ async function buscarEmpleadoAsistencia(email: string): Promise<{ id: number; ac
   }
 }
 
+/** ¿Es un agente comercial activo? (panel Comercial). `undefined` = no se pudo consultar. */
+async function buscarAgenteComercial(email: string): Promise<boolean | undefined> {
+  try {
+    const data = await kelatosApiGet<{ ok: boolean; agente: { email: string } | null }>("/v1/comercial/agente", { email });
+    return !!data.agente;
+  } catch {
+    return undefined;
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Desplegado en Hostinger, no Vercel — sin esto, Auth.js v5 no confía
   // en el host que le manda el proxy y puede generar mal la URL absoluta
@@ -95,6 +105,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === "credentials") return true;
       const email = profile?.email || "";
       if (esDominioKelatos(email)) return true;
+      if (email && (await buscarAgenteComercial(email))) return true;
       return ((await buscarEmpleadoAsistencia(email)) ?? null) !== null;
     },
     async jwt({ token, account }) {
@@ -126,6 +137,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ahora - token.asistenciaComprobadaEn < REVISAR_EMPLEADO_CADA_MS;
         if (!vigente) {
           const info = await buscarEmpleadoAsistencia(token.email);
+          const comercial = await buscarAgenteComercial(token.email);
+          if (comercial !== undefined) token.comercial = comercial;
           if (info !== undefined) {
             token.asistenciaEmpleadoId = info ? info.id : null;
             token.accesoCompleto = info ? info.accesoCompleto : false;
@@ -150,7 +163,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Si no tiene alta en asistencia.empleados tampoco entra.
       const permitido = email && (!token.viaCredentials || token.accesoCompleto) && esDominioKelatos(email)
         ? true
-        : !!email && token.asistenciaEmpleadoId != null;
+        : !!email && (token.asistenciaEmpleadoId != null || token.comercial === true);
       if (!permitido) {
         // No debería ocurrir tras el guard de signIn, pero si ocurriera,
         // no se expone una sesión válida para un email no permitido.
@@ -161,6 +174,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.asistenciaEmpleadoId = token.asistenciaEmpleadoId ?? null;
       session.user.viaCredentials = !!token.viaCredentials;
       session.user.accesoCompleto = !!token.accesoCompleto;
+      session.user.comercial = token.comercial === true;
       return session;
     },
   },

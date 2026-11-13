@@ -7,9 +7,9 @@ export async function POST(req: Request) {
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  const { telefono, resguardo } = (await req.json().catch(() => ({}))) as { telefono?: string; resguardo?: string };
+  const { telefono, resguardo, contactoId } = (await req.json().catch(() => ({}))) as { telefono?: string; resguardo?: string; contactoId?: number | string };
   try {
-    const d = await kelatosApiPost<Record<string, unknown>>("/v1/llamadas/iniciar", { usuario, telefono: String(telefono || ""), resguardo: String(resguardo || "") });
+    const d = await kelatosApiPost<Record<string, unknown>>("/v1/llamadas/iniciar", { usuario, telefono: String(telefono || ""), resguardo: String(resguardo || ""), contactoId: contactoId ? Number(contactoId) : undefined });
     return NextResponse.json(d);
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Error desconocido" }, { status: 502 });

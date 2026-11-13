@@ -25,6 +25,22 @@ export default auth(async (req) => {
     req, req.auth?.user?.email, req.auth?.user?.role === "admin" || esSuperadmin(req.auth?.user?.email)
   );
   if (bloqueoLocal) return bloqueoLocal;
+  // Agente comercial: confinado al panel Comercial (y a lo que usa para llamar). Ninguna otra pantalla ni API del dashboard, tenga o no correo @kelatos.com.
+  // Los administradores y superadmins quedan exentos (ven todo el panel desde su propio menú).
+  if (
+    req.auth?.user?.comercial &&
+    req.auth.user.role !== "admin" &&
+    !esSuperadmin(req.auth.user.email)
+  ) {
+    const ruta = req.nextUrl.pathname;
+    const permitida = ruta === "/comercial" || ruta.startsWith("/comercial/") || ruta.startsWith("/api/comercial/") || ruta.startsWith("/api/telefonia/");
+    if (!permitida) {
+      return ruta.startsWith("/api/")
+        ? NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
+        : NextResponse.redirect(new URL("/comercial", req.nextUrl.origin));
+    }
+    return NextResponse.next();
+  }
   // Configuración (lista de usuarios) es solo para el Administrador.
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
