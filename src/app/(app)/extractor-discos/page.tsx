@@ -3,7 +3,9 @@
 /* eslint-disable @next/next/no-img-element -- vistas previas de archivos locales (blob:), no se pueden optimizar con next/image */
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -217,15 +219,30 @@ export default function ExtractorDiscosPage() {
   const [velocidad, setVelocidad] = useState(0);
   const [informe, setInforme] = useState<InformeCopia | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const confirmar = useConfirm();
+  const router = useRouter();
   const cancelar = useRef(false);
   const muestra = useRef<{ t: number; b: number } | null>(null);
 
   useEffect(() => {
     if (!copiando) return;
     const f = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-    window.addEventListener("beforeunload", f);
-    return () => window.removeEventListener("beforeunload", f);
-  }, [copiando]);
+    window.addEventListener("beforeunload", f); // cerrar la pestaña o recargar: el aviso lo pinta el navegador (no se puede personalizar)
+    // Salir a otra pantalla del dashboard (menú lateral, enlaces): se pregunta con el modal del dashboard.
+    const alClicar = async (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return;
+      e.preventDefault(); e.stopPropagation();
+      if (await confirmar("Hay una copia en curso. Si sales ahora, la copia se cancelará.", { titulo: "Salir de la pantalla", detalle: "Lo copiado hasta ahora quedará incompleto en el destino." })) {
+        cancelar.current = true;
+        router.push(url.pathname + url.search);
+      }
+    };
+    document.addEventListener("click", alClicar, true);
+    return () => { window.removeEventListener("beforeunload", f); document.removeEventListener("click", alClicar, true); };
+  }, [copiando, confirmar, router]);
 
   const total = resultado ? resultado.ficheros.reduce((s, f) => s + f.tam, 0) : 0;
   const reiniciarBusqueda = () => { setResultado(null); setError(null); };
@@ -274,6 +291,11 @@ export default function ExtractorDiscosPage() {
     if (!resultado || !destino || (!origen && !local)) return;
     const res = resguardo.replace(/[^A-Za-z0-9_-]/g, "");
     if (!res) { setError("Escribe el número de resguardo (solo letras, números, - y _)."); return; }
+    const ok = await confirmar(`¿Empezar la copia de ${num(resultado.ficheros.length)} archivos (${gb(total)}) en «${destino.name}»?`, {
+      titulo: "Empezar la copia",
+      detalle: `Resguardo ${res}. No cierres la pestaña ni desconectes el disco mientras copia.`,
+    });
+    if (!ok) return;
     setError(null); setCopiando(true); setInforme(null); cancelar.current = false; muestra.current = null; setVelocidad(0);
     let bloqueo: { release: () => Promise<void> } | null = null;
     try { bloqueo = await (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock?.request("screen") ?? null; } catch { /* sin bloqueo de pantalla no pasa nada */ }
@@ -417,7 +439,7 @@ export default function ExtractorDiscosPage() {
                 {buscando && (
                   <>
                     <div className="truncate text-xs text-muted-foreground">Mirando: {progBusqueda.actual}</div>
-                    <Button variant="outline" className="gap-1.5" onClick={() => { cancelar.current = true; }}><CloseCircle className="size-4" /> Cancelar búsqueda</Button>
+                    <Button variant="outline" className="gap-1.5" onClick={async () => { if (await confirmar("¿Cancelar la búsqueda de archivos?", { titulo: "Cancelar la búsqueda" })) cancelar.current = true; }}><CloseCircle className="size-4" /> Cancelar búsqueda</Button>
                   </>
                 )}
                 {resultado && resultado.ficheros.length > 0 && (
@@ -498,7 +520,7 @@ export default function ExtractorDiscosPage() {
                 <div className="truncate text-xs text-muted-foreground">{prog.fase === "verificando" ? "Comprobando: " : "Copiando: "}{prog.actual}</div>
                 {prog.errores > 0 && <Aviso tipo="amb" icono={Warning2}>{prog.errores} archivo(s) no se han podido leer (disco dañado o bloqueado). La copia sigue; quedarán anotados en el informe.</Aviso>}
                 <Aviso tipo="info" icono={InfoCircle}>No cierres esta pestaña ni desconectes el disco mientras copia.</Aviso>
-                <Button variant="outline" className="gap-1.5" onClick={() => { cancelar.current = true; }}><CloseCircle className="size-4" /> Cancelar la copia</Button>
+                <Button variant="outline" className="gap-1.5" onClick={async () => { if (await confirmar("¿Cancelar la copia?", { titulo: "Cancelar la copia", detalle: "Lo copiado hasta ahora quedará incompleto en el destino. El disco del cliente no se modifica." })) cancelar.current = true; }}><CloseCircle className="size-4" /> Cancelar la copia</Button>
               </div>
             )}
 
