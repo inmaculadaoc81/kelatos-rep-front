@@ -401,7 +401,7 @@ export default function ExtractorDiscosPage() {
               <p className="mt-0.5 text-xs text-muted-foreground">Instala la misma herramienta en el PC: funciona sin internet y sin entrar al dashboard. Hazlo ahora, mientras el dashboard funciona.</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <a href="/extractor-discos/Instalar-Extractor-Kelatos.exe" download><Button variant="outline" size="sm">Instalador para Windows (.exe)</Button></a>
-                <a href="/extractor-discos/Extractor-Kelatos-ubuntu.tar.gz" download><Button variant="outline" size="sm">Para Ubuntu (.tar.gz)</Button></a>
+                <a href="/extractor-discos/kelatos-extractor_1.1.0_all.deb" download><Button variant="outline" size="sm">Para Ubuntu (.deb)</Button></a>
                 <a href="/extractor-discos/Extractor-Kelatos-instalador.zip" download><Button variant="outline" size="sm">Windows en carpeta (.zip)</Button></a>
               </div>
             </div>
