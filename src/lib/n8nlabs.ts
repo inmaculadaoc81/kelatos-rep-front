@@ -13,6 +13,13 @@ export interface Diagnostico {
   pais: string | null;
   rubro_otro: string | null;
   automatizar_otro: string | null;
+  ia_estado: "pendiente" | "listo" | "error" | null;
+  ia_resumen: string | null;
+  ia_mensaje: string | null;
+  ia_preguntas: string[] | null;
+  ia_modelo: string | null;
+  ia_error: string | null;
+  ia_en: string | null;
   rubro: string;
   facturacion: string;
   mensajes: string;
@@ -55,10 +62,10 @@ export const ESTADOS_DIAGNOSTICO: { id: EstadoDiagnostico; nombre: string }[] = 
 
 export const nombreEstadoDiagnostico = (e: EstadoDiagnostico) => ESTADOS_DIAGNOSTICO.find((x) => x.id === e)?.nombre ?? e;
 
-/** Enlace de WhatsApp con un primer mensaje según la clasificación. */
+/** Enlace de WhatsApp: usa el mensaje que redactó la IA local si existe; si no, uno genérico según la clasificación. */
 export function enlaceWhatsapp(d: Diagnostico): string {
   const nombre = d.nombre.split(/\s+/)[0];
-  const texto = d.clasificacion === "caliente"
+  const texto = d.ia_estado === "listo" && d.ia_mensaje ? d.ia_mensaje : d.clasificacion === "caliente"
     ? `Hola ${nombre}, soy del equipo de N8N Labs. Vi tu formulario y creo que podemos ayudarte a automatizar tu negocio. ¿Te va bien que hablemos 15 minutos hoy o mañana?`
     : `Hola ${nombre}, soy del equipo de N8N Labs. Gracias por rellenar el formulario. Te voy a ir pasando casos reales de automatización de negocios como el tuyo.`;
   return `https://wa.me/${d.whatsapp_norm}?text=${encodeURIComponent(texto)}`;

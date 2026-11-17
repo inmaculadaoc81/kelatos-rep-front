@@ -54,6 +54,14 @@ export default function Page() {
     return () => clearInterval(t);
   }, []);
 
+  // Mientras la IA local redacta un análisis (≈1 min) se consulta cada 6 s para que aparezca solo.
+  const redactando = !!datos?.diagnosticos.some((d) => d.ia_estado === "pendiente");
+  useEffect(() => {
+    if (!redactando) return;
+    const t = setInterval(() => setRecarga((n) => n + 1), 6_000);
+    return () => clearInterval(t);
+  }, [redactando]);
+
   const actual = datos?.diagnosticos.find((d) => d.id === seleccionado) ?? null;
 
   return (
@@ -205,6 +213,8 @@ function Ficha({ d, catalogo, alCambiar }: { d: Diagnostico; catalogo: CatalogoD
         <Button variant="outline" nativeButton={false} render={<a href={`tel:+${d.whatsapp_norm}`} />}>Llamar</Button>
       </div>
 
+      <AnalisisIa d={d} guardando={guardando} alCambiar={alCambiar} />
+
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Por qué lo clasificó así</h3>
         <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
@@ -252,5 +262,61 @@ function Ficha({ d, catalogo, alCambiar }: { d: Diagnostico; catalogo: CatalogoD
         <Button variant="outline" size="sm" disabled={guardando || notas === (d.notas ?? "")} onClick={() => guardar({ notas }, "Notas guardadas")}>Guardar notas</Button>
       </section>
     </div>
+  );
+}
+
+/** Resumen, primer WhatsApp y preguntas para la llamada, redactados por la IA local (nunca se envía nada solo). */
+function AnalisisIa({ d, guardando, alCambiar }: { d: Diagnostico; guardando: boolean; alCambiar: () => void }) {
+  const [pidiendo, setPidiendo] = useState(false);
+  async function pedir() {
+    setPidiendo(true);
+    try {
+      const res = await fetch(`/api/n8nlabs/diagnosticos/${d.id}/analizar`, { method: "POST" });
+      const j = (await res.json()) as { ok: boolean; error?: string };
+      if (!j.ok) throw new Error(j.error || "No se pudo pedir el análisis");
+      toast.success("La IA local está redactando (≈1 minuto)");
+      setTimeout(alCambiar, 800);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo pedir el análisis");
+    } finally {
+      setPidiendo(false);
+    }
+  }
+  async function copiar(texto: string) {
+    try { await navigator.clipboard.writeText(texto); toast.success("Mensaje copiado"); } catch { toast.error("No se pudo copiar"); }
+  }
+
+  return (
+    <section className="space-y-3 rounded-xl border bg-muted/30 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">Análisis de la IA local</h3>
+        {d.ia_estado !== "pendiente" && (
+          <Button variant="ghost" size="sm" disabled={pidiendo || guardando} onClick={pedir}>{d.ia_estado === "listo" ? "Redactar de nuevo" : "Redactar ahora"}</Button>
+        )}
+      </div>
+      {d.ia_estado === "pendiente" && <p className="text-sm text-muted-foreground">Redactando… la IA local tarda cerca de un minuto. Aparecerá aquí sola.</p>}
+      {d.ia_estado === "error" && <p className="text-sm text-destructive">No se pudo redactar ({d.ia_error || "error desconocido"}). Puedes reintentarlo; mientras tanto el botón de WhatsApp usa un mensaje genérico.</p>}
+      {!d.ia_estado && <p className="text-sm text-muted-foreground">Todavía no hay análisis para este lead.</p>}
+      {d.ia_estado === "listo" && (
+        <>
+          <p className="text-sm">{d.ia_resumen}</p>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Primer mensaje de WhatsApp sugerido (revísalo antes de enviarlo)</p>
+            <p className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">{d.ia_mensaje}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" nativeButton={false} render={<a href={enlaceWhatsapp(d)} target="_blank" rel="noreferrer" />}>Abrir WhatsApp con este mensaje</Button>
+              <Button size="sm" variant="outline" onClick={() => copiar(d.ia_mensaje ?? "")}>Copiar</Button>
+            </div>
+          </div>
+          {!!d.ia_preguntas?.length && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Preguntas para la llamada</p>
+              <ul className="list-disc space-y-0.5 pl-5 text-sm">{d.ia_preguntas.map((p, i) => <li key={i}>{p}</li>)}</ul>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Redactado por la IA local{d.ia_modelo ? ` (${d.ia_modelo})` : ""}. Es una sugerencia: la clasificación sale de las reglas de puntos.</p>
+        </>
+      )}
+    </section>
   );
 }
