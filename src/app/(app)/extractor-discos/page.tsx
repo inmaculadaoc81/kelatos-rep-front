@@ -397,6 +397,15 @@ export default function ExtractorDiscosPage() {
               </div>
             </div>
             <Aviso tipo="info" icono={InfoCircle}>Si Chrome dice «no se puede abrir esta carpeta porque contiene archivos del sistema», es normal: usa «Una carpeta» y entra en <b>Users</b>, o prueba «El disco entero». Al elegir el disco entero Chrome preguntará si quieres «subir» los archivos: <b>no se sube nada</b>, solo se leen en este equipo.</Aviso>
+            <div className="rounded-xl border border-dashed p-3 text-sm">
+              <div className="font-medium">¿Y si un día el dashboard no abre?</div>
+              <p className="mt-0.5 text-xs text-muted-foreground">Instala la misma herramienta en el PC: funciona sin internet y sin entrar al dashboard. Hazlo ahora, mientras el dashboard funciona.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <a href="/extractor-discos/Instalar-Extractor-Kelatos.exe" download><Button variant="outline" size="sm">Instalador para Windows (.exe)</Button></a>
+                <a href="/extractor-discos/Extractor-Kelatos-ubuntu.tar.gz" download><Button variant="outline" size="sm">Para Ubuntu (.tar.gz)</Button></a>
+                <a href="/extractor-discos/Extractor-Kelatos-instalador.zip" download><Button variant="outline" size="sm">Windows en carpeta (.zip)</Button></a>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
