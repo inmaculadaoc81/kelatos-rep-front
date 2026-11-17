@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
+/* eslint-disable @next/next/no-img-element -- vistas previas de archivos locales (blob:), no se pueden optimizar con next/image */
+
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -14,7 +17,7 @@ import {
 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import {
-  CATEGORIAS, buscar, buscarEnArchivos, copiar, elegirCarpeta, navegadorCompatible,
+  CATEGORIAS, buscar, buscarEnArchivos, categoriaDe, copiar, tipoVista, elegirCarpeta, navegadorCompatible,
   type Fichero, type InformeCopia, type ManejadorCarpeta, type ProgresoBusqueda, type ProgresoCopia, type ResumenCategoria,
 } from "@/lib/extractor-discos";
 
@@ -71,6 +74,126 @@ function Opcion({ activa, deshabilitada, onClick, icono: I, titulo, detalle, cla
       <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", activa ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}><I className="size-5" /></span>
       <span className="min-w-0"><span className="block text-sm font-medium leading-tight">{titulo}</span><span className="block text-xs text-muted-foreground">{detalle}</span></span>
     </button>
+  );
+}
+
+/** Miniatura de un archivo (solo imágenes y vídeos); se carga cuando la fila se ve en pantalla y se libera al salir. */
+function Miniatura({ fichero }: { fichero: Fichero }) {
+  const nombre = fichero.ruta[fichero.ruta.length - 1];
+  const tipo = tipoVista(nombre);
+  const caja = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [src, setSrc] = useState<string | null>(null);
+  const [fallo, setFallo] = useState(false);
+  const I = ICONO_CATEGORIA[categoriaDe(nombre)] ?? Box;
+  const conMiniatura = (tipo === "imagen" && fichero.tam < 30e6) || tipo === "video";
+
+  useEffect(() => {
+    const el = caja.current;
+    if (!el || !conMiniatura) return;
+    const o = new IntersectionObserver((e) => { if (e[0]?.isIntersecting) { setVisible(true); o.disconnect(); } }, { rootMargin: "120px" });
+    o.observe(el);
+    return () => o.disconnect();
+  }, [conMiniatura]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let vivo = true;
+    let url: string | null = null;
+    fichero.handle.getFile().then((f) => { if (!vivo) return; url = URL.createObjectURL(f); setSrc(url); }).catch(() => { if (vivo) setFallo(true); });
+    return () => { vivo = false; if (url) URL.revokeObjectURL(url); };
+  }, [visible, fichero]);
+
+  return (
+    <span ref={caja} className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted text-muted-foreground">
+      {src && !fallo && tipo === "imagen" && <img src={src} alt="" className="size-full object-cover" onError={() => setFallo(true)} />}
+      {src && !fallo && tipo === "video" && <video src={`${src}#t=0.5`} muted preload="metadata" className="size-full object-cover" onError={() => setFallo(true)} />}
+      {(!src || fallo || !conMiniatura) && <I className="size-5" />}
+    </span>
+  );
+}
+
+/** Vista previa de un archivo (imagen, vídeo o audio) en una ventana. */
+function VistaPrevia({ fichero, onCerrar }: { fichero: Fichero | null; onCerrar: () => void }) {
+  const nombre = fichero ? fichero.ruta[fichero.ruta.length - 1] : "";
+  const tipo = tipoVista(nombre);
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!fichero) return;
+    let vivo = true;
+    let url: string | null = null;
+    fichero.handle.getFile().then((f) => { if (!vivo) return; url = URL.createObjectURL(f); setSrc(url); }).catch(() => {});
+    return () => { vivo = false; setSrc(null); if (url) URL.revokeObjectURL(url); };
+  }, [fichero]);
+  return (
+    <Dialog open={!!fichero} onOpenChange={(o) => { if (!o) onCerrar(); }}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogTitle className="truncate pr-6 text-base">{nombre}</DialogTitle>
+        <DialogDescription className="truncate">{fichero ? `${fichero.ruta.slice(0, -1).join(" / ") || "Raíz"} · ${gb(fichero.tam)}` : ""}</DialogDescription>
+        <div className="flex max-h-[65vh] min-h-32 items-center justify-center overflow-hidden rounded-lg bg-muted">
+          {tipo === "imagen" && src && <img src={src} alt={nombre} className="max-h-[65vh] max-w-full object-contain" />}
+          {tipo === "video" && src && <video src={src} controls autoPlay muted className="max-h-[65vh] max-w-full" />}
+          {tipo === "audio" && src && <audio src={src} controls autoPlay className="w-full p-4" />}
+          {tipo === "otro" && <p className="p-6 text-sm text-muted-foreground">Este tipo de archivo no tiene vista previa, pero se copiará igual.</p>}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const POR_TANDA = 100;
+
+/** Lista de los archivos encontrados (derecha de la pantalla): buscador, filtro por tipo, miniaturas y vista previa al pulsar. */
+function ListaArchivos({ ficheros }: { ficheros: Fichero[] }) {
+  const [q, setQ] = useState("");
+  const [tipo, setTipo] = useState<string>("todos");
+  const [mostrar, setMostrar] = useState(POR_TANDA);
+  const [previo, setPrevio] = useState<Fichero | null>(null);
+  const tipos = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const f of ficheros) { const c = categoriaDe(f.ruta[f.ruta.length - 1]); m.set(c, (m.get(c) ?? 0) + 1); }
+    return [...m.entries()];
+  }, [ficheros]);
+  const filtrados = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return ficheros.filter((f) => (tipo === "todos" || categoriaDe(f.ruta[f.ruta.length - 1]) === tipo) && (!t || f.ruta.join("/").toLowerCase().includes(t)));
+  }, [ficheros, q, tipo]);
+  const chips: [string, string][] = [["todos", `Todos (${num(ficheros.length)})`], ...tipos.map(([c, n]): [string, string] => [c, `${CATEGORIAS.find((x) => x.id === c)?.nombre ?? c} (${num(n)})`])];
+  return (
+    <Card className="lg:sticky lg:top-4">
+      <CardHeader>
+        <CardTitle className="text-base">Archivos encontrados ({num(ficheros.length)})</CardTitle>
+        <CardDescription>Pulsa uno para verlo antes de copiar.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Input value={q} onChange={(e) => { setQ(e.target.value); setMostrar(POR_TANDA); }} placeholder="Buscar por nombre o carpeta…" />
+        <div className="flex flex-wrap gap-1.5">
+          {chips.map(([c, t]) => (
+            <button key={c} type="button" onClick={() => { setTipo(c); setMostrar(POR_TANDA); }}
+              className={cn("rounded-full border px-2.5 py-0.5 text-xs", tipo === c ? "border-primary bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted")}>{t}</button>
+          ))}
+        </div>
+        <ul className="max-h-[60vh] space-y-1 overflow-y-auto pr-1">
+          {filtrados.slice(0, mostrar).map((f) => {
+            const nombre = f.ruta[f.ruta.length - 1];
+            return (
+              <li key={f.ruta.join("/")}>
+                <button type="button" onClick={() => setPrevio(f)} className="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-muted/60">
+                  <Miniatura fichero={f} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{nombre}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{f.ruta.slice(0, -1).join(" / ") || "Raíz"} · {gb(f.tam)}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+          {filtrados.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">Ningún archivo coincide.</li>}
+        </ul>
+        {filtrados.length > mostrar && <Button variant="outline" size="sm" className="w-full" onClick={() => setMostrar(mostrar + POR_TANDA)}>Ver más ({num(filtrados.length - mostrar)} restantes)</Button>}
+      </CardContent>
+      <VistaPrevia fichero={previo} onCerrar={() => setPrevio(null)} />
+    </Card>
   );
 }
 
@@ -195,8 +318,11 @@ export default function ExtractorDiscosPage() {
     );
   }
 
+  const verLista = !!resultado && resultado.ficheros.length > 0 && (paso === 2 || paso === 3);
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">
+    <div className={cn("mx-auto w-full p-4 sm:p-6", verLista ? "max-w-6xl" : "max-w-3xl")}>
+    <div className="flex flex-col items-start gap-5 lg:flex-row">
+    <div className="w-full min-w-0 flex-1 space-y-5">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold">Extractor de discos de clientes</h1>
@@ -410,6 +536,9 @@ export default function ExtractorDiscosPage() {
           </CardContent>
         </Card>
       )}
+    </div>
+    {verLista && resultado && <aside className="w-full lg:w-[380px] lg:shrink-0"><ListaArchivos ficheros={resultado.ficheros} /></aside>}
+    </div>
     </div>
   );
 }

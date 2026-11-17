@@ -40,6 +40,22 @@ export const CATEGORIAS: { id: string; nombre: string; detalle: string; ext: str
 ];
 const IGNORAR = new Set(["windows", "program files", "program files (x86)", "programdata", "$recycle.bin", "system volume information", "recovery", "$windows.~bt", "appdata", "node_modules", ".cache", "proc", "sys", "dev", "lost+found", "perflogs"]);
 
+/** Categoría de un archivo según su extensión («otros» si no encaja en ninguna). */
+export function categoriaDe(nombre: string): string {
+  const i = nombre.lastIndexOf(".");
+  const ext = i >= 0 ? nombre.slice(i + 1).toLowerCase() : "";
+  return CATEGORIAS.find((c) => c.ext.includes(ext))?.id ?? "otros";
+}
+/** Qué se puede mostrar en el navegador como vista previa. */
+export function tipoVista(nombre: string): "imagen" | "video" | "audio" | "otro" {
+  const i = nombre.lastIndexOf(".");
+  const ext = i >= 0 ? nombre.slice(i + 1).toLowerCase() : "";
+  if (["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(ext)) return "imagen";
+  if (["mp4", "mov", "m4v", "webm"].includes(ext)) return "video";
+  if (["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(ext)) return "audio";
+  return "otro";
+}
+
 export interface Fichero { handle: ManejadorArchivo; ruta: string[]; tam: number }
 export interface ResumenCategoria { n: number; bytes: number }
 export interface ProgresoBusqueda { n: number; bytes: number; actual: string }
