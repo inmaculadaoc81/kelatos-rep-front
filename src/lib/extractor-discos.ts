@@ -30,13 +30,13 @@ export async function elegirCarpeta(modo: "read" | "readwrite"): Promise<Manejad
 }
 
 // ── Categorías (mismas que el extractor de Ubuntu) ──
-export const CATEGORIAS: { id: string; nombre: string; detalle: string; emoji: string; ext: string[] }[] = [
-  { id: "documentos", nombre: "Documentos", detalle: "Word, Excel, PDF, texto…", emoji: "📄", ext: "doc docx xls xlsx xlsm ppt pptx pdf odt ods odp txt csv rtf md".split(" ") },
-  { id: "fotos", nombre: "Fotos", detalle: "JPG, PNG, HEIC, RAW…", emoji: "🖼️", ext: "jpg jpeg png gif bmp tif tiff heic webp raw cr2 nef arw dng".split(" ") },
-  { id: "videos", nombre: "Vídeos", detalle: "MP4, MOV, AVI…", emoji: "🎬", ext: "mp4 mov avi mkv wmv mpg mpeg m4v 3gp".split(" ") },
-  { id: "musica", nombre: "Música", detalle: "MP3, WAV, FLAC…", emoji: "🎵", ext: "mp3 wav flac m4a aac ogg wma".split(" ") },
-  { id: "correo", nombre: "Correo", detalle: "Outlook, Thunderbird…", emoji: "✉️", ext: "pst ost eml mbox msg".split(" ") },
-  { id: "otros", nombre: "Otros programas", detalle: "Contabilidad, diseño, bases de datos, zip…", emoji: "🧩", ext: "dwg dxf psd ai indd skp kdbx sqlite db accdb mdb zip rar 7z".split(" ") },
+export const CATEGORIAS: { id: string; nombre: string; detalle: string; ext: string[] }[] = [
+  { id: "documentos", nombre: "Documentos", detalle: "Word, Excel, PDF, texto…", ext: "doc docx xls xlsx xlsm ppt pptx pdf odt ods odp txt csv rtf md".split(" ") },
+  { id: "fotos", nombre: "Fotos", detalle: "JPG, PNG, HEIC, RAW…", ext: "jpg jpeg png gif bmp tif tiff heic webp raw cr2 nef arw dng".split(" ") },
+  { id: "videos", nombre: "Vídeos", detalle: "MP4, MOV, AVI…", ext: "mp4 mov avi mkv wmv mpg mpeg m4v 3gp".split(" ") },
+  { id: "musica", nombre: "Música", detalle: "MP3, WAV, FLAC…", ext: "mp3 wav flac m4a aac ogg wma".split(" ") },
+  { id: "correo", nombre: "Correo", detalle: "Outlook, Thunderbird…", ext: "pst ost eml mbox msg".split(" ") },
+  { id: "otros", nombre: "Otros programas", detalle: "Contabilidad, diseño, bases de datos, zip…", ext: "dwg dxf psd ai indd skp kdbx sqlite db accdb mdb zip rar 7z".split(" ") },
 ];
 const IGNORAR = new Set(["windows", "program files", "program files (x86)", "programdata", "$recycle.bin", "system volume information", "recovery", "$windows.~bt", "appdata", "node_modules", ".cache", "proc", "sys", "dev", "lost+found", "perflogs"]);
 
