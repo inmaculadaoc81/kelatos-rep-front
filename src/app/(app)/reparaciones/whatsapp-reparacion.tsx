@@ -39,7 +39,7 @@ export function useWhatsappCliente(telefono: string | null | undefined) {
   return { ...estado, sinLeer, telefono: tel };
 }
 
-export function PanelWhatsapp({ datos }: { datos: ReturnType<typeof useWhatsappCliente> }) {
+export function PanelWhatsapp({ datos, rutaBase = "/api/whatsapp/conversaciones", enlaceBandeja = "/whatsapp/bandeja" }: { datos: ReturnType<typeof useWhatsappCliente>; rutaBase?: string; enlaceBandeja?: string | null }) {
   const [elegida, setElegida] = useState<number | null>(null);
   const [mensajes, setMensajes] = useState<MensajeWa[]>([]);
   const [cargandoHilo, setCargandoHilo] = useState(false);
@@ -58,7 +58,7 @@ export function PanelWhatsapp({ datos }: { datos: ReturnType<typeof useWhatsappC
   const cargarHilo = useCallback(async (id: number, inicial: boolean) => {
     if (inicial) { setCargandoHilo(true); setErrorHilo(null); setMensajes([]); }
     try {
-      const r = await fetch(`/api/whatsapp/conversaciones/${id}/mensajes${inicial ? "?leer=1" : ""}`, { cache: "no-store" });
+      const r = await fetch(`${rutaBase}/${id}/mensajes${inicial ? "?leer=1" : ""}`, { cache: "no-store" });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || "Error desconocido");
       if (idActual.current !== id) return;
@@ -70,7 +70,7 @@ export function PanelWhatsapp({ datos }: { datos: ReturnType<typeof useWhatsappC
     } finally {
       if (inicial) setCargandoHilo(false);
     }
-  }, []);
+  }, [rutaBase]);
 
   useEffect(() => {
     idActual.current = idEfectivo;
@@ -84,7 +84,7 @@ export function PanelWhatsapp({ datos }: { datos: ReturnType<typeof useWhatsappC
     if (!idEfectivo || !texto.trim() || enviando) return;
     setEnviando(true);
     try {
-      const r = await fetch(`/api/whatsapp/conversaciones/${idEfectivo}/mensajes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, privado: modoNota }) });
+      const r = await fetch(`${rutaBase}/${idEfectivo}/mensajes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, privado: modoNota }) });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || "No se pudo enviar");
       setTexto("");
@@ -119,7 +119,7 @@ export function PanelWhatsapp({ datos }: { datos: ReturnType<typeof useWhatsappC
             </button>
           ))}
         </div>
-        <Link href="/whatsapp/bandeja" className="text-xs text-muted-foreground underline-offset-2 hover:underline">Abrir en WhatsApp</Link>
+        {enlaceBandeja && <Link href={enlaceBandeja} className="text-xs text-muted-foreground underline-offset-2 hover:underline">Abrir en WhatsApp</Link>}
       </div>
 
       <div className="max-h-80 min-h-32 space-y-1.5 overflow-y-auto rounded-lg border bg-muted/20 px-3 py-2">

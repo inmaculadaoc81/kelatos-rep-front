@@ -23,6 +23,10 @@ const REGLAS: Regla[] = [
   { metodo: "PATCH", patron: /^reuniones\/\d+$/, admin: false },
   { metodo: "GET", patron: /^resumen$/, admin: false },
   { metodo: "GET", patron: /^guion$/, admin: false },
+  { metodo: "GET", patron: /^contactos\/\d+\/whatsapp$/, admin: false },
+  { metodo: "GET", patron: /^whatsapp\/bandeja$/, admin: false },
+  { metodo: "GET", patron: /^whatsapp\/conversaciones\/\d+\/mensajes$/, admin: false },
+  { metodo: "POST", patron: /^whatsapp\/conversaciones\/\d+\/mensajes$/, admin: false },
   // solo admin
   { metodo: "GET", patron: /^agentes$/, admin: true },
   { metodo: "POST", patron: /^agentes$/, admin: true },
@@ -34,7 +38,7 @@ const REGLAS: Regla[] = [
   { metodo: "PUT", patron: /^guion$/, admin: true },
 ];
 
-const PARAMETROS = ["agente", "q", "estado", "listaId", "limit", "offset", "desde", "hasta"];
+const PARAMETROS = ["agente", "q", "estado", "listaId", "limit", "offset", "desde", "hasta", "antes", "leer", "fresco"];
 
 async function resolver(req: Request, params: Promise<{ ruta: string[] }>, metodo: Metodo) {
   const session = await auth();

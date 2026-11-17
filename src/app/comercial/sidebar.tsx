@@ -6,11 +6,12 @@ import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarTrigger } from "@/components/ui/sidebar";
 import { ItemDirecto, type ItemNavegacionBase } from "@/components/sidebar-grupo-colapsable";
-import { Category, Clock, Calendar, DocumentText, Profile2User, Chart, DocumentUpload, SearchNormal1 } from "@/lib/icons";
+import { Category, Clock, Message, Calendar, DocumentText, Profile2User, Chart, DocumentUpload, SearchNormal1 } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const HOY: ItemNavegacionBase = { label: "Hoy", href: "/comercial", icon: Category, exacto: true };
 const CONTACTOS: ItemNavegacionBase = { label: "Contactos", href: "/comercial/contactos", icon: SearchNormal1 };
+const WHATSAPP: ItemNavegacionBase = { label: "WhatsApp", href: "/comercial/whatsapp", icon: Message };
 const HISTORIAL: ItemNavegacionBase = { label: "Mis llamadas", href: "/comercial/historial", icon: Clock };
 const REUNIONES: ItemNavegacionBase = { label: "Reuniones", href: "/comercial/reuniones", icon: Calendar };
 const GUION: ItemNavegacionBase = { label: "Guion de llamada", href: "/comercial/guion", icon: DocumentText };
@@ -41,6 +42,7 @@ export function ComercialSidebar({ session, admin }: { session: Session | null; 
             <SidebarMenu className="gap-1.5">
               <ItemDirecto item={HOY} pathname={pathname} />
               <ItemDirecto item={CONTACTOS} pathname={pathname} />
+              <ItemDirecto item={WHATSAPP} pathname={pathname} />
               <ItemDirecto item={HISTORIAL} pathname={pathname} />
               <ItemDirecto item={REUNIONES} pathname={pathname} />
               <ItemDirecto item={GUION} pathname={pathname} />

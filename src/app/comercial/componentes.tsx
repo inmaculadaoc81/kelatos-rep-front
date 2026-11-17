@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Call, Calendar, Clock, TickCircle, Warning2 } from "@/lib/icons";
+import { Call, Calendar, Clock, Message, TickCircle, Warning2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,8 @@ import {
   type AgenteComercial, type Contacto, type Gestion, type Reunion, type ResultadoLlamada,
 } from "@/lib/comercial";
 import { useComercial } from "./contexto";
+import { PanelWhatsapp } from "../(app)/reparaciones/whatsapp-reparacion";
+import type { ConversacionWa } from "@/lib/whatsapp";
 
 export function InsigniaEstado({ estado }: { estado: string }) {
   return (
@@ -193,6 +195,33 @@ export function useLlamarContacto(alColgar: (c: Contacto, fin: ResumenFinLlamada
   return { llamar, disponible: softphone.disponible, ocupado: softphone.ocupado };
 }
 
+export const RUTA_WA_COMERCIAL = "/api/comercial/whatsapp/conversaciones";
+
+/** Conversaciones de WhatsApp de un contacto (el servidor comprueba que sea tuyo). Mismo formato que usa el panel de WhatsApp del dashboard. */
+export function useWhatsappContacto(id: string) {
+  const [estado, setEstado] = useState<{ cargando: boolean; sinAcceso: boolean; error: string | null; conversaciones: ConversacionWa[]; telefono: string }>({ cargando: true, sinAcceso: false, error: null, conversaciones: [], telefono: "" });
+  useEffect(() => {
+    let vivo = true;
+    apiComercial<{ configurado: boolean; telefono: string; conversaciones: ConversacionWa[] }>(`contactos/${id}/whatsapp`)
+      .then((d) => { if (vivo) setEstado({ cargando: false, sinAcceso: false, error: d.configurado === false ? "WhatsApp no está conectado todavía" : null, conversaciones: d.conversaciones, telefono: d.telefono || "" }); })
+      .catch((e) => { if (vivo) setEstado({ cargando: false, sinAcceso: false, error: e instanceof Error ? e.message : "No se pudo cargar WhatsApp", conversaciones: [], telefono: "" }); });
+    return () => { vivo = false; };
+  }, [id]);
+  return { ...estado, sinLeer: estado.conversaciones.reduce((n, c) => n + (c.noLeidos || 0), 0) };
+}
+
+export function SeccionWhatsapp({ id }: { id: string }) {
+  const datos = useWhatsappContacto(id);
+  return (
+    <div>
+      <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-primary">
+        <Message className="size-4" /> WhatsApp{datos.sinLeer > 0 && <span className="rounded-full bg-emerald-600 px-1.5 text-[10px] font-semibold text-white">{datos.sinLeer}</span>}
+      </h4>
+      <PanelWhatsapp datos={datos} rutaBase={RUTA_WA_COMERCIAL} enlaceBandeja="/comercial/whatsapp" />
+    </div>
+  );
+}
+
 function Dato({ etiqueta, valor, enlace }: { etiqueta: string; valor: string | null | undefined; enlace?: "mail" | "web" | "tel" }) {
   if (!valor) return null;
   const href = enlace === "mail" ? `mailto:${valor}` : enlace === "web" ? (/^https?:/i.test(valor) ? valor : `https://${valor}`) : enlace === "tel" ? `tel:${valor}` : null;
@@ -263,6 +292,8 @@ export function FichaContacto({ id, onCambio, onCerrar }: { id: string; onCambio
           </ul>
         </div>
       )}
+
+      <SeccionWhatsapp id={id} />
 
       <div>
         <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-primary"><Clock className="size-4" /> Historial</h4>
