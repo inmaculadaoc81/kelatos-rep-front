@@ -32,6 +32,7 @@ import { TarjetaResena } from "../reparaciones/factura-reparacion-dialog";
 export function AlquilerModalShell({
   detalle,
   documentoHistorico,
+  etiquetaDocumento = "Sustituida",
   open,
   onOpenChange,
   onActualizado,
@@ -44,6 +45,8 @@ export function AlquilerModalShell({
       "PDF / Enviar" — igual que una rectificativa, es un documento
       terminal que no encadena su propia devolución. */
   documentoHistorico?: { numeroFactura: string; urlFactura: string; totalFactura: number } | null;
+  /** Texto de la insignia cuando se ve un documento que no es la factura activa (Sustituida, Rectificativa, Corregida). */
+  etiquetaDocumento?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onActualizado: () => void;
@@ -94,7 +97,7 @@ export function AlquilerModalShell({
                 <Receipt className="size-4.5 shrink-0" />
                 <DialogTitle className="text-sm font-bold text-primary-foreground">{numeroFactura || "Factura"}</DialogTitle>
                 <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Alquiler</span>
-                {esHistorico && <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold text-white">Sustituida</span>}
+                {esHistorico && <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold text-white">{etiquetaDocumento}</span>}
               </div>
               <p className="truncate text-xs text-primary-foreground/70">{detalle.cliente.nombre || "Sin nombre"}</p>
             </div>

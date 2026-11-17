@@ -120,7 +120,8 @@ export function DetalleFacturaDialog({
 
   // "rectificativa" y "recogida" son documentos terminales (igual que
   // _esRect) o facturas fijas aparte — se quedan en la vista simple.
-  if (factura.esAlquiler && factura.tipo === "alquiler") {
+  // 2026-11-17: la rectificativa y la corregida de un alquiler ya NO se quedan en la vista simple (solo «Ver PDF»): abren el mismo modal con PDF / Enviar.
+  if (factura.esAlquiler && (factura.tipo === "alquiler" || factura.tipo === "rectificativa" || factura.tipo === "corregida")) {
     return (
       <DetalleFacturaAlquilerConTabs
         key={factura.resguardo + factura.tipo}
@@ -406,14 +407,18 @@ function DetalleFacturaAlquilerConTabs({
   // la factura activa). Si no coincide con ninguno (no debería pasar), cae
   // a la vista simple como red de seguridad.
   if (detalle.numeroFactura !== factura.numero) {
-    const historico = detalle.inicial?.numeroFactura === factura.numero ? detalle.inicial
-      : detalle.anterior?.numeroFactura === factura.numero ? detalle.anterior
-      : null;
-    if (!historico) {
+    const candidatos: { doc: { numeroFactura: string; urlFactura: string; totalFactura: number } | null; etiqueta: string }[] = [
+      { doc: detalle.rectificativa, etiqueta: "Rectificativa" },
+      { doc: detalle.corregida, etiqueta: "Corregida" },
+      { doc: detalle.inicial, etiqueta: "Sustituida" },
+      { doc: detalle.anterior, etiqueta: "Sustituida" },
+    ];
+    const hallado = candidatos.find((c) => c.doc?.numeroFactura === factura.numero);
+    if (!hallado || !hallado.doc) {
       return <DetalleFacturaSimple factura={factura} onOpenChange={onOpenChange} onCobrada={onActualizado} />;
     }
     return (
-      <AlquilerModalShell detalle={detalle} documentoHistorico={historico} open onOpenChange={onOpenChange} onActualizado={actualizar} />
+      <AlquilerModalShell detalle={detalle} documentoHistorico={hallado.doc} etiquetaDocumento={hallado.etiqueta} open onOpenChange={onOpenChange} onActualizado={actualizar} />
     );
   }
 
