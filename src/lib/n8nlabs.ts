@@ -9,6 +9,10 @@ export interface Diagnostico {
   nombre: string;
   whatsapp: string;
   whatsapp_norm: string;
+  email: string | null;
+  pais: string | null;
+  rubro_otro: string | null;
+  automatizar_otro: string | null;
   rubro: string;
   facturacion: string;
   mensajes: string;

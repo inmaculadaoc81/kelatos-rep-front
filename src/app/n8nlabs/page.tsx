@@ -180,7 +180,7 @@ function Ficha({ d, catalogo, alCambiar }: { d: Diagnostico; catalogo: CatalogoD
   }
 
   const respuestas: [string, string][] = [
-    ["rubro", op("rubro", d.rubro)], ["facturacion", op("facturacion", d.facturacion)], ["mensajes", op("mensajes", d.mensajes)], ["automatizar", op("automatizar", d.automatizar)],
+    ["rubro", d.rubro === "otro" && d.rubro_otro ? `Otro: ${d.rubro_otro}` : op("rubro", d.rubro)], ["facturacion", op("facturacion", d.facturacion)], ["mensajes", op("mensajes", d.mensajes)], ["automatizar", d.automatizar === "otro" && d.automatizar_otro ? `Otro: ${d.automatizar_otro}` : op("automatizar", d.automatizar)],
     ["urgencia", op("urgencia", d.urgencia)], ["inversion", op("inversion", d.inversion)], ["rol", op("rol", d.rol)],
   ];
 
@@ -191,7 +191,8 @@ function Ficha({ d, catalogo, alCambiar }: { d: Diagnostico; catalogo: CatalogoD
           <h2 className="text-lg font-semibold">{d.nombre}</h2>
           <ChipClasificacion c={d.clasificacion} />
         </div>
-        <p className="text-sm text-muted-foreground">{d.whatsapp} · {d.referencia} · {haceCuanto(d.creado_en)}</p>
+        <p className="text-sm text-muted-foreground">{d.whatsapp}{d.pais ? ` (${d.pais})` : ""} · {d.referencia} · {haceCuanto(d.creado_en)}</p>
+        {d.email && <p className="text-sm"><a className="text-primary underline-offset-2 hover:underline" href={`mailto:${d.email}`}>{d.email}</a></p>}
       </div>
 
       <div className={cn("rounded-xl border p-4", CLASIFICACION[d.clasificacion].chip)}>
