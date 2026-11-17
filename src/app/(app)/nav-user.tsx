@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
-import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2, Chart, Message, Call } from "@/lib/icons";
+import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2, Chart, Message, Call, Flash } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
 import { esUsuarioRedes } from "@/lib/redes-sociales-acceso";
@@ -89,8 +89,9 @@ export function NavUser({ session }: { session: Session | null }) {
   const enCrm = pathname?.startsWith("/crm") ?? false;
   const enComercial = pathname?.startsWith("/comercial") ?? false;
   const enProspeccion = pathname?.startsWith("/prospeccion") ?? false;
+  const enN8nLabs = pathname?.startsWith("/n8nlabs") ?? false;
   const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enWhatsapp && !enTareas && !enCrm && !enProspeccion;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enWhatsapp && !enTareas && !enCrm && !enProspeccion && !enN8nLabs;
   const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerCrm = esAdmin || esSuperadmin(email);
@@ -243,6 +244,12 @@ export function NavUser({ session }: { session: Session | null }) {
                 <DropdownMenuItem render={<Link href="/prospeccion" />}>
                   <IconoDashboard icon={Send2} className="from-sky-500 to-indigo-600" />
                   Prospección
+                </DropdownMenuItem>
+              )}
+              {puedeVerCrm && !enN8nLabs && (
+                <DropdownMenuItem render={<Link href="/n8nlabs" />}>
+                  <IconoDashboard icon={Flash} className="from-blue-500 to-violet-600" />
+                  N8N Labs
                 </DropdownMenuItem>
               )}
               {/* Contenido y Agentes V2 viven ahora dentro de Redes sociales (petición del usuario, 2026-11-04); Agentes V2 sigue accesible desde su menú «avanzado». */}

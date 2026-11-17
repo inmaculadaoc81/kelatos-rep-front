@@ -18,7 +18,7 @@ import {
   CLASIFICACION, ESTADOS_DIAGNOSTICO, enlaceWhatsapp, nombreEstadoDiagnostico,
   type CatalogoDiagnostico, type Clasificacion, type Diagnostico, type EstadoDiagnostico, type ResumenDiagnosticos,
 } from "@/lib/n8nlabs";
-import { useApi } from "../use-api";
+import { useApi } from "@/app/crm/use-api";
 
 type Respuesta = { ok: boolean; diagnosticos: Diagnostico[]; resumen: ResumenDiagnosticos; catalogo: CatalogoDiagnostico };
 
