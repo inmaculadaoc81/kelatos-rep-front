@@ -74,6 +74,7 @@ import { PanelLlamadas } from "./llamadas-tab";
 import { useContextoAsistente } from "@/lib/asistente/contexto";
 import { ClienteEditable, EquipoEditable } from "./cliente-equipo-editable";
 import { imprimirEtiquetaResguardoConFeedback } from "@/lib/imprimir-etiqueta";
+import { imprimirHtml } from "@/lib/imprimir-html";
 
 function EstadoBadge({ estado }: { estado: string }) {
   const color = COLOR_ESTADO[estado];
@@ -432,11 +433,7 @@ export function DetalleReparacionDialog({
       const res = await fetch(`/api/reparaciones/${resguardo}/resguardo-html`);
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "No se pudo generar el resguardo");
-      const ventana = window.open("", "_blank");
-      if (!ventana) throw new Error("El navegador bloqueó la ventana de impresión");
-      ventana.document.write(data.html);
-      ventana.document.close();
-      ventana.onload = () => ventana.print();
+      await imprimirHtml(data.html);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
