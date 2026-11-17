@@ -2,6 +2,7 @@ import {
   Setting2,
   ClipboardTick,
   BoxTick,
+  Folder2,
   DocumentText,
   Profile2User,
   Box1,
@@ -187,17 +188,19 @@ const GRUPO_EFECTIVO_SOLO_LECTURA: GrupoNavegacion = {
     (en Informes) solo para admins; el grupo Admin solo para superadmins;
     Efectivo y caja en solitario para puedeVerEfectivoSoloLectura. */
 /** Entrada "Equipos entregados" de Reparaciones: solo administradores y la cuenta de empleados (ver puedeVerEquiposEntregados). */
+/** Extractor de discos de clientes: solo Romer, Iván, Ricardo, soporte y superadmins (ver puedeVerExtractorDiscos). */
+const ITEM_EXTRACTOR: ItemNavegacion = { label: "Extractor de discos", href: "/extractor-discos", icon: Folder2 };
 const ITEM_EQUIPOS_ENTREGADOS: ItemNavegacion = { label: "Equipos entregados", href: "/equipos-entregados", icon: BoxTick };
 
 export function gruposVisibles({
-  esAdmin, superadmin, efectivoSoloLectura = false, equiposEntregados = false,
-}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean }): GrupoNavegacion[] {
+  esAdmin, superadmin, efectivoSoloLectura = false, equiposEntregados = false, extractorDiscos = false,
+}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean; extractorDiscos?: boolean }): GrupoNavegacion[] {
   const base = GRUPOS.flatMap((g) => {
-    if (equiposEntregados && g.titulo === "Reparaciones") {
+    if ((equiposEntregados || extractorDiscos) && g.titulo === "Reparaciones") {
       // Va justo después de "Recogidas" (antes de "Punto Limpio").
       const i = g.items.findIndex((it) => it.href === "/recogidas");
       const items = [...g.items];
-      items.splice(i >= 0 ? i + 1 : items.length, 0, ITEM_EQUIPOS_ENTREGADOS);
+      items.splice(i >= 0 ? i + 1 : items.length, 0, ...(equiposEntregados ? [ITEM_EQUIPOS_ENTREGADOS] : []), ...(extractorDiscos ? [ITEM_EXTRACTOR] : []));
       return [{ ...g, items }];
     }
     // Contabilidad (o Efectivo y caja) va justo DESPUÉS de Informes.

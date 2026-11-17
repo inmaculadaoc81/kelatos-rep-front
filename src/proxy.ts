@@ -5,6 +5,7 @@ import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { comprobarAccesoLocal } from "@/lib/acceso-local";
 import { esUsuarioRedes, esRutaRedesSociales } from "@/lib/redes-sociales-acceso";
+import { puedeVerExtractorDiscos } from "@/lib/extractor-discos-acceso";
 
 /**
  * Protege todas las rutas salvo /login y /api/auth/* — equivalente a la
@@ -74,6 +75,10 @@ export default auth(async (req) => {
     return req.nextUrl.pathname.startsWith("/api/")
       ? NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
       : NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+  // Extractor de discos de clientes — solo Romer, Iván, Ricardo, soporte y superadmins (la copia se hace en el navegador; no hay API).
+  if (req.nextUrl.pathname.startsWith("/extractor-discos") && !puedeVerExtractorDiscos(req.auth?.user)) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Dashboard de Transferencias — vista aparte. Superadmins entran por
   // serlo; puedeVerTransferencias además admite cuentas con acceso SOLO a
