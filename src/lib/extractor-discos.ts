@@ -236,7 +236,7 @@ export async function copiar(op: {
   const inicio = Date.now();
   const fecha = new Date();
   const p2 = (n: number) => String(n).padStart(2, "0");
-  const nombreCarpeta = `${op.resguardo}_${fecha.getFullYear()}${p2(fecha.getMonth() + 1)}${p2(fecha.getDate())}_${p2(fecha.getHours())}${p2(fecha.getMinutes())}`;
+  const nombreCarpeta = `${op.resguardo || "Extraccion"}_${fecha.getFullYear()}${p2(fecha.getMonth() + 1)}${p2(fecha.getDate())}_${p2(fecha.getHours())}${p2(fecha.getMinutes())}`;
   const base = await op.destino.getDirectoryHandle(nombreCarpeta, { create: true });
   const datos = await base.getDirectoryHandle("datos", { create: true });
   const bytesTotal = op.ficheros.reduce((s, f) => s + f.tam, 0);
@@ -327,7 +327,7 @@ export async function copiar(op: {
   const segundos = Math.round((Date.now() - inicio) / 1000);
   const gb = (b: number) => (b / 1e9).toFixed(2);
   const lineas = [
-    `Extracción de disco · resguardo ${op.resguardo}`,
+    op.resguardo ? `Extracción de disco · resguardo ${op.resguardo}` : "Extracción de disco · sin número de resguardo",
     `Fecha: ${fecha.getFullYear()}-${p2(fecha.getMonth() + 1)}-${p2(fecha.getDate())} ${p2(fecha.getHours())}:${p2(fecha.getMinutes())}`,
     `Carpeta de origen: ${op.origenNombre} (abierta en SOLO LECTURA desde el navegador)`,
     `Destino: ${op.destino.name}/${nombreCarpeta}`,

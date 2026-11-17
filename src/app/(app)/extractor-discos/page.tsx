@@ -290,10 +290,9 @@ export default function ExtractorDiscosPage() {
   async function empezar() {
     if (!resultado || !destino || (!origen && !local)) return;
     const res = resguardo.replace(/[^A-Za-z0-9_-]/g, "");
-    if (!res) { setError("Escribe el número de resguardo (solo letras, números, - y _)."); return; }
     const ok = await confirmar(`¿Empezar la copia de ${num(resultado.ficheros.length)} archivos (${gb(total)}) en «${destino.name}»?`, {
       titulo: "Empezar la copia",
-      detalle: `Resguardo ${res}. No cierres la pestaña ni desconectes el disco mientras copia.`,
+      detalle: `${res ? `Resguardo ${res}. ` : "Sin número de resguardo. "}No cierres la pestaña ni desconectes el disco mientras copia.`,
     });
     if (!ok) return;
     setError(null); setCopiando(true); setInforme(null); cancelar.current = false; muestra.current = null; setVelocidad(0);
@@ -496,7 +495,7 @@ export default function ExtractorDiscosPage() {
                   <p className="text-xs text-muted-foreground">Un disco externo, una carpeta de red o el Ubuntu. Debe tener espacio de sobra (hacen falta {gb(total)}).</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="res">Número de resguardo <span className="font-normal text-muted-foreground">(obligatorio)</span></Label>
+                  <Label htmlFor="res">Número de resguardo <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                   <Input id="res" value={resguardo} onChange={(e) => setResguardo(e.target.value)} placeholder="Por ejemplo: 19640" autoComplete="off" />
                 </div>
                 <div className="space-y-1.5">
@@ -505,7 +504,7 @@ export default function ExtractorDiscosPage() {
                 </div>
                 <div className="flex flex-wrap justify-between gap-2 pt-1">
                   <Button variant="outline" className="gap-1.5" onClick={() => setPaso(2)}><ArrowLeft2 className="size-4" /> Atrás</Button>
-                  <Button size="lg" className="h-11 gap-2 px-5" disabled={!destino || !resguardo.trim()} onClick={empezar}><Play className="size-4" variant="Bold" /> Empezar la copia</Button>
+                  <Button size="lg" className="h-11 gap-2 px-5" disabled={!destino} onClick={empezar}><Play className="size-4" variant="Bold" /> Empezar la copia</Button>
                 </div>
               </>
             )}
