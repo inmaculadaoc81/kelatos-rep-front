@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { haceCuanto } from "@/lib/crm";
 import {
-  CLASIFICACION, ESTADOS_DIAGNOSTICO, enlaceWhatsapp, nombreEstadoDiagnostico,
+  CLASIFICACION, ESTADOS_DIAGNOSTICO, conMoneda, enlaceWhatsapp, nombreEstadoDiagnostico,
   type CatalogoDiagnostico, type Clasificacion, type Diagnostico, type EstadoDiagnostico, type ResumenDiagnosticos,
 } from "@/lib/n8nlabs";
 import { useApi } from "@/app/crm/use-api";
@@ -129,7 +129,7 @@ export default function Page() {
                       {d.estado === "nuevo" && <Badge>Nuevo</Badge>}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {datos.catalogo.rubro?.opciones[d.rubro] ?? d.rubro} · factura {datos.catalogo.facturacion?.opciones[d.facturacion] ?? d.facturacion} · quiere automatizar {datos.catalogo.automatizar?.opciones[d.automatizar]?.toLowerCase() ?? d.automatizar}
+                      {datos.catalogo.rubro?.opciones[d.rubro] ?? d.rubro} · factura {conMoneda(datos.catalogo.facturacion?.opciones[d.facturacion] ?? d.facturacion, d.pais)} · quiere automatizar {datos.catalogo.automatizar?.opciones[d.automatizar]?.toLowerCase() ?? d.automatizar}
                     </span>
                   </span>
                   <span className="hidden shrink-0 text-right sm:block">
@@ -170,7 +170,7 @@ function Kpi({ titulo, valor, nota, destacado }: { titulo: string; valor: number
 function Ficha({ d, catalogo, alCambiar }: { d: Diagnostico; catalogo: CatalogoDiagnostico; alCambiar: () => void }) {
   const [notas, setNotas] = useState(d.notas ?? "");
   const [guardando, setGuardando] = useState(false);
-  const op = (campo: string, valor: string) => catalogo[campo]?.opciones[valor] ?? valor;
+  const op = (campo: string, valor: string) => conMoneda(catalogo[campo]?.opciones[valor] ?? valor, d.pais);
 
   async function guardar(cambios: { estado?: EstadoDiagnostico; notas?: string }, mensaje: string) {
     setGuardando(true);
@@ -228,7 +228,7 @@ function Ficha({ d, catalogo, alCambiar }: { d: Diagnostico; catalogo: CatalogoD
                 <span className="shrink-0 font-medium tabular-nums">{x.puntos}/{x.maximo}</span>
               </div>
               <Progress value={x.maximo ? (x.puntos / x.maximo) * 100 : 0} />
-              <p className="text-sm">{x.respuesta}</p>
+              <p className="text-sm">{conMoneda(x.respuesta, d.pais)}</p>
             </div>
           ))}
           <p className="border-t pt-2 text-right text-sm font-semibold">Total: {d.puntos} de 14 puntos <span className="font-normal text-muted-foreground">(≥ 9 y sin frenos = caliente)</span></p>

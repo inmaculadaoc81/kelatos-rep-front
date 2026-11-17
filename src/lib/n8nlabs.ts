@@ -60,6 +60,10 @@ export const ESTADOS_DIAGNOSTICO: { id: EstadoDiagnostico; nombre: string }[] = 
   { id: "descartado", nombre: "Descartado" },
 ];
 
+const EUROPA = new Set(["ES", "PT", "FR", "IT", "DE", "GB", "IE", "NL", "BE", "CH", "AT", "SE", "NO", "DK", "FI", "PL", "RO"]);
+/** Los importes del formulario se guardan con «$»: se muestran en € si el lead escribe desde Europa. */
+export const conMoneda = (texto: string, pais: string | null | undefined) => (pais && EUROPA.has(pais) ? texto.replace(/\$/g, "€") : texto);
+
 export const nombreEstadoDiagnostico = (e: EstadoDiagnostico) => ESTADOS_DIAGNOSTICO.find((x) => x.id === e)?.nombre ?? e;
 
 /** Enlace de WhatsApp: usa el mensaje que redactó la IA local si existe; si no, uno genérico según la clasificación. */

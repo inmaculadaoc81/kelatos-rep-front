@@ -7,11 +7,11 @@ const PUNTOS: { pregunta: string; filas: [string, number][] }[] = [
   { pregunta: "¿Mensajes o leads por semana?", filas: [["Menos de 20", 0], ["20 – 100", 1], ["Más de 100", 2]] },
   { pregunta: "¿Para cuándo lo necesita?", filas: [["Solo explora", 0], ["En 1–3 meses", 2], ["Este mes", 3]] },
   { pregunta: "¿Qué inversión tiene prevista?", filas: [["Menos de 500 $", 0], ["500 – 1.500 $", 1], ["1.500 – 5.000 $", 3], ["Más de 5.000 $", 3]] },
-  { pregunta: "¿Cuál es su papel en la decisión?", filas: [["Lo investiga para otro", 0], ["Decide con un socio", 2], ["Decide él/ella", 3]] },
+  { pregunta: "¿Cuál es su papel en la decisión?", filas: [["Lo investiga para otro", 0], ["Decide él/ella", 3]] },
 ];
 
 const REGLAS: { c: Clasificacion; reglas: string[] }[] = [
-  { c: "caliente", reglas: ["9 puntos o más (de 14).", "Y ninguna señal de freno: no está «solo explorando», tiene 500 $ o más previstos y decide él/ella o con un socio."] },
+  { c: "caliente", reglas: ["9 puntos o más (de 14).", "Y ninguna señal de freno: no está «solo explorando», tiene 500 $ o más previstos y es quien decide."] },
   { c: "no_encaja", reglas: ["3 puntos o menos, o", "«Solo explorando» con menos de 500 $, o", "Factura menos de 5.000 $ con menos de 500 $ de inversión."] },
   { c: "tibio", reglas: ["Todo lo que no es caliente ni «no encaja»: tiene potencial pero le falta urgencia, presupuesto o poder de decisión."] },
 ];
@@ -64,7 +64,7 @@ export default function Page() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground">Si quieres cambiar los umbrales (por ejemplo, que 8 puntos ya sea caliente), se ajusta en la API; este texto hay que actualizarlo a la vez.</p>
+      <p className="text-xs text-muted-foreground">Los importes se muestran en € si el lead escribe desde Europa. Si quieres cambiar los umbrales (por ejemplo, que 8 puntos ya sea caliente), se ajusta en la API; este texto hay que actualizarlo a la vez.</p>
     </div>
   );
 }
