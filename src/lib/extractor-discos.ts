@@ -88,6 +88,32 @@ export async function buscar(
   return { ficheros, resumen, cancelado: cancelado() };
 }
 
+/**
+ * Alternativa para elegir el DISCO ENTERO (la raíz de una unidad): el selector clásico `<input webkitdirectory>` sí lo permite, a diferencia de
+ * showDirectoryPicker. Recibe los archivos que entrega el navegador (solo lectura por naturaleza) y aplica los mismos filtros que `buscar`.
+ */
+export function buscarEnArchivos(archivos: File[], categorias: Set<string>, todo: boolean): ResultadoBusqueda {
+  const porExt = new Map<string, string>();
+  for (const c of CATEGORIAS) if (categorias.has(c.id)) for (const e of c.ext) porExt.set(e, c.id);
+  const ficheros: Fichero[] = [];
+  const resumen: Record<string, ResumenCategoria> = {};
+  for (const f of archivos) {
+    const partes = (f.webkitRelativePath || f.name).split("/").slice(1); // sin el nombre de la carpeta elegida
+    if (!partes.length || partes.slice(0, -1).some((p) => IGNORAR.has(p.toLowerCase()))) continue;
+    const nombre = partes[partes.length - 1];
+    const i = nombre.lastIndexOf(".");
+    const ext = i >= 0 ? nombre.slice(i + 1).toLowerCase() : "";
+    const cat = todo ? "todo" : porExt.get(ext);
+    if (!cat) continue;
+    const manejador: ManejadorArchivo = { kind: "file", name: nombre, getFile: async () => f, createWritable: async () => { throw new Error("solo lectura"); } };
+    ficheros.push({ handle: manejador, ruta: partes, tam: f.size });
+    const r = (resumen[cat] ||= { n: 0, bytes: 0 });
+    r.n += 1; r.bytes += f.size;
+  }
+  ficheros.sort((a, b) => a.ruta.join("/").localeCompare(b.ruta.join("/")));
+  return { ficheros, resumen, cancelado: false };
+}
+
 // ── SHA-256 incremental (crypto.subtle no admite datos por trozos) ──
 const K = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,

@@ -14,7 +14,7 @@ import {
 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import {
-  CATEGORIAS, buscar, copiar, elegirCarpeta, navegadorCompatible,
+  CATEGORIAS, buscar, buscarEnArchivos, copiar, elegirCarpeta, navegadorCompatible,
   type Fichero, type InformeCopia, type ManejadorCarpeta, type ProgresoBusqueda, type ProgresoCopia, type ResumenCategoria,
 } from "@/lib/extractor-discos";
 
@@ -78,6 +78,9 @@ export default function ExtractorDiscosPage() {
   const compatible = useSyncExternalStore<boolean | null>(() => () => {}, navegadorCompatible, () => null);
   const [paso, setPaso] = useState(1);
   const [origen, setOrigen] = useState<ManejadorCarpeta | null>(null);
+  const [local, setLocal] = useState<{ nombre: string; archivos: File[] } | null>(null); // disco entero elegido con el selector clásico
+  const entradaDisco = useRef<HTMLInputElement>(null);
+  const nombreOrigen = origen?.name ?? local?.nombre ?? "";
   const [cats, setCats] = useState<Set<string>>(new Set(["documentos", "fotos"]));
   const [todo, setTodo] = useState(false);
   const [buscando, setBuscando] = useState(false);
@@ -109,16 +112,23 @@ export default function ExtractorDiscosPage() {
     try {
       const c = await elegirCarpeta("read");
       if (!c) return;
-      setOrigen(c); reiniciarBusqueda(); setPaso(2);
+      setOrigen(c); setLocal(null); reiniciarBusqueda(); setPaso(2);
     } catch (e) { setError(e instanceof Error ? e.message : "No se pudo abrir la carpeta"); }
   }
 
+  function discoElegido(lista: FileList | null) {
+    if (!lista || lista.length === 0) return;
+    const archivos = Array.from(lista);
+    const nombre = (archivos[0].webkitRelativePath || "").split("/")[0] || "Disco";
+    setError(null); setOrigen(null); setLocal({ nombre, archivos }); reiniciarBusqueda(); setPaso(2);
+  }
+
   async function ejecutarBusqueda() {
-    if (!origen) return;
+    if (!origen && !local) return;
     if (!todo && cats.size === 0) { setError("Marca al menos un tipo de archivo (o «Copiar absolutamente todo»)."); return; }
     setError(null); setResultado(null); setBuscando(true); cancelar.current = false; setProgBusqueda({ n: 0, bytes: 0, actual: "" });
     try {
-      const r = await buscar(origen, cats, todo, setProgBusqueda, () => cancelar.current);
+      const r = origen ? await buscar(origen, cats, todo, setProgBusqueda, () => cancelar.current) : buscarEnArchivos(local!.archivos, cats, todo);
       if (!r.cancelado) setResultado({ ficheros: r.ficheros, resumen: r.resumen });
     } catch (e) { setError(e instanceof Error ? e.message : "No se pudo leer la carpeta"); }
     setBuscando(false);
@@ -138,7 +148,7 @@ export default function ExtractorDiscosPage() {
   }
 
   async function empezar() {
-    if (!resultado || !destino || !origen) return;
+    if (!resultado || !destino || (!origen && !local)) return;
     const res = resguardo.replace(/[^A-Za-z0-9_-]/g, "");
     if (!res) { setError("Escribe el número de resguardo (solo letras, números, - y _)."); return; }
     setError(null); setCopiando(true); setInforme(null); cancelar.current = false; muestra.current = null; setVelocidad(0);
@@ -146,7 +156,7 @@ export default function ExtractorDiscosPage() {
     try { bloqueo = await (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock?.request("screen") ?? null; } catch { /* sin bloqueo de pantalla no pasa nada */ }
     try {
       const inf = await copiar({
-        ficheros: resultado.ficheros, destino, resguardo: res, nota: nota.slice(0, 300), origenNombre: origen.name,
+        ficheros: resultado.ficheros, destino, resguardo: res, nota: nota.slice(0, 300), origenNombre: nombreOrigen,
         cancelado: () => cancelar.current,
         alAvanzar: (p) => {
           setProg(p);
@@ -168,7 +178,7 @@ export default function ExtractorDiscosPage() {
   }
 
   function otraExtraccion() {
-    setPaso(1); setOrigen(null); setResultado(null); setDestino(null); setResguardo(""); setNota(""); setProg(null); setInforme(null); setError(null);
+    setPaso(1); setOrigen(null); setLocal(null); setResultado(null); setDestino(null); setResguardo(""); setNota(""); setProg(null); setInforme(null); setError(null);
   }
 
   const pctCopia = !prog ? 0 : prog.fase === "terminado" ? 100 : prog.fase === "verificando" ? (prog.verifTotal ? (100 * prog.verifHecho) / prog.verifTotal : 100) : prog.bytesTotal ? (100 * prog.bytes) / prog.bytesTotal : (100 * prog.hecho) / Math.max(1, prog.total);
@@ -224,18 +234,31 @@ export default function ExtractorDiscosPage() {
             <CardDescription>Conecta el disco del cliente al equipo. Cuando aparezca como unidad (D:, E:…), pulsa el botón y elige <b>la carpeta de la persona</b>, por ejemplo <code className="rounded bg-muted px-1">D:\Users\Ana</code>.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Aviso tipo="info" icono={InfoCircle}>El navegador no deja elegir la raíz de una unidad ni carpetas del sistema: entra en <b>Users</b> y elige la carpeta del usuario. El disco solo se <b>lee</b>; esta herramienta no puede escribir en él.</Aviso>
-            <Button size="lg" className="h-11 gap-2 px-5" onClick={elegirOrigen}><Folder2 className="size-5" /> Elegir la carpeta del cliente</Button>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-2 rounded-xl border p-4">
+                <div className="text-sm font-semibold">Una carpeta (recomendado)</div>
+                <p className="flex-1 text-xs text-muted-foreground">Elige la carpeta de la persona, por ejemplo <code className="rounded bg-muted px-1">D:\Users\Ana</code>. Es lo más rápido y el navegador garantiza que solo se lee.</p>
+                <Button className="h-11 gap-2" onClick={elegirOrigen}><Folder2 className="size-5" /> Elegir una carpeta</Button>
+              </div>
+              <div className="flex flex-col gap-2 rounded-xl border p-4">
+                <div className="text-sm font-semibold">El disco entero</div>
+                <p className="flex-1 text-xs text-muted-foreground">Para elegir la unidad completa (<code className="rounded bg-muted px-1">D:\</code>) o carpetas que Chrome bloquea. Tarda más en leer el disco.</p>
+                <Button variant="outline" className="h-11 gap-2" onClick={() => entradaDisco.current?.click()}><Box className="size-5" /> Elegir el disco entero</Button>
+                <input ref={entradaDisco} type="file" className="hidden" multiple onChange={(e) => { discoElegido(e.target.files); e.target.value = ""; }}
+                  {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} />
+              </div>
+            </div>
+            <Aviso tipo="info" icono={InfoCircle}>Si Chrome dice «no se puede abrir esta carpeta porque contiene archivos del sistema», es normal: usa «Una carpeta» y entra en <b>Users</b>, o prueba «El disco entero». Al elegir el disco entero Chrome preguntará si quieres «subir» los archivos: <b>no se sube nada</b>, solo se leen en este equipo.</Aviso>
           </CardContent>
         </Card>
       )}
 
       {/* PASO 2 */}
-      {paso === 2 && origen && (
+      {paso === 2 && (origen || local) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Paso 2 · ¿Qué quiere el cliente?</CardTitle>
-            <CardDescription>Carpeta elegida: <b>{origen.name}</b> <button type="button" className="ml-1 text-primary underline-offset-2 hover:underline" onClick={elegirOrigen} disabled={buscando}>cambiar</button></CardDescription>
+            <CardDescription>Origen elegido: <b>{nombreOrigen}</b> <button type="button" className="ml-1 text-primary underline-offset-2 hover:underline" onClick={() => setPaso(1)} disabled={buscando}>cambiar</button></CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -298,11 +321,11 @@ export default function ExtractorDiscosPage() {
       )}
 
       {/* PASO 3 */}
-      {paso === 3 && resultado && origen && (
+      {paso === 3 && resultado && (origen || local) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Paso 3 · Copiar los archivos</CardTitle>
-            {!copiando && !informe && <CardDescription>Se van a copiar <b>{num(resultado.ficheros.length)} archivos ({gb(total)})</b> de <b>{origen.name}</b>.</CardDescription>}
+            {!copiando && !informe && <CardDescription>Se van a copiar <b>{num(resultado.ficheros.length)} archivos ({gb(total)})</b> de <b>{nombreOrigen}</b>.</CardDescription>}
           </CardHeader>
           <CardContent className="space-y-4">
             {!copiando && !informe && (
