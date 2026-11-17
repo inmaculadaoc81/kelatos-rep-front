@@ -126,7 +126,8 @@ export function AlquilerModalShell({
 
             <TabsContent value="pdf" className="p-4">
               <TabPdfEnviar
-                enviarUrl={null}
+                enviarUrl={`/api/alquileres/${detalle.resguardo}/facturas/enviar`}
+                cuerpoExtra={{ numeroFactura }}
                 tipo="alquiler"
                 numeroFactura={numeroFactura}
                 urlFactura={urlFactura}

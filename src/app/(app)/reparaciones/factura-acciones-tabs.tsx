@@ -524,7 +524,10 @@ export function TabPdfEnviar({
   clienteEmailDefault,
   motivoRectificativa,
   confirmarAntesDeEnviar,
+  cuerpoExtra,
 }: {
+  /** Campos extra que se mandan junto a tipo/emailDestino (p. ej. el número de la factura concreta que se ve). */
+  cuerpoExtra?: Record<string, unknown>;
   /** null/undefined = sin ruta de envío por correo todavía construida para
       este tipo de entidad (p.ej. facturas manuales) — se oculta el botón
       "Enviar al cliente" y solo queda "Descargar factura". */
@@ -559,7 +562,7 @@ export function TabPdfEnviar({
       const res = await fetch(enviarUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo, emailDestino: emailDestino.trim() }),
+        body: JSON.stringify({ tipo, emailDestino: emailDestino.trim(), ...cuerpoExtra }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
