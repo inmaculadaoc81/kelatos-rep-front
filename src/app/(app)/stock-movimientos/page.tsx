@@ -33,6 +33,11 @@ const TIPOS: Record<string, { etiqueta: string; clase: string; ayuda: string }> 
     clase: "bg-red-500/10 text-red-700 dark:text-red-400",
     ayuda: "Baja el stock por una venta registrada en el módulo Ventas.",
   },
+  salida_reparacion: {
+    etiqueta: "Salida por reparación",
+    clase: "bg-red-500/10 text-red-700 dark:text-red-400",
+    ayuda: "Baja el stock cuando una reparación pasa a «Reparado»: se descuentan las piezas de stock del presupuesto aceptado y las piezas compradas por pedido para ese equipo. Las anteriores al 18/11 están reconstruidas (sin stock antes/después).",
+  },
   reposicion_factura: {
     etiqueta: "Reposición (rectificativa)",
     clase: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
@@ -128,7 +133,7 @@ export default function StockMovimientosPage() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-        {(["salida_factura", "salida_venta", "reposicion_factura", "entrada", "ajuste_manual", "sin_pieza"] as const).map((t) => (
+        {(["salida_factura", "salida_reparacion", "salida_venta", "reposicion_factura", "entrada", "ajuste_manual", "sin_pieza"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -228,7 +233,7 @@ export default function StockMovimientosPage() {
                       <TableCell className="whitespace-nowrap text-right text-xs">
                         {m.stock_antes !== null && m.stock_despues !== null ? `${m.stock_antes} → ${m.stock_despues}` : "—"}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{m.usuario || (m.tipo.includes("factura") ? "automático" : "—")}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{m.usuario || (m.tipo.includes("factura") || m.tipo === "salida_reparacion" ? "automático" : "—")}</TableCell>
                     </TableRow>
                   );
                 })}
