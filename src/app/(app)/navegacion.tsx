@@ -9,6 +9,7 @@ import {
   Box,
   BoxSearch,
   Element3,
+  Refresh2,
   ShoppingCart,
   Truck,
   Clock,
@@ -89,6 +90,7 @@ export const GRUPOS: GrupoNavegacion[] = [
     icon: BoxSearch,
     items: [
       { label: "Stock de Piezas", href: "/stock-piezas", icon: Element3 },
+      { label: "Movimientos de stock", href: "/stock-movimientos", icon: Refresh2 },
       { label: "Compras", href: "/compras", icon: MoneySend, claseColor: "text-red-600 hover:text-red-700 data-active:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:data-active:text-red-300 [&>svg]:text-current" },
     ],
   },
