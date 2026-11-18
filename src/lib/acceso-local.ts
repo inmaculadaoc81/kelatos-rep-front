@@ -14,7 +14,8 @@ import { COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
  * (API caída, lenta) se deja pasar. Solo la cuenta restringida puede verse afectada por un error.
  */
 
-type ConfigAccesoLocal = { cuenta: string; cuentas: string[]; modo: "apagado" | "observar" | "bloquear"; ips: string[]; ipsDinamicas: string[]; equiposHash: string[] };
+type Modo = "apagado" | "observar" | "bloquear";
+type ConfigAccesoLocal = { cuenta: string; cuentas: string[]; modo: Modo; ips: string[]; ipsDinamicas: string[]; equiposHash: string[]; modoRemotos: Modo; ipsRemotos: string[]; cuentasRemotas: string[] };
 
 /** Cookie que lleva el navegador de un equipo del local autorizado (ver /api/acceso-local/alta). Solo se compara su hash con el del servidor. */
 export const COOKIE_EQUIPO_LOCAL = "kelatos_equipo_local";
@@ -51,7 +52,7 @@ async function configVigente(): Promise<ConfigAccesoLocal | null> {
   if (ahora < cache.hasta) return cache.valor;
   try {
     const c = (await llamarApi("/v1/seguridad/acceso-local/config")) as { ok?: boolean } & Partial<ConfigAccesoLocal>;
-    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), cuentas: (Array.isArray(c.cuentas) && c.cuentas.length ? c.cuentas : [c.cuenta]).map((x) => String(x).toLowerCase()), modo: c.modo, ips: c.ips, ipsDinamicas: Array.isArray(c.ipsDinamicas) ? c.ipsDinamicas : [], equiposHash: Array.isArray(c.equiposHash) ? c.equiposHash : [] }, hasta: ahora + TTL_CONFIG_MS };
+    if (c?.ok && c.cuenta && c.modo && Array.isArray(c.ips)) cache = { valor: { cuenta: c.cuenta.toLowerCase(), cuentas: (Array.isArray(c.cuentas) && c.cuentas.length ? c.cuentas : [c.cuenta]).map((x) => String(x).toLowerCase()), modo: c.modo, ips: c.ips, ipsDinamicas: Array.isArray(c.ipsDinamicas) ? c.ipsDinamicas : [], equiposHash: Array.isArray(c.equiposHash) ? c.equiposHash : [], modoRemotos: c.modoRemotos ?? "observar", ipsRemotos: Array.isArray(c.ipsRemotos) ? c.ipsRemotos : [], cuentasRemotas: Array.isArray(c.cuentasRemotas) ? c.cuentasRemotas.map((x) => String(x).toLowerCase()) : [] }, hasta: ahora + TTL_CONFIG_MS };
     else cache = { valor: cache.valor, hasta: ahora + REINTENTO_TRAS_FALLO_MS };
   } catch {
     // Sin poder leer la configuración se deja pasar (se conserva la última conocida).
@@ -81,6 +82,29 @@ function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloquea
   void llamarApi("/v1/seguridad/acceso-local/visto", {
     email, ip, habriaBloqueado, equipoHash, ua: req.headers.get("user-agent") || "", ruta: req.nextUrl.pathname,
   }).catch(() => {});
+}
+
+/**
+ * Grupo «remotos»: los administradores/superadmins que NO son cuentas del local y los empleados remotos con contraseña listados en el backend
+ * (cuentas_remotas) solo pueden usar el dashboard desde las IPs de ips_remotos (la del PC de acceso remoto). Desde su propio ordenador, no.
+ * Seguridad: modo «apagado»/«observar», sin IPs en la lista o sin poder leer la configuración → se deja pasar. Se desactiva con modo_remotos='apagado'.
+ */
+export async function comprobarAccesoRemotos(req: NextRequest, email: string | null | undefined, esAdmin: boolean): Promise<NextResponse | null> {
+  if (!email) return null;
+  const ruta = req.nextUrl.pathname;
+  if (ruta.startsWith("/acceso-restringido")) return null;
+  const cfg = await configVigente();
+  if (!cfg || cfg.modoRemotos === "apagado" || cfg.ipsRemotos.length === 0) return null;
+  const correo = email.toLowerCase();
+  // Las cuentas del local ya se rigen por su propia regla (comprobarAccesoLocal), aunque sean admin.
+  if (cfg.cuentas.includes(correo)) return null;
+  if (!esAdmin && !cfg.cuentasRemotas.includes(correo)) return null;
+  const ip = ipDelCliente(req);
+  const dentro = cfg.ipsRemotos.includes(ip);
+  anotarVisita(correo, ip, req, !dentro, null);
+  if (cfg.modoRemotos !== "bloquear" || dentro) return null;
+  if (ruta.startsWith("/api/")) return NextResponse.json({ ok: false, error: "Esta cuenta solo puede usarse desde el equipo de acceso remoto." }, { status: 403 });
+  return NextResponse.redirect(new URL("/acceso-restringido?r=1", req.nextUrl.origin));
 }
 
 /**

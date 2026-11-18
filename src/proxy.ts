@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura, aterrizaEnFichaje, esCuentaEmpleadosRestringida, COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
-import { comprobarAccesoLocal } from "@/lib/acceso-local";
+import { comprobarAccesoLocal, comprobarAccesoRemotos } from "@/lib/acceso-local";
 import { esUsuarioRedes, esRutaRedesSociales } from "@/lib/redes-sociales-acceso";
 import { puedeVerExtractorDiscos } from "@/lib/extractor-discos-acceso";
 
@@ -26,6 +26,9 @@ export default auth(async (req) => {
     req, req.auth?.user?.email, req.auth?.user?.role === "admin" || esSuperadmin(req.auth?.user?.email)
   );
   if (bloqueoLocal) return bloqueoLocal;
+  // Administradores (salvo las cuentas del local) y empleados remotos con contraseña: solo desde la IP del equipo de acceso remoto.
+  const bloqueoRemoto = await comprobarAccesoRemotos(req, req.auth?.user?.email, req.auth?.user?.role === "admin" || esSuperadmin(req.auth?.user?.email));
+  if (bloqueoRemoto) return bloqueoRemoto;
   // Agente comercial: confinado al panel Comercial (y a lo que usa para llamar). Ninguna otra pantalla ni API del dashboard, tenga o no correo @kelatos.com.
   // Los administradores y superadmins quedan exentos (ven todo el panel desde su propio menú).
   if (
