@@ -174,6 +174,8 @@ export function NuevaFacturaManualDialog({
     const validas = lineas.filter((l) => l.descripcion.trim() || l.precio);
     if (validas.length === 0) return toast.error("Añade al menos un concepto");
     if (!nombre.trim()) return toast.error("El nombre del cliente es obligatorio");
+    if (serie === "1" && base < 0) return toast.error("Una factura de la Serie 1 no puede tener importe negativo. Para una devolución usa Serie 3 — Rectificativa.");
+    if (serie === "3" && base > 0) return toast.error("Una factura de la Serie 3 (rectificativa) no puede tener importe positivo.");
     if (base < 0 && !motivoDevolucion.trim()) return toast.error("Indica el motivo de la devolución: es obligatorio cuando el importe es negativo");
     const errorPago = validarFormaPago(pago, totalConIva);
     if (errorPago) return toast.error(errorPago);
