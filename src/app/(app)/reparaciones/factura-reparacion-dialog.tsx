@@ -306,7 +306,7 @@ export function TarjetaResena({
               type="button"
               disabled={enviando || resena === "NO" || resena === ""}
               onClick={() => ejecutar("cancelar")}
-              className={`border-l px-2.5 py-1 font-medium transition-colors ${resena === "SI" || resena === "PROGRAMADA" ? "bg-card text-muted-foreground hover:bg-muted" : "bg-muted text-foreground"}`}
+              className={`border-l px-2.5 py-1 font-medium transition-colors ${resena === "SI" || resena === "PROGRAMADA" ? "bg-card text-muted-foreground hover:bg-muted" : "bg-red-600 text-white"}`}
             >
               No
             </button>
