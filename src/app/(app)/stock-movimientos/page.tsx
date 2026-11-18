@@ -22,15 +22,47 @@ interface Movimiento {
   stock_despues: string | null;
 }
 
-const TIPOS: Record<string, { etiqueta: string; clase: string }> = {
-  salida_factura: { etiqueta: "Salida por factura/ticket", clase: "bg-red-500/10 text-red-700 dark:text-red-400" },
-  salida_venta: { etiqueta: "Salida por venta", clase: "bg-red-500/10 text-red-700 dark:text-red-400" },
-  reposicion_factura: { etiqueta: "Reposición (rectificativa)", clase: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
-  entrada: { etiqueta: "Entrada por compra", clase: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
-  ajuste_manual: { etiqueta: "Ajuste manual", clase: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
-  sin_pieza: { etiqueta: "NO descontado (referencia sin pieza)", clase: "bg-red-600 text-white" },
-  edicion: { etiqueta: "Edición de la ficha", clase: "bg-muted text-muted-foreground" },
-  pedido: { etiqueta: "Pedido de reposición", clase: "bg-muted text-muted-foreground" },
+const TIPOS: Record<string, { etiqueta: string; clase: string; ayuda: string }> = {
+  salida_factura: {
+    etiqueta: "Salida por factura/ticket",
+    clase: "bg-red-500/10 text-red-700 dark:text-red-400",
+    ayuda: "Baja el stock cuando una factura o ticket (de reparación, venta o manual) lleva una línea con referencia de pieza. Es el uso de la pieza en un servicio o venta facturada.",
+  },
+  salida_venta: {
+    etiqueta: "Salida por venta",
+    clase: "bg-red-500/10 text-red-700 dark:text-red-400",
+    ayuda: "Baja el stock por una venta registrada en el módulo Ventas.",
+  },
+  reposicion_factura: {
+    etiqueta: "Reposición (rectificativa)",
+    clase: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    ayuda: "Sube el stock cuando una factura rectificativa (Serie 3) anula o devuelve una línea con pieza: la pieza vuelve al almacén.",
+  },
+  entrada: {
+    etiqueta: "Entrada por compra",
+    clase: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    ayuda: "Sube el stock al recibir piezas de un pedido o compra a proveedor.",
+  },
+  ajuste_manual: {
+    etiqueta: "Ajuste manual",
+    clase: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    ayuda: "Alguien cambió a mano la cantidad disponible en Stock de Piezas (inventario, corrección de errores, mermas…).",
+  },
+  sin_pieza: {
+    etiqueta: "NO descontado (referencia sin pieza)",
+    clase: "bg-red-600 text-white",
+    ayuda: "Se facturó una línea con una referencia que no existe en Stock de Piezas, así que no se descontó nada. Conviene revisarla.",
+  },
+  edicion: {
+    etiqueta: "Edición de la ficha",
+    clase: "bg-muted text-muted-foreground",
+    ayuda: "Se modificaron datos de la pieza (nombre, precio, proveedor…) sin cambiar la cantidad.",
+  },
+  pedido: {
+    etiqueta: "Pedido de reposición",
+    clase: "bg-muted text-muted-foreground",
+    ayuda: "Se pidió reposición de la pieza al proveedor. Todavía no cambia el stock; lo hará la entrada por compra.",
+  },
 };
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -74,6 +106,14 @@ export default function StockMovimientosPage() {
   }, [cargar]);
 
   const sinPieza = conteo.sin_pieza || 0;
+  const porDefecto = { desde: iso(new Date(Date.now() - 30 * 86400000)), hasta: iso(new Date()) };
+  const hayFiltros = tipo !== "" || q.trim() !== "" || desde !== porDefecto.desde || hasta !== porDefecto.hasta;
+  const limpiar = () => {
+    setTipo("");
+    setQ("");
+    setDesde(porDefecto.desde);
+    setHasta(porDefecto.hasta);
+  };
 
   return (
     <div className="p-6">
@@ -93,12 +133,30 @@ export default function StockMovimientosPage() {
             key={t}
             type="button"
             onClick={() => setTipo(tipo === t ? "" : t)}
+            title={TIPOS[t].ayuda}
             className={`rounded-md px-2.5 py-1 font-medium ${TIPOS[t].clase} ${tipo === t ? "ring-2 ring-foreground/40" : ""}`}
           >
             {TIPOS[t].etiqueta}: {conteo[t] || 0}
           </button>
         ))}
+        {hayFiltros && (
+          <button type="button" onClick={limpiar} className="rounded-md border px-2.5 py-1 font-medium hover:bg-muted">
+            Quitar filtros
+          </button>
+        )}
       </div>
+
+      <details className="mb-3 rounded-md border bg-muted/30 px-4 py-2 text-sm">
+        <summary className="cursor-pointer font-medium">¿Qué significa cada movimiento?</summary>
+        <ul className="mt-2 space-y-1.5">
+          {Object.values(TIPOS).map((t) => (
+            <li key={t.etiqueta} className="flex flex-wrap items-start gap-2">
+              <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${t.clase}`}>{t.etiqueta}</span>
+              <span className="text-muted-foreground">{t.ayuda}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
 
       {sinPieza > 0 && (
         <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-700 dark:text-red-400">
