@@ -30,6 +30,8 @@ interface LineaItem {
   base: number;
   iva: number;
   total: number;
+  /** Documento que no guarda sus líneas (alquiler, mensajería, anticipo, revisión…): entra como una sola línea por su importe. */
+  sinDesglose?: boolean;
 }
 
 interface GrupoItem {
@@ -219,7 +221,7 @@ export default function ReporteItemsPage() {
           <li>Los importes son sin IVA por línea (cantidad × precio − descuento); el IVA es el 21 %.</li>
           <li>Las rectificativas (Serie 3) restan: entran con las líneas del documento original en negativo, así el neto por ítem es el real.</li>
           <li>Los ítems con referencia de pieza se agrupan por referencia; el resto (mano de obra, servicios…) por descripción.</li>
-          <li>No incluye alquileres, mensajería, anticipos ni facturas de revisión pagada, ni las facturas o tickets «corregidos» de ventas y manuales: no guardan sus líneas.</li>
+          <li>Los documentos que no guardan sus líneas (alquileres, recogidas, mensajería, anticipos, revisión pagada y rectificativas o corregidas sin líneas) también están: entran como una sola línea con su importe total y la marca «sin desglose».</li>
         </ul>
       </details>
 
@@ -293,6 +295,7 @@ export default function ReporteItemsPage() {
                       <TableCell className="max-w-96 text-xs">
                         {l.referencia && <span className="mr-1 rounded bg-muted px-1.5 py-0.5 font-medium">{l.referencia}</span>}
                         {l.descripcion}
+                        {l.sinDesglose && <span className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300" title="Este documento no guarda sus líneas: se muestra una sola línea con su importe total">sin desglose</span>}
                       </TableCell>
                       <TableCell className="text-right text-xs">{num(l.cantidad)}</TableCell>
                       <TableCell className="text-right text-xs">{euros(l.precio)}{l.descuento ? <div className="text-muted-foreground">-{l.descuento}%</div> : null}</TableCell>
