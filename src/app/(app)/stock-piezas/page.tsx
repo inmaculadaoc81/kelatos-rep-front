@@ -97,7 +97,7 @@ export default function StockPiezasPage() {
     if (palabras.length) {
       lista = lista.filter((p) => {
         const campos = sinAcentos([
-          p.referencia, p.nombre, p.categoria, p.nombreInternoProveedor, ...p.nombresInternoProveedorAlt, ...p.codigosInternoProveedorAlt, p.codigoProveedor, p.idPedidoProveedor, p.descripcion, p.proveedor,
+          p.referencia, p.nombre, p.categoria, p.nombreInternoProveedor, ...p.nombresInternoProveedorAlt, ...p.codigosInternoProveedorAlt, p.codigoProveedor, p.idPedidoProveedor, p.descripcion, p.proveedor, p.ubicacion,
         ].join(" "));
         return palabras.every((w) => campos.includes(w));
       });
@@ -175,6 +175,7 @@ export default function StockPiezasPage() {
               <TableHead className="text-right">M. obra</TableHead>
               <TableHead className="text-right" title="Total cliente, con IVA incluido">Total</TableHead>
               <TableHead className="text-right" title="En almacén · reservadas para reparaciones en curso · libres para usar">Stock</TableHead>
+              <TableHead>Ubicación</TableHead>
               <TableHead>Proveedor</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -193,7 +194,7 @@ export default function StockPiezasPage() {
 
             {!cargando && filtradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                   Sin resultados
                 </TableCell>
               </TableRow>
@@ -243,6 +244,7 @@ export default function StockPiezasPage() {
                       </span>
                     )}
                   </TableCell>
+                  <TableCell className="py-1 max-w-[8rem] truncate text-sm" title={p.ubicacion || undefined}>{p.ubicacion || <span className="text-muted-foreground">-</span>}</TableCell>
                   <TableCell className="py-1 max-w-[7rem] truncate text-sm text-muted-foreground" title={p.proveedor || undefined}>{p.proveedor || "-"}</TableCell>
                   <TableCell className="py-1">
                     <div className="flex justify-end gap-0.5">

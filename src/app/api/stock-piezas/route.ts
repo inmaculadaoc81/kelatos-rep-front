@@ -51,6 +51,7 @@ export async function POST(req: Request) {
       id_pedido_proveedor: (datos.idPedidoProveedor || "").trim(),
       descripcion: (datos.descripcion || "").trim(),
       categoria: (datos.categoria || "").trim(),
+      ubicacion: (datos.ubicacion || "").trim(),
       coste_interno: datos.costeInterno || 0,
       precio_cliente: datos.precioCliente || 0,
       mano_obra: datos.manoObra || 0,

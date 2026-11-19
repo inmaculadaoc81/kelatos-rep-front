@@ -36,6 +36,8 @@ interface FilaStockPiezaSql {
   stock_minimo: number | null;
   proveedor: string | null;
   categoria: string | null;
+  /** Dónde está guardada la pieza en el local (estantería, cajón…). */
+  ubicacion?: string | null;
   activo: boolean | null;
 }
 
@@ -63,6 +65,7 @@ export interface StockPieza {
   stockMinimo: number;
   proveedor: string;
   categoria: string;
+  ubicacion: string;
   activo: boolean;
   stockBajo: boolean;
 }
@@ -77,6 +80,7 @@ export interface DatosStockPiezaForm {
   idPedidoProveedor: string;
   descripcion: string;
   categoria: string;
+  ubicacion?: string;
   costeInterno: number;
   precioCliente: number;
   manoObra: number;
@@ -218,6 +222,7 @@ export function mapearStockPieza(row: FilaStockPiezaSql): StockPieza {
     stockMinimo,
     proveedor: row.proveedor || "",
     categoria: row.categoria || "",
+    ubicacion: row.ubicacion || "",
     activo: row.activo !== false,
     stockBajo: stockMinimo > 0 && stockDisponible < stockMinimo,
   };

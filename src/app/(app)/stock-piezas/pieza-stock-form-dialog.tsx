@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { StockPieza, DatosStockPiezaForm, EnlaceCompra, PedidoStock, alinearCodigos, mapearEnlaceCompra, mapearPedidoStock } from "@/lib/stock-piezas";
 
 function vacio(): DatosStockPiezaForm {
-  return { referencia: "", nombre: "", nombreInternoProveedor: "", nombresInternoProveedorAlt: [], codigosInternoProveedorAlt: [], codigoProveedor: "", idPedidoProveedor: "", descripcion: "", categoria: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
+  return { referencia: "", nombre: "", nombreInternoProveedor: "", nombresInternoProveedorAlt: [], codigosInternoProveedorAlt: [], codigoProveedor: "", idPedidoProveedor: "", descripcion: "", categoria: "", ubicacion: "", costeInterno: 0, precioCliente: 0, manoObra: 0, proveedor: "", stockDisponible: 0, stockMinimo: 0 };
 }
 
 function desdeExistente(p: StockPieza): DatosStockPiezaForm {
@@ -31,6 +31,7 @@ function desdeExistente(p: StockPieza): DatosStockPiezaForm {
     idPedidoProveedor: p.idPedidoProveedor,
     descripcion: p.descripcion,
     categoria: p.categoria,
+    ubicacion: p.ubicacion,
     costeInterno: p.costeInterno,
     precioCliente: p.precioCliente,
     manoObra: p.manoObra,
@@ -437,6 +438,12 @@ export function PiezaStockFormDialog({
                 <option key={c} value={c} />
               ))}
             </datalist>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="spUbicacion">Ubicación</Label>
+            <Input id="spUbicacion" placeholder="Ej: Estantería A · Cajón 3" value={datos.ubicacion || ""} disabled={soloLecturaCatalogo} onChange={(e) => actualizar("ubicacion", e.target.value)} />
+            <p className="text-[11px] text-muted-foreground">Dónde está guardada en el local, para encontrarla rápido. También sirve para buscar.</p>
           </div>
 
           <div className="space-y-1.5">
