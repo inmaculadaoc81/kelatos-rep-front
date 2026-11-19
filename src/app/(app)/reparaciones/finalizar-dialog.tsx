@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { ReparacionDetalle, esPptoAceptado } from "@/lib/reparacion-detalle";
 import { DatosFinalizarReparacion, ResultadoReparacion } from "@/lib/reparacion-finalizar";
 
-const TECNICOS_FINALIZAR = ["Iván", "Romer", "Daniela", "Repuesto"];
+const TECNICOS_FINALIZAR = ["Iván", "Romer", "Daniela", "Ricardo", "Repuesto"];
 
 function tienePieza(detalle: ReparacionDetalle): boolean {
   const pptoAceptado = detalle.presupuestos.find((p) => esPptoAceptado(p.estado)) || detalle.presupuestos[0];

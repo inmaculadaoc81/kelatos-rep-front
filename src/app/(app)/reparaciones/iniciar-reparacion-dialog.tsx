@@ -13,7 +13,7 @@ import { usuarioIdentificadoComoTecnico } from "@/lib/usuario-identificado";
 // Misma lista fija que TECNICOS_FINALIZAR (finalizar-dialog.tsx) — el
 // original la hardcodea en el <select> del modal, no la saca de la lista
 // general de empleados.
-const TECNICOS = ["Iván", "Romer", "Daniela", "Repuesto"];
+const TECNICOS = ["Iván", "Romer", "Daniela", "Ricardo", "Repuesto"];
 
 /**
  * Reproduce #modalIniciarReparacion (abrirModalIniciarReparacion/

@@ -20,7 +20,7 @@ const ESTADOS_ORIGEN_SIN_PIEZA = ["Presupuesto Pendiente", "Presupuesto Enviado"
 // Index.html:17814-17821 hardcodea estos mismos 4 nombres para
 // "Técnico Responsable" en el modal "Sin Pieza Disponible", nunca la lista
 // completa de empleados activos.
-const TECNICOS = ["Iván", "Romer", "Daniela", "Repuesto"];
+const TECNICOS = ["Iván", "Romer", "Daniela", "Ricardo", "Repuesto"];
 
 const VACIO: DatosSinReparacionPieza = {
   tecnico: "",
