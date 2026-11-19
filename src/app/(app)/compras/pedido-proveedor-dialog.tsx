@@ -421,8 +421,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     }
   }
 
-  async function anadirArchivos(lista: FileList | null) {
+  async function anadirArchivos(lista: FileList | File[] | null) {
     if (!lista || lista.length === 0) return;
+    if (leyendoOcr || preparando) return;
     const nuevos = Array.from(lista);
     if (inputOcr.current) inputOcr.current.value = "";
     if (archivos.length + nuevos.length > MAX_ARCHIVOS) {
@@ -1028,6 +1029,24 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     }
   }
 
+  // Pegar capturas con Ctrl+V (p. ej. tras Win+Shift+S) sin tener que guardarlas como archivo. Solo actúa si el portapapeles trae una imagen;
+  // pegar texto en un campo sigue funcionando como siempre.
+  const anadirRef = useRef(anadirArchivos);
+  anadirRef.current = anadirArchivos;
+  useEffect(() => {
+    if (!open) return;
+    const alPegar = (e: ClipboardEvent) => {
+      const imagenes = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (imagenes.length === 0) return;
+      e.preventDefault();
+      const sello = Date.now().toString().slice(-6);
+      const nombrados = imagenes.map((f, i) => new File([f], `Captura pegada ${sello}-${i + 1}.${f.type.split("/")[1] || "png"}`, { type: f.type }));
+      void anadirRef.current(nombrados);
+    };
+    document.addEventListener("paste", alPegar);
+    return () => document.removeEventListener("paste", alPegar);
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-2xl lg:max-w-3xl">
@@ -1448,7 +1467,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
           {lineas.length === 0 && (
             <p className="flex items-center gap-1.5 py-6 text-center text-sm text-muted-foreground">
-              <Box1 className="size-4" /> Añade de 1 a 4 archivos del pedido (pantallazos o PDF) y/o escribe un texto, y pulsa «Analizar con IA».
+              <Box1 className="size-4" /> Añade de 1 a 4 archivos del pedido (pantallazos o PDF), pega una captura con Ctrl+V y/o escribe un texto, y pulsa «Analizar con IA».
             </p>
           )}
         </div>
