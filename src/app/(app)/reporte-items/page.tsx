@@ -55,6 +55,8 @@ function fechaCorta(v: string): string {
 }
 const csvCelda = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 const PAGINA = 300;
+/** La mano de obra no es un ítem vendido: se deja fuera salvo que se pida (descripciones «Mano de obra…», «MANO DE OBRA (v1)», etc.). */
+const esManoDeObra = (descripcion: string) => /^\s*mano\s+de\s+obra/i.test(descripcion);
 
 /** Reporte de ítems facturados (petición del usuario, 2026-11-19): qué ítems lleva cada factura/ticket y cuánto se vendió de cada uno, con el resto de datos del documento. */
 export default function ReporteItemsPage() {
@@ -70,6 +72,7 @@ export default function ReporteItemsPage() {
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState("");
   const [soloStock, setSoloStock] = useState(false);
+  const [conManoDeObra, setConManoDeObra] = useState(false);
   const [mostradas, setMostradas] = useState(PAGINA);
 
   const cargar = useCallback(async () => {
@@ -101,10 +104,11 @@ export default function ReporteItemsPage() {
     return lineas.filter((l) => {
       if (tipo && l.tipo !== tipo) return false;
       if (soloStock && !l.referencia) return false;
+      if (!conManoDeObra && esManoDeObra(l.descripcion)) return false;
       if (!t) return true;
       return [l.referencia, l.descripcion, l.cliente, l.numero, l.origen, l.nif].some((x) => (x || "").toLowerCase().includes(t));
     });
-  }, [lineas, q, tipo, soloStock]);
+  }, [lineas, q, tipo, soloStock, conManoDeObra]);
 
   const grupos = useMemo(() => {
     const m = new Map<string, GrupoItem>();
@@ -196,6 +200,9 @@ export default function ReporteItemsPage() {
         <label className="flex cursor-pointer items-center gap-1.5 text-sm">
           <Checkbox checked={soloStock} onCheckedChange={(v) => setSoloStock(!!v)} /> Solo piezas de stock
         </label>
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+          <Checkbox checked={conManoDeObra} onCheckedChange={(v) => setConManoDeObra(!!v)} /> Incluir mano de obra
+        </label>
         {(q || tipo || soloStock) && (
           <Button variant="outline" size="sm" onClick={() => { setQ(""); setTipo(""); setSoloStock(false); }}>Quitar filtros</Button>
         )}
@@ -220,6 +227,7 @@ export default function ReporteItemsPage() {
           <li>Las líneas de facturas y tickets de reparaciones, ventas, facturas manuales y tickets manuales, con su fecha (hora de Madrid).</li>
           <li>Los importes son sin IVA por línea (cantidad × precio − descuento); el IVA es el 21 %.</li>
           <li>Las rectificativas (Serie 3) restan: entran con las líneas del documento original en negativo, así el neto por ítem es el real.</li>
+          <li>La mano de obra no cuenta como ítem: por defecto queda fuera de la lista y de los totales; se puede incluir marcando «Incluir mano de obra».</li>
           <li>Los ítems con referencia de pieza se agrupan por referencia; el resto (mano de obra, servicios…) por descripción.</li>
           <li>Los documentos que no guardan sus líneas (alquileres, recogidas, mensajería, anticipos, revisión pagada y rectificativas o corregidas sin líneas) también están: entran como una sola línea con su importe total y la marca «sin desglose».</li>
         </ul>
