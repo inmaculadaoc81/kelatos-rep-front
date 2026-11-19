@@ -6,7 +6,7 @@ import { DetalleVentaDialog } from "../ventas/detalle-venta-dialog";
 import { FacturaRecibidaFormDialog } from "../facturas-recibidas/factura-recibida-form-dialog";
 import { FacturasEnlazadasDialog } from "../facturas-recibidas/facturas-enlazadas-dialog";
 import {
-  Refresh2, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle, Book1,
+  Refresh2, DocumentDownload, SearchNormal1, Calendar, Link2, Truck, TickCircle, MoneySend, Category, Clock, Warning2, Timer1, CloseCircle, Book1,
   ArrowLeft2, ArrowLeft3, ArrowRight2, ArrowRight3, DocumentUpload,
 } from "@/lib/icons";
 import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
@@ -84,6 +84,40 @@ export default function ComprasPage() {
   const [pedidoProveedorAbierto, setPedidoProveedorAbierto] = useState(false);
   const [historialPedidoProveedorAbierto, setHistorialPedidoProveedorAbierto] = useState(false);
   const consulta = useRef(0);
+  const [exportando, setExportando] = useState(false);
+
+  /** Exporta a Excel TODOS los pedidos que cumplen los filtros activos (no solo la página visible). */
+  async function exportarExcel() {
+    setExportando(true);
+    try {
+      const res = await fetch(`/api/compras?${parametros(1, 2000).toString()}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error");
+      const filas: CompraFila[] = data.compras;
+      if (filas.length === 0) { toast.error("No hay pedidos con estos filtros"); return; }
+      const fecha = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : d; };
+      const negrita = (v: string) => ({ value: v, fontWeight: "bold" as const });
+      const cab = ["Pedido", "Origen", "Resguardo / Venta", "Cliente", "Equipo", "Proveedor", "Plataforma", "Descripción", "Nº de pedido", "Precio (€)", "Comprado por", "Fecha pedido", "Fecha estimada", "Fecha recepción", "Estado", "Estado plataforma", "Recibido por", "Problema", "Enlace"].map(negrita);
+      const cel = (v: string | number | Date, extra: Record<string, unknown> = {}) => (v === "" ? null : { value: v, ...extra });
+      const { default: writeExcelFile } = await import("write-excel-file/browser");
+      const datos = [
+        cab,
+        ...filas.map((c) => [
+          cel(c.pedidoId), cel(c.origen === "venta" ? "Venta" : c.origen === "stock" ? "Stock" : "Reparación"), cel(c.resguardo), cel(c.clienteNombre), cel(c.equipoModelo),
+          cel(c.proveedorNombre || c.proveedorOtro), cel(c.plataforma), cel(c.descripcion), cel(c.numeroPedido),
+          c.costo === null ? null : { value: c.costo, format: "#,##0.00" }, cel(c.compradoPor),
+          cel(fecha(c.fechaPedido), { format: "dd/mm/yyyy" }), cel(fecha(c.fechaEstimada), { format: "dd/mm/yyyy" }), cel(fecha(c.fechaRecepcion), { format: "dd/mm/yyyy" }),
+          cel(c.estado), cel(c.estadoPlataforma), cel(c.recibidoPor), cel(c.problemaTipo), cel(c.enlace),
+        ]),
+      ];
+      await writeExcelFile(datos as never, { columns: [12, 11, 14, 24, 28, 16, 14, 36, 22, 11, 14, 13, 13, 14, 14, 16, 14, 14, 40].map((width) => ({ width })) }).toFile(`pedidos-compras-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(`Exportados ${filas.length} pedidos`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo exportar");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setBusquedaAplicada(busqueda), 350);
@@ -235,6 +269,9 @@ export default function ComprasPage() {
               <Link2 className="size-4" /> Justificantes en Drive
             </Button>
           )}
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={exportarExcel} disabled={exportando || cargando} title="Descargar en Excel los pedidos que cumplen los filtros actuales">
+            <DocumentDownload className="size-4" /> {exportando ? "Exportando…" : "Exportar Excel"}
+          </Button>
           <Button variant="outline" size="icon" className="size-8" onClick={() => setHistorialPedidoProveedorAbierto(true)} title="Historial de Subir pedido con IA">
             <Clock className="size-4" />
           </Button>
