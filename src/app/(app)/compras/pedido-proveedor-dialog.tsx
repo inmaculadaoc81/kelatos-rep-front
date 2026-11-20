@@ -1188,6 +1188,20 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 </Select>
               </div>
 
+              {(() => {
+                const total = lineas.find((x) => x.totalPedido)?.totalPedido ?? null;
+                if (!total || lineas.length < 2) return null;
+                const suma = Math.round(lineas.filter((x) => x.aplicar).reduce((n, x) => n + x.cantidad * x.costo, 0) * 100) / 100;
+                const cuadra = Math.abs(suma - total) <= Math.max(0.5, total * 0.03);
+                const eur = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+                return (
+                  <p className={`rounded-md border px-3 py-2 text-xs ${cuadra ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" : "border-destructive/30 bg-destructive/5 font-medium text-destructive"}`}>
+                    Total del pedido: {eur(total)} · suma de las líneas: {eur(suma)}
+                    {cuadra ? " ✓ cuadra" : " — no cuadra (puede haber descuentos o gastos de envío): revisa las cantidades y los precios de cada línea"}
+                  </p>
+                );
+              })()}
+
               <div className="space-y-2.5">
                   {lineas.map((l, i) => (
                     <div key={i} className="space-y-2 rounded-md border bg-card p-2.5">
@@ -1336,7 +1350,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   <Label className="text-xs text-muted-foreground">Precio de compra por unidad (€)</Label>
                                   <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: n, precioDelTotal: false })} />
                                 </div>
-                                {l.totalPedido ? (() => {
+                                {l.totalPedido && lineas.length === 1 ? (() => {
                                   const suma = Math.round(l.cantidad * l.costo * 100) / 100;
                                   const cuadra = Math.abs(suma - l.totalPedido) <= Math.max(0.5, l.totalPedido * 0.03);
                                   const eur = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
