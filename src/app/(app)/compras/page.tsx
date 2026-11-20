@@ -69,6 +69,54 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
   return null;
 }
 
+/** Barra de desplazamiento horizontal ARRIBA de la tabla (con botones), para no tener que bajar hasta el final de una tabla larga para ver las columnas de la derecha. */
+function BarraDesplazamientoSuperior({ contenedor }: { contenedor: React.RefObject<HTMLDivElement | null> }) {
+  const barra = useRef<HTMLDivElement>(null);
+  const [ancho, setAncho] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const bloqueo = useRef(false);
+
+  useEffect(() => {
+    const desplazable = contenedor.current?.querySelector<HTMLElement>('[data-slot="table-container"]');
+    if (!desplazable) return;
+    const medir = () => { setAncho(desplazable.scrollWidth); setVisible(desplazable.scrollWidth > desplazable.clientWidth + 2); };
+    const ro = new ResizeObserver(medir);
+    ro.observe(desplazable);
+    const tabla = desplazable.querySelector("table");
+    if (tabla) ro.observe(tabla);
+    const alDesplazar = () => {
+      if (bloqueo.current) { bloqueo.current = false; return; }
+      if (barra.current && barra.current.scrollLeft !== desplazable.scrollLeft) { bloqueo.current = true; barra.current.scrollLeft = desplazable.scrollLeft; }
+    };
+    desplazable.addEventListener("scroll", alDesplazar);
+    return () => { ro.disconnect(); desplazable.removeEventListener("scroll", alDesplazar); };
+  }, [contenedor]);
+
+  const tabla = () => contenedor.current?.querySelector<HTMLElement>('[data-slot="table-container"]') ?? null;
+  const mover = (dx: number) => tabla()?.scrollBy({ left: dx, behavior: "smooth" });
+  const alDesplazarBarra = () => {
+    const t = tabla();
+    if (!t || !barra.current) return;
+    if (bloqueo.current) { bloqueo.current = false; return; }
+    if (t.scrollLeft !== barra.current.scrollLeft) { bloqueo.current = true; t.scrollLeft = barra.current.scrollLeft; }
+  };
+
+  if (!visible) return null;
+  return (
+    <div className="sticky top-0 z-20 flex items-center gap-1.5 rounded-lg border bg-card/95 px-2 py-1 shadow-sm backdrop-blur">
+      <Button type="button" variant="outline" size="icon" className="size-7 shrink-0" onClick={() => tabla()?.scrollTo({ left: 0, behavior: "smooth" })} title="Ir al inicio de la tabla"><ArrowLeft3 className="size-3.5" /></Button>
+      <Button type="button" variant="outline" size="icon" className="size-7 shrink-0" onClick={() => mover(-400)} title="Desplazar a la izquierda"><ArrowLeft2 className="size-3.5" /></Button>
+      <div ref={barra} onScroll={alDesplazarBarra} className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden" style={{ height: 14 }}>
+        <div style={{ width: ancho, height: 1 }} />
+      </div>
+      <Button type="button" variant="outline" size="icon" className="size-7 shrink-0" onClick={() => mover(400)} title="Desplazar a la derecha"><ArrowRight2 className="size-3.5" /></Button>
+      <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 gap-1 text-xs" onClick={() => tabla()?.scrollTo({ left: tabla()?.scrollWidth ?? 0, behavior: "smooth" })} title="Ir a la columna Acciones (final de la tabla)">
+        Acciones <ArrowRight3 className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
 export default function ComprasPage() {
   const { puede: puedeIA, cargada: sesionCargada } = usePuedeSubirPedidoIA();
   const puedeSubirPedidoIA = sesionCargada && puedeIA;
@@ -99,6 +147,7 @@ export default function ComprasPage() {
   const [pedidoProveedorAbierto, setPedidoProveedorAbierto] = useState(false);
   const [historialPedidoProveedorAbierto, setHistorialPedidoProveedorAbierto] = useState(false);
   const consulta = useRef(0);
+  const contenedorTabla = useRef<HTMLDivElement>(null);
   const [exportando, setExportando] = useState(false);
 
   /** Exporta a Excel TODOS los pedidos que cumplen los filtros activos (no solo la página visible). */
@@ -364,7 +413,8 @@ export default function ComprasPage() {
 
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Error al cargar: {error}</div>}
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <BarraDesplazamientoSuperior contenedor={contenedorTabla} />
+      <div ref={contenedorTabla} className="overflow-x-auto rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
