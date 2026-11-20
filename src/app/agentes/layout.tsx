@@ -5,6 +5,7 @@ import { puedeVerRedesSociales } from "@/lib/redes-sociales-acceso";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AgentesSidebar } from "./sidebar";
 import { AgentesHeader } from "./header";
+import { tienePermiso } from "@/lib/permisos";
 
 // Dashboard aparte (mismo patrón que Webs Kelatos/Transferencias), fuera
 // de (app)/. Acceso: administradores y superadmins. Esta comprobación se
@@ -15,7 +16,9 @@ export default async function AgentesLayout({ children }: { children: React.Reac
   // Los agentes operativos viven ahora en Gestión MAILS y son solo para superadmins; aquí queda la analítica de Instagram de siempre.
   const esSuper = esSuperadmin(session?.user?.email);
   // Carlo, Cielo, Gean y Jeannie también pasan, pero solo ven «Redes sociales» (el proxy bloquea el resto de rutas de Agentes).
-  if (!esAdmin && !puedeVerRedesSociales(session?.user)) redirect("/");
+  const emailU = session?.user?.email;
+  const entra = (await tienePermiso(emailU, "agentes.ver", esAdmin)) || (await tienePermiso(emailU, "agentes.redes", puedeVerRedesSociales(session?.user)));
+  if (!entra) redirect("/");
 
   return (
     <SidebarProvider>

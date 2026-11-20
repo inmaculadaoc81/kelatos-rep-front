@@ -129,13 +129,12 @@ export default auth(async (req) => {
   // Excepción: la community manager (empleada 23) entra SOLO a /agentes-v2/programar (Programar contenido); su
   // layout reducido y el proxy /api/agentes-v2 (allowlist) acotan lo demás.
   const enProgramarContenido = ["/agentes-v2/programar", "/agentes-v2/carruseles"].some((r) => req.nextUrl.pathname === r || req.nextUrl.pathname.startsWith(`${r}/`));
-  const programadorPermitido = esProgramadorContenido(req.auth?.user) && enProgramarContenido;
+  const programadorPermitido = usa("agentes.programar", esProgramadorContenido(req.auth?.user)) && enProgramarContenido;
   // Carlo, Cielo, Gean y Jeannie entran SOLO a /agentes/redes (analítica de Instagram); ninguna otra pantalla de Agentes.
-  const redesPermitido = esUsuarioRedes(req.auth?.user) && esRutaRedesSociales(req.nextUrl.pathname);
+  const redesPermitido = usa("agentes.redes", esUsuarioRedes(req.auth?.user)) && esRutaRedesSociales(req.nextUrl.pathname);
   if (
     req.nextUrl.pathname.startsWith("/agentes") &&
-    req.auth?.user?.role !== "admin" &&
-    !esSuperadmin(req.auth?.user?.email) &&
+    !usa("agentes.ver", esAdminU) &&
     !programadorPermitido &&
     !redesPermitido
   ) {
@@ -155,9 +154,7 @@ export default auth(async (req) => {
   // (src/lib/mails-auth.ts), que también necesita la excepción.
   if (
     (req.nextUrl.pathname.startsWith("/mails") || req.nextUrl.pathname.startsWith("/api/mails") || req.nextUrl.pathname.startsWith("/whatsapp") || req.nextUrl.pathname.startsWith("/api/whatsapp")) &&
-    req.auth?.user?.role !== "admin" &&
-    !esSuperadmin(req.auth?.user?.email) &&
-    !req.auth?.user?.accesoCompleto
+    !usa("mails.ver", esAdminU || !!req.auth?.user?.accesoCompleto)
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
@@ -176,7 +173,7 @@ export default auth(async (req) => {
   // correo quedan fuera, tanto la página como su API (ninguna la usa
   // Centro de mails). Petición del usuario, 2026-09-30.
   if (
-    req.auth?.user?.accesoCompleto &&
+    !usa("mails.administrar", !req.auth?.user?.accesoCompleto) &&
     ["/mails/buzones", "/mails/leads", "/mails/direcciones", "/mails/tipos", "/api/mails/leads", "/api/mails/direcciones", "/api/mails/tipos"].some(
       (r) => req.nextUrl.pathname.startsWith(r)
     )

@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { puedeVerCrm, type Lead } from "@/lib/crm";
+import { tienePermiso } from "@/lib/permisos";
 
 /** GET /api/crm/leads — lista con filtros (q, etapa, origen, responsable, vencidas). POST — crea un lead. */
 export async function GET(req: Request) {
   const session = await auth();
-  if (!puedeVerCrm(session?.user)) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
+  if (!(await tienePermiso(session?.user?.email, "crm.ver", puedeVerCrm(session?.user)))) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
   const sp = new URL(req.url).searchParams;
   const params: Record<string, string> = {};
   for (const k of ["q", "etapa", "origen", "responsable", "vencidas", "inactivos", "bandeja", "categoria"]) {
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!puedeVerCrm(session?.user)) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
+  if (!(await tienePermiso(session?.user?.email, "crm.ver", puedeVerCrm(session?.user)))) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
   const cuerpo = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   try {
     const data = await kelatosApiPost<{ ok: boolean; id: number }>("/v1/crm/leads", { ...cuerpo, usuario: session?.user?.email });

@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { puedeVerCrm } from "@/lib/crm";
+import { tienePermiso } from "@/lib/permisos";
 
 // Proxy hacia /v1/crm/propuestas/* (solo administradores). Rutas permitidas por lista cerrada; la raíz es el listado.
 const PERMITIDAS = [/^$/, /^catalogo$/, /^generar$/, /^\d+$/, /^\d+\/regenerar$/];
 
 async function resolver(req: Request, params: Promise<{ ruta?: string[] }>, metodo: "GET" | "POST" | "PATCH") {
   const session = await auth();
-  if (!puedeVerCrm(session?.user)) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
+  if (!(await tienePermiso(session?.user?.email, "crm.ver", puedeVerCrm(session?.user)))) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
   const ruta = ((await params).ruta ?? []).join("/");
   if (!PERMITIDAS.some((r) => r.test(ruta))) return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });
   const destino = `/v1/crm/propuestas${ruta ? `/${ruta}` : ""}`;

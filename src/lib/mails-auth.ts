@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { esSuperadmin, aterrizaEnFichaje } from "@/lib/superadmin";
 import { kelatosApiGet } from "@/lib/kelatos-api";
 import type { Buzon } from "@/lib/mails";
+import { tienePermiso } from "@/lib/permisos";
 
 /**
  * Acceso a las rutas de Gestión MAILS: administradores y superadmins pueden
@@ -23,12 +24,15 @@ export async function accesoMails(): Promise<
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
   const superadmin = esSuperadmin(email);
-  const accesoCompleto = !!session?.user?.accesoCompleto;
-  if (!email || (session?.user?.role !== "admin" && !superadmin && !accesoCompleto)) {
+  const accesoCompletoAntes = !!session?.user?.accesoCompleto;
+  // «Gestión MAILS» (mails.ver) deja entrar; «Gestión MAILS completa» (mails.administrar) quita la vista recortada del mostrador.
+  const puede = await tienePermiso(email, "mails.ver", session?.user?.role === "admin" || superadmin || accesoCompletoAntes);
+  if (!email || !puede) {
     return { ok: false, respuesta: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 }) };
   }
   // Iván, Romer y Ricardo ven EXACTAMENTE lo mismo que soporte: su buzón de Gestión MAILS es el de soporte@kelatos.com, no uno con su propio correo.
   // `email` sigue siendo el suyo (quién hace cada acción); `buzonEmail` decide qué buzón ven.
+  const accesoCompleto = !(await tienePermiso(email, "mails.administrar", !accesoCompletoAntes));
   const buzonEmail = accesoCompleto && !superadmin && aterrizaEnFichaje(email) ? "soporte@kelatos.com" : email;
   return { ok: true, email, buzonEmail, superadmin, accesoCompleto };
 }

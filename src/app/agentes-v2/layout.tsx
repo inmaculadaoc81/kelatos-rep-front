@@ -7,6 +7,7 @@ import { AgentesV2Header } from "./header";
 import { OrganizacionProvider } from "./organizacion-context";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { ProgramadorSidebar } from "./sidebar-programador";
+import { tienePermiso } from "@/lib/permisos";
 
 // AI Marketing System: vista aparte, fuera de (app)/ (mismo patrón que Agentes, Mails y Asistencia).
 // Acceso: administradores y superadmins. Se repite en src/proxy.ts (el prefijo /agentes ya lo cubre) y en
@@ -14,10 +15,10 @@ import { ProgramadorSidebar } from "./sidebar-programador";
 export default async function AgentesV2Layout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const esAdmin = session?.user?.role === "admin";
-  const esAdminOSuper = esAdmin || esSuperadmin(session?.user?.email);
+  const esAdminOSuper = await tienePermiso(session?.user?.email, "agentes.ver", esAdmin || esSuperadmin(session?.user?.email));
   // La community manager (empleada 23) no es administradora: ve una versión reducida de Agentes V2 con solo
   // «Programar contenido» (proxy.ts ya la limita a esa ruta, y /api/agentes-v2 a lo imprescindible).
-  const soloProgramar = !esAdminOSuper && esProgramadorContenido(session?.user);
+  const soloProgramar = !esAdminOSuper && (await tienePermiso(session?.user?.email, "agentes.programar", esProgramadorContenido(session?.user)));
   if (!esAdminOSuper && !soloProgramar) redirect("/");
 
   if (soloProgramar) {

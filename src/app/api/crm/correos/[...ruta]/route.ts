@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { puedeVerCrm } from "@/lib/crm";
+import { tienePermiso } from "@/lib/permisos";
 
 // Proxy hacia /v1/crm/correos/* (solo administradores). Rutas permitidas por lista cerrada.
 const PERMITIDAS = [/^resumen$/, /^contactos$/, /^tipos$/, /^tipos\/previsualizar$/, /^tipos\/\d+$/, /^campanas$/, /^campanas\/\d+$/, /^audiencia$/, /^metricas$/, /^config$/, /^seguimiento$/, /^plan$/, /^respuestas\/revisar$/];
 
 async function resolver(req: Request, params: Promise<{ ruta: string[] }>, metodo: "GET" | "POST" | "PATCH" | "PUT") {
   const session = await auth();
-  if (!puedeVerCrm(session?.user)) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
+  if (!(await tienePermiso(session?.user?.email, "crm.ver", puedeVerCrm(session?.user)))) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
   const ruta = (await params).ruta.join("/");
   if (!PERMITIDAS.some((r) => r.test(ruta))) return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });
   try {

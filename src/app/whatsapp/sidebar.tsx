@@ -36,7 +36,7 @@ const GRUPOS: GrupoNavegacionBase[] = [
 ];
 
 /** Sidebar de WhatsApp — mismo esquema que Gestión MAILS (logo + trigger arriba, menú, NavUser abajo). */
-export function WhatsappSidebar({ session }: { session: Session | null }) {
+export function WhatsappSidebar({ session }: { session: Session | null; restringido?: boolean }) {
   const pathname = usePathname();
   return (
     <Sidebar collapsible="icon">

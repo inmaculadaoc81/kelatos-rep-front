@@ -96,10 +96,10 @@ export function NavUser({ session }: { session: Session | null }) {
   const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enWhatsapp && !enTareas && !enCrm && !enProspeccion && !enN8nLabs;
   const puedeVerWebsKelatos = usa("webs_kelatos.ver", esAdmin || esSuperadmin(email));
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
-  const puedeVerCrm = esAdmin || esSuperadmin(email);
+  const puedeVerCrm = usa("crm.ver", esAdmin || esSuperadmin(email));
   // accesoCompleto ve Gestión MAILS, pero con una vista restringida a solo
   // "Centro de mails" y su propio buzón — ver GestionMailsSidebar.
-  const puedeVerMails = esAdmin || esSuperadmin(email) || accesoCompleto;
+  const puedeVerMails = usa("mails.ver", esAdmin || esSuperadmin(email) || accesoCompleto);
   // WhatsApp (conversaciones de Chatwoot dentro del dashboard): mismo acceso que Gestión MAILS.
   const puedeVerWhatsapp = puedeVerMails;
 

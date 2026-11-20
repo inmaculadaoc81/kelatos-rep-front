@@ -74,9 +74,9 @@ const GRUPOS_RECORTADOS: GrupoNavegacionBase[] = [
 
 /** Sidebar de Gestión MAILS — mismo esquema que el de Agentes (logo +
     trigger arriba, menú, NavUser abajo). */
-export function MailsSidebar({ session }: { session: Session | null }) {
+export function MailsSidebar({ session, restringido }: { session: Session | null; restringido?: boolean }) {
   const pathname = usePathname();
-  const grupos = session?.user?.accesoCompleto ? GRUPOS_RECORTADOS : esSuperadmin(session?.user?.email) ? [...GRUPOS, GRUPO_AGENTES] : GRUPOS;
+  const grupos = (restringido ?? !!session?.user?.accesoCompleto) ? GRUPOS_RECORTADOS : esSuperadmin(session?.user?.email) ? [...GRUPOS, GRUPO_AGENTES] : GRUPOS;
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">

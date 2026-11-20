@@ -40,6 +40,9 @@ const NOMBRE_MODULO: Record<string, string> = {
   transferencias: "Transferencias (vista completa y devoluciones)",
   llamadas: "Llamadas (transcripciones y grabaciones)",
   webs_kelatos: "Webs Kelatos",
+  mails: "Gestión MAILS y WhatsApp (centro de mails y administración)",
+  crm: "CRM (leads, propuestas, correos y N8N Labs)",
+  agentes: "Agentes IA, Redes sociales y Programar contenido",
 };
 interface Registro { id: number; fecha: string; actor: string | null; accion: string; usuario_email: string | null; detalle: Record<string, unknown> }
 
