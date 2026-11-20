@@ -161,6 +161,11 @@ export function NavUser({ session }: { session: Session | null }) {
                       <span className="ml-auto text-[10px] text-muted-foreground">pronto</span>
                     </DropdownMenuItem>
                   )}
+                  {esSuperadmin(email) && (
+                    <DropdownMenuItem render={<Link href="/usuarios-permisos" />}>
+                      <ShieldTick /> Usuarios y permisos
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
               {/* Un botón por dashboard, oculto cuando ya estás en él — en vez
