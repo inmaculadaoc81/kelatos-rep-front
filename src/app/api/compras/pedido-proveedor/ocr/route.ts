@@ -54,6 +54,8 @@ export interface LineaPedidoProveedorLeida {
   gastosExtra?: number | null;
   /** La cantidad se dedujo del total porque no se leía en la captura. */
   cantidadInferida?: boolean;
+  /** Los precios de la web llevan IVA y el total del pedido no (0,21 = 21 %). */
+  ivaIncluido?: number | null;
 }
 
 const MAX_ARCHIVOS_PEDIDO = 4;

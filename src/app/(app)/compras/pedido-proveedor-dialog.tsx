@@ -89,6 +89,8 @@ interface LineaPedidoEditable {
   precioDelTotal: boolean;
   /** Precio de una unidad tal como sale en la web; con la cantidad y el total se calcula el descuento (o los gastos extra). */
   precioListado: number | null;
+  /** Los precios de la web llevan IVA y el total del pedido no (0,21 = 21 %): el coste que se registra es sin IVA. */
+  ivaIncluido: number;
   /** Descuento del pedido (€) sobre esta línea: cantidad × precio − descuento = lo que se pagó. El precio por unidad no cambia. */
   descuento: number;
   /** La cantidad no se leía en la captura y se dedujo del total: hay que revisarla. */
@@ -158,8 +160,20 @@ const fmtMoneda = (n: number, moneda?: string | null) => {
 };
 
 /** Una línea (pedido de un solo artículo): compara el total del pedido con cantidad × precio de la web y explica la diferencia como descuento o gastos extra. */
-function NotaTotalPedido({ l, moneda }: { l: LineaPedidoEditable; moneda?: string | null }) {
+function NotaTotalPedido({ l, moneda, unica = true }: { l: LineaPedidoEditable; moneda?: string | null; unica?: boolean }) {
   const eurFmt = (n: number) => fmtMoneda(n, moneda);
+  if (l.ivaIncluido > 0 && l.precioListado != null) {
+    const pct = Math.round(l.ivaIncluido * 100);
+    return (
+      <div className="space-y-0.5 text-[11px] sm:col-span-2">
+        {l.cantidadInferida && <p className="font-medium text-amber-700 dark:text-amber-400">La cantidad no se veía en la captura: se dedujo del total ({l.cantidad} unidades). Revisa que sea correcta.</p>}
+        <p className="text-emerald-700 dark:text-emerald-400">
+          En la web: {eurFmt(l.precioListado)} por unidad <strong>con IVA {pct} % incluido</strong> → <strong>{eurFmt(l.costo)} sin IVA</strong>
+          {unica && l.totalPedido ? <> · {l.cantidad} × {eurFmt(l.costo)} ≈ total del pedido {eurFmt(l.totalPedido)} (el total de la web va sin IVA) ✓</> : null}
+        </p>
+      </div>
+    );
+  }
   if (!l.totalPedido) return null;
   const total = l.totalPedido;
   const suma = Math.round((l.cantidad * l.costo - (l.descuento || 0)) * 100) / 100;
@@ -229,6 +243,7 @@ function PanelLecturas({ texto, lineas, moneda, imagenes, onOcultar }: {
             {una.precioListado != null && <div>Precio de cada unidad: <strong>{fmtMoneda(una.precioListado, moneda)}</strong></div>}
             {una.totalPedido != null && <div>Total del pedido: <strong>{fmtMoneda(una.totalPedido, moneda)}</strong></div>}
             {una.descuento > 0 && <div>Descuento: <strong>{fmtMoneda(una.descuento, moneda)}</strong></div>}
+            {una.ivaIncluido > 0 && <div>IVA: los precios llevan <strong>{Math.round(una.ivaIncluido * 100)} %</strong> incluido y el total no</div>}
             {moneda && <div>Moneda: <strong>{moneda}</strong></div>}
           </div>
         )}
@@ -309,6 +324,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     totalPedido: l.totalPedido ?? null,
     precioDelTotal: !!l.ajustadoAlTotal,
     precioListado: l.precioListado ?? null,
+    ivaIncluido: l.ivaIncluido ?? 0,
     cantidadInferida: !!l.cantidadInferida,
     textoPedido: l.textoPedido,
     // Una línea que solo sirve para marcar un pedido como recibido empieza desmarcada hasta encontrar ese pedido.
@@ -1408,7 +1424,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 return (
                   <p className={`rounded-md border px-3 py-2 text-xs ${cuadra ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" : "border-destructive/30 bg-destructive/5 font-medium text-destructive"}`}>
                     Total del pedido: {eur(total)} · suma de las líneas: {eur(suma)}
-                    {cuadra ? " ✓ cuadra" : suma > total
+                    {cuadra ? (lineas.some((x) => x.ivaIncluido > 0) ? ` ✓ cuadra: los precios de la web llevan IVA (${Math.round((lineas.find((x) => x.ivaIncluido > 0)?.ivaIncluido ?? 0) * 100)} %) y el total no; aquí van sin IVA` : " ✓ cuadra") : suma > total
                       ? ` — el total es ${eur(suma - total)} menor (${Math.round(((suma - total) / suma) * 100)} %): parece un descuento.`
                       : ` — el total es ${eur(total - suma)} mayor: parece envío o impuestos.`}
                     {!cuadra && suma > 0 && (
@@ -1579,7 +1595,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   <Label className="text-xs text-muted-foreground">Descuento del pedido ({simMoneda})</Label>
                                   <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n, costeInterno: costoNeto({ costo: l.costo, cantidad: l.cantidad, descuento: n }) })} />
                                 </div>
-                                {lineas.length === 1 && <NotaTotalPedido l={l} moneda={conversion?.moneda} />}
+                                {(lineas.length === 1 || l.ivaIncluido > 0) && <NotaTotalPedido l={l} moneda={conversion?.moneda} unica={lineas.length === 1} />}
                               </div>
                               {l.referencia && l.nombrePiezaSugerida && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
@@ -1715,7 +1731,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                         <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n })} />
                                       </div>
                                     )}
-                                    {lineas.length === 1 && l.origenCliente !== "venta" && <NotaTotalPedido l={l} moneda={conversion?.moneda} />}
+                                    {(lineas.length === 1 || l.ivaIncluido > 0) && l.origenCliente !== "venta" && <NotaTotalPedido l={l} moneda={conversion?.moneda} unica={lineas.length === 1} />}
                                   </div>
                             </div>
                           )}
