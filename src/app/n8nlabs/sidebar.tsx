@@ -17,10 +17,14 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { ComponentType } from "react";
-import { Chart, Profile2User } from "@/lib/icons";
+import { Calendar, Chart, Profile2User } from "@/lib/icons";
 import { NavUser } from "../(app)/nav-user";
 
 const SECCIONES: { titulo: string; vistas: { href: string; etiqueta: string; icono: ComponentType<{ className?: string }> }[] }[] = [
+  {
+    titulo: "Reuniones",
+    vistas: [{ href: "/n8nlabs/reuniones", etiqueta: "Próximas reuniones", icono: Calendar }],
+  },
   {
     titulo: "Formulario web",
     vistas: [
