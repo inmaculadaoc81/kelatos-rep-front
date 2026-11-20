@@ -5,6 +5,9 @@ import { Migas } from "./migas";
 import { BuscadorGlobal } from "./buscador-global";
 import { NavbarCodigoAcceso } from "./navbar-codigo-acceso";
 import { NotificacionesBell } from "./notificaciones-bell";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ShieldTick } from "@/lib/icons";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { puedeUsarAsistente } from "@/lib/asistente/permisos";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
@@ -41,6 +44,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               />
             </div>
             <div className="flex items-center gap-2">
+              {/* Solo superadmins: acceso directo a Usuarios y permisos. */}
+              {esSuperadmin(session?.user?.email) && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+                  nativeButton={false}
+                  render={<Link href="/usuarios-permisos" />}
+                  title="Usuarios y permisos"
+                  aria-label="Usuarios y permisos"
+                >
+                  <ShieldTick className="size-4" />
+                </Button>
+              )}
               <NotificacionesBell />
               <NavbarCodigoAcceso />
             </div>
