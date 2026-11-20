@@ -1019,7 +1019,6 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       if (l.referencia.trim() !== "") return [];
       const faltan: string[] = [];
       if (l.nombreInternoProveedor.replace(/[^\p{L}\p{N}]/gu, "").length < 2) faltan.push("nombre del proveedor de la pieza (o elegir una pieza existente)");
-      if (l.nombreComercial.replace(/\s+/g, " ").trim().length < 5) faltan.push("nombre comercial de la pieza (el nombre real del producto)");
       return faltan;
     }
     const f: string[] = [];
@@ -1100,7 +1099,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 referencia: `${l.nombreInternoProveedor.slice(0, 20).replace(/[^a-zA-Z0-9]+/g, "-")}-${Math.random().toString(16).slice(2, 6)}`.toUpperCase(),
-                nombre: l.nombreComercial.trim(),
+                nombre: l.nombreComercial.trim() || l.nombreInternoProveedor.trim(),
                 nombreInternoProveedor: l.nombreInternoProveedor.trim(),
                 codigoProveedor: l.codigoProveedor.trim(),
                 idPedidoProveedor: l.idPedidoProveedor.trim(),
@@ -1694,8 +1693,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     <Input className="h-8" value={l.idPedidoProveedor} onChange={(e) => actualizar(i, { idPedidoProveedor: e.target.value })} />
                                   </div>
                                   <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Nombre comercial * (nombre real del producto)</Label>
-                                    <Input className="h-8" placeholder="Nombre del producto" value={l.nombreComercial}
+                                    <Label className="text-xs text-muted-foreground">Nombre comercial (opcional)</Label>
+                                    <Input className="h-8" placeholder="Si lo dejas vacío se usa el nombre del proveedor" value={l.nombreComercial}
                                       onChange={(e) => actualizar(i, { nombreComercial: e.target.value })} />
                                   </div>
                                   <div className="space-y-1">
