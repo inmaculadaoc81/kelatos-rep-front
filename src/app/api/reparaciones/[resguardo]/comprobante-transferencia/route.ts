@@ -10,6 +10,7 @@ export interface MovimientoConciliado {
   banco: string | null;
   remitente: string | null;
   concepto: string | null;
+  referencia?: string | null;
   origen: string;
   link_foto: string | null;
   fecha_registro: string;
@@ -22,6 +23,7 @@ export interface ComprobanteTransferencia {
   fecha_valor: string | null;
   banco: string | null;
   remitente: string | null;
+  referencia?: string | null;
   link_foto: string | null;
   fecha_registro: string;
   fecha_conciliacion: string | null;

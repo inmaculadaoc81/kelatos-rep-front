@@ -16,6 +16,7 @@ import { Cliente } from "@/lib/clientes";
 import { BuscarClienteDialog } from "@/components/buscar-cliente-dialog";
 import { guardarSuReferencia } from "@/lib/su-referencia";
 import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "./selector-forma-pago";
+import { usePagoDesdeComprobante, BloqueComprobantePago } from "./comprobante-pago";
 
 export type TipoEntregaModal = "ENTREGADO" | "ENVIO" | "RECICLAJE";
 
@@ -399,6 +400,8 @@ function VistaConFactura({
   const [telefono, setTelefono] = useState(detalle.cliente.telefono || "");
   const [gastosEnvio, setGastosEnvio] = useState(String(info.gastosEnvioDefault));
   const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
+  // Si el pago ya está conciliado con el banco, la forma de pago se rellena sola y el botón «Pago realizado» sale aquí mismo.
+  const { comprobante, recargar: recargarComprobante } = usePagoDesdeComprobante(detalle.resguardo, open, setPago);
   const [email, setEmail] = useState(detalle.cliente.email || "");
   // Correo propio del ticket de mensajería — mismo patrón que Ticket
   // Rápido/Revisión/Anticipo: precargado del resguardo, editable hasta
@@ -622,6 +625,8 @@ function VistaConFactura({
                 </div>
               )}
             </div>
+
+            <BloqueComprobantePago detalle={detalle} comprobante={comprobante} metodo={pago.metodo} onActualizado={recargarComprobante} />
 
             <div className="space-y-1.5">
               <Label htmlFor="efSuReferencia">Su Referencia</Label>

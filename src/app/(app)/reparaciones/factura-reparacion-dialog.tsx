@@ -19,6 +19,7 @@ import type { StockPieza } from "@/lib/stock-piezas";
 import { guardarSuReferencia } from "@/lib/su-referencia";
 import { METODOS_PAGO } from "./factura-acciones-tabs";
 import { SelectorFormaPago, validarFormaPago, formaPagoParaPayload, valorFormaPagoVacio, type ValorFormaPago } from "./selector-forma-pago";
+import { usePagoDesdeComprobante, BloqueComprobantePago } from "./comprobante-pago";
 
 interface LineaEditable {
   referencia: string;
@@ -555,6 +556,8 @@ function VistaGenerar({
   const [email, setEmail] = useState(detalle.cliente.email || "");
   const [direccion, setDireccion] = useState(detalle.cliente.direccion || "");
   const [pago, setPago] = useState<ValorFormaPago>(valorFormaPagoVacio());
+  // Si el pago ya está conciliado con el banco, la forma de pago se rellena sola y el botón «Pago realizado» sale aquí mismo.
+  const { comprobante, recargar: recargarComprobante } = usePagoDesdeComprobante(detalle.resguardo, open, setPago);
   const [estadoFactura, setEstadoFactura] = useState("Cobrada");
   const [suReferencia, setSuReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -735,6 +738,8 @@ function VistaGenerar({
                 </Select>
               </div>
             </div>
+
+            <BloqueComprobantePago detalle={detalle} comprobante={comprobante} metodo={pago.metodo} onActualizado={recargarComprobante} />
 
             <div className="grid gap-3 lg:grid-cols-[5fr_7fr]">
               <div className="space-y-3">
