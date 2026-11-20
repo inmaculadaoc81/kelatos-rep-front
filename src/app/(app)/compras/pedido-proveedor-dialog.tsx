@@ -149,10 +149,17 @@ function costoNeto(l: { costo: number; cantidad: number; descuento: number }): n
   return Math.max(0, Math.round(((l.costo * l.cantidad - l.descuento) / l.cantidad) * 100) / 100);
 }
 
-const eurFmt = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const SIMBOLO_MONEDA: Record<string, string> = { EUR: "€", USD: "$", GBP: "£", CAD: "C$", AUD: "A$", JPY: "¥", CNY: "¥", CHF: "CHF ", SEK: "kr ", NOK: "kr ", DKK: "kr ", PLN: "zł " };
+const simboloDe = (m?: string | null) => (m ? SIMBOLO_MONEDA[m] ?? `${m} ` : "€");
+/** Importe en la moneda del pedido: euros «90,18 €», dólares «$101,61». */
+const fmtMoneda = (n: number, moneda?: string | null) => {
+  const num = n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return !moneda || moneda === "EUR" ? `${num} €` : `${simboloDe(moneda)}${num}`;
+};
 
 /** Una línea (pedido de un solo artículo): compara el total del pedido con cantidad × precio de la web y explica la diferencia como descuento o gastos extra. */
-function NotaTotalPedido({ l }: { l: LineaPedidoEditable }) {
+function NotaTotalPedido({ l, moneda }: { l: LineaPedidoEditable; moneda?: string | null }) {
+  const eurFmt = (n: number) => fmtMoneda(n, moneda);
   if (!l.totalPedido) return null;
   const total = l.totalPedido;
   const suma = Math.round((l.cantidad * l.costo - (l.descuento || 0)) * 100) / 100;
@@ -192,6 +199,49 @@ function NotaTotalPedido({ l }: { l: LineaPedidoEditable }) {
       Total del pedido: {eurFmt(total)} · esta línea: {l.cantidad} × {eurFmt(l.costo)} = {eurFmt(suma)}
       {l.precioDelTotal ? " (precio calculado con el total; si compraste varias unidades, cambia la cantidad y se recalcula)" : cuadra ? " ✓" : " — no cuadra: revisa la cantidad y el precio"}
     </p>
+  );
+}
+
+/** Lo que hizo la IA con la captura: resumen de lo deducido y cada lectura del OCR (normal, ampliada y zooms), para comprobar en qué se basó. */
+function PanelLecturas({ texto, lineas, moneda, imagenes, onOcultar }: {
+  texto: string; lineas: LineaPedidoEditable[]; moneda: string | null; imagenes: string[]; onOcultar: () => void;
+}) {
+  const bloques = texto.split(/\n{2,}(?=LECTURA |NUMEROS SUELTOS|--- ARCHIVO)/).map((b) => {
+    const [titulo, ...resto] = b.split("\n");
+    return { titulo: titulo.replace(/:$/, ""), cuerpo: resto.join("\n").trim() };
+  }).filter((b) => b.titulo.trim());
+  const una = lineas.length === 1 ? lineas[0] : null;
+  return (
+    <aside className="hidden w-[360px] shrink-0 flex-col border-l bg-muted/20 lg:flex">
+      <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+        <span className="text-sm font-semibold">Lo que leyó la IA</span>
+        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={onOcultar}>Ocultar</Button>
+      </div>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 text-xs">
+        {imagenes[0] && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imagenes[0]} alt="Captura subida" className="max-h-44 w-full rounded border bg-background object-contain" />
+        )}
+        {una && (
+          <div className="space-y-0.5 rounded-md border bg-card p-2">
+            <div className="font-semibold">Lo que dedujo</div>
+            <div>Cantidad: <strong>{una.cantidad}</strong>{una.cantidadInferida ? " (deducida del total)" : ""}</div>
+            {una.precioListado != null && <div>Precio de cada unidad: <strong>{fmtMoneda(una.precioListado, moneda)}</strong></div>}
+            {una.totalPedido != null && <div>Total del pedido: <strong>{fmtMoneda(una.totalPedido, moneda)}</strong></div>}
+            {una.descuento > 0 && <div>Descuento: <strong>{fmtMoneda(una.descuento, moneda)}</strong></div>}
+            {moneda && <div>Moneda: <strong>{moneda}</strong></div>}
+          </div>
+        )}
+        <div className="space-y-1.5">
+          {bloques.map((b, i) => (
+            <details key={i} open={i === 0 || /^NUMEROS SUELTOS/.test(b.titulo)} className="rounded-md border bg-card">
+              <summary className="cursor-pointer px-2 py-1.5 font-medium">{b.titulo}</summary>
+              {b.cuerpo && <pre className="max-h-56 overflow-auto border-t px-2 py-1.5 font-mono text-[10px] leading-snug whitespace-pre-wrap text-muted-foreground">{b.cuerpo}</pre>}
+            </details>
+          ))}
+        </div>
+      </div>
+    </aside>
   );
 }
 
@@ -452,10 +502,20 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [proveedorBase, setProveedorNombre] = useState("ASWO");
   /** Dónde se hizo el pedido (Wallapop, AliExpress, Amazon...): distinto del proveedor, que es quien vende. */
   const [plataforma, setPlataforma] = useState("");
+  /** Texto que leyó el OCR (lecturas normal, ampliada y los zooms): se enseña a la derecha para ver en qué se basó la IA. */
+  const [textoOcr, setTextoOcr] = useState("");
+  const [verLecturas, setVerLecturas] = useState<boolean>(() => {
+    try { return localStorage.getItem("kelatos_pedido_ia_ver_lecturas") !== "0"; } catch { return true; }
+  });
+  const alternarLecturas = (v: boolean) => { setVerLecturas(v); try { localStorage.setItem("kelatos_pedido_ia_ver_lecturas", v ? "1" : "0"); } catch { /* sin almacenamiento */ } };
   /** Si el pedido venía en otra moneda: cómo se convirtió a euros (se muestra arriba para revisarlo). */
   const [conversion, setConversion] = useState<{ moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null>(null);
   // Ya no hay campo «Proveedor»: el proveedor es la plataforma elegida (si no hay, el detectado o ASWO como siempre).
   const proveedorNombre = plataforma.trim() || proveedorBase;
+  /** Símbolo de los importes del pedido (€ normalmente; $ si la captura está en dólares). El coste interno y el precio al cliente siguen siendo en euros. */
+  const simMoneda = conversion ? simboloDe(conversion.moneda) : "€";
+  /** Lo que se guarda va en euros: con el cambio del día del pedido (editable arriba). */
+  const aEuros = (n: number) => (conversion?.convertido && conversion.tasa ? Math.round(n * conversion.tasa * 100) / 100 : n);
   /** Antes de analizar: ¿la mercancía de lo que se sube ya llegó al local o aún no? Cada línea se puede cambiar después. */
   const [llegada, setLlegada] = useState<"aun_no" | "llego">("aun_no");
   /** Textos sin imagen (p. ej. un aviso de "recibido" por mensaje). */
@@ -489,6 +549,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setNumeroPedidoGlobal(null);
       setProveedorCreado(false);
       setPlataforma("");
+      setTextoOcr("");
+      setConversion(null);
       setCompradoPor("");
       setTextosSueltos([]);
       setLlegada("aun_no");
@@ -752,7 +814,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada segundo (máx. 7 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null; monedaPedido?: string | null; conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
+        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null; textoOcr?: string; monedaPedido?: string | null; conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -790,12 +852,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       if (data.proveedorNombreSugerido) setProveedorNombre(data.proveedorNombreSugerido);
       setProveedorCreado(!!data.proveedorCreado);
       setPlataforma(data.plataforma ?? "");
-      if (data.conversionMoneda?.convertido) {
-        setConversion(data.conversionMoneda);
-        toast.warning(`El pedido estaba en ${data.conversionMoneda.moneda}: se convirtió a euros (1 ${data.conversionMoneda.moneda} = ${data.conversionMoneda.tasa} €, cambio del ${data.conversionMoneda.fecha}). Revisa con el cargo real del banco.`);
+      setTextoOcr(data.textoOcr || "");
+      if (data.conversionMoneda?.convertido && data.conversionMoneda.tasa) {
+        const conv = data.conversionMoneda;
+        setConversion(conv);
+        // Los importes se quedan como en la captura (p. ej. $101,61); solo el coste interno (stock) se pasa a euros con el cambio del día.
+        setLineas((prev) => prev.map((x) => ({ ...x, costeInterno: Math.round(x.costeInterno * (conv.tasa ?? 1) * 100) / 100 })));
       } else if (data.monedaPedido) {
         setConversion(data.conversionMoneda ?? { moneda: data.monedaPedido, convertido: false });
-        toast.warning(`El importe está en ${data.monedaPedido} y no se pudo convertir a euros: pon el equivalente en euros que cobró el banco`);
+        toast.warning(`El importe está en ${data.monedaPedido} y no se pudo consultar el cambio a euros: pon el equivalente en euros que cobró el banco`);
       } else setConversion(null);
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
     } catch (e) {
@@ -987,7 +1052,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               proveedor: (l.proveedorTexto || proveedorNombre).trim() || undefined,
               enlace: enlaceEfectivo(l) || undefined,
               numeroPedido: l.numeroPedido.trim() && l.numeroPedido.trim() !== "No informado" ? l.numeroPedido.trim() : undefined,
-              costo: (costoNeto(l) > 0 ? costoNeto(l) : l.costeInterno > 0 ? l.costeInterno : undefined),
+              costo: (costoNeto(l) > 0 ? aEuros(costoNeto(l)) : l.costeInterno > 0 ? l.costeInterno : undefined),
             }),
           });
           const dataPedido = await resPedido.json();
@@ -1023,7 +1088,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const piezas = grupo.flatMap((l) =>
             Array.from({ length: l.cantidad }, () => ({
               descripcion: l.nombre, proveedor: proveedorIdSugerido || "", enlace: enlaceEfectivo(l),
-              numeroPedido: l.numeroPedido.trim(), fechaEstimada: fechaEstimadaEfectiva(l), costo: costoNeto(l),
+              numeroPedido: l.numeroPedido.trim(), fechaEstimada: fechaEstimadaEfectiva(l), costo: aEuros(costoNeto(l)),
             }))
           );
           const res = await fetch(`/api/reparaciones/${encodeURIComponent(resguardo)}/pedidos`, {
@@ -1073,7 +1138,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               const resNueva = await fetch(`/api/ventas/${encodeURIComponent(l.ventaId)}/items`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ descripcion: l.nombre, costo: l.costo, precio: l.precioNuevaPieza, proveedorId: proveedorIdSugerido || "", proveedorOtro: "", enlace: enlaceEfectivo(l) }),
+                body: JSON.stringify({ descripcion: l.nombre, costo: aEuros(l.costo), precio: l.precioNuevaPieza, proveedorId: proveedorIdSugerido || "", proveedorOtro: "", enlace: enlaceEfectivo(l) }),
               });
               const dataNueva = await resNueva.json();
               if (!dataNueva.ok || !dataNueva.item?.itemId) throw new Error(dataNueva.error || "No se pudo añadir la pieza a la venta");
@@ -1173,10 +1238,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-2xl lg:max-w-3xl">
+      <DialogContent className={`flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-2xl ${textoOcr && verLecturas ? "lg:max-w-6xl" : "lg:max-w-3xl"}`}>
         <div className="relative flex items-center justify-between gap-3 border-b px-4 py-3 pr-12">
           <DialogTitle className="flex items-center gap-1.5"><DocumentUpload className="size-5" /> Subir pedido con IA</DialogTitle>
           {leyendoOcr && <BarraAnalisis fase={faseAnalisis.fase} desde={faseAnalisis.desde} />}
+          {textoOcr && (
+            <Button type="button" variant="outline" size="sm" className="ml-auto h-7 text-xs" onClick={() => alternarLecturas(!verLecturas)}>
+              {verLecturas ? "Ocultar lo que leyó la IA" : "Ver lo que leyó la IA"}
+            </Button>
+          )}
         </div>
 
         <div className="flex min-h-0 flex-1">
@@ -1220,11 +1290,32 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           </div>
 
           {conversion && (
-            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-              {conversion.convertido
-                ? <>Importe en <strong>{conversion.moneda}</strong>{conversion.importeOriginal != null ? <> ({conversion.importeOriginal.toLocaleString("es-ES", { minimumFractionDigits: 2 })} {conversion.moneda} en el original)</> : null} convertido a euros con el cambio del <strong>{conversion.fecha}</strong> (1 {conversion.moneda} = {conversion.tasa} €). El cargo real del banco puede ser algo distinto: corrige el precio si hace falta.</>
-                : <>Importe en <strong>{conversion.moneda}</strong>: no se pudo convertir a euros. Escribe el equivalente en euros que cobró el banco.</>}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+              {conversion.convertido && conversion.tasa ? (
+                <>
+                  <span>
+                    Importes en <strong>{conversion.moneda}</strong> ({simMoneda}), tal como salen en la captura. Se registrará en euros con el cambio del <strong>{conversion.fecha}</strong>:
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    1 {conversion.moneda} =
+                    <input
+                      type="number" step="0.0001" min="0" value={conversion.tasa}
+                      onChange={(e) => {
+                        const t = Number(e.target.value);
+                        if (!(t > 0)) return;
+                        setConversion((c) => (c ? { ...c, tasa: t } : c));
+                        setLineas((prev) => prev.map((x) => ({ ...x, costeInterno: Math.round(costoNeto(x) * t * 100) / 100 })));
+                      }}
+                      className="h-6 w-20 rounded border border-amber-500/40 bg-background px-1 text-center text-foreground"
+                    />
+                    €
+                  </span>
+                  {conversion.importeOriginal != null && <span>(= <strong>{(Math.round(conversion.importeOriginal * conversion.tasa * 100) / 100).toLocaleString("es-ES", { minimumFractionDigits: 2 })} €</strong> en total). El cargo real del banco puede variar: ajusta el cambio si hace falta.</span>}
+                </>
+              ) : (
+                <span>Importes en <strong>{conversion.moneda}</strong>: no se pudo consultar el cambio a euros. Escribe el equivalente en euros que cobró el banco.</span>
+              )}
+            </div>
           )}
 
           <div className="flex flex-wrap items-center gap-2">
@@ -1481,14 +1572,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   <Input type="date" className="h-8" value={l.fechaEstimada} onChange={(e) => actualizar(i, { fechaEstimada: e.target.value })} />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label className="text-xs text-muted-foreground">Precio de compra por unidad (€)</Label>
+                                  <Label className="text-xs text-muted-foreground">Precio de compra por unidad ({simMoneda})</Label>
                                   <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: costoNeto({ costo: n, cantidad: l.cantidad, descuento: l.descuento }), precioDelTotal: false })} />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label className="text-xs text-muted-foreground">Descuento del pedido (€)</Label>
+                                  <Label className="text-xs text-muted-foreground">Descuento del pedido ({simMoneda})</Label>
                                   <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n, costeInterno: costoNeto({ costo: l.costo, cantidad: l.cantidad, descuento: n }) })} />
                                 </div>
-                                {lineas.length === 1 && <NotaTotalPedido l={l} />}
+                                {lineas.length === 1 && <NotaTotalPedido l={l} moneda={conversion?.moneda} />}
                               </div>
                               {l.referencia && l.nombrePiezaSugerida && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
@@ -1576,7 +1667,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                       {l.nuevaPieza && (
                                         <div className="grid grid-cols-1 gap-2 rounded-md bg-muted/50 p-2 sm:grid-cols-2">
                                           <div className="space-y-1">
-                                            <Label className="text-xs text-muted-foreground">Precio de compra (€)</Label>
+                                            <Label className="text-xs text-muted-foreground">Precio de compra ({simMoneda})</Label>
                                             <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
                                           </div>
                                           <div className="space-y-1">
@@ -1614,17 +1705,17 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     </div>
                                     {l.origenCliente !== "venta" && (
                                       <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">Precio de compra (€)</Label>
+                                        <Label className="text-xs text-muted-foreground">Precio de compra ({simMoneda})</Label>
                                         <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
                                       </div>
                                     )}
                                     {l.origenCliente !== "venta" && (
                                       <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">Descuento del pedido (€)</Label>
+                                        <Label className="text-xs text-muted-foreground">Descuento del pedido ({simMoneda})</Label>
                                         <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n })} />
                                       </div>
                                     )}
-                                    {lineas.length === 1 && l.origenCliente !== "venta" && <NotaTotalPedido l={l} />}
+                                    {lineas.length === 1 && l.origenCliente !== "venta" && <NotaTotalPedido l={l} moneda={conversion?.moneda} />}
                                   </div>
                             </div>
                           )}
@@ -1644,6 +1735,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           )}
         </div>
         </ScrollArea>
+        {textoOcr && verLecturas && (
+          <PanelLecturas
+            texto={textoOcr}
+            lineas={lineas}
+            moneda={conversion?.moneda ?? null}
+            imagenes={archivos.filter((a) => !a.esPdf).map((a) => `data:${a.mimeType};base64,${a.base64}`)}
+            onOcultar={() => alternarLecturas(false)}
+          />
+        )}
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t bg-muted/50 px-4 py-3 sm:flex-row sm:justify-end">

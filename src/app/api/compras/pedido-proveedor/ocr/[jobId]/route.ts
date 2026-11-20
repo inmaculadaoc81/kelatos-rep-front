@@ -26,6 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
       fase?: "leyendo" | "ia" | "terminando";
       sinFactura?: boolean;
       plataforma?: string | null;
+      textoOcr?: string;
       monedaPedido?: string | null;
       conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
       error?: string;
@@ -47,6 +48,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
         proveedorCreado: !!data.proveedorCreado,
         sinFactura: !!data.sinFactura,
         plataforma: data.plataforma ?? null,
+        textoOcr: data.textoOcr ?? "",
         monedaPedido: data.monedaPedido ?? null,
         conversionMoneda: data.conversionMoneda ?? null,
       });
