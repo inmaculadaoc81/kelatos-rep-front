@@ -15,6 +15,7 @@ import {
 import { ItemDirecto, GrupoColapsable } from "@/components/sidebar-grupo-colapsable";
 import type { Session } from "next-auth";
 import { gruposVisibles } from "./navegacion";
+import { usePermisos } from "@/lib/permisos-context";
 import { NavUser } from "./nav-user";
 import { esSuperadmin, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
@@ -25,7 +26,12 @@ export function AppSidebar({ session }: { session: Session | null }) {
   const superadmin = esSuperadmin(session?.user?.email);
   const esAdmin = session?.user?.role === "admin" || superadmin;
   const efectivoSoloLectura = puedeVerEfectivoSoloLectura(session?.user?.email);
-  const grupos = gruposVisibles({ esAdmin, superadmin, efectivoSoloLectura, equiposEntregados: puedeVerEquiposEntregados(session?.user), extractorDiscos: puedeVerExtractorDiscos(session?.user) });
+  const { permisos, usa } = usePermisos();
+  const grupos = gruposVisibles({
+    esAdmin, superadmin, efectivoSoloLectura, permisos,
+    equiposEntregados: usa("equipos_entregados.ver", puedeVerEquiposEntregados(session?.user)),
+    extractorDiscos: usa("extractor_discos.ver", puedeVerExtractorDiscos(session?.user)),
+  });
 
   return (
     <Sidebar collapsible="icon">

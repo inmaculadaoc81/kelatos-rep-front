@@ -13,7 +13,7 @@ import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
 import { HistorialPedidoProveedorDialog } from "./historial-pedido-proveedor-dialog";
 import { HistorialPiezaDialog } from "./historial-pieza-dialog";
 import { BotonJustificante } from "./boton-justificante";
-import { useCuentaRestringida } from "@/lib/use-cuenta-restringida";
+import { usePuedeSubirPedidoIA } from "@/hooks/use-es-superadmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,8 +70,8 @@ function siguienteEstado(estado: string): { estado: string; etiqueta: string; ic
 }
 
 export default function ComprasPage() {
-  const { restringida: cuentaRestringida, cargada: sesionCargada } = useCuentaRestringida();
-  const puedeSubirPedidoIA = sesionCargada && !cuentaRestringida;
+  const { puede: puedeIA, cargada: sesionCargada } = usePuedeSubirPedidoIA();
+  const puedeSubirPedidoIA = sesionCargada && puedeIA;
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
   const [ventaDetalleId, setVentaDetalleId] = useState<string | null>(null);
   const [piezaHistorial, setPiezaHistorial] = useState<CompraFila | null>(null);

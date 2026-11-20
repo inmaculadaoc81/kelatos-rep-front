@@ -28,6 +28,18 @@ export function usePuedeCrearPiezas(): boolean {
   return puede;
 }
 
+/** Si la sesión puede usar «Subir pedido con IA» en Compras (antes: todas las cuentas menos la compartida del mostrador). */
+export function usePuedeSubirPedidoIA(): { puede: boolean; cargada: boolean } {
+  const [estado, setEstado] = useState({ puede: false, cargada: false });
+  useEffect(() => {
+    fetch("/api/auth/superadmin")
+      .then((r) => r.json())
+      .then((data) => setEstado({ puede: !!data.puedeSubirPedidoIA, cargada: true }))
+      .catch(() => setEstado({ puede: false, cargada: true }));
+  }, []);
+  return estado;
+}
+
 /** Si la sesión puede EDITAR piezas de Stock de piezas (superadmins y ricardo@kelatos.com). Borrar sigue siendo solo de superadmin. */
 export function usePuedeEditarPiezas(): boolean {
   const [puede, setPuede] = useState(false);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { esCuentaEmpleadosRestringida } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 
 /** Una línea de pedido leída del pantallazo (p. ej. plataforma de ASWO),
     ya clasificada en "tienda" (pieza para Stock de Piezas) o "cliente"
@@ -54,7 +55,7 @@ const TIPOS_PEDIDO_VALIDOS = new Set(["image/jpeg", "image/jpg", "image/png", "i
     confirme antes de registrar ningún pedido de verdad. */
 export async function POST(req: Request) {
   const session = await auth();
-  if (esCuentaEmpleadosRestringida(session?.user?.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!(await tienePermiso(session?.user?.email, "compras.subir_pedido_ia", !esCuentaEmpleadosRestringida(session?.user?.email)))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const body = (await req.json().catch(() => ({}))) as {
     base64?: string;
     mimeType?: string;

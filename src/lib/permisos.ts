@@ -42,3 +42,18 @@ export async function tienePermiso(email: string | null | undefined, clave: stri
   if (!p.aplicar.includes(modulo)) return fallback;
   return p.efectivos?.[clave] === true;
 }
+
+/**
+ * Permisos efectivos de los módulos ya migrados (solo los que MANDAN), para que el menú y las pantallas los reflejen. Devuelve {} si el usuario no figura
+ * en la tabla, no hay módulos aplicados o falla el backend: en ese caso todo sigue con el sistema anterior.
+ */
+export async function permisosAplicadosDe(email: string | null | undefined): Promise<Record<string, boolean>> {
+  if (!email) return {};
+  const p = await permisosDe(email);
+  if (!p || !p.existe || p.aplicar.length === 0) return {};
+  const salida: Record<string, boolean> = {};
+  for (const [clave, valor] of Object.entries(p.efectivos ?? {})) {
+    if (p.aplicar.includes(clave.split(".")[0])) salida[clave] = valor === true;
+  }
+  return salida;
+}

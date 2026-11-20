@@ -8,6 +8,7 @@ import { signOut } from "next-auth/react";
 import { MoreCircle, Profile, Setting2, Logout, ShieldTick, ArrowSwapHorizontal, Clock, ClipboardTick, ClipboardText, Global, Cpu, Sms, SecuritySafe, Video, Profile2User, Send2, Chart, Message, Call, Flash } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { esSuperadmin, puedeVerTransferencias } from "@/lib/superadmin";
+import { usePermisos } from "@/lib/permisos-context";
 import { esUsuarioRedes } from "@/lib/redes-sociales-acceso";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { esDominioKelatos } from "@/lib/dominio-kelatos";
@@ -58,7 +59,8 @@ export function NavUser({ session }: { session: Session | null }) {
   // (soporte@kelatos.com): sin acceso a Tareas, pero SÍ a Gestión MAILS (con
   // una vista restringida propia — ver mails-related components).
   const accesoCompleto = !!session?.user?.accesoCompleto;
-  const muestraTransferencias = puedeVerTransferencias(email);
+  const { usa } = usePermisos();
+  const muestraTransferencias = usa("transferencias.ver", puedeVerTransferencias(email));
   const puedeVerAsistencia = esAdmin || esSuperadmin(email);
   // Un empleado que solo ficha no tiene acceso a nada fuera de /asistencia
   // — "Mi perfil", "Configuración" y los botones de cambiar de dashboard no
@@ -92,7 +94,7 @@ export function NavUser({ session }: { session: Session | null }) {
   const enN8nLabs = pathname?.startsWith("/n8nlabs") ?? false;
   const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
   const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enWhatsapp && !enTareas && !enCrm && !enProspeccion && !enN8nLabs;
-  const puedeVerWebsKelatos = esAdmin || esSuperadmin(email);
+  const puedeVerWebsKelatos = usa("webs_kelatos.ver", esAdmin || esSuperadmin(email));
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerCrm = esAdmin || esSuperadmin(email);
   // accesoCompleto ve Gestión MAILS, pero con una vista restringida a solo
@@ -180,7 +182,7 @@ export function NavUser({ session }: { session: Session | null }) {
                   Fichar
                 </DropdownMenuItem>
               )}
-              {!esSoloAsistencia && !enTareas && !accesoCompleto && (
+              {!esSoloAsistencia && !enTareas && usa("tareas.ver", !accesoCompleto) && (
                 <DropdownMenuItem render={<Link href="/tareas" />}>
                   <IconoDashboard icon={ClipboardText} className="from-fuchsia-500 to-purple-600" />
                   Tareas

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { esSuperadmin, puedeCrearPiezas, puedeEditarPiezas } from "@/lib/superadmin";
+import { esSuperadmin, puedeCrearPiezas, puedeEditarPiezas, esCuentaEmpleadosRestringida } from "@/lib/superadmin";
 import { tienePermiso } from "@/lib/permisos";
 
 /**
@@ -20,6 +20,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true, esSuperadmin: superadmin, esAdmin, puedeVerMails: esAdmin,
     accesoCompleto: !!session?.user?.accesoCompleto, puedeCrearPiezas: await tienePermiso(session?.user?.email, "stock.crear_pieza", puedeCrearPiezas(session?.user?.email)),
+    puedeSubirPedidoIA: await tienePermiso(session?.user?.email, "compras.subir_pedido_ia", !esCuentaEmpleadosRestringida(session?.user?.email)),
     puedeEditarPiezas: await tienePermiso(session?.user?.email, "stock.editar_pieza", puedeEditarPiezas(session?.user?.email)),
   });
 }

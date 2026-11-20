@@ -29,7 +29,14 @@ interface Usuario {
   fijo: boolean; excepciones: Record<string, boolean>; efectivos: Record<string, boolean>;
 }
 interface Todo { catalogo: Permiso[]; roles: Record<string, Record<string, boolean>>; usuarios: Usuario[]; modo: string; aplicar: string[]; migrables: string[] }
-const NOMBRE_MODULO: Record<string, string> = { stock: "Stock (ver, crear, editar y borrar piezas)" };
+const NOMBRE_MODULO: Record<string, string> = {
+  stock: "Stock (ver, crear, editar y borrar piezas)",
+  compras: "Compras (ver y subir pedido con IA)",
+  informes: "Informes (reportes, registro de acciones, notificaciones y reseñas)",
+  tareas: "Tareas",
+  extractor_discos: "Extractor de discos",
+  equipos_entregados: "Equipos entregados",
+};
 interface Registro { id: number; fecha: string; actor: string | null; accion: string; usuario_email: string | null; detalle: Record<string, unknown> }
 
 const ACCIONES: Record<string, string> = {

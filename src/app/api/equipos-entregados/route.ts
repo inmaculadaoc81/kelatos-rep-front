@@ -4,6 +4,7 @@ import { kelatosApiGet } from "@/lib/kelatos-api";
 import { mapearFilaReparacion, RespuestaLecturasReparaciones } from "@/lib/reparaciones";
 import { EquipoEntregado, puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { diaMadrid } from "@/lib/tpv";
+import { tienePermiso } from "@/lib/permisos";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  if (!puedeVerEquiposEntregados(session.user)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!(await tienePermiso(session.user.email, "equipos_entregados.ver", puedeVerEquiposEntregados(session.user)))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   try {
     const data = await kelatosApiGet<RespuestaLecturasReparaciones>("/v1/lecturas/reparaciones", {

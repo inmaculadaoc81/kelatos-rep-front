@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet } from "@/lib/kelatos-api";
 import { esCuentaEmpleadosRestringida } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 import type { LineaPedidoProveedorLeida } from "../route";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ jobId: string }> }) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  if (esCuentaEmpleadosRestringida(session.user.email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!(await tienePermiso(session.user.email, "compras.subir_pedido_ia", !esCuentaEmpleadosRestringida(session.user.email)))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { jobId } = await params;
   if (!/^[A-Za-z0-9-]{8,64}$/.test(jobId)) return NextResponse.json({ ok: false, error: "Identificador no válido" }, { status: 400 });

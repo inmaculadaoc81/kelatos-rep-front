@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet } from "@/lib/kelatos-api";
 import { esSuperadmin } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 import type { ReporteValoraciones } from "@/lib/resenas";
 
 const PARAMETROS = ["q", "atendido", "limit", "offset"];
@@ -10,7 +11,7 @@ const PARAMETROS = ["q", "atendido", "limit", "offset"];
 export async function GET(req: Request) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (!email || (session?.user?.role !== "admin" && !esSuperadmin(email))) {
+  if (!email || !(await tienePermiso(email, "informes.resenas", session?.user?.role === "admin" || esSuperadmin(email)))) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   }
   try {

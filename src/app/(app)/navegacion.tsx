@@ -44,6 +44,8 @@ export interface ItemNavegacion {
   icon: React.ElementType;
   /** Clases opcionales para destacar un item (p. ej. texto en verde). */
   claseColor?: string;
+  /** Permiso que decide si se ve (solo cuando su módulo ya está migrado a permisos). */
+  permiso?: string;
 }
 
 export interface GrupoNavegacion {
@@ -89,9 +91,9 @@ export const GRUPOS: GrupoNavegacion[] = [
     titulo: "Stock",
     icon: BoxSearch,
     items: [
-      { label: "Stock de Piezas", href: "/stock-piezas", icon: Element3 },
-      { label: "Movimientos de stock", href: "/stock-movimientos", icon: Refresh2 },
-      { label: "Compras", href: "/compras", icon: MoneySend, claseColor: "text-red-600 hover:text-red-700 data-active:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:data-active:text-red-300 [&>svg]:text-current" },
+      { label: "Stock de Piezas", href: "/stock-piezas", icon: Element3, permiso: "stock.ver" },
+      { label: "Movimientos de stock", href: "/stock-movimientos", icon: Refresh2, permiso: "stock.ver" },
+      { label: "Compras", href: "/compras", icon: MoneySend, permiso: "compras.ver", claseColor: "text-red-600 hover:text-red-700 data-active:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:data-active:text-red-300 [&>svg]:text-current" },
     ],
   },
   {
@@ -109,11 +111,11 @@ export const GRUPOS: GrupoNavegacion[] = [
     titulo: "Informes",
     icon: ClipboardText,
     items: [
-      { label: "Reportes", href: "/reportes", icon: Chart },
-      { label: "Registro de Acciones", href: "/registro-acciones", icon: Hierarchy },
-      { label: "Reporte Equipos", href: "/reporte-equipos", icon: Monitor },
-      { label: "Reporte de ítems", href: "/reporte-items", icon: ReceiptItem },
-      { label: "Centro de notificaciones", href: "/notificaciones", icon: Notification },
+      { label: "Reportes", href: "/reportes", icon: Chart, permiso: "informes.ver" },
+      { label: "Registro de Acciones", href: "/registro-acciones", icon: Hierarchy, permiso: "informes.ver" },
+      { label: "Reporte Equipos", href: "/reporte-equipos", icon: Monitor, permiso: "informes.ver" },
+      { label: "Reporte de ítems", href: "/reporte-items", icon: ReceiptItem, permiso: "informes.ver" },
+      { label: "Centro de notificaciones", href: "/notificaciones", icon: Notification, permiso: "informes.ver" },
     ],
   },
 ];
@@ -166,12 +168,13 @@ export const GRUPO_ADMIN: GrupoNavegacion = {
 /** Solo administradores: se añade al final de "Informes". Amarillo, como las
     opciones destacadas (Compras en rojo, Efectivo en verde). */
 /** Solo superadmins: llamadas de personas e IA con su transcripción. */
-export const ITEM_LLAMADAS: ItemNavegacion = { label: "Llamadas", href: "/llamadas", icon: Call };
+export const ITEM_LLAMADAS: ItemNavegacion = { label: "Llamadas", href: "/llamadas", icon: Call, permiso: "llamadas.ver" };
 
 export const ITEM_RESENAS: ItemNavegacion = {
   label: "Reporte de reseñas",
   href: "/reporte-resenas",
   icon: Star1,
+  permiso: "informes.resenas",
   claseColor: "text-amber-500 hover:text-amber-600 data-active:text-amber-600 dark:text-yellow-400 dark:hover:text-yellow-300 dark:data-active:text-yellow-300 [&>svg]:text-current",
 };
 
@@ -196,8 +199,10 @@ const ITEM_EXTRACTOR: ItemNavegacion = { label: "Extractor de discos", href: "/e
 const ITEM_EQUIPOS_ENTREGADOS: ItemNavegacion = { label: "Equipos entregados", href: "/equipos-entregados", icon: BoxTick };
 
 export function gruposVisibles({
-  esAdmin, superadmin, efectivoSoloLectura = false, equiposEntregados = false, extractorDiscos = false,
-}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean; extractorDiscos?: boolean }): GrupoNavegacion[] {
+  esAdmin, superadmin, efectivoSoloLectura = false, equiposEntregados = false, extractorDiscos = false, permisos,
+}: { esAdmin: boolean; superadmin: boolean; efectivoSoloLectura?: boolean; equiposEntregados?: boolean; extractorDiscos?: boolean; permisos?: Record<string, boolean> }): GrupoNavegacion[] {
+  // `permisos` solo trae los permisos de módulos ya migrados; sin la clave se usa la regla de siempre.
+  const usa = (clave: string, fallback: boolean) => (permisos && clave in permisos ? permisos[clave] : fallback);
   const base = GRUPOS.flatMap((g) => {
     if ((equiposEntregados || extractorDiscos) && g.titulo === "Reparaciones") {
       // Va justo después de "Recogidas" (antes de "Punto Limpio").
@@ -207,10 +212,17 @@ export function gruposVisibles({
       return [{ ...g, items }];
     }
     // Contabilidad (o Efectivo y caja) va justo DESPUÉS de Informes.
-    if (esAdmin && g.titulo === "Informes") return [{ ...g, items: [...g.items, ITEM_RESENAS, ...(superadmin ? [ITEM_LLAMADAS] : [])] }, GRUPO_CONTABILIDAD];
-    if (!esAdmin && efectivoSoloLectura && g.titulo === "Informes") return [g, GRUPO_EFECTIVO_SOLO_LECTURA];
+    if (g.titulo === "Informes") {
+      const extra = [...(usa("informes.resenas", esAdmin) ? [ITEM_RESENAS] : []), ...(usa("llamadas.ver", esAdmin && superadmin) ? [ITEM_LLAMADAS] : [])];
+      const informes = { ...g, items: [...g.items, ...extra] };
+      if (esAdmin) return [informes, GRUPO_CONTABILIDAD];
+      if (efectivoSoloLectura) return [informes, GRUPO_EFECTIVO_SOLO_LECTURA];
+      return [informes];
+    }
     return [g];
   });
-  return superadmin ? [...base, GRUPO_ADMIN] : base;
+  const visibles = (superadmin ? [...base, GRUPO_ADMIN] : base)
+    .map((g) => ({ ...g, items: g.items.filter((it) => !(it.permiso && permisos && it.permiso in permisos && !permisos[it.permiso])) }))
+    .filter((g) => g.items.length > 0);
+  return visibles;
 }
-

@@ -16,13 +16,17 @@ import { SoftphoneProvider } from "./softphone";
 import { EscanerCodigoBarras } from "./escaner-codigo-barras";
 import { AsistenteFlotante } from "./asistente-flotante";
 import { SolicitudEquipoLocal } from "@/components/acceso-local/solicitud-equipo";
+import { permisosAplicadosDe } from "@/lib/permisos";
+import { PermisosProvider } from "@/lib/permisos-context";
 
 // El redirect a /login ya lo hace proxy.ts a nivel de middleware para
 // todas las rutas de este grupo — aquí solo se lee la sesión para pasar
 // el usuario real al pie del sidebar (nav-user.tsx).
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  const permisos = await permisosAplicadosDe(session?.user?.email);
   return (
+    <PermisosProvider valor={permisos}>
     <CodigoAccesoProvider>
       <SoftphoneProvider>
       {/* Solo para la cuenta restringida al local: da (o anota) la marca de equipo de este navegador; no muestra nada. */}
@@ -71,5 +75,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </SidebarProvider>
       </SoftphoneProvider>
     </CodigoAccesoProvider>
+    </PermisosProvider>
   );
 }

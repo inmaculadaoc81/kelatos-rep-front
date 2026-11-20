@@ -4,7 +4,7 @@ import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura, ater
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { comprobarAccesoLocal, comprobarAccesoRemotos } from "@/lib/acceso-local";
-import { tienePermiso } from "@/lib/permisos";
+import { tienePermiso, permisosAplicadosDe } from "@/lib/permisos";
 import { esUsuarioRedes, esRutaRedesSociales } from "@/lib/redes-sociales-acceso";
 import { puedeVerExtractorDiscos } from "@/lib/extractor-discos-acceso";
 
@@ -50,6 +50,15 @@ export default auth(async (req) => {
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Permisos de los módulos ya migrados (solo los que mandan; {} = todo con el sistema anterior). `usa(clave, antes)` devuelve el permiso si manda, o `antes`.
+  const pm = await permisosAplicadosDe(req.auth?.user?.email);
+  const usa = (clave: string, antes: boolean) => (clave in pm ? pm[clave] : antes);
+  const ruta0 = req.nextUrl.pathname;
+  const emailU = req.auth?.user?.email;
+  const esAdminU = req.auth?.user?.role === "admin" || esSuperadmin(emailU);
+  // Compras e Informes (páginas): permisos «Compras» e «Informes». Las rutas /api las usan también otros módulos, así que solo se cierran las páginas.
+  if (["/compras"].some((r) => ruta0 === r || ruta0.startsWith(`${r}/`)) && !usa("compras.ver", true)) return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  if (["/reportes", "/registro-acciones", "/reporte-equipos", "/notificaciones", "/reporte-items"].some((r) => ruta0 === r || ruta0.startsWith(`${r}/`)) && !usa("informes.ver", true)) return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   // Stock (páginas): permiso «Ver stock». Solo manda cuando el módulo está migrado; si no, entra todo el mundo como antes. Las rutas /api/stock-piezas
   // las usan también Reparaciones y Facturación para buscar piezas, así que se protegen por acción (crear/editar/borrar), no por «ver».
   if (["/stock-piezas", "/stock-movimientos"].some((r) => req.nextUrl.pathname.startsWith(r)) && !(await tienePermiso(req.auth?.user?.email, "stock.ver", true))) {
@@ -62,7 +71,7 @@ export default auth(async (req) => {
       : NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Llamadas (transcripciones y grabaciones) — SOLO superadmins; las rutas /api/telefonia (llamar) siguen abiertas a cualquier empleado.
-  if (["/llamadas", "/api/llamadas"].some((r) => req.nextUrl.pathname.startsWith(r)) && !esSuperadmin(req.auth?.user?.email)) {
+  if (["/llamadas", "/api/llamadas"].some((r) => req.nextUrl.pathname.startsWith(r)) && !usa("llamadas.ver", esSuperadmin(req.auth?.user?.email))) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Contabilidad (Importaciones / DUA…) — solo administradores; el menú ya la
@@ -72,7 +81,7 @@ export default auth(async (req) => {
   // propia ruta ya exige además GET para esas cuentas) — ninguna otra
   // sección de Contabilidad. Petición del usuario, 2026-10-05.
   if (
-    (["/importaciones", "/api/importaciones", "/reporte-resenas", "/api/resenas", "/contabilidad", "/api/contabilidad"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
+    (["/importaciones", "/api/importaciones", "/contabilidad", "/api/contabilidad"].some((r) => req.nextUrl.pathname.startsWith(r))) &&
     req.auth?.user?.role !== "admin" &&
     !esSuperadmin(req.auth?.user?.email) &&
     !(
@@ -82,23 +91,27 @@ export default auth(async (req) => {
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Reporte de reseñas — permiso «Reporte de reseñas» (antes: solo administradores).
+  if (["/reporte-resenas", "/api/resenas"].some((r) => req.nextUrl.pathname.startsWith(r)) && !usa("informes.resenas", esAdminU)) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Equipos entregados (Reparaciones) — solo administradores, superadmins y la cuenta de empleados (soporte).
   if (
     (req.nextUrl.pathname.startsWith("/equipos-entregados") || req.nextUrl.pathname.startsWith("/api/equipos-entregados")) &&
-    !puedeVerEquiposEntregados(req.auth?.user)
+    !usa("equipos_entregados.ver", puedeVerEquiposEntregados(req.auth?.user))
   ) {
     return req.nextUrl.pathname.startsWith("/api/")
       ? NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
       : NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Extractor de discos de clientes — solo Romer, Iván, Ricardo, soporte y superadmins (la copia se hace en el navegador; no hay API).
-  if (req.nextUrl.pathname.startsWith("/extractor-discos") && !puedeVerExtractorDiscos(req.auth?.user)) {
+  if (req.nextUrl.pathname.startsWith("/extractor-discos") && !usa("extractor_discos.ver", puedeVerExtractorDiscos(req.auth?.user))) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Dashboard de Transferencias — vista aparte. Superadmins entran por
   // serlo; puedeVerTransferencias además admite cuentas con acceso SOLO a
   // este módulo, sin el resto de poderes de superadmin.
-  if (req.nextUrl.pathname.startsWith("/transferencias") && !puedeVerTransferencias(req.auth?.user?.email)) {
+  if (req.nextUrl.pathname.startsWith("/transferencias") && !usa("transferencias.ver", puedeVerTransferencias(req.auth?.user?.email))) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Dashboard de Webs Kelatos — vista aparte, solo administradores
@@ -106,8 +119,7 @@ export default auth(async (req) => {
   // profundidad, igual patrón que Transferencias).
   if (
     req.nextUrl.pathname.startsWith("/webs-kelatos") &&
-    req.auth?.user?.role !== "admin" &&
-    !esSuperadmin(req.auth?.user?.email)
+    !usa("webs_kelatos.ver", esAdminU)
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
@@ -155,7 +167,7 @@ export default auth(async (req) => {
   // patrón de defensa en profundidad que el resto de módulos.
   if (
     (req.nextUrl.pathname.startsWith("/tareas") || req.nextUrl.pathname.startsWith("/api/tareas")) &&
-    req.auth?.user?.accesoCompleto
+    !usa("tareas.ver", !req.auth?.user?.accesoCompleto)
   ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
