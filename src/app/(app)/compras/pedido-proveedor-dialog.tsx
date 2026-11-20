@@ -574,7 +574,9 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         try {
           const buscadas = palabrasDe(l.nombre);
           const parecida = (c: FilaC) => !c.descripcion || [...palabrasDe(c.descripcion)].some((w) => buscadas.has(w));
-          const valido = (c: FilaC) => String(c.estado).toLowerCase() !== "cancelado" && mismoProveedor(proveedorLinea, c.proveedorOtro || c.proveedorNombre || "");
+          // Un nº de pedido largo de tienda online (AliExpress, eBay, Amazon: 10+ caracteres) es único en el mundo: se detecta aunque el proveedor guardado sea otro (p. ej. ASWO por defecto).
+          const numLargo = (l.numeroPedidoLinea || "").replace(/[\s-]/g, "").length >= 10;
+          const valido = (c: FilaC) => String(c.estado).toLowerCase() !== "cancelado" && (numLargo || mismoProveedor(proveedorLinea, c.proveedorOtro || c.proveedorNombre || ""));
           const num = (l.numeroPedidoLinea || "").trim();
           if (num.length >= 5 && /\d/.test(num)) {
             const r = await fetch(`/api/compras?busqueda=${encodeURIComponent(num)}&porPagina=50`).then((x) => x.json()).catch(() => null);
