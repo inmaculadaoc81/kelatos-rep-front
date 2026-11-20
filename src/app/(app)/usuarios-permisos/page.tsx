@@ -387,6 +387,9 @@ function VistaDetalle({ todo, vista, modulos, moduloActual, onInicio, onVista, o
   const modulosPropios = modulos.filter(([, ps]) => ps.some((p) => !p.es_entrada));
   const enModulo = !!moduloActual;
   const ambito = enModulo ? moduloActual![1] : todos;
+  // Al pulsar un módulo se abre una ventana con sus permisos (sin salir de la vista).
+  const [moduloAbierto, setModuloAbierto] = useState<string | null>(null);
+  const abierto = modulosPropios.find(([m]) => m === moduloAbierto);
 
   return (
     <div className="mt-3 space-y-5">
@@ -421,52 +424,77 @@ function VistaDetalle({ todo, vista, modulos, moduloActual, onInicio, onVista, o
         <p className="-mt-3 text-[11px] text-muted-foreground">Mientras los permisos no estén en vigor, lo que marques aquí se guarda pero el acceso real lo sigue decidiendo el sistema anterior. Puedes apagarlo en cualquier momento.</p>
       )}
 
-      {/* ── Nivel vista: quién entra + módulos ── */}
-      {!enModulo && entrada && (
-        <section className="space-y-2">
-          <div>
-            <h3 className="text-sm font-semibold">1 · ¿Quién puede entrar a {vista}?</h3>
-            <p className="text-xs text-muted-foreground">Es el permiso de entrada: sin él, la persona no ve esta vista en su menú.</p>
-          </div>
-          <MatrizPermisos todo={todo} permisos={[entrada]} onCambio={onCambio} />
-        </section>
+      {/* ── Nivel vista: a la izquierda quién entra, a la derecha los módulos (cada uno abre una ventana) ── */}
+      {!enModulo && (entrada || modulosPropios.length > 0) && (
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {entrada && (
+            <section className="min-w-0 space-y-2">
+              <div>
+                <h3 className="text-sm font-semibold">1 · ¿Quién puede entrar a {vista}?</h3>
+                <p className="text-xs text-muted-foreground">Es el permiso de entrada: sin él, la persona no ve esta vista en su menú.</p>
+              </div>
+              <MatrizPermisos todo={todo} permisos={[entrada]} onCambio={onCambio} />
+            </section>
+          )}
+
+          {modulosPropios.length > 0 && (
+            <section className="min-w-0 space-y-2">
+              <div>
+                <h3 className="text-sm font-semibold">{entrada ? "2" : "1"} · Módulos de {vista}</h3>
+                <p className="text-xs text-muted-foreground">Pulsa un módulo para elegir quién puede hacer cada cosa.</p>
+              </div>
+              <div className="grid gap-2">
+                {modulosPropios.map(([modulo, permisos]) => {
+                  const propios = permisos.filter((p) => !p.es_entrada);
+                  const conAlgo = todo.usuarios.filter((u) => u.activo && propios.some((p) => u.efectivos[p.clave])).length;
+                  const { estado } = estadoMando(todo, permisos);
+                  return (
+                    <button
+                      key={modulo}
+                      type="button"
+                      onClick={() => setModuloAbierto(modulo)}
+                      className="group flex flex-col gap-2 rounded-xl border bg-card p-3 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-sm font-semibold">{modulo}</div>
+                        <ArrowRight2 className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {propios.map((p) => <span key={p.clave} className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{p.etiqueta}</span>)}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-muted-foreground">{propios.length} permiso{propios.length !== 1 ? "s" : ""} · {conAlgo} persona{conAlgo !== 1 ? "s" : ""}</span>
+                        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", CLASE_MANDO[estado])}>{TEXTO_MANDO[estado]}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </div>
       )}
 
-      {!enModulo && modulosPropios.length > 0 && (
-        <section className="space-y-2">
-          <div>
-            <h3 className="text-sm font-semibold">{entrada ? "2" : "1"} · Módulos de {vista}</h3>
-            <p className="text-xs text-muted-foreground">Entra en un módulo para dar o quitar cada permiso a roles y personas.</p>
+      {/* Ventana de un módulo: sus permisos por rol y por persona */}
+      <Dialog open={!!abierto} onOpenChange={(o) => { if (!o) setModuloAbierto(null); }}>
+        <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 p-0 sm:max-w-4xl">
+          <DialogHeader className="border-b px-5 py-3">
+            <DialogTitle className="text-base">{abierto?.[0]} <span className="font-normal text-muted-foreground">· {vista}</span></DialogTitle>
+            <p className="text-xs text-muted-foreground">Cada columna es una cosa que se puede hacer. Arriba, lo que vale para todo un rol; abajo, para una persona concreta (queda como excepción).</p>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+            {abierto && (
+              <>
+                <InterruptorMando todo={todo} permisos={abierto[1]} ambito="este módulo" onAlternar={onAlternar} />
+                <MatrizPermisos todo={todo} permisos={abierto[1].filter((p) => !p.es_entrada)} onCambio={onCambio} />
+              </>
+            )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {modulosPropios.map(([modulo, permisos]) => {
-              const propios = permisos.filter((p) => !p.es_entrada);
-              const conAlgo = todo.usuarios.filter((u) => u.activo && propios.some((p) => u.efectivos[p.clave])).length;
-              const { estado } = estadoMando(todo, permisos);
-              return (
-                <button
-                  key={modulo}
-                  type="button"
-                  onClick={() => onModulo(modulo)}
-                  className="group flex flex-col gap-2 rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="text-sm font-semibold">{modulo}</div>
-                    <ArrowRight2 className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {propios.map((p) => <span key={p.clave} className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{p.etiqueta}</span>)}
-                  </div>
-                  <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-xs">
-                    <span className="text-muted-foreground">{propios.length} permiso{propios.length !== 1 ? "s" : ""} · {conAlgo} persona{conAlgo !== 1 ? "s" : ""}</span>
-                    <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", CLASE_MANDO[estado])}>{TEXTO_MANDO[estado]}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
+          <DialogFooter className="border-t px-5 py-3">
+            <Button variant="outline" onClick={() => setModuloAbierto(null)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Nivel módulo: la matriz de permisos ── */}
       {enModulo && (
