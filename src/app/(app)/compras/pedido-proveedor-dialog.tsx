@@ -363,7 +363,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     referencia: l.referenciaSugerida || "",
     nombrePiezaSugerida: l.nombrePiezaSugerida,
     nombreInternoProveedor: l.nombre,
-    nombreComercial: "",
+    nombreComercial: l.nombre, // el servidor exige el nombre comercial para dar de alta una pieza nueva: se propone el nombre leído
     categoria: l.categoriaSugerida || categoriaPorNombre(l.nombre),
     // El precio que trae el documento es lo que COSTÓ la compra: va a coste interno (si hay PVP y precio pagado, el pagado).
     // El precio al cliente no sale del documento: solo se propone el de una pieza ya existente; si no, lo escribe quien registra.
@@ -1000,7 +1000,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     if (l.destino === "tienda") {
       // Pieza nueva (sin referencia existente): el nombre interno de proveedor es obligatorio — es lo único con lo que la IA podrá
       // reconocerla la próxima vez. Con al menos 2 letras o cifras: un «+» suelto de una tabla mal leída no es un nombre.
-      return l.referencia.trim() !== "" || l.nombreInternoProveedor.replace(/[^\p{L}\p{N}]/gu, "").length >= 2 ? [] : ["nombre del proveedor de la pieza (o elegir una pieza existente)"];
+      if (l.referencia.trim() !== "") return [];
+      const faltan: string[] = [];
+      if (l.nombreInternoProveedor.replace(/[^\p{L}\p{N}]/gu, "").length < 2) faltan.push("nombre del proveedor de la pieza (o elegir una pieza existente)");
+      if (l.nombreComercial.replace(/\s+/g, " ").trim().length < 5) faltan.push("nombre comercial de la pieza (el nombre real del producto)");
+      return faltan;
     }
     const f: string[] = [];
     if (l.origenCliente === "venta") {
@@ -1451,6 +1455,28 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
               {(() => {
                 const total = lineas.find((x) => x.totalPedido)?.totalPedido ?? null;
+                if (!total) return null;
+                const mon = conversion?.moneda ?? null;
+                const unidades = lineas.reduce((n, x) => n + x.cantidad, 0);
+                const sinIva = lineas.some((x) => x.ivaIncluido > 0);
+                const aEur = conversion?.convertido && conversion.tasa ? Math.round(total * conversion.tasa * 100) / 100 : null;
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground">Total del pedido{sinIva ? " (sin IVA)" : ""}</div>
+                      <div className="text-2xl leading-tight font-bold">{fmtMoneda(total, mon)}</div>
+                    </div>
+                    <div className="text-right text-xs text-muted-foreground">
+                      {aEur != null && <div className="text-sm font-semibold text-foreground">≈ {fmtMoneda(aEur, "EUR")} al cambio</div>}
+                      <div>{lineas.length} línea{lineas.length !== 1 ? "s" : ""} · {unidades} unidad{unidades !== 1 ? "es" : ""}</div>
+                      {sinIva && <div>Los precios de cada artículo en la web llevan IVA; aquí van sin IVA</div>}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {(() => {
+                const total = lineas.find((x) => x.totalPedido)?.totalPedido ?? null;
                 if (!total || lineas.length < 2) return null;
                 const suma = Math.round(lineas.filter((x) => x.aplicar).reduce((n, x) => n + x.cantidad * x.costo, 0) * 100) / 100;
                 const cuadra = Math.abs(suma - total) <= Math.max(0.5, total * 0.03);
@@ -1652,8 +1678,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     <Input className="h-8" value={l.idPedidoProveedor} onChange={(e) => actualizar(i, { idPedidoProveedor: e.target.value })} />
                                   </div>
                                   <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Nombre comercial (opcional)</Label>
-                                    <Input className="h-8" placeholder="Se puede poner después" value={l.nombreComercial}
+                                    <Label className="text-xs text-muted-foreground">Nombre comercial * (nombre real del producto)</Label>
+                                    <Input className="h-8" placeholder="Nombre del producto" value={l.nombreComercial}
                                       onChange={(e) => actualizar(i, { nombreComercial: e.target.value })} />
                                   </div>
                                   <div className="space-y-1">
