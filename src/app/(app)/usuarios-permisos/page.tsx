@@ -447,13 +447,16 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold">{vista}</span>
                       <span className="block truncate text-xs text-muted-foreground">
-                        {!entra ? "Sin acceso: no la ve en su menú" : acciones.length === 0 ? "Entra y ve la vista" : `Puede hacer ${nOn} de ${acciones.length} cosas`}
+                        {!entra ? "Sin acceso: no la ve en su menú" : acciones.length === 0 ? "Entra y ve estas páginas:" : `Puede hacer ${nOn} de ${acciones.length} cosas`}
                       </span>
-                      {entrada && (PAGINAS_POR_PERMISO[entrada.clave]?.length ?? 0) > 0 && (
-                        <span className="mt-1 flex flex-wrap gap-1">
-                          {PAGINAS_POR_PERMISO[entrada.clave].map((n) => <span key={n} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{n}</span>)}
-                        </span>
-                      )}
+                      {(() => {
+                        const paginasVista = (entrada && PAGINAS_POR_PERMISO[entrada.clave]) || PAGINAS_POR_VISTA[vista] || [];
+                        return paginasVista.length > 0 ? (
+                          <span className="mt-1 flex flex-wrap gap-1">
+                            {paginasVista.map((n) => <span key={n} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{n}</span>)}
+                          </span>
+                        ) : null;
+                      })()}
                     </span>
                     {entra && acciones.length > 0 && <ArrowRight2 className={cn("size-4 shrink-0 text-muted-foreground transition", abierta && "rotate-90")} />}
                   </button>
@@ -469,7 +472,7 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
                   )}
                 </div>
 
-                {abierta && (
+                {abierta && acciones.length > 0 && (
                   <div className="grid gap-3 border-t bg-muted/10 p-3 md:grid-cols-2">
                     {mods.map(([modulo, ps]) => {
                       const propios = ps.filter((p) => !p.es_entrada && p.clave !== "usuarios.administrar");
@@ -538,6 +541,22 @@ const PAGINAS_POR_PERMISO: Record<string, string[]> = (() => {
   for (const it of GRUPO_ADMIN.items) add("admin.eliminar_registros", it.label);
   return m;
 })();
+
+/** Páginas de cada vista con menú propio (las ve quien tenga «Puede entrar»). */
+const PAGINAS_POR_VISTA: Record<string, string[]> = {
+  "Tareas": ["Tablero", "Resumen", "Por persona", "Calendario"],
+  "Transferencias": ["Pendientes", "Conciliadas", "Devoluciones", "Accesos de Telegram"],
+  "Asistencias": ["Fichar", "Mi mes", "Solicitudes", "Mis tareas", "Fichajes", "Empleados", "Horarios", "Vacaciones", "Calendario", "Correcciones", "Marcaciones olvidadas", "Ausencias parciales", "Auditoría", "Informe mensual", "Informes diarios", "Remote Work"],
+  "Webs Kelatos": ["Sitios web y catálogos", "Servicios", "Analítica web"],
+  "Redes sociales y Agentes": ["Resumen", "Piezas", "Subidos y pendientes", "Calendario", "Recursos", "Carruseles IA", "Programar carruseles", "Analítica", "Redes sociales", "Aprobaciones", "SEO local", "Estudio de mercado", "Agentes V2"],
+  "Gestión MAILS": ["Centro de mails", "Buzones", "Respuestas a presupuestos", "Respuestas a formularios", "Direcciones inválidas", "Campañas", "Tipos de correo", "Agentes de correo"],
+  "WhatsApp": ["Conversaciones", "Conexión con Chatwoot", "Cómo funciona"],
+  "CRM": ["Panel", "WhatsApp", "Llamadas", "Web y citas", "Correo", "Todos los leads", "Envío de correos", "Propuestas", "Métricas", "Cómo funciona"],
+  "Comercial": ["Hoy", "Contactos", "WhatsApp", "Mis llamadas", "Reuniones", "Guion de llamada", "Listas e importación", "Agentes", "Actividad"],
+  "Prospección": ["Clientes", "Empresas", "Buscar empresas", "Correos", "Respuestas", "Agente", "Envíos", "Leads", "Cómo funciona"],
+  "N8N Labs": ["Próximas reuniones", "Leads", "Cómo se puntúa"],
+  "Administración": ["Usuarios y permisos"],
+};
 
 type Estado = "hereda" | "permite" | "deniega";
 
