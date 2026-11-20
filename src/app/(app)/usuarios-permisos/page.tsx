@@ -1,8 +1,11 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { InfoCircle, Refresh2, ShieldTick, TickCircle, UserAdd, CloseCircle } from "@/lib/icons";
+import {
+  ArrowLeft2, ArrowRight2, ArrowSwapHorizontal, Call, Chart, ClipboardTick, Clock, CloseCircle, Flash, Global, Message, Profile2User, Refresh2,
+  SearchNormal1, Send2, Setting2, ShieldTick, Sms, TickCircle, UserAdd,
+} from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +33,8 @@ interface Usuario {
   fijo: boolean; excepciones: Record<string, boolean>; efectivos: Record<string, boolean>;
 }
 interface Todo { catalogo: Permiso[]; roles: Record<string, Record<string, boolean>>; usuarios: Usuario[]; modo: string; aplicar: string[]; migrables: string[] }
+interface Registro { id: number; fecha: string; actor: string | null; accion: string; usuario_email: string | null; detalle: Record<string, unknown> }
+
 const NOMBRE_MODULO: Record<string, string> = {
   stock: "Stock (ver, crear, editar y borrar piezas)",
   compras: "Compras (ver y subir pedido con IA)",
@@ -40,15 +45,32 @@ const NOMBRE_MODULO: Record<string, string> = {
   transferencias: "Transferencias (vista completa y devoluciones)",
   llamadas: "Llamadas (transcripciones y grabaciones)",
   webs_kelatos: "Webs Kelatos",
-  mails: "Gestión MAILS y WhatsApp (centro de mails y administración)",
+  mails: "Gestión MAILS (centro de mails y administración)",
   crm: "CRM (leads, propuestas, correos y N8N Labs)",
   agentes: "Agentes IA, Redes sociales y Programar contenido",
 };
-interface Registro { id: number; fecha: string; actor: string | null; accion: string; usuario_email: string | null; detalle: Record<string, unknown> }
+
+/** Aspecto de cada vista (dashboard) en la pantalla de inicio. */
+const VISTAS_INFO: Record<string, { icono: React.ElementType; color: string; descripcion: string }> = {
+  "Reparaciones": { icono: Setting2, color: "bg-blue-500/15 text-blue-600 dark:text-blue-400", descripcion: "Reparaciones, catálogos, stock y compras, facturación, informes y contabilidad" },
+  "Tareas": { icono: ClipboardTick, color: "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400", descripcion: "Asignar y seguir las tareas del equipo" },
+  "Transferencias": { icono: ArrowSwapHorizontal, color: "bg-sky-500/15 text-sky-600 dark:text-sky-400", descripcion: "Conciliar transferencias y gestionar devoluciones" },
+  "Asistencias": { icono: Clock, color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", descripcion: "Panel de fichajes y asistencia" },
+  "Webs Kelatos": { icono: Global, color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", descripcion: "Sitios web, catálogo y analítica" },
+  "Redes sociales y Agentes": { icono: Chart, color: "bg-rose-500/15 text-rose-600 dark:text-rose-400", descripcion: "Instagram, agentes IA y programación de contenido" },
+  "Gestión MAILS": { icono: Sms, color: "bg-red-500/15 text-red-600 dark:text-red-400", descripcion: "Centro de mails, buzones, leads y direcciones" },
+  "WhatsApp": { icono: Message, color: "bg-green-500/15 text-green-600 dark:text-green-400", descripcion: "Conversaciones de WhatsApp dentro del dashboard" },
+  "CRM": { icono: Profile2User, color: "bg-orange-500/15 text-orange-600 dark:text-orange-400", descripcion: "Leads, propuestas y correos" },
+  "Comercial": { icono: Call, color: "bg-teal-500/15 text-teal-600 dark:text-teal-400", descripcion: "Agentes comerciales y llamadas a listas de empresas" },
+  "Prospección": { icono: Send2, color: "bg-blue-500/15 text-blue-600 dark:text-blue-400", descripcion: "Prospección de empresas y análisis SEO" },
+  "N8N Labs": { icono: Flash, color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400", descripcion: "Diagnósticos y leads de N8N Labs" },
+  "Administración": { icono: ShieldTick, color: "bg-slate-500/15 text-slate-600 dark:text-slate-300", descripcion: "Usuarios y permisos del Dashboard" },
+};
+const infoVista = (v: string) => VISTAS_INFO[v] ?? { icono: Setting2, color: "bg-muted text-muted-foreground", descripcion: "" };
 
 const ACCIONES: Record<string, string> = {
   carga_inicial: "Carga inicial", usuario_creado: "Usuario creado", usuario_editado: "Usuario editado", rol_cambiado: "Rol cambiado", usuario_activado: "Usuario activado",
-  usuario_desactivado: "Usuario desactivado", permisos_usuario: "Permisos de usuario", permisos_rol: "Permisos de rol", permisos_copiados: "Permisos copiados",
+  usuario_desactivado: "Usuario desactivado", permisos_usuario: "Permisos de usuario", permisos_rol: "Permisos de rol", permisos_copiados: "Permisos copiados", modulos_aplicados: "Módulos donde mandan los permisos",
 };
 const fechaHora = (iso: string) => new Date(iso).toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 
@@ -59,25 +81,26 @@ async function api(url: string, metodo: string, cuerpo?: unknown) {
   return j;
 }
 
-/** Usuarios y permisos (solo superadmins): roles Empleado local / Empleado remoto / Super admin, plantilla de permisos por rol y excepciones por usuario. */
+const prefijo = (clave: string) => clave.split(".")[0];
+
+/** Usuarios y permisos (solo superadmins): se entra por vista → módulo → permisos, y en cada módulo se ve qué roles y personas tienen cada permiso. */
 export default function UsuariosPermisosPage() {
   const [todo, setTodo] = useState<Todo | null>(null);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pestana, setPestana] = useState("usuarios");
+  const [pestana, setPestana] = useState("vistas");
+  const [vistaSel, setVistaSel] = useState<string | null>(null);
+  const [moduloSel, setModuloSel] = useState<string | null>(null);
   const [editando, setEditando] = useState<Usuario | "nuevo" | null>(null);
-  const [cambiosRol, setCambiosRol] = useState<Record<string, Record<string, boolean>>>({});
-  const [guardandoRol, setGuardandoRol] = useState(false);
 
-  const cargar = useCallback(async () => {
-    setCargando(true);
+  const cargar = useCallback(async (silencioso = false) => {
+    if (!silencioso) setCargando(true);
     setError(null);
     try {
       const [t, a] = await Promise.all([api("/api/usuarios-permisos", "GET"), api("/api/usuarios-permisos/auditoria", "GET")]);
       setTodo(t as Todo);
       setRegistros(a.registros || []);
-      setCambiosRol({});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -90,7 +113,7 @@ export default function UsuariosPermisosPage() {
     return () => clearTimeout(t);
   }, [cargar]);
 
-  // Vista (dashboard: Reparaciones, Tareas, Transferencias…) → módulo → permisos, en el orden del catálogo.
+  // Vista (dashboard) → módulo → permisos, en el orden del catálogo.
   const vistas = useMemo<Vistas>(() => {
     const v = new Map<string, Map<string, Permiso[]>>();
     for (const p of todo?.catalogo ?? []) {
@@ -102,41 +125,7 @@ export default function UsuariosPermisosPage() {
     return Array.from(v.entries()).map(([vista, m]) => [vista, Array.from(m.entries())] as [string, [string, Permiso[]][]]);
   }, [todo]);
 
-  const entradas = useMemo(() => (todo?.catalogo ?? []).filter((p) => p.es_entrada).sort((a, b) => a.orden - b.orden), [todo]);
-
-  const valorRol = (rol: Rol, clave: string) => cambiosRol[rol]?.[clave] ?? todo?.roles[rol]?.[clave] ?? false;
-  const hayCambiosRol = Object.values(cambiosRol).some((x) => Object.keys(x).length > 0);
-
-  async function guardarRoles() {
-    setGuardandoRol(true);
-    try {
-      for (const [rol, cambios] of Object.entries(cambiosRol)) {
-        if (Object.keys(cambios).length) await api(`/api/usuarios-permisos/roles/${rol}/permisos`, "PUT", { cambios });
-      }
-      toast.success("Plantillas de rol guardadas");
-      await cargar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo guardar");
-    } finally {
-      setGuardandoRol(false);
-    }
-  }
-
-  /** Deja o quita la entrada a una vista a un usuario: guarda una excepción sobre su rol, o la borra si coincide con lo que da el rol. */
-  const [guardandoAcceso, setGuardandoAcceso] = useState<string | null>(null);
-  async function alternarAcceso(u: Usuario, clave: string, valor: boolean) {
-    if (!todo) return;
-    setGuardandoAcceso(`${u.id}:${clave}`);
-    try {
-      const delRol = todo.roles[u.rol]?.[clave] ?? false;
-      await api(`/api/usuarios-permisos/usuarios/${u.id}/permisos`, "PUT", { cambios: { [clave]: valor === delRol ? null : valor } });
-      await cargar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo cambiar");
-    } finally {
-      setGuardandoAcceso(null);
-    }
-  }
+  const activos = useMemo(() => (todo?.usuarios ?? []).filter((u) => u.activo), [todo]);
 
   async function alternarModulo(modulo: string, activar: boolean) {
     if (!todo) return;
@@ -144,8 +133,8 @@ export default function UsuariosPermisosPage() {
     try {
       const nuevos = activar ? [...todo.aplicar, modulo] : todo.aplicar.filter((x) => x !== modulo);
       await api("/api/usuarios-permisos/modulos", "PUT", { modulos: nuevos });
-      toast.success(activar ? "Permisos aplicados en ese módulo" : "Ese módulo vuelve al sistema anterior");
-      await cargar();
+      toast.success(activar ? "Ahora mandan los permisos en ese módulo" : "Ese módulo vuelve al sistema anterior");
+      await cargar(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo cambiar");
     }
@@ -155,51 +144,102 @@ export default function UsuariosPermisosPage() {
     try {
       await api(`/api/usuarios-permisos/usuarios/${u.id}`, "PATCH", { activo: !u.activo });
       toast.success(u.activo ? `${u.nombre} desactivado` : `${u.nombre} activado`);
-      await cargar();
+      await cargar(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo cambiar");
     }
   }
+
+  // ── Navegación: Vistas → una vista → un módulo ──
+  const vistaActual = vistaSel ? vistas.find(([v]) => v === vistaSel) : undefined;
+  const moduloActual = vistaActual && moduloSel ? vistaActual[1].find(([m]) => m === moduloSel) : undefined;
+  const irInicio = () => { setVistaSel(null); setModuloSel(null); };
 
   return (
     <div className="p-6">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-lg font-semibold"><ShieldTick className="size-5" /> Usuarios y permisos</h1>
-          <p className="text-sm text-muted-foreground">Quién puede entrar al Dashboard y qué puede hacer cada persona. Tres roles: super admin, empleado local y empleado remoto.</p>
+          <p className="text-sm text-muted-foreground">Quién puede entrar a cada vista del Dashboard y qué puede hacer dentro. Roles: super admin, empleado local y empleado remoto.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" className="h-8 gap-1.5" onClick={() => setEditando("nuevo")}><UserAdd className="size-4" /> Nuevo usuario</Button>
-          <Button variant="outline" size="icon" className="size-8" onClick={cargar} title="Actualizar"><Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} /></Button>
+          <Button variant="outline" size="icon" className="size-8" onClick={() => cargar()} title="Actualizar"><Refresh2 className={`size-4 ${cargando ? "animate-spin" : ""}`} /></Button>
         </div>
       </div>
 
-      {todo && todo.aplicar.length > 0 && (
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm">
-          <ShieldTick className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-          <p>Los permisos <span className="font-medium">ya mandan</span> en: {todo.aplicar.map((m) => NOMBRE_MODULO[m] ?? m).join(", ")}. En el resto de módulos todavía decide el sistema anterior.</p>
-        </div>
-      )}
-      {todo && todo.aplicar.length === 0 && (
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          <InfoCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-          <div>
-            <p className="font-medium">Modo observar: estos permisos todavía no mandan.</p>
-            <p className="text-muted-foreground">Ya reflejan lo que cada persona puede hacer hoy, pero el acceso real lo sigue decidiendo el sistema anterior. Se irá pasando a estos permisos módulo a módulo, y los cambios que hagas aquí no quitan ni dan acceso todavía.</p>
-          </div>
-        </div>
-      )}
       {error && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Error al cargar: {error}</div>}
 
       <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList>
-          <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
-          <TabsTrigger value="acceso">Acceso por vista</TabsTrigger>
-          <TabsTrigger value="roles">Plantillas por rol</TabsTrigger>
+          <TabsTrigger value="vistas">Vistas y permisos</TabsTrigger>
+          <TabsTrigger value="personas">Personas</TabsTrigger>
           <TabsTrigger value="registro">Registro de cambios</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="usuarios">
+        {/* ───────── Vistas y permisos ───────── */}
+        <TabsContent value="vistas">
+          {!todo ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}</div>
+          ) : !vistaActual ? (
+            <>
+              <p className="mt-4 mb-3 text-sm text-muted-foreground">Elige una vista para ver sus módulos y decidir quién entra y qué puede hacer.</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {vistas.map(([vista, modulos]) => {
+                  const info = infoVista(vista);
+                  const Icono = info.icono;
+                  const permisos = modulos.flatMap(([, ps]) => ps);
+                  const entrada = permisos.find((p) => p.es_entrada);
+                  const conAcceso = entrada ? activos.filter((u) => u.efectivos[entrada.clave]).length : 0;
+                  const prefijos = Array.from(new Set(permisos.map((p) => prefijo(p.clave))));
+                  const migrables = prefijos.filter((x) => todo.migrables.includes(x));
+                  const mandan = migrables.filter((x) => todo.aplicar.includes(x)).length;
+                  const estado = migrables.length === 0 ? "no" : mandan === 0 ? "no" : mandan === prefijos.length ? "si" : "parcial";
+                  return (
+                    <button
+                      key={vista}
+                      type="button"
+                      onClick={() => { setVistaSel(vista); setModuloSel(null); }}
+                      className="group flex flex-col gap-3 rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={cn("flex size-10 items-center justify-center rounded-lg", info.color)}><Icono className="size-5" /></span>
+                        <ArrowRight2 className="size-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-semibold">{vista}</div>
+                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{info.descripcion}</div>
+                      </div>
+                      <div className="mt-auto flex flex-wrap items-center justify-between gap-1.5 text-xs">
+                        <span className="font-medium">{entrada ? `${conAcceso} de ${activos.length} personas entran` : `${modulos.length} módulo${modulos.length !== 1 ? "s" : ""}`}</span>
+                        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium",
+                          estado === "si" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : estado === "parcial" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300" : "bg-muted text-muted-foreground")}
+                        >
+                          {estado === "si" ? "Mandan los permisos" : estado === "parcial" ? "Parcialmente" : "Aún decide el sistema anterior"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <VistaDetalle
+              todo={todo}
+              vista={vistaActual[0]}
+              modulos={vistaActual[1]}
+              moduloActual={moduloActual}
+              onInicio={irInicio}
+              onVista={() => setModuloSel(null)}
+              onModulo={(m) => setModuloSel(m)}
+              onCambio={() => cargar(true)}
+              onAlternarModulo={alternarModulo}
+            />
+          )}
+        </TabsContent>
+
+        {/* ───────── Personas ───────── */}
+        <TabsContent value="personas">
           <div className="mt-3 overflow-hidden rounded-lg border bg-card shadow-sm">
             <Table>
               <TableHeader>
@@ -239,117 +279,7 @@ export default function UsuariosPermisosPage() {
           <p className="mt-2 text-xs text-muted-foreground">Las cuatro cuentas de super admin son fijas: no se pueden degradar ni desactivar desde aquí, para no quedarse fuera por error.</p>
         </TabsContent>
 
-        <TabsContent value="acceso">
-          <div className="mt-3 overflow-hidden rounded-lg border bg-card shadow-sm">
-            <div className="border-b bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              Cada columna es una vista (dashboard) a la que se entra desde el menú del usuario. Activa el interruptor para que esa persona pueda entrar; los módulos de cada vista se afinan en «Editar y permisos».
-              Las vistas marcadas <span className="rounded bg-amber-500/15 px-1 font-medium text-amber-700 dark:text-amber-300">aún no manda</span> ya guardan el permiso, pero todavía las gobierna el sistema anterior.
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-sky-50 dark:bg-sky-950/40">
-                    <TableHead className="text-[.78rem] tracking-wide uppercase">Usuario</TableHead>
-                    {entradas.map((e) => (
-                      <TableHead key={e.clave} className="min-w-28 text-center text-[.78rem] tracking-wide uppercase">
-                        <div>{e.vista}</div>
-                        <div className={cn("mx-auto mt-0.5 w-fit rounded px-1 text-[9px] font-medium normal-case", todo?.aplicar.includes(e.clave.split(".")[0]) ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300")}>
-                          {todo?.aplicar.includes(e.clave.split(".")[0]) ? "ya manda" : "aún no manda"}
-                        </div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {todo?.usuarios.map((u) => (
-                    <TableRow key={u.id} className={cn(!u.activo && "opacity-50")}>
-                      <TableCell>
-                        <div className="text-sm font-medium">{u.nombre}</div>
-                        <div className="text-xs text-muted-foreground">{rolDe(u.rol).etiqueta}</div>
-                      </TableCell>
-                      {entradas.map((e) => {
-                        const bloqueado = u.rol === "super_admin" || e.clave === "usuarios.administrar" || !u.activo;
-                        const tiene = u.efectivos[e.clave] === true;
-                        const esExcepcion = e.clave in u.excepciones;
-                        return (
-                          <TableCell key={e.clave} className="text-center">
-                            <Switch
-                              checked={tiene}
-                              disabled={bloqueado || guardandoAcceso === `${u.id}:${e.clave}`}
-                              onCheckedChange={(v) => alternarAcceso(u, e.clave, v === true)}
-                              title={esExcepcion ? "Excepción sobre su rol" : "Según su rol"}
-                            />
-                            {esExcepcion && !bloqueado && <div className="mt-0.5 text-[9px] text-muted-foreground">excepción</div>}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="roles">
-          <div className="mt-3 overflow-hidden rounded-lg border bg-card shadow-sm">
-            {todo && todo.migrables.length > 0 && (
-              <div className="border-b px-3 py-3">
-                <p className="mb-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">Módulos donde los permisos ya mandan</p>
-                {todo.migrables.map((m) => (
-                  <label key={m} className="flex cursor-pointer items-center gap-2 py-0.5 text-sm">
-                    <Switch checked={todo.aplicar.includes(m)} onCheckedChange={(v) => alternarModulo(m, v === true)} />
-                    {NOMBRE_MODULO[m] ?? m}
-                    <span className="text-xs text-muted-foreground">{todo.aplicar.includes(m) ? "· mandan los permisos" : "· decide el sistema anterior"}</span>
-                  </label>
-                ))}
-                <p className="mt-1 text-[11px] text-muted-foreground">Se puede volver atrás en cualquier momento apagando el interruptor. Quien no figure en la lista de usuarios sigue con el sistema anterior.</p>
-              </div>
-            )}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-3 py-2">
-              <span className="text-xs text-muted-foreground">Lo que puede hacer por defecto cada rol. El super admin siempre lo tiene todo. A cada usuario se le pueden dar excepciones.</span>
-              <Button size="sm" className="h-7" disabled={!hayCambiosRol || guardandoRol} onClick={guardarRoles}>{guardandoRol ? "Guardando…" : "Guardar cambios"}</Button>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-sky-50 dark:bg-sky-950/40">
-                  <TableHead className="text-[.78rem] tracking-wide uppercase">Permiso</TableHead>
-                  {ROLES.map((r) => <TableHead key={r.clave} className="w-36 text-center text-[.78rem] tracking-wide uppercase" title={r.ayuda}>{r.etiqueta}</TableHead>)}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vistas.map(([vista, mods]) => (
-                  <Fragment key={`v-${vista}`}>
-                    <TableRow className="bg-primary/10 hover:bg-primary/10"><TableCell colSpan={4} className="py-2 text-sm font-bold text-primary">Vista: {vista}</TableCell></TableRow>
-                    {mods.map(([modulo, permisos]) => (
-                  <Fragment key={`m-${vista}-${modulo}`}>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40"><TableCell colSpan={4} className="py-1 pl-6 text-xs font-bold tracking-wider text-muted-foreground uppercase">Módulo: {modulo}</TableCell></TableRow>
-                    {permisos.map((p) => (
-                      <TableRow key={p.clave}>
-                        <TableCell className="text-sm"><div className="font-medium">{p.etiqueta}{p.es_entrada && <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">entrada a la vista</span>}</div>{p.descripcion && <div className="text-xs text-muted-foreground">{p.descripcion}</div>}</TableCell>
-                        {ROLES.map((r) => (
-                          <TableCell key={r.clave} className="text-center">
-                            {r.clave === "super_admin" || p.clave === "usuarios.administrar" ? (
-                              r.clave === "super_admin" ? <TickCircle className="mx-auto size-4 text-emerald-600" /> : <span className="text-muted-foreground">—</span>
-                            ) : (
-                              <Checkbox
-                                checked={valorRol(r.clave, p.clave)}
-                                onCheckedChange={(v) => setCambiosRol((prev) => ({ ...prev, [r.clave]: { ...(prev[r.clave] || {}), [p.clave]: v === true } }))}
-                              />
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </Fragment>
-                    ))}
-                  </Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
-
+        {/* ───────── Registro ───────── */}
         <TabsContent value="registro">
           <div className="mt-3 overflow-hidden rounded-lg border bg-card shadow-sm">
             <Table>
@@ -386,9 +316,226 @@ export default function UsuariosPermisosPage() {
           todo={todo}
           vistas={vistas}
           onCerrar={() => setEditando(null)}
-          onGuardado={async () => { setEditando(null); await cargar(); }}
+          onGuardado={async () => { setEditando(null); await cargar(true); }}
         />
       )}
+    </div>
+  );
+}
+
+// ───────────────────────── Detalle de una vista / módulo ─────────────────────────
+
+function VistaDetalle({ todo, vista, modulos, moduloActual, onInicio, onVista, onModulo, onCambio, onAlternarModulo }: {
+  todo: Todo; vista: string; modulos: [string, Permiso[]][]; moduloActual?: [string, Permiso[]];
+  onInicio: () => void; onVista: () => void; onModulo: (m: string) => void; onCambio: () => Promise<void>; onAlternarModulo: (m: string, activar: boolean) => Promise<void>;
+}) {
+  const info = infoVista(vista);
+  const Icono = info.icono;
+  const todos = modulos.flatMap(([, ps]) => ps);
+  const entrada = todos.find((p) => p.es_entrada);
+  // Módulos que tienen permisos propios además de la entrada a la vista.
+  const modulosPropios = modulos.filter(([, ps]) => ps.some((p) => !p.es_entrada));
+  const enModulo = !!moduloActual;
+  const permisosPanel = enModulo ? moduloActual![1] : todos;
+  const prefijos = Array.from(new Set(permisosPanel.map((p) => prefijo(p.clave))));
+
+  return (
+    <div className="mt-3 space-y-4">
+      {/* Migas */}
+      <nav className="flex flex-wrap items-center gap-1 text-sm">
+        <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" onClick={onInicio}>Vistas</button>
+        <ArrowRight2 className="size-3.5 text-muted-foreground" />
+        {enModulo ? (
+          <>
+            <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" onClick={onVista}>{vista}</button>
+            <ArrowRight2 className="size-3.5 text-muted-foreground" />
+            <span className="font-medium">{moduloActual![0]}</span>
+          </>
+        ) : (
+          <span className="font-medium">{vista}</span>
+        )}
+      </nav>
+
+      {/* Cabecera */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
+        <Button variant="outline" size="icon" className="size-8" onClick={enModulo ? onVista : onInicio} title="Volver"><ArrowLeft2 className="size-4" /></Button>
+        <span className={cn("flex size-10 items-center justify-center rounded-lg", info.color)}><Icono className="size-5" /></span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold">{enModulo ? `${vista} · ${moduloActual![0]}` : vista}</h2>
+          <p className="text-xs text-muted-foreground">{enModulo ? "Marca quién puede hacer cada cosa en este módulo." : info.descripcion}</p>
+        </div>
+      </div>
+
+      {/* Quién entra a la vista */}
+      {!enModulo && entrada && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold">¿Quién puede entrar a {vista}?</h3>
+          <MatrizPermisos todo={todo} permisos={[entrada]} onCambio={onCambio} />
+        </section>
+      )}
+
+      {/* Módulos de la vista */}
+      {!enModulo && modulosPropios.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold">Módulos de esta vista</h3>
+          <p className="text-xs text-muted-foreground">Entra en un módulo para dar o quitar cada permiso a roles y personas.</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {modulosPropios.map(([modulo, permisos]) => {
+              const propios = permisos.filter((p) => !p.es_entrada);
+              const conAlgo = todo.usuarios.filter((u) => u.activo && permisos.some((p) => u.efectivos[p.clave])).length;
+              return (
+                <button
+                  key={modulo}
+                  type="button"
+                  onClick={() => onModulo(modulo)}
+                  className="group flex items-center justify-between gap-3 rounded-lg border bg-card p-3 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">{modulo}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{permisos.length} permiso{permisos.length !== 1 ? "s" : ""} · {conAlgo} persona{conAlgo !== 1 ? "s" : ""} con acceso</div>
+                    <div className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{propios.map((p) => p.etiqueta).join(" · ")}</div>
+                  </div>
+                  <ArrowRight2 className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Permisos de un módulo */}
+      {enModulo && (
+        <section className="space-y-2">
+          <MatrizPermisos todo={todo} permisos={moduloActual![1]} onCambio={onCambio} />
+        </section>
+      )}
+
+      {/* ¿Mandan los permisos? */}
+      <section className="rounded-lg border bg-card p-3 shadow-sm">
+        <h3 className="mb-1 text-sm font-semibold">¿Mandan los permisos aquí?</h3>
+        {prefijos.map((m) => {
+          const migrable = todo.migrables.includes(m);
+          const manda = todo.aplicar.includes(m);
+          return (
+            <label key={m} className={cn("flex items-center gap-2 py-0.5 text-sm", migrable && "cursor-pointer")}>
+              <Switch checked={manda} disabled={!migrable} onCheckedChange={(v) => onAlternarModulo(m, v === true)} />
+              <span>{NOMBRE_MODULO[m] ?? m}</span>
+              <span className={cn("text-xs", manda ? "text-emerald-600" : "text-muted-foreground")}>
+                {manda ? "· mandan los permisos" : migrable ? "· decide el sistema anterior (puedes activarlo)" : "· aún decide el sistema anterior (falta preparar este módulo)"}
+              </span>
+            </label>
+          );
+        })}
+        <p className="mt-1 text-[11px] text-muted-foreground">Mientras no manden, lo que marques se guarda pero el acceso real lo sigue decidiendo el sistema anterior. Se puede volver atrás apagando el interruptor.</p>
+      </section>
+    </div>
+  );
+}
+
+/** Matriz: columnas = permisos, filas = roles (plantilla por defecto) y personas (con su excepción si la hay). Cada interruptor guarda al momento. */
+function MatrizPermisos({ todo, permisos, onCambio }: { todo: Todo; permisos: Permiso[]; onCambio: () => Promise<void> }) {
+  const [guardando, setGuardando] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+
+  async function cambiarRol(rol: Rol, clave: string, valor: boolean) {
+    setGuardando(`r:${rol}:${clave}`);
+    try {
+      await api(`/api/usuarios-permisos/roles/${rol}/permisos`, "PUT", { cambios: { [clave]: valor } });
+      await onCambio();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar");
+    } finally {
+      setGuardando(null);
+    }
+  }
+
+  async function cambiarUsuario(u: Usuario, clave: string, valor: boolean) {
+    setGuardando(`u:${u.id}:${clave}`);
+    try {
+      const delRol = todo.roles[u.rol]?.[clave] ?? false;
+      await api(`/api/usuarios-permisos/usuarios/${u.id}/permisos`, "PUT", { cambios: { [clave]: valor === delRol ? null : valor } });
+      await onCambio();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar");
+    } finally {
+      setGuardando(null);
+    }
+  }
+
+  const filtro = q.trim().toLowerCase();
+  const personas = todo.usuarios.filter((u) => !filtro || u.nombre.toLowerCase().includes(filtro) || u.email.toLowerCase().includes(filtro));
+  const rolesEditables = ROLES.filter((r) => r.clave !== "super_admin");
+  const colCabecera = (p: Permiso) => (
+    <TableHead key={p.clave} className="min-w-36 text-center align-bottom">
+      <div className="text-[.78rem] font-semibold tracking-wide text-foreground normal-case">{p.etiqueta}</div>
+      {p.es_entrada && <div className="mx-auto mt-0.5 w-fit rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary normal-case">entrada a la vista</div>}
+      {p.descripcion && <div className="mt-0.5 line-clamp-2 text-[10px] font-normal text-muted-foreground normal-case" title={p.descripcion}>{p.descripcion}</div>}
+    </TableHead>
+  );
+
+  return (
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-3 py-2">
+        <span className="text-xs text-muted-foreground">Cada interruptor se guarda al momento. En «Por defecto de cada rol» se cambia para todo el rol; en «Personas», solo para esa persona (queda como excepción).</span>
+        <div className="relative w-52">
+          <SearchNormal1 className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar persona…" className="h-7 pl-7 text-xs" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-sky-50 dark:bg-sky-950/40">
+              <TableHead className="min-w-56 text-[.78rem] tracking-wide uppercase">Quién</TableHead>
+              {permisos.map(colCabecera)}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow className="bg-muted/40 hover:bg-muted/40"><TableCell colSpan={permisos.length + 1} className="py-1 text-xs font-bold tracking-wider text-muted-foreground uppercase">Por defecto de cada rol</TableCell></TableRow>
+            <TableRow>
+              <TableCell><span className={`rounded px-2 py-0.5 text-xs font-medium ${rolDe("super_admin").clase}`}>Super admin</span><span className="ml-2 text-xs text-muted-foreground">siempre todo</span></TableCell>
+              {permisos.map((p) => <TableCell key={p.clave} className="text-center"><TickCircle className="mx-auto size-4 text-emerald-600" /></TableCell>)}
+            </TableRow>
+            {rolesEditables.map((r) => (
+              <TableRow key={r.clave}>
+                <TableCell><span className={`rounded px-2 py-0.5 text-xs font-medium ${r.clase}`}>{r.etiqueta}</span></TableCell>
+                {permisos.map((p) => (
+                  <TableCell key={p.clave} className="text-center">
+                    {p.clave === "usuarios.administrar" ? <span className="text-muted-foreground">—</span> : (
+                      <Switch checked={todo.roles[r.clave]?.[p.clave] === true} disabled={guardando === `r:${r.clave}:${p.clave}`} onCheckedChange={(v) => cambiarRol(r.clave, p.clave, v === true)} />
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+            <TableRow className="bg-muted/40 hover:bg-muted/40"><TableCell colSpan={permisos.length + 1} className="py-1 text-xs font-bold tracking-wider text-muted-foreground uppercase">Personas</TableCell></TableRow>
+            {personas.map((u) => (
+              <TableRow key={u.id} className={cn(!u.activo && "opacity-50")}>
+                <TableCell>
+                  <div className="text-sm font-medium">{u.nombre}</div>
+                  <div className="text-xs text-muted-foreground">{rolDe(u.rol).etiqueta}{!u.activo && " · desactivado"}</div>
+                </TableCell>
+                {permisos.map((p) => {
+                  const bloqueado = u.rol === "super_admin" || p.clave === "usuarios.administrar" || !u.activo;
+                  const excepcion = p.clave in u.excepciones;
+                  return (
+                    <TableCell key={p.clave} className="text-center">
+                      <Switch
+                        checked={u.efectivos[p.clave] === true}
+                        disabled={bloqueado || guardando === `u:${u.id}:${p.clave}`}
+                        onCheckedChange={(v) => cambiarUsuario(u, p.clave, v === true)}
+                        title={excepcion ? "Excepción sobre su rol" : "Según su rol"}
+                      />
+                      {excepcion && !bloqueado && <div className="mt-0.5 text-[9px] text-muted-foreground">excepción</div>}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+            {personas.length === 0 && <TableRow><TableCell colSpan={permisos.length + 1} className="py-6 text-center text-sm text-muted-foreground">Nadie coincide con la búsqueda.</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
