@@ -89,6 +89,8 @@ interface LineaPedidoEditable {
   precioDelTotal: boolean;
   /** Precio de una unidad tal como sale en la web; con la cantidad y el total se calcula el descuento (o los gastos extra). */
   precioListado: number | null;
+  /** Descuento del pedido (€) sobre esta línea: cantidad × precio − descuento = lo que se pagó. El precio por unidad no cambia. */
+  descuento: number;
   /** La cantidad no se leía en la captura y se dedujo del total: hay que revisarla. */
   cantidadInferida: boolean;
   textoPedido: string;
@@ -141,13 +143,32 @@ interface LineaPedidoEditable {
   costo: number;
 }
 
+/** Coste real por unidad: (cantidad × precio − descuento) ÷ cantidad. Es lo que se registra en el pedido, para que el total cuadre con lo pagado. */
+function costoNeto(l: { costo: number; cantidad: number; descuento: number }): number {
+  if (!(l.descuento > 0) || !(l.cantidad > 0)) return l.costo;
+  return Math.max(0, Math.round(((l.costo * l.cantidad - l.descuento) / l.cantidad) * 100) / 100);
+}
+
 const eurFmt = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
 /** Una línea (pedido de un solo artículo): compara el total del pedido con cantidad × precio de la web y explica la diferencia como descuento o gastos extra. */
 function NotaTotalPedido({ l }: { l: LineaPedidoEditable }) {
   if (!l.totalPedido) return null;
   const total = l.totalPedido;
-  const suma = Math.round(l.cantidad * l.costo * 100) / 100;
+  const suma = Math.round((l.cantidad * l.costo - (l.descuento || 0)) * 100) / 100;
+  if (l.descuento > 0) {
+    const bruto = Math.round(l.cantidad * l.costo * 100) / 100;
+    const cuadraDesc = Math.abs(suma - total) <= Math.max(0.5, total * 0.03);
+    return (
+      <div className="space-y-0.5 text-[11px] sm:col-span-2">
+        {l.cantidadInferida && <p className="font-medium text-amber-700 dark:text-amber-400">La cantidad no se veía en la captura: se dedujo del total ({l.cantidad} unidades). Revisa que sea correcta.</p>}
+        <p className={cuadraDesc ? "text-emerald-700 dark:text-emerald-400" : "font-medium text-destructive"}>
+          {l.cantidad} × {eurFmt(l.costo)} = {eurFmt(bruto)} − descuento {eurFmt(l.descuento)} = <strong>{eurFmt(suma)}</strong> · total del pedido {eurFmt(total)}
+          {cuadraDesc ? " ✓" : " — no cuadra: revisa el descuento"}. Coste real por unidad: <strong>{eurFmt(costoNeto(l))}</strong>
+        </p>
+      </div>
+    );
+  }
   if (l.precioListado != null && l.precioListado > 0) {
     const bruto = Math.round(l.precioListado * l.cantidad * 100) / 100;
     const dif = Math.round((bruto - total) * 100) / 100;
@@ -250,7 +271,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     categoria: l.categoriaSugerida || categoriaPorNombre(l.nombre),
     // El precio que trae el documento es lo que COSTÓ la compra: va a coste interno (si hay PVP y precio pagado, el pagado).
     // El precio al cliente no sale del documento: solo se propone el de una pieza ya existente; si no, lo escribe quien registra.
-    costeInterno: l.precioPagado ?? l.precioUnitario ?? 0,
+    costeInterno: l.precioPagado ?? l.precioUnitario ?? 0, // con descuento: coste real por unidad (el total pagado ÷ cantidad)
     precioCliente: l.precioClienteSugerido ?? 0,
     origenCliente: "reparacion",
     resguardo: l.resguardo || "",
@@ -264,7 +285,8 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     enlace: "",
     numeroPedido: l.numeroPedido || numeroPedidoGlobal || "No informado",
     fechaEstimada: "",
-    costo: l.precioPagado ?? l.precioUnitario ?? 0,
+    costo: (l.precioListado && l.descuento ? l.precioListado : null) ?? l.precioPagado ?? l.precioUnitario ?? 0,
+    descuento: l.precioListado && l.descuento ? l.descuento : 0,
     recibido: !!l.recibido,
     soloRecepcion: !!l.soloRecepcion,
     proveedorTexto: l.proveedorTexto || "",
@@ -957,7 +979,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               proveedor: (l.proveedorTexto || proveedorNombre).trim() || undefined,
               enlace: enlaceEfectivo(l) || undefined,
               numeroPedido: l.numeroPedido.trim() && l.numeroPedido.trim() !== "No informado" ? l.numeroPedido.trim() : undefined,
-              costo: (l.costo > 0 ? l.costo : l.costeInterno > 0 ? l.costeInterno : undefined),
+              costo: (costoNeto(l) > 0 ? costoNeto(l) : l.costeInterno > 0 ? l.costeInterno : undefined),
             }),
           });
           const dataPedido = await resPedido.json();
@@ -993,7 +1015,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const piezas = grupo.flatMap((l) =>
             Array.from({ length: l.cantidad }, () => ({
               descripcion: l.nombre, proveedor: proveedorIdSugerido || "", enlace: enlaceEfectivo(l),
-              numeroPedido: l.numeroPedido.trim(), fechaEstimada: fechaEstimadaEfectiva(l), costo: l.costo,
+              numeroPedido: l.numeroPedido.trim(), fechaEstimada: fechaEstimadaEfectiva(l), costo: costoNeto(l),
             }))
           );
           const res = await fetch(`/api/reparaciones/${encodeURIComponent(resguardo)}/pedidos`, {
@@ -1412,10 +1434,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     onChange={(e) => {
                                       const cantidad = Math.max(1, Number(e.target.value) || 1);
                                       // Si el precio salió del total del pedido, al cambiar la cantidad se reparte de nuevo (Total ÷ cantidad).
-                                      if (l.precioDelTotal && l.totalPedido) {
+                                      if (l.precioListado && l.totalPedido && l.precioDelTotal) {
+                                        // El precio de cada unidad es fijo (el de la web): lo que cambia con la cantidad es el descuento.
+                                        const desc = Math.max(0, Math.round((l.precioListado * cantidad - l.totalPedido) * 100) / 100);
+                                        actualizar(i, { cantidad, costo: l.precioListado, descuento: desc, costeInterno: Math.round((l.totalPedido / cantidad) * 100) / 100 });
+                                      } else if (l.precioDelTotal && l.totalPedido) {
                                         const unidad = Math.round((l.totalPedido / cantidad) * 100) / 100;
                                         actualizar(i, { cantidad, costo: unidad, costeInterno: unidad });
-                                      } else actualizar(i, { cantidad });
+                                      } else actualizar(i, { cantidad, costeInterno: costoNeto({ costo: l.costo, cantidad, descuento: l.descuento }) });
                                     }} />
                                 </div>
                                 <div className="min-w-40 flex-1 space-y-1">
@@ -1440,7 +1466,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">Precio de compra por unidad (€)</Label>
-                                  <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: n, precioDelTotal: false })} />
+                                  <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: costoNeto({ costo: n, cantidad: l.cantidad, descuento: l.descuento }), precioDelTotal: false })} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Descuento del pedido (€)</Label>
+                                  <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n, costeInterno: costoNeto({ costo: l.costo, cantidad: l.cantidad, descuento: n }) })} />
                                 </div>
                                 {lineas.length === 1 && <NotaTotalPedido l={l} />}
                               </div>
@@ -1570,6 +1600,12 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                       <div className="space-y-1">
                                         <Label className="text-xs text-muted-foreground">Precio de compra (€)</Label>
                                         <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
+                                      </div>
+                                    )}
+                                    {l.origenCliente !== "venta" && (
+                                      <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Descuento del pedido (€)</Label>
+                                        <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n })} />
                                       </div>
                                     )}
                                     {lineas.length === 1 && l.origenCliente !== "venta" && <NotaTotalPedido l={l} />}
