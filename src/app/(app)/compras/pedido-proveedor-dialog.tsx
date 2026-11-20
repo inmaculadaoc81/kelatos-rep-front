@@ -137,6 +137,51 @@ interface LineaPedidoEditable {
   costo: number;
 }
 
+const PLATAFORMAS_BASE = ["AliExpress", "Amazon", "eBay", "Temu", "Wallapop", "ASWO", "Web del proveedor"];
+const CLAVE_PLATAFORMAS_EXTRA = "kelatos_plataformas_pedido_extra";
+
+/** Plataforma del pedido: se elige de la lista o se añade una nueva (las nuevas se recuerdan en este navegador). */
+function SelectorPlataforma({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [extras, setExtras] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(CLAVE_PLATAFORMAS_EXTRA) || "[]") as string[]; } catch { return []; }
+  });
+  const [nueva, setNueva] = useState(false);
+  const [texto, setTexto] = useState("");
+  const opciones = Array.from(new Set([...PLATAFORMAS_BASE, ...extras, ...(value.trim() ? [value.trim()] : [])]));
+
+  function anadir() {
+    const n = texto.trim();
+    if (!n) return;
+    const lista = Array.from(new Set([...extras, n])).filter((x) => !PLATAFORMAS_BASE.includes(x));
+    setExtras(lista);
+    try { localStorage.setItem(CLAVE_PLATAFORMAS_EXTRA, JSON.stringify(lista)); } catch { /* sin almacenamiento */ }
+    onChange(n);
+    setTexto("");
+    setNueva(false);
+  }
+
+  if (nueva) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input className="h-8 w-40" autoFocus placeholder="Nombre de la plataforma" value={texto} onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); anadir(); } }} />
+        <Button type="button" size="sm" className="h-8" disabled={!texto.trim()} onClick={anadir}>Añadir</Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => { setNueva(false); setTexto(""); }}>Cancelar</Button>
+      </div>
+    );
+  }
+  return (
+    <Select value={value.trim() || "__ninguna__"} onValueChange={(v) => { if (v === "__nueva__") setNueva(true); else onChange(!v || v === "__ninguna__" ? "" : v); }}>
+      <SelectTrigger className="h-8 w-48"><SelectValue>{(v: string) => (v === "__ninguna__" ? "Elegir plataforma…" : v)}</SelectValue></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__ninguna__">Sin plataforma</SelectItem>
+        {opciones.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        <SelectItem value="__nueva__">+ Añadir una nueva…</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 /** Categoría inicial de una pieza nueva según su nombre (el empleado puede cambiarla). Sin pista clara, "OTRO": antes
     todas salían como CARGADOR aunque fueran piezas de otro aparato. */
 function categoriaPorNombre(nombre: string): string {
@@ -343,9 +388,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   onOpenChange: (open: boolean) => void;
   onRegistrado: () => void;
 }) {
-  const [proveedorNombre, setProveedorNombre] = useState("ASWO");
+  const [proveedorBase, setProveedorNombre] = useState("ASWO");
   /** Dónde se hizo el pedido (Wallapop, AliExpress, Amazon...): distinto del proveedor, que es quien vende. */
   const [plataforma, setPlataforma] = useState("");
+  // Ya no hay campo «Proveedor»: el proveedor es la plataforma elegida (si no hay, el detectado o ASWO como siempre).
+  const proveedorNombre = plataforma.trim() || proveedorBase;
   /** Antes de analizar: ¿la mercancía de lo que se sube ya llegó al local o aún no? Cada línea se puede cambiar después. */
   const [llegada, setLlegada] = useState<"aun_no" | "llego">("aun_no");
   /** Textos sin imagen (p. ej. un aviso de "recibido" por mensaje). */
@@ -1068,15 +1115,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         <div className="space-y-3 p-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Proveedor</Label>
-              <Input className="h-8 w-40" value={proveedorNombre} onChange={(e) => setProveedorNombre(e.target.value)} placeholder="ASWO" />
-            </div>
-            <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Plataforma (dónde se pidió)</Label>
-              <Input className="h-8 w-44" list="plataformas-pedido" value={plataforma} onChange={(e) => setPlataforma(e.target.value)} placeholder="Wallapop, AliExpress…" />
-              <datalist id="plataformas-pedido">
-                {["Wallapop", "AliExpress", "Amazon", "eBay", "Temu", "ASWO", "Web del proveedor"].map((p) => <option key={p} value={p} />)}
-              </datalist>
+              <SelectorPlataforma value={plataforma} onChange={setPlataforma} />
             </div>
             <input ref={inputOcr} type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={(e) => anadirArchivos(e.target.files)} />
             <Button
@@ -1471,6 +1511,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                       {!proveedorIdSugerido && <p className="text-[11px] text-destructive">Hace falta un proveedor reconocido para registrar el pedido en una venta.</p>}
                                     </div>
                                   )}
+                                </>
+                              )}
                                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                     <div className="space-y-1 sm:col-span-2">
                                       <Label className="text-xs text-muted-foreground">Enlace (del pedido en {proveedorNombre || "el proveedor"})</Label>
@@ -1492,8 +1534,6 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                       </div>
                                     )}
                                   </div>
-                                </>
-                              )}
                             </div>
                           )}
                           </div>
