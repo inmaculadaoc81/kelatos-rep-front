@@ -49,6 +49,12 @@ export default auth(async (req) => {
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
+  // Usuarios y permisos — SOLO superadmins (página y API).
+  if (["/usuarios-permisos", "/api/usuarios-permisos"].some((r) => req.nextUrl.pathname.startsWith(r)) && !esSuperadmin(req.auth?.user?.email)) {
+    return req.nextUrl.pathname.startsWith("/api/")
+      ? NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
+      : NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Llamadas (transcripciones y grabaciones) — SOLO superadmins; las rutas /api/telefonia (llamar) siguen abiertas a cualquier empleado.
   if (["/llamadas", "/api/llamadas"].some((r) => req.nextUrl.pathname.startsWith(r)) && !esSuperadmin(req.auth?.user?.email)) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));

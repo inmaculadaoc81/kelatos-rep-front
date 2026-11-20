@@ -35,6 +35,7 @@ import {
   Call,
   Diagram,
   Calendar,
+  ShieldTick,
 } from "@/lib/icons";
 
 export interface ItemNavegacion {
@@ -158,6 +159,7 @@ export const GRUPO_ADMIN: GrupoNavegacion = {
   titulo: "Admin",
   icon: Trash,
   items: [
+    { label: "Usuarios y permisos", href: "/usuarios-permisos", icon: ShieldTick },
     { label: "Eliminar Registros", href: "/admin/registros", icon: Trash },
     { label: "Backups", href: "/admin/backups", icon: Save2 },
   ],
