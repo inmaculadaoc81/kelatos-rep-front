@@ -91,6 +91,8 @@ interface LineaPedidoEditable {
   precioListado: number | null;
   /** Los precios de la web llevan IVA y el total del pedido no (0,21 = 21 %): el coste que se registra es sin IVA. */
   ivaIncluido: number;
+  /** El precio que sale en la web es el de TODAS las unidades juntas (eBay: «USD72,35» junto a «Cantidad: 2»); el de cada una es ese ÷ cantidad. */
+  precioDeLinea: number | null;
   /** Descuento del pedido (€) sobre esta línea: cantidad × precio − descuento = lo que se pagó. El precio por unidad no cambia. */
   descuento: number;
   /** La cantidad no se leía en la captura y se dedujo del total: hay que revisarla. */
@@ -162,6 +164,15 @@ const fmtMoneda = (n: number, moneda?: string | null) => {
 /** Una línea (pedido de un solo artículo): compara el total del pedido con cantidad × precio de la web y explica la diferencia como descuento o gastos extra. */
 function NotaTotalPedido({ l, moneda, unica = true }: { l: LineaPedidoEditable; moneda?: string | null; unica?: boolean }) {
   const eurFmt = (n: number) => fmtMoneda(n, moneda);
+  if (l.precioDeLinea != null && l.cantidad > 1) {
+    return (
+      <div className="space-y-0.5 text-[11px] sm:col-span-2">
+        <p className="text-emerald-700 dark:text-emerald-400">
+          En la web, {eurFmt(l.precioDeLinea)} es el precio de las <strong>{l.cantidad} unidades juntas</strong> (cantidad leída en la imagen) → <strong>{eurFmt(l.costo)} por unidad</strong>. No es un descuento.
+        </p>
+      </div>
+    );
+  }
   if (l.ivaIncluido > 0 && l.precioListado != null) {
     const pct = Math.round(l.ivaIncluido * 100);
     return (
@@ -343,6 +354,7 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     precioDelTotal: !!l.ajustadoAlTotal,
     precioListado: l.precioListado ?? null,
     ivaIncluido: l.ivaIncluido ?? 0,
+    precioDeLinea: l.precioDeLinea ?? null,
     cantidadInferida: !!l.cantidadInferida,
     textoPedido: l.textoPedido,
     // Una línea que solo sirve para marcar un pedido como recibido empieza desmarcada hasta encontrar ese pedido.
