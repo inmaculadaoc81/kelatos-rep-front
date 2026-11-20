@@ -37,6 +37,9 @@ const NOMBRE_MODULO: Record<string, string> = {
   tareas: "Tareas",
   extractor_discos: "Extractor de discos",
   equipos_entregados: "Equipos entregados",
+  transferencias: "Transferencias (vista completa y devoluciones)",
+  llamadas: "Llamadas (transcripciones y grabaciones)",
+  webs_kelatos: "Webs Kelatos",
 };
 interface Registro { id: number; fecha: string; actor: string | null; accion: string; usuario_email: string | null; detalle: Record<string, unknown> }
 

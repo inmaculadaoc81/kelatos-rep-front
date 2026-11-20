@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { esSuperadmin } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 
 /** Crea una tarea (módulo Tareas) a partir de un acuerdo de la llamada — solo superadmins. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (!esSuperadmin(email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!(await tienePermiso(email, "llamadas.ver", esSuperadmin(email)))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const { id } = await params;
   const b = (await req.json().catch(() => ({}))) as { titulo?: string; plazo?: string | null; asignadoA?: string | null };
   try {

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { esSuperadmin } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { WebsKelatosSidebar } from "./sidebar";
 import { WebsKelatosHeader } from "./header";
@@ -11,7 +12,7 @@ import { WebsKelatosHeader } from "./header";
 export default async function WebsKelatosLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const esAdmin = session?.user?.role === "admin";
-  if (!esAdmin && !esSuperadmin(session?.user?.email)) redirect("/");
+  if (!(await tienePermiso(session?.user?.email, "webs_kelatos.ver", esAdmin || esSuperadmin(session?.user?.email)))) redirect("/");
 
   return (
     <SidebarProvider>

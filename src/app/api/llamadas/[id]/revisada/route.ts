@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { esSuperadmin } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 
 /** Marca una queja como revisada — solo superadmins. */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (!esSuperadmin(email)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!(await tienePermiso(email, "llamadas.ver", esSuperadmin(email)))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   const { id } = await params;
   try {
     return NextResponse.json(await kelatosApiPost(`/v1/llamadas/${encodeURIComponent(id)}/revisada`, { usuario: email }));

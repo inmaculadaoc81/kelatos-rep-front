@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { esSuperadmin } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 
 /** Proxy hacia /v1/webs-kelatos/analitica/* (analítica web de «Webs Kelatos»): solo administradores. */
 async function acceso() {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  return session?.user?.role === "admin" || esSuperadmin(email) ? email : null;
+  return (await tienePermiso(email, "webs_kelatos.ver", session?.user?.role === "admin" || esSuperadmin(email))) ? email : null;
 }
 
 function rutaValida(ruta: string[]) {

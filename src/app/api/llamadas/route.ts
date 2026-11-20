@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet } from "@/lib/kelatos-api";
 import { esSuperadmin } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 import type { ListadoLlamadas } from "@/lib/llamadas";
 
 const PARAMETROS = ["q", "usuario", "origen", "direccion", "estado", "desde", "hasta", "conTranscripcion", "duracionMin", "duracionMax", "motivo", "queja", "quejaPendiente", "limit", "offset"];
@@ -10,7 +11,7 @@ const PARAMETROS = ["q", "usuario", "origen", "direccion", "estado", "desde", "h
 export async function GET(req: Request) {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase() || "";
-  if (!esSuperadmin(email)) {
+  if (!(await tienePermiso(email, "llamadas.ver", esSuperadmin(email)))) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   }
   try {
