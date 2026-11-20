@@ -84,6 +84,9 @@ interface LineaPedidoEditable {
   codigoProveedor: string;
   idPedidoProveedor: string;
   cantidad: number;
+  /** «Total» del pedido (tiendas online) y si el precio por unidad sale de él: al cambiar la cantidad, el precio se recalcula (Total ÷ cantidad). */
+  totalPedido: number | null;
+  precioDelTotal: boolean;
   textoPedido: string;
   aplicar: boolean;
   destino: "tienda" | "cliente";
@@ -150,6 +153,8 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     codigoProveedor: l.codigoProveedor || "",
     idPedidoProveedor: l.idPedidoProveedor || "",
     cantidad: l.cantidad,
+    totalPedido: l.totalPedido ?? null,
+    precioDelTotal: !!l.ajustadoAlTotal,
     textoPedido: l.textoPedido,
     // Una línea que solo sirve para marcar un pedido como recibido empieza desmarcada hasta encontrar ese pedido.
     aplicar: !l.soloRecepcion,
@@ -1298,7 +1303,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                 <div className="w-20 space-y-1">
                                   <Label className="text-xs text-muted-foreground">Cantidad</Label>
                                   <Input type="number" min={1} className="h-8" value={l.cantidad}
-                                    onChange={(e) => actualizar(i, { cantidad: Math.max(1, Number(e.target.value) || 1) })} />
+                                    onChange={(e) => {
+                                      const cantidad = Math.max(1, Number(e.target.value) || 1);
+                                      // Si el precio salió del total del pedido, al cambiar la cantidad se reparte de nuevo (Total ÷ cantidad).
+                                      if (l.precioDelTotal && l.totalPedido) {
+                                        const unidad = Math.round((l.totalPedido / cantidad) * 100) / 100;
+                                        actualizar(i, { cantidad, costo: unidad, costeInterno: unidad });
+                                      } else actualizar(i, { cantidad });
+                                    }} />
                                 </div>
                                 <div className="min-w-40 flex-1 space-y-1">
                                   <Label className="text-xs text-muted-foreground">Referencia de Stock (vacío = pieza nueva)</Label>
@@ -1322,8 +1334,19 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">Precio de compra por unidad (€)</Label>
-                                  <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: n })} />
+                                  <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: n, precioDelTotal: false })} />
                                 </div>
+                                {l.totalPedido ? (() => {
+                                  const suma = Math.round(l.cantidad * l.costo * 100) / 100;
+                                  const cuadra = Math.abs(suma - l.totalPedido) <= Math.max(0.5, l.totalPedido * 0.03);
+                                  const eur = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+                                  return (
+                                    <p className={`text-[11px] sm:col-span-2 ${cuadra ? "text-emerald-700 dark:text-emerald-400" : "font-medium text-destructive"}`}>
+                                      Total del pedido: {eur(l.totalPedido)} · esta línea: {l.cantidad} × {eur(l.costo)} = {eur(suma)}
+                                      {l.precioDelTotal ? " (precio calculado con el total; si compraste varias unidades, cambia la cantidad y se recalcula)" : cuadra ? " ✓" : " — no cuadra: revisa la cantidad y el precio"}
+                                    </p>
+                                  );
+                                })() : null}
                               </div>
                               {l.referencia && l.nombrePiezaSugerida && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
