@@ -31,6 +31,8 @@ export interface CompraFila {
   equipoModelo: string;
   reparacionEstado: string;
   compradoPor: string;
+  /** Quién registró el pedido en el sistema (puede ser distinto de quien hizo la compra). */
+  creadoPor: string;
   numeroPedido: string;
   fechaPedido: string | null;
   fechaEstimada: string | null;
@@ -76,6 +78,7 @@ interface FilaCompraSql {
   equipo_modelo: string | null;
   reparacion_estado: string | null;
   comprado_por: string | null;
+  creado_por?: string | null;
   numero_pedido: string | null;
   fecha_pedido: string | null;
   fecha_estimada: string | null;
@@ -110,6 +113,7 @@ export function mapearCompra(row: FilaCompraSql): CompraFila {
     equipoModelo: row.equipo_modelo || "",
     reparacionEstado: row.reparacion_estado || "",
     compradoPor: row.comprado_por || "",
+    creadoPor: row.creado_por || "",
     numeroPedido: row.numero_pedido || "",
     fechaPedido: row.fecha_pedido,
     fechaEstimada: row.fecha_estimada,

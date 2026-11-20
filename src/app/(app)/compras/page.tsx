@@ -112,7 +112,7 @@ export default function ComprasPage() {
       if (filas.length === 0) { toast.error("No hay pedidos con estos filtros"); return; }
       const fecha = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : d; };
       const negrita = (v: string) => ({ value: v, fontWeight: "bold" as const });
-      const cab = ["Pedido", "Origen", "Resguardo / Venta", "Cliente", "Equipo", "Proveedor", "Plataforma", "Descripción", "Nº de pedido", "Precio (€)", "Comprado por", "Fecha pedido", "Fecha estimada", "Fecha recepción", "Estado", "Estado plataforma", "Verificado por", "Fecha verificación", "Recibido por", "Problema", "Enlace"].map(negrita);
+      const cab = ["Pedido", "Origen", "Resguardo / Venta", "Cliente", "Equipo", "Proveedor", "Plataforma", "Descripción", "Nº de pedido", "Precio total (€)", "Comprado por", "Creado por", "Fecha pedido", "Fecha estimada", "Fecha recepción", "Estado", "Estado plataforma", "Verificado por", "Fecha verificación", "Recibido por", "Problema", "Enlace"].map(negrita);
       const cel = (v: string | number | Date, extra: Record<string, unknown> = {}) => (v === "" ? null : { value: v, ...extra });
       const { default: writeExcelFile } = await import("write-excel-file/browser");
       const datos = [
@@ -120,7 +120,7 @@ export default function ComprasPage() {
         ...filas.map((c) => [
           cel(c.pedidoId), cel(c.origen === "venta" ? "Venta" : c.origen === "stock" ? "Stock" : "Reparación"), cel(c.resguardo), cel(c.clienteNombre), cel(c.equipoModelo),
           cel(c.proveedorNombre || c.proveedorOtro), cel(c.plataforma), cel(c.descripcion), cel(c.numeroPedido),
-          c.costo === null ? null : { value: c.costo, format: "#,##0.00" }, cel(c.compradoPor),
+          c.costo === null ? null : { value: c.costo, format: "#,##0.00" }, cel(c.compradoPor), cel(c.creadoPor),
           cel(fecha(c.fechaPedido), { format: "dd/mm/yyyy" }), cel(fecha(c.fechaEstimada), { format: "dd/mm/yyyy" }), cel(fecha(c.fechaRecepcion), { format: "dd/mm/yyyy" }),
           cel(c.estado), cel(c.estadoPlataforma), cel(c.estadoPlataformaPor), cel(fecha(c.estadoPlataformaEn), { format: "dd/mm/yyyy hh:mm" }), cel(c.recibidoPor), cel(c.problemaTipo), cel(c.enlace),
         ]),
@@ -373,8 +373,9 @@ export default function ComprasPage() {
               <TableHead>Proveedor</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Nº de pedido</TableHead>
-              <TableHead>Precio</TableHead>
+              <TableHead>Precio total</TableHead>
               <TableHead>Comprado por</TableHead>
+              <TableHead>Creado por</TableHead>
               <TableHead>Fecha pedido</TableHead>
               <TableHead>Fecha estimada</TableHead>
               <TableHead>Estado</TableHead>
@@ -395,7 +396,7 @@ export default function ComprasPage() {
               ))}
             {!cargando && compras.length === 0 && (
               <TableRow>
-                <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={15} className="py-8 text-center text-muted-foreground">
                   Ningún pedido de piezas coincide con los filtros
                 </TableCell>
               </TableRow>
@@ -445,6 +446,7 @@ export default function ComprasPage() {
                     <TableCell className="whitespace-nowrap font-mono text-xs">{c.numeroPedido || "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm tabular-nums">{precioLegible(c.costo) || <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{c.compradoPor || "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{c.creadoPor || "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{fechaCorta(c.fechaPedido)}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">
                       {fechaCorta(c.fechaEstimada)}

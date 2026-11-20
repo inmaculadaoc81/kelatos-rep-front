@@ -1122,6 +1122,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               enlace: enlaceEfectivo(l) || undefined,
               numeroPedido: l.numeroPedido.trim() && l.numeroPedido.trim() !== "No informado" ? l.numeroPedido.trim() : undefined,
               costo: (costoNeto(l) > 0 ? aEuros(costoNeto(l)) : l.costeInterno > 0 ? l.costeInterno : undefined),
+              compradoPor: compradoPor.trim() || undefined,
             }),
           });
           const dataPedido = await resPedido.json();
