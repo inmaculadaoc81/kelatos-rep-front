@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { GRUPOS, GRUPO_CONTABILIDAD, GRUPO_ADMIN, ITEM_LLAMADAS } from "../navegacion";
 
 type Vistas = [string, [string, Permiso[]][]][];
 type Rol = "super_admin" | "empleado_local" | "empleado_remoto";
@@ -311,7 +312,7 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
   const primera = todo.usuarios.find((u) => u.activo && u.rol !== "super_admin");
   const [sel, setSel] = useState<string>(primera ? `u:${primera.id}` : "r:empleado_local");
   const [q, setQ] = useState("");
-  const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
+  const [cerradas, setCerradas] = useState<Set<string>>(new Set());
   const [guardando, setGuardando] = useState<string | null>(null);
 
   const usuario = sel.startsWith("u:") ? todo.usuarios.find((u) => u.id === Number(sel.slice(2))) : undefined;
@@ -355,7 +356,7 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
     }
   }
 
-  const alternarAbierta = (v: string) => setAbiertas((prev) => { const n = new Set(prev); if (n.has(v)) n.delete(v); else n.add(v); return n; });
+  const alternarAbierta = (v: string) => setCerradas((prev) => { const n = new Set(prev); if (n.has(v)) n.delete(v); else n.add(v); return n; });
 
   // Vistas con algo que decidir (se oculta el permiso de administrar usuarios: no se reparte desde aquí).
   const filas = vistas.map(([vista, mods]) => {
@@ -435,7 +436,7 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
             const info = infoVista(vista);
             const Icono = info.icono;
             const entra = entrada ? valor(entrada.clave) : true;
-            const abierta = abiertas.has(vista) && entra;
+            const abierta = !cerradas.has(vista) && entra;
             const nOn = acciones.filter((p) => valor(p.clave)).length;
             const { migrables, estado } = estadoMando(todo, todos);
             return (
@@ -448,6 +449,11 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
                       <span className="block truncate text-xs text-muted-foreground">
                         {!entra ? "Sin acceso: no la ve en su menú" : acciones.length === 0 ? "Entra y ve la vista" : `Puede hacer ${nOn} de ${acciones.length} cosas`}
                       </span>
+                      {entrada && (PAGINAS_POR_PERMISO[entrada.clave]?.length ?? 0) > 0 && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {PAGINAS_POR_PERMISO[entrada.clave].map((n) => <span key={n} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{n}</span>)}
+                        </span>
+                      )}
                     </span>
                     {entra && acciones.length > 0 && <ArrowRight2 className={cn("size-4 shrink-0 text-muted-foreground transition", abierta && "rotate-90")} />}
                   </button>
@@ -457,30 +463,40 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
                       <Switch
                         checked={entra}
                         disabled={bloqueadoTodo || guardando === entrada.clave}
-                        onCheckedChange={(v) => { void cambiar(entrada.clave, v === true); if (v === true && acciones.length > 0) setAbiertas((p) => new Set(p).add(vista)); }}
+                        onCheckedChange={(v) => { void cambiar(entrada.clave, v === true); if (v === true) setCerradas((p) => { const n = new Set(p); n.delete(vista); return n; }); }}
                       />
                     </label>
                   )}
                 </div>
 
                 {abierta && (
-                  <div className="space-y-3 border-t bg-muted/10 px-4 py-3">
+                  <div className="grid gap-3 border-t bg-muted/10 p-3 md:grid-cols-2">
                     {mods.map(([modulo, ps]) => {
                       const propios = ps.filter((p) => !p.es_entrada && p.clave !== "usuarios.administrar");
                       if (propios.length === 0) return null;
+                      const nOnMod = propios.filter((p) => valor(p.clave)).length;
                       return (
-                        <div key={modulo}>
-                          {mods.length > 1 && <div className="mb-1.5 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">{modulo}</div>}
-                          <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
+                        <div key={modulo} className="overflow-hidden rounded-lg border bg-card">
+                          <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-1.5">
+                            <span className="text-xs font-bold tracking-wider uppercase">{modulo}</span>
+                            <span className="text-[11px] text-muted-foreground">{nOnMod} de {propios.length}</span>
+                          </div>
+                          <div className="divide-y">
                             {propios.map((p) => {
                               const exc = !!usuario && p.clave in usuario.excepciones;
+                              const paginas = PAGINAS_POR_PERMISO[p.clave] ?? [];
                               return (
-                                <label key={p.clave} className="flex cursor-pointer items-start gap-2 text-sm" title={p.descripcion ?? undefined}>
+                                <label key={p.clave} className="flex cursor-pointer items-start gap-2.5 px-3 py-2 text-sm hover:bg-muted/30" title={p.descripcion ?? undefined}>
                                   <Checkbox className="mt-0.5" checked={valor(p.clave)} disabled={bloqueadoTodo || guardando === p.clave} onCheckedChange={(v) => cambiar(p.clave, v === true)} />
-                                  <span className="leading-tight">
-                                    {p.etiqueta}
+                                  <span className="min-w-0 flex-1 leading-tight">
+                                    <span className="font-medium">{p.etiqueta}</span>
                                     {exc && <span className="ml-1.5 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-300">excepción</span>}
                                     {p.descripcion && <span className="block text-[11px] font-normal text-muted-foreground">{p.descripcion}</span>}
+                                    {paginas.length > 0 && (
+                                      <span className="mt-1 flex flex-wrap gap-1">
+                                        {paginas.map((n) => <span key={n} className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-normal text-primary">{n}</span>)}
+                                      </span>
+                                    )}
                                   </span>
                                 </label>
                               );
@@ -508,6 +524,20 @@ function PermisosPorPersona({ todo, vistas, onCambio, onAlternar, onEditar }: {
     </div>
   );
 }
+
+/** Páginas del menú lateral que abre cada permiso (sale del propio menú, así no se desfasa). */
+const PAGINAS_POR_PERMISO: Record<string, string[]> = (() => {
+  const m: Record<string, string[]> = {};
+  const add = (clave: string, etiqueta: string) => { (m[clave] ??= []).push(etiqueta); };
+  for (const g of GRUPOS) for (const it of g.items) if (it.permiso) add(it.permiso, it.label);
+  add(ITEM_LLAMADAS.permiso ?? "llamadas.ver", ITEM_LLAMADAS.label);
+  add("informes.resenas", "Reporte de reseñas");
+  add("equipos_entregados.ver", "Equipos entregados");
+  add("extractor_discos.ver", "Extractor de discos");
+  for (const it of GRUPO_CONTABILIDAD.items) add(it.label === "Efectivo y caja" ? "contabilidad.efectivo" : "contabilidad.ver", it.label);
+  for (const it of GRUPO_ADMIN.items) add("admin.eliminar_registros", it.label);
+  return m;
+})();
 
 type Estado = "hereda" | "permite" | "deniega";
 
