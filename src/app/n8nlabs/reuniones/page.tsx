@@ -16,7 +16,7 @@ interface Recordatorio { id: number; tipo: string; estado: "pendiente" | "enviad
 interface Reunion {
   id: number; cal_uid: string; titulo: string; inicio: string; fin: string | null; estado: "programada" | "cancelada" | "pendiente" | "rechazada"; reprogramada: boolean;
   nombre: string | null; email: string | null; telefono_original: string | null; telefono: string | null; telefono_valido: boolean; telefono_nota: string | null; telefono_origen: string | null;
-  zona_horaria: string | null; enlace: string | null; notas: string | null; ia_resumen: string | null; ia_interes: string | null; recordatorios_activos: boolean; recordatorios: Recordatorio[];
+  zona_horaria: string | null; enlace: string | null; notas: string | null; ia_resumen: string | null; ia_interes: string | null; recordatorios_activos: boolean; recordatorios: Recordatorio[]; hora_cliente?: string;
 }
 interface Config { modo: "pausa" | "enviar"; plantilla: string; horas: number[]; bandeja: number; tieneApiKey: boolean; ultimaSync: string | null; webhookEventos: number; webhookUltimo: string | null }
 interface Respuesta { ok: boolean; reuniones: Reunion[]; ahora: string; config: Config }
@@ -297,6 +297,7 @@ function FilaReunion({ r, ahora, modo, primera, esSuper, onEditar, onCambio }: {
         <div className="text-lg leading-tight font-semibold tabular-nums">{horaMadrid(r.inicio)}</div>
         <div className={cn("text-[11px] font-medium", cancelada ? "text-red-600" : pasada ? "text-muted-foreground" : "text-primary")}>{cancelada ? (r.estado === "cancelada" ? "Cancelada" : "Rechazada") : enCuanto(r.inicio, ahora)}</div>
         {r.reprogramada && !cancelada && <div className="text-[10px] text-amber-600">reprogramada</div>}
+        {r.hora_cliente && !cancelada && <div className="mt-0.5 text-[10px] text-muted-foreground" title="Hora de la reunión en el país del cliente (por su prefijo): es la que recibirá en el WhatsApp">Para él: {r.hora_cliente}</div>}
       </div>
 
       {/* Cliente + IA */}
