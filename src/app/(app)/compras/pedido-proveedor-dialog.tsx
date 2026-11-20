@@ -217,8 +217,8 @@ function NotaTotalPedido({ l, moneda, unica = true }: { l: LineaPedidoEditable; 
 }
 
 /** Lo que hizo la IA con la captura: resumen de lo deducido y cada lectura del OCR (normal, ampliada y zooms), para comprobar en qué se basó. */
-function PanelLecturas({ texto, lineas, moneda, imagenes, onOcultar }: {
-  texto: string; lineas: LineaPedidoEditable[]; moneda: string | null; imagenes: string[]; onOcultar: () => void;
+function PanelLecturas({ texto, lineas, zooms, moneda, imagenes, onOcultar }: {
+  texto: string; lineas: LineaPedidoEditable[]; zooms: { nombre: string; imagen: string }[]; moneda: string | null; imagenes: string[]; onOcultar: () => void;
 }) {
   const bloques = texto.split(/\n{2,}(?=LECTURA |NUMEROS SUELTOS|--- ARCHIVO)/).map((b) => {
     const [titulo, ...resto] = b.split("\n");
@@ -247,9 +247,27 @@ function PanelLecturas({ texto, lineas, moneda, imagenes, onOcultar }: {
             {moneda && <div>Moneda: <strong>{moneda}</strong></div>}
           </div>
         )}
+        {/* Cada zoom: la zona ampliada que se leyó, con el texto que salió de ella */}
+        {zooms.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="font-semibold">Zooms que hizo el OCR</div>
+            {zooms.map((z) => {
+              const ficha = z.nombre.split(" ")[0]; // Z1, Z2, Z3, M
+              const bloque = bloques.find((b) => b.titulo.startsWith(`LECTURA ${ficha} `) || b.titulo.startsWith(`LECTURA ${ficha}:`));
+              return (
+                <details key={z.nombre} open className="rounded-md border bg-card">
+                  <summary className="cursor-pointer px-2 py-1.5 font-medium">{z.nombre}</summary>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={z.imagen} alt={z.nombre} className="w-full border-t bg-white object-contain" />
+                  {bloque?.cuerpo && <pre className="max-h-40 overflow-auto border-t px-2 py-1.5 font-mono text-[10px] leading-snug whitespace-pre-wrap text-muted-foreground">{bloque.cuerpo}</pre>}
+                </details>
+              );
+            })}
+          </div>
+        )}
         <div className="space-y-1.5">
-          {bloques.map((b, i) => (
-            <details key={i} open={i === 0 || /^NUMEROS SUELTOS/.test(b.titulo)} className="rounded-md border bg-card">
+          {bloques.filter((b) => !zooms.some((z) => b.titulo.startsWith(`LECTURA ${z.nombre.split(" ")[0]} `) || b.titulo.startsWith(`LECTURA ${z.nombre.split(" ")[0]}:`))).map((b, i) => (
+            <details key={i} open={/^NUMEROS SUELTOS/.test(b.titulo)} className="rounded-md border bg-card">
               <summary className="cursor-pointer px-2 py-1.5 font-medium">{b.titulo}</summary>
               {b.cuerpo && <pre className="max-h-56 overflow-auto border-t px-2 py-1.5 font-mono text-[10px] leading-snug whitespace-pre-wrap text-muted-foreground">{b.cuerpo}</pre>}
             </details>
@@ -520,6 +538,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [plataforma, setPlataforma] = useState("");
   /** Texto que leyó el OCR (lecturas normal, ampliada y los zooms): se enseña a la derecha para ver en qué se basó la IA. */
   const [textoOcr, setTextoOcr] = useState("");
+  /** Miniaturas de las zonas ampliadas (zooms) que leyó el OCR. */
+  const [zooms, setZooms] = useState<{ nombre: string; imagen: string }[]>([]);
   const [verLecturas, setVerLecturas] = useState<boolean>(() => {
     try { return localStorage.getItem("kelatos_pedido_ia_ver_lecturas") !== "0"; } catch { return true; }
   });
@@ -566,6 +586,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setProveedorCreado(false);
       setPlataforma("");
       setTextoOcr("");
+      setZooms([]);
       setConversion(null);
       setCompradoPor("");
       setTextosSueltos([]);
@@ -830,7 +851,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada segundo (máx. 7 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null; textoOcr?: string; monedaPedido?: string | null; conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
+        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null; textoOcr?: string; zooms?: { nombre: string; imagen: string }[]; monedaPedido?: string | null; conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -869,6 +890,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setProveedorCreado(!!data.proveedorCreado);
       setPlataforma(data.plataforma ?? "");
       setTextoOcr(data.textoOcr || "");
+      setZooms(data.zooms ?? []);
       if (data.conversionMoneda?.convertido && data.conversionMoneda.tasa) {
         const conv = data.conversionMoneda;
         setConversion(conv);
@@ -1755,6 +1777,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           <PanelLecturas
             texto={textoOcr}
             lineas={lineas}
+            zooms={zooms}
             moneda={conversion?.moneda ?? null}
             imagenes={archivos.filter((a) => !a.esPdf).map((a) => `data:${a.mimeType};base64,${a.base64}`)}
             onOcultar={() => alternarLecturas(false)}

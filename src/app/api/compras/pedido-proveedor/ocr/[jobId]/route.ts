@@ -27,6 +27,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
       sinFactura?: boolean;
       plataforma?: string | null;
       textoOcr?: string;
+      zooms?: { nombre: string; imagen: string }[];
       monedaPedido?: string | null;
       conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
       error?: string;
@@ -49,6 +50,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
         sinFactura: !!data.sinFactura,
         plataforma: data.plataforma ?? null,
         textoOcr: data.textoOcr ?? "",
+        zooms: data.zooms ?? [],
         monedaPedido: data.monedaPedido ?? null,
         conversionMoneda: data.conversionMoneda ?? null,
       });
