@@ -47,6 +47,8 @@ const nextConfig: NextConfig = {
   // la compilación falló con "OS can't spawn worker thread" (build del 2026-10-19, tras compilar y pasar TypeScript).
   // Se limita el número de workers de "Collecting page data" y de generación de páginas.
   experimental: { cpus: 4 },
+  // La comprobación de tipos NO se repite en el build de Hostinger (tardaba ~85 s por despliegue): se ejecuta antes de cada push con `npm run typecheck`.
+  typescript: { ignoreBuildErrors: true },
 };
 
 export default nextConfig;

@@ -7,6 +7,7 @@
     "build": "npm run asistente:conocimiento && next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "asistente:conocimiento": "node scripts/generar-conocimiento-asistente.mjs"
   },
   "dependencies": {
