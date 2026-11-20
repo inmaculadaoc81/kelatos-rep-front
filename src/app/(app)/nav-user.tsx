@@ -247,13 +247,13 @@ export function NavUser({ session }: { session: Session | null }) {
                   Comercial
                 </DropdownMenuItem>
               )}
-              {puedeVerCrm && !enProspeccion && (
+              {usa("prospeccion.ver", puedeVerCrm) && !enProspeccion && (
                 <DropdownMenuItem render={<Link href="/prospeccion" />}>
                   <IconoDashboard icon={Send2} className="from-sky-500 to-indigo-600" />
                   Prospección
                 </DropdownMenuItem>
               )}
-              {puedeVerCrm && !enN8nLabs && (
+              {usa("n8nlabs.ver", puedeVerCrm) && !enN8nLabs && (
                 <DropdownMenuItem render={<Link href="/n8nlabs" />}>
                   <IconoDashboard icon={Flash} className="from-blue-500 to-violet-600" />
                   N8N Labs

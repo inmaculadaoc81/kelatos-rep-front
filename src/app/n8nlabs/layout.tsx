@@ -10,7 +10,7 @@ import { tienePermiso } from "@/lib/permisos";
 export default async function N8nLabsLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.email) redirect("/login");
-  if (!(await tienePermiso(session.user.email, "crm.ver", puedeVerCrm(session.user)))) redirect("/");
+  if (!(await tienePermiso(session.user.email, "n8nlabs.ver", puedeVerCrm(session.user)))) redirect("/");
 
   return (
     <SidebarProvider>

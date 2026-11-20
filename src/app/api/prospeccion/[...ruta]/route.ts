@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { puedeVerProspeccion } from "@/lib/prospeccion";
+import { tienePermiso } from "@/lib/permisos";
 
 // Proxy único hacia /v1/prospeccion/* del API (solo administradores). Rutas permitidas, por lista cerrada.
 const PERMITIDAS = [/^config$/, /^resumen$/, /^envios$/, /^envios\/\d+$/, /^envios\/\d+\/(aprobar|omitir|enviar)$/, /^generar$/, /^busqueda-diaria$/, /^busqueda-diaria\/ejecutar$/, /^clientes$/, /^respuestas$/, /^bandeja$/, /^clientes\/sincronizar$/, /^leads$/, /^leads\/(sectores|estado|buscar|importar|descartar)$/];
 
 async function resolver(req: Request, params: Promise<{ ruta: string[] }>, metodo: "GET" | "POST" | "PUT" | "PATCH") {
   const session = await auth();
-  if (!puedeVerProspeccion(session?.user)) return NextResponse.json({ ok: false, error: "Sin acceso a Prospección" }, { status: 403 });
+  if (!(await tienePermiso(session?.user?.email, "prospeccion.ver", puedeVerProspeccion(session?.user)))) return NextResponse.json({ ok: false, error: "Sin acceso a Prospección" }, { status: 403 });
   const ruta = (await params).ruta.join("/");
   if (!PERMITIDAS.some((r) => r.test(ruta))) return NextResponse.json({ ok: false, error: "Ruta no válida" }, { status: 404 });
   try {

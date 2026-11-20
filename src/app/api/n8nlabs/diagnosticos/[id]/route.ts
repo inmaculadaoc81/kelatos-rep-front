@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
 /** Cambia el estado y/o las notas de un diagnóstico; la identidad sale de la sesión. */
 export async function PATCH(req: Request, { params }: Params) {
   const session = await auth();
-  if (!(await tienePermiso(session?.user?.email, "crm.ver", puedeVerCrm(session?.user)))) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
+  if (!(await tienePermiso(session?.user?.email, "n8nlabs.ver", puedeVerCrm(session?.user)))) return NextResponse.json({ ok: false, error: "Sin acceso al CRM" }, { status: 403 });
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as { estado?: string; notas?: string };
   try {

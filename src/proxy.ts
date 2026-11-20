@@ -59,6 +59,18 @@ export default auth(async (req) => {
   // Compras e Informes (páginas): permisos «Compras» e «Informes». Las rutas /api las usan también otros módulos, así que solo se cierran las páginas.
   if (["/compras"].some((r) => ruta0 === r || ruta0.startsWith(`${r}/`)) && !usa("compras.ver", true)) return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   if (["/reportes", "/registro-acciones", "/reporte-equipos", "/notificaciones", "/reporte-items"].some((r) => ruta0 === r || ruta0.startsWith(`${r}/`)) && !usa("informes.ver", true)) return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  // Reparaciones, Catálogos, Ventas, Facturación y Efectivo (SOLO páginas: sus rutas /api las usan también otros módulos). La portada «/» no se restringe.
+  const PAGINAS: [string[], string][] = [
+    [["/reparaciones", "/historial", "/presupuestos", "/recogidas", "/punto-limpio", "/casilleros"], "reparaciones.ver"],
+    [["/clientes", "/proveedores", "/formulario-web"], "clientes.ver"],
+    [["/equipos"], "equipos.ver"],
+    [["/ventas"], "ventas.ver"],
+    [["/facturas-clientes", "/seguimiento-facturas", "/reporte-facturas"], "facturacion.ver"],
+    [["/efectivo", "/tpv"], "efectivo.ver"],
+  ];
+  for (const [prefijos, permiso] of PAGINAS) {
+    if (prefijos.some((r) => ruta0 === r || ruta0.startsWith(`${r}/`)) && !usa(permiso, true)) return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
   // Stock (páginas): permiso «Ver stock». Solo manda cuando el módulo está migrado; si no, entra todo el mundo como antes. Las rutas /api/stock-piezas
   // las usan también Reparaciones y Facturación para buscar piezas, así que se protegen por acción (crear/editar/borrar), no por «ver».
   if (["/stock-piezas", "/stock-movimientos"].some((r) => req.nextUrl.pathname.startsWith(r)) && !(await tienePermiso(req.auth?.user?.email, "stock.ver", true))) {

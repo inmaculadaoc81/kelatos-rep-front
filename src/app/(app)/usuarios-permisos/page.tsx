@@ -48,6 +48,14 @@ const NOMBRE_MODULO: Record<string, string> = {
   mails: "Gestión MAILS (centro de mails y administración)",
   crm: "CRM (leads, propuestas, correos y N8N Labs)",
   agentes: "Agentes IA, Redes sociales y Programar contenido",
+  reparaciones: "Reparaciones (historial, presupuestos, recogidas, Punto Limpio y casilleros)",
+  clientes: "Clientes, proveedores y Formulario Web",
+  equipos: "Equipos, alquileres y precio de venta",
+  ventas: "Ventas",
+  facturacion: "Facturación (facturas, seguimiento y reporte)",
+  efectivo: "Efectivo y Facturación del día",
+  n8nlabs: "N8N Labs",
+  prospeccion: "Prospección",
 };
 
 /** Aspecto de cada vista (dashboard) en la pantalla de inicio. */

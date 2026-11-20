@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiPost } from "@/lib/kelatos-api";
 import { esSuperadmin, puedePonerPrecioVenta } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 
 function hashCanonico(payload: unknown): string {
   return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
@@ -28,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const esAdmin = session?.user?.role === "admin" || esSuperadmin(usuario);
   // Fuera de los administradores, solo las cuentas autorizadas pueden cambiar el PRECIO DE VENTA, y nada más de lo numérico (tarifas y fianza).
   const soloPrecioVenta = CAMPOS_NUMERO.filter((c) => c in datos).every((c) => c === "precioVenta");
-  if (!esAdmin && CAMPOS_NUMERO.some((c) => c in datos) && !(soloPrecioVenta && puedePonerPrecioVenta(usuario))) {
+  if (!esAdmin && CAMPOS_NUMERO.some((c) => c in datos) && !(soloPrecioVenta && (await tienePermiso(usuario, "equipos.precio_venta", puedePonerPrecioVenta(usuario))))) {
     return NextResponse.json({ ok: false, error: "Solo un administrador puede cambiar las tarifas y la fianza (el precio de venta, solo las cuentas autorizadas)" }, { status: 403 });
   }
 
