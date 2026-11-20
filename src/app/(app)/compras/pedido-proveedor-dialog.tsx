@@ -289,6 +289,22 @@ function PanelLecturas({ texto, lineas, zooms, moneda, imagenes, onOcultar }: {
   );
 }
 
+/** Al inicio de cada línea de pedido: primero el TOTAL del pedido y la explicación de cómo sale el precio por unidad (IVA, descuento, precio de las unidades juntas…). */
+function CabeceraPrecioLinea({ l, moneda, unica }: { l: LineaPedidoEditable; moneda?: string | null; unica: boolean }) {
+  if (!unica && !(l.ivaIncluido > 0)) return null;
+  return (
+    <div className="space-y-1.5">
+      {unica && l.totalPedido != null && (
+        <div className="flex flex-wrap items-baseline gap-x-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Total del pedido{l.ivaIncluido > 0 ? " (sin IVA)" : ""}:</span>
+          <span className="text-base font-bold">{fmtMoneda(l.totalPedido, moneda)}</span>
+        </div>
+      )}
+      <div className="grid grid-cols-1"><NotaTotalPedido l={l} moneda={moneda} unica={unica} /></div>
+    </div>
+  );
+}
+
 const PLATAFORMAS_BASE = ["AliExpress", "Amazon", "eBay", "Temu", "Wallapop", "ASWO", "Web del proveedor"];
 const CLAVE_PLATAFORMAS_EXTRA = "kelatos_plataformas_pedido_extra";
 
@@ -1610,6 +1626,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                           <div className={l.accion === "registrar" ? "space-y-2" : "hidden"}>
                           {l.destino === "tienda" ? (
                             <>
+                              <CabeceraPrecioLinea l={l} moneda={conversion?.moneda} unica={lineas.length === 1} />
                               <div className="flex flex-wrap items-end gap-2">
                                 <div className="w-20 space-y-1">
                                   <Label className="text-xs text-muted-foreground">Cantidad</Label>
@@ -1655,7 +1672,6 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   <Label className="text-xs text-muted-foreground">Descuento del pedido ({simMoneda})</Label>
                                   <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n, costeInterno: costoNeto({ costo: l.costo, cantidad: l.cantidad, descuento: n }) })} />
                                 </div>
-                                {(lineas.length === 1 || l.ivaIncluido > 0) && <NotaTotalPedido l={l} moneda={conversion?.moneda} unica={lineas.length === 1} />}
                               </div>
                               {l.referencia && l.nombrePiezaSugerida && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
@@ -1704,6 +1720,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                             </>
                           ) : (
                             <div className="space-y-2 rounded-md bg-muted/50 p-2">
+                              {l.origenCliente !== "venta" && <CabeceraPrecioLinea l={l} moneda={conversion?.moneda} unica={lineas.length === 1} />}
                               {!(l.resguardo || l.ventaId) ? (
                                 <BuscadorClienteLinea
                                   textoInicial={l.textoPedido}
@@ -1791,7 +1808,6 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                         <DecimalInput className="h-8 w-full" value={l.descuento} onChange={(n) => actualizar(i, { descuento: n })} />
                                       </div>
                                     )}
-                                    {(lineas.length === 1 || l.ivaIncluido > 0) && l.origenCliente !== "venta" && <NotaTotalPedido l={l} moneda={conversion?.moneda} unica={lineas.length === 1} />}
                                   </div>
                             </div>
                           )}
