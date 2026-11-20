@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { InfoCircle, Refresh2, ShieldTick, TickCircle, UserAdd, CloseCircle } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+type Vistas = [string, [string, Permiso[]][]][];
 type Rol = "super_admin" | "empleado_local" | "empleado_remoto";
 const ROLES: { clave: Rol; etiqueta: string; clase: string; ayuda: string }[] = [
   { clave: "super_admin", etiqueta: "Super admin", clase: "bg-violet-500/15 text-violet-700 dark:text-violet-300", ayuda: "Todos los permisos, sin restricción de IP." },
@@ -23,7 +24,7 @@ const ROLES: { clave: Rol; etiqueta: string; clase: string; ayuda: string }[] = 
 ];
 const rolDe = (r: string) => ROLES.find((x) => x.clave === r) ?? ROLES[1];
 
-interface Permiso { clave: string; modulo: string; etiqueta: string; descripcion: string | null; orden: number }
+interface Permiso { clave: string; vista: string; modulo: string; etiqueta: string; descripcion: string | null; orden: number }
 interface Usuario {
   id: number; email: string; nombre: string; rol: Rol; activo: boolean; compartida: boolean; empleado_asistencia_id: number | null; notas: string | null;
   fijo: boolean; excepciones: Record<string, boolean>; efectivos: Record<string, boolean>;
@@ -83,13 +84,16 @@ export default function UsuariosPermisosPage() {
     return () => clearTimeout(t);
   }, [cargar]);
 
-  const modulos = useMemo(() => {
-    const m = new Map<string, Permiso[]>();
+  // Vista (dashboard: Reparaciones, Tareas, Transferencias…) → módulo → permisos, en el orden del catálogo.
+  const vistas = useMemo<Vistas>(() => {
+    const v = new Map<string, Map<string, Permiso[]>>();
     for (const p of todo?.catalogo ?? []) {
+      if (!v.has(p.vista)) v.set(p.vista, new Map());
+      const m = v.get(p.vista)!;
       if (!m.has(p.modulo)) m.set(p.modulo, []);
       m.get(p.modulo)!.push(p);
     }
-    return Array.from(m.entries());
+    return Array.from(v.entries()).map(([vista, m]) => [vista, Array.from(m.entries())] as [string, [string, Permiso[]][]]);
   }, [todo]);
 
   const valorRol = (rol: Rol, clave: string) => cambiosRol[rol]?.[clave] ?? todo?.roles[rol]?.[clave] ?? false;
@@ -237,9 +241,12 @@ export default function UsuariosPermisosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {modulos.map(([modulo, permisos]) => (
-                  <>
-                    <TableRow key={`m-${modulo}`} className="bg-muted/40 hover:bg-muted/40"><TableCell colSpan={4} className="py-1 text-xs font-bold tracking-wider text-muted-foreground uppercase">{modulo}</TableCell></TableRow>
+                {vistas.map(([vista, mods]) => (
+                  <Fragment key={`v-${vista}`}>
+                    <TableRow className="bg-primary/10 hover:bg-primary/10"><TableCell colSpan={4} className="py-2 text-sm font-bold text-primary">Vista: {vista}</TableCell></TableRow>
+                    {mods.map(([modulo, permisos]) => (
+                  <Fragment key={`m-${vista}-${modulo}`}>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40"><TableCell colSpan={4} className="py-1 pl-6 text-xs font-bold tracking-wider text-muted-foreground uppercase">Módulo: {modulo}</TableCell></TableRow>
                     {permisos.map((p) => (
                       <TableRow key={p.clave}>
                         <TableCell className="text-sm"><div className="font-medium">{p.etiqueta}</div>{p.descripcion && <div className="text-xs text-muted-foreground">{p.descripcion}</div>}</TableCell>
@@ -257,7 +264,9 @@ export default function UsuariosPermisosPage() {
                         ))}
                       </TableRow>
                     ))}
-                  </>
+                  </Fragment>
+                    ))}
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
@@ -298,7 +307,7 @@ export default function UsuariosPermisosPage() {
           key={editando === "nuevo" ? "nuevo" : editando.id}
           usuario={editando === "nuevo" ? null : editando}
           todo={todo}
-          modulos={modulos}
+          vistas={vistas}
           onCerrar={() => setEditando(null)}
           onGuardado={async () => { setEditando(null); await cargar(); }}
         />
@@ -309,8 +318,8 @@ export default function UsuariosPermisosPage() {
 
 type Estado = "hereda" | "permite" | "deniega";
 
-function EditarUsuario({ usuario, todo, modulos, onCerrar, onGuardado }: {
-  usuario: Usuario | null; todo: Todo; modulos: [string, Permiso[]][]; onCerrar: () => void; onGuardado: () => Promise<void>;
+function EditarUsuario({ usuario, todo, vistas, onCerrar, onGuardado }: {
+  usuario: Usuario | null; todo: Todo; vistas: Vistas; onCerrar: () => void; onGuardado: () => Promise<void>;
 }) {
   const [email, setEmail] = useState(usuario?.email ?? "");
   const [nombre, setNombre] = useState(usuario?.nombre ?? "");
@@ -347,7 +356,7 @@ function EditarUsuario({ usuario, todo, modulos, onCerrar, onGuardado }: {
       }
       if (id && rol !== "super_admin") {
         const cambios: Record<string, boolean | null> = {};
-        for (const [, ps] of modulos) for (const p of ps) {
+        for (const [, mods] of vistas) for (const [, ps] of mods) for (const p of ps) {
           const nuevo = estados[p.clave] ?? "hereda";
           const antes: Estado = usuario ? (usuario.excepciones[p.clave] === undefined ? "hereda" : usuario.excepciones[p.clave] ? "permite" : "deniega") : "hereda";
           if (nuevo !== antes) cambios[p.clave] = nuevo === "hereda" ? null : nuevo === "permite";
@@ -428,9 +437,19 @@ function EditarUsuario({ usuario, todo, modulos, onCerrar, onGuardado }: {
                 )}
               </div>
               <div className="overflow-hidden rounded-md border">
-                {modulos.map(([modulo, permisos]) => (
+                {vistas.map(([vista, mods], iv) => {
+                  const todos = mods.flatMap(([, ps]) => ps).filter((p) => p.clave !== "usuarios.administrar");
+                  if (todos.length === 0) return null;
+                  const permitidos = todos.filter((p) => efectivo(p.clave)).length;
+                  return (
+                  <details key={vista} open={iv === 0} className="group border-t first:border-t-0">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-primary/10 px-3 py-2 text-sm font-bold text-primary">
+                      <span>Vista: {vista}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{permitidos} de {todos.length} permitidos</span>
+                    </summary>
+                    {mods.map(([modulo, permisos]) => (
                   <div key={modulo}>
-                    <div className="bg-muted/40 px-3 py-1 text-xs font-bold tracking-wider text-muted-foreground uppercase">{modulo}</div>
+                    <div className="bg-muted/40 px-3 py-1 pl-5 text-xs font-bold tracking-wider text-muted-foreground uppercase">Módulo: {modulo}</div>
                     {permisos.filter((p) => p.clave !== "usuarios.administrar").map((p) => {
                       const st = estados[p.clave] ?? "hereda";
                       const porRol = todo.roles[rol]?.[p.clave] ?? false;
@@ -455,7 +474,10 @@ function EditarUsuario({ usuario, todo, modulos, onCerrar, onGuardado }: {
                       );
                     })}
                   </div>
-                ))}
+                    ))}
+                  </details>
+                  );
+                })}
               </div>
             </div>
           )}
