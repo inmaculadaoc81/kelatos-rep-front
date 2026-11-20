@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { esSuperadmin, puedeCrearPiezas, puedeEditarPiezas } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 
 /**
  * Indica si la sesión actual es una de las cuentas con permiso para borrar
@@ -18,7 +19,7 @@ export async function GET() {
   const esAdmin = superadmin || session?.user?.role === "admin";
   return NextResponse.json({
     ok: true, esSuperadmin: superadmin, esAdmin, puedeVerMails: esAdmin,
-    accesoCompleto: !!session?.user?.accesoCompleto, puedeCrearPiezas: puedeCrearPiezas(session?.user?.email),
-    puedeEditarPiezas: puedeEditarPiezas(session?.user?.email),
+    accesoCompleto: !!session?.user?.accesoCompleto, puedeCrearPiezas: await tienePermiso(session?.user?.email, "stock.crear_pieza", puedeCrearPiezas(session?.user?.email)),
+    puedeEditarPiezas: await tienePermiso(session?.user?.email, "stock.editar_pieza", puedeEditarPiezas(session?.user?.email)),
   });
 }

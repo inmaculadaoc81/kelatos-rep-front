@@ -4,6 +4,7 @@ import { esSuperadmin, puedeVerTransferencias, puedeVerEfectivoSoloLectura, ater
 import { puedeVerEquiposEntregados } from "@/lib/equipos-entregados";
 import { esProgramadorContenido } from "@/lib/programador-contenido";
 import { comprobarAccesoLocal, comprobarAccesoRemotos } from "@/lib/acceso-local";
+import { tienePermiso } from "@/lib/permisos";
 import { esUsuarioRedes, esRutaRedesSociales } from "@/lib/redes-sociales-acceso";
 import { puedeVerExtractorDiscos } from "@/lib/extractor-discos-acceso";
 
@@ -47,6 +48,11 @@ export default auth(async (req) => {
   }
   // Configuración (lista de usuarios) es solo para el Administrador.
   if (req.nextUrl.pathname.startsWith("/configuracion") && req.auth?.user?.role !== "admin") {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+  // Stock (páginas): permiso «Ver stock». Solo manda cuando el módulo está migrado; si no, entra todo el mundo como antes. Las rutas /api/stock-piezas
+  // las usan también Reparaciones y Facturación para buscar piezas, así que se protegen por acción (crear/editar/borrar), no por «ver».
+  if (["/stock-piezas", "/stock-movimientos"].some((r) => req.nextUrl.pathname.startsWith(r)) && !(await tienePermiso(req.auth?.user?.email, "stock.ver", true))) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
   // Usuarios y permisos — SOLO superadmins (página y API).

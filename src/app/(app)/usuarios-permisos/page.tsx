@@ -28,7 +28,8 @@ interface Usuario {
   id: number; email: string; nombre: string; rol: Rol; activo: boolean; compartida: boolean; empleado_asistencia_id: number | null; notas: string | null;
   fijo: boolean; excepciones: Record<string, boolean>; efectivos: Record<string, boolean>;
 }
-interface Todo { catalogo: Permiso[]; roles: Record<string, Record<string, boolean>>; usuarios: Usuario[]; modo: string }
+interface Todo { catalogo: Permiso[]; roles: Record<string, Record<string, boolean>>; usuarios: Usuario[]; modo: string; aplicar: string[]; migrables: string[] }
+const NOMBRE_MODULO: Record<string, string> = { stock: "Stock (ver, crear, editar y borrar piezas)" };
 interface Registro { id: number; fecha: string; actor: string | null; accion: string; usuario_email: string | null; detalle: Record<string, unknown> }
 
 const ACCIONES: Record<string, string> = {
@@ -102,6 +103,19 @@ export default function UsuariosPermisosPage() {
     }
   }
 
+  async function alternarModulo(modulo: string, activar: boolean) {
+    if (!todo) return;
+    if (activar && !window.confirm(`A partir de ahora el acceso a ${NOMBRE_MODULO[modulo] ?? modulo} lo deciden los permisos de esta pantalla, no las listas de antes. ¿Activar?`)) return;
+    try {
+      const nuevos = activar ? [...todo.aplicar, modulo] : todo.aplicar.filter((x) => x !== modulo);
+      await api("/api/usuarios-permisos/modulos", "PUT", { modulos: nuevos });
+      toast.success(activar ? "Permisos aplicados en ese módulo" : "Ese módulo vuelve al sistema anterior");
+      await cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo cambiar");
+    }
+  }
+
   async function alternarActivo(u: Usuario) {
     try {
       await api(`/api/usuarios-permisos/usuarios/${u.id}`, "PATCH", { activo: !u.activo });
@@ -125,7 +139,13 @@ export default function UsuariosPermisosPage() {
         </div>
       </div>
 
-      {todo?.modo !== "aplicar" && (
+      {todo && todo.aplicar.length > 0 && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm">
+          <ShieldTick className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+          <p>Los permisos <span className="font-medium">ya mandan</span> en: {todo.aplicar.map((m) => NOMBRE_MODULO[m] ?? m).join(", ")}. En el resto de módulos todavía decide el sistema anterior.</p>
+        </div>
+      )}
+      {todo && todo.aplicar.length === 0 && (
         <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
           <InfoCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
           <div>
@@ -185,6 +205,19 @@ export default function UsuariosPermisosPage() {
 
         <TabsContent value="roles">
           <div className="mt-3 overflow-hidden rounded-lg border bg-card shadow-sm">
+            {todo && todo.migrables.length > 0 && (
+              <div className="border-b px-3 py-3">
+                <p className="mb-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase">Módulos donde los permisos ya mandan</p>
+                {todo.migrables.map((m) => (
+                  <label key={m} className="flex cursor-pointer items-center gap-2 py-0.5 text-sm">
+                    <Switch checked={todo.aplicar.includes(m)} onCheckedChange={(v) => alternarModulo(m, v === true)} />
+                    {NOMBRE_MODULO[m] ?? m}
+                    <span className="text-xs text-muted-foreground">{todo.aplicar.includes(m) ? "· mandan los permisos" : "· decide el sistema anterior"}</span>
+                  </label>
+                ))}
+                <p className="mt-1 text-[11px] text-muted-foreground">Se puede volver atrás en cualquier momento apagando el interruptor. Quien no figure en la lista de usuarios sigue con el sistema anterior.</p>
+              </div>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-3 py-2">
               <span className="text-xs text-muted-foreground">Lo que puede hacer por defecto cada rol. El super admin siempre lo tiene todo. A cada usuario se le pueden dar excepciones.</span>
               <Button size="sm" className="h-7" disabled={!hayCambiosRol || guardandoRol} onClick={guardarRoles}>{guardandoRol ? "Guardando…" : "Guardar cambios"}</Button>

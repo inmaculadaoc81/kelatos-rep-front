@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { tienePermiso } from "@/lib/permisos";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { mapearStockPieza, alternativosParaApi, DatosStockPiezaForm } from "@/lib/stock-piezas";
 
@@ -29,6 +30,8 @@ export async function POST(req: Request) {
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  // Hasta ahora la API no restringía el alta (solo se ocultaba el botón): con los permisos aplicados sí se exige «Crear piezas».
+  if (!(await tienePermiso(usuario, "stock.crear_pieza", true))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const datos = (await req.json()) as DatosStockPiezaForm;
   const referencia = datos.referencia?.trim().toUpperCase();

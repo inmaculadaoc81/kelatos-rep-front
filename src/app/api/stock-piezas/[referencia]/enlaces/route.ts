@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
 import { esSuperadmin } from "@/lib/superadmin";
+import { tienePermiso } from "@/lib/permisos";
 
 interface FilaEnlaceSql {
   id: number;
@@ -33,7 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
   const session = await auth();
   const usuario = session?.user?.email;
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  if (!esSuperadmin(usuario)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!(await tienePermiso(usuario, "stock.borrar_pieza", esSuperadmin(usuario)))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
 
   const { referencia } = await params;
   const { proveedor, costo, enlace } = (await req.json()) as { proveedor?: string; costo?: number | null; enlace: string };
