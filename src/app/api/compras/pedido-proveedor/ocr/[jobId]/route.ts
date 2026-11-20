@@ -26,6 +26,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
       fase?: "leyendo" | "ia" | "terminando";
       sinFactura?: boolean;
       plataforma?: string | null;
+      monedaPedido?: string | null;
+      conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
       error?: string;
       numeroPedidoGlobal?: string | null;
       lineas?: LineaPedidoProveedorLeida[];
@@ -45,6 +47,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
         proveedorCreado: !!data.proveedorCreado,
         sinFactura: !!data.sinFactura,
         plataforma: data.plataforma ?? null,
+        monedaPedido: data.monedaPedido ?? null,
+        conversionMoneda: data.conversionMoneda ?? null,
       });
     }
     if (data.estado === "error") return NextResponse.json({ ok: true, estado: "error", error: data.error || "No se pudo leer el pedido" });

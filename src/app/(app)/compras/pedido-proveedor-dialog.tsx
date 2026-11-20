@@ -452,6 +452,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [proveedorBase, setProveedorNombre] = useState("ASWO");
   /** Dónde se hizo el pedido (Wallapop, AliExpress, Amazon...): distinto del proveedor, que es quien vende. */
   const [plataforma, setPlataforma] = useState("");
+  /** Si el pedido venía en otra moneda: cómo se convirtió a euros (se muestra arriba para revisarlo). */
+  const [conversion, setConversion] = useState<{ moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null>(null);
   // Ya no hay campo «Proveedor»: el proveedor es la plataforma elegida (si no hay, el detectado o ASWO como siempre).
   const proveedorNombre = plataforma.trim() || proveedorBase;
   /** Antes de analizar: ¿la mercancía de lo que se sube ya llegó al local o aún no? Cada línea se puede cambiar después. */
@@ -750,7 +752,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada segundo (máx. 7 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null; monedaPedido?: string | null;
+        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null; monedaPedido?: string | null; conversionMoneda?: { moneda: string; convertido: boolean; tasa?: number; fecha?: string; importeOriginal?: number | null; motivo?: string } | null;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -788,7 +790,13 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       if (data.proveedorNombreSugerido) setProveedorNombre(data.proveedorNombreSugerido);
       setProveedorCreado(!!data.proveedorCreado);
       setPlataforma(data.plataforma ?? "");
-      if (data.monedaPedido === "USD") toast.warning("El importe está en dólares (USD): revisa el precio y pon el equivalente en euros que cobró el banco");
+      if (data.conversionMoneda?.convertido) {
+        setConversion(data.conversionMoneda);
+        toast.warning(`El pedido estaba en ${data.conversionMoneda.moneda}: se convirtió a euros (1 ${data.conversionMoneda.moneda} = ${data.conversionMoneda.tasa} €, cambio del ${data.conversionMoneda.fecha}). Revisa con el cargo real del banco.`);
+      } else if (data.monedaPedido) {
+        setConversion(data.conversionMoneda ?? { moneda: data.monedaPedido, convertido: false });
+        toast.warning(`El importe está en ${data.monedaPedido} y no se pudo convertir a euros: pon el equivalente en euros que cobró el banco`);
+      } else setConversion(null);
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo leer el pedido");
@@ -1210,6 +1218,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               </span>
             )}
           </div>
+
+          {conversion && (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+              {conversion.convertido
+                ? <>Importe en <strong>{conversion.moneda}</strong>{conversion.importeOriginal != null ? <> ({conversion.importeOriginal.toLocaleString("es-ES", { minimumFractionDigits: 2 })} {conversion.moneda} en el original)</> : null} convertido a euros con el cambio del <strong>{conversion.fecha}</strong> (1 {conversion.moneda} = {conversion.tasa} €). El cargo real del banco puede ser algo distinto: corrige el precio si hace falta.</>
+                : <>Importe en <strong>{conversion.moneda}</strong>: no se pudo convertir a euros. Escribe el equivalente en euros que cobró el banco.</>}
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground">¿La mercancía ya llegó al local?</span>
