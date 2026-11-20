@@ -87,6 +87,10 @@ interface LineaPedidoEditable {
   /** «Total» del pedido (tiendas online) y si el precio por unidad sale de él: al cambiar la cantidad, el precio se recalcula (Total ÷ cantidad). */
   totalPedido: number | null;
   precioDelTotal: boolean;
+  /** Precio de una unidad tal como sale en la web; con la cantidad y el total se calcula el descuento (o los gastos extra). */
+  precioListado: number | null;
+  /** La cantidad no se leía en la captura y se dedujo del total: hay que revisarla. */
+  cantidadInferida: boolean;
   textoPedido: string;
   aplicar: boolean;
   destino: "tienda" | "cliente";
@@ -135,6 +139,39 @@ interface LineaPedidoEditable {
   numeroPedido: string;
   fechaEstimada: string;
   costo: number;
+}
+
+const eurFmt = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
+/** Una línea (pedido de un solo artículo): compara el total del pedido con cantidad × precio de la web y explica la diferencia como descuento o gastos extra. */
+function NotaTotalPedido({ l }: { l: LineaPedidoEditable }) {
+  if (!l.totalPedido) return null;
+  const total = l.totalPedido;
+  const suma = Math.round(l.cantidad * l.costo * 100) / 100;
+  if (l.precioListado != null && l.precioListado > 0) {
+    const bruto = Math.round(l.precioListado * l.cantidad * 100) / 100;
+    const dif = Math.round((bruto - total) * 100) / 100;
+    const unidad = Math.round((total / l.cantidad) * 100) / 100;
+    if (Math.abs(dif) > Math.max(0.5, total * 0.03)) {
+      return (
+        <div className="space-y-0.5 text-[11px] sm:col-span-2">
+          {l.cantidadInferida && <p className="font-medium text-amber-700 dark:text-amber-400">La cantidad no se veía en la captura: se dedujo del total ({l.cantidad} unidades). Revisa que sea correcta.</p>}
+          <p className={dif > 0 ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}>
+            En la web: {l.cantidad} × {eurFmt(l.precioListado)} = {eurFmt(bruto)} · total pagado {eurFmt(total)} →{" "}
+            {dif > 0 ? <strong>descuento de {eurFmt(dif)} ({Math.round((dif / bruto) * 100)} %)</strong> : <strong>{eurFmt(-dif)} más (envío o impuestos)</strong>}
+            . Coste por unidad: <strong>{eurFmt(unidad)}</strong>
+          </p>
+        </div>
+      );
+    }
+  }
+  const cuadra = Math.abs(suma - total) <= Math.max(0.5, total * 0.03);
+  return (
+    <p className={`text-[11px] sm:col-span-2 ${cuadra ? "text-emerald-700 dark:text-emerald-400" : "font-medium text-destructive"}`}>
+      Total del pedido: {eurFmt(total)} · esta línea: {l.cantidad} × {eurFmt(l.costo)} = {eurFmt(suma)}
+      {l.precioDelTotal ? " (precio calculado con el total; si compraste varias unidades, cambia la cantidad y se recalcula)" : cuadra ? " ✓" : " — no cuadra: revisa la cantidad y el precio"}
+    </p>
+  );
 }
 
 const PLATAFORMAS_BASE = ["AliExpress", "Amazon", "eBay", "Temu", "Wallapop", "ASWO", "Web del proveedor"];
@@ -200,6 +237,8 @@ function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string 
     cantidad: l.cantidad,
     totalPedido: l.totalPedido ?? null,
     precioDelTotal: !!l.ajustadoAlTotal,
+    precioListado: l.precioListado ?? null,
+    cantidadInferida: !!l.cantidadInferida,
     textoPedido: l.textoPedido,
     // Una línea que solo sirve para marcar un pedido como recibido empieza desmarcada hasta encontrar ese pedido.
     aplicar: !l.soloRecepcion,
@@ -1240,7 +1279,17 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 return (
                   <p className={`rounded-md border px-3 py-2 text-xs ${cuadra ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" : "border-destructive/30 bg-destructive/5 font-medium text-destructive"}`}>
                     Total del pedido: {eur(total)} · suma de las líneas: {eur(suma)}
-                    {cuadra ? " ✓ cuadra" : " — no cuadra (puede haber descuentos o gastos de envío): revisa las cantidades y los precios de cada línea"}
+                    {cuadra ? " ✓ cuadra" : suma > total
+                      ? ` — el total es ${eur(suma - total)} menor (${Math.round(((suma - total) / suma) * 100)} %): parece un descuento.`
+                      : ` — el total es ${eur(total - suma)} mayor: parece envío o impuestos.`}
+                    {!cuadra && suma > 0 && (
+                      <button type="button" className="ml-2 underline underline-offset-2" onClick={() => {
+                        const f = total / suma;
+                        setLineas((prev) => prev.map((x) => (x.aplicar ? { ...x, costo: Math.round(x.costo * f * 100) / 100, costeInterno: Math.round(x.costeInterno * f * 100) / 100 } : x)));
+                      }}>
+                        Repartirlo entre las líneas (ajusta el coste de cada una)
+                      </button>
+                    )}
                   </p>
                 );
               })()}
@@ -1393,17 +1442,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   <Label className="text-xs text-muted-foreground">Precio de compra por unidad (€)</Label>
                                   <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n, costeInterno: n, precioDelTotal: false })} />
                                 </div>
-                                {l.totalPedido && lineas.length === 1 ? (() => {
-                                  const suma = Math.round(l.cantidad * l.costo * 100) / 100;
-                                  const cuadra = Math.abs(suma - l.totalPedido) <= Math.max(0.5, l.totalPedido * 0.03);
-                                  const eur = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-                                  return (
-                                    <p className={`text-[11px] sm:col-span-2 ${cuadra ? "text-emerald-700 dark:text-emerald-400" : "font-medium text-destructive"}`}>
-                                      Total del pedido: {eur(l.totalPedido)} · esta línea: {l.cantidad} × {eur(l.costo)} = {eur(suma)}
-                                      {l.precioDelTotal ? " (precio calculado con el total; si compraste varias unidades, cambia la cantidad y se recalcula)" : cuadra ? " ✓" : " — no cuadra: revisa la cantidad y el precio"}
-                                    </p>
-                                  );
-                                })() : null}
+                                {lineas.length === 1 && <NotaTotalPedido l={l} />}
                               </div>
                               {l.referencia && l.nombrePiezaSugerida && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
@@ -1533,6 +1572,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                         <DecimalInput className="h-8 w-full" value={l.costo} onChange={(n) => actualizar(i, { costo: n })} />
                                       </div>
                                     )}
+                                    {lineas.length === 1 && l.origenCliente !== "venta" && <NotaTotalPedido l={l} />}
                                   </div>
                             </div>
                           )}

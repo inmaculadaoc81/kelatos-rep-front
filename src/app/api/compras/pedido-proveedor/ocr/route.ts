@@ -48,6 +48,12 @@ export interface LineaPedidoProveedorLeida {
   totalPedido?: number | null;
   /** El precio por unidad se calculó como Total ÷ cantidad porque no cuadraba con lo leído de la línea. */
   ajustadoAlTotal?: boolean;
+  /** Precio de una unidad tal como sale en la web (para calcular el descuento o los gastos extra). */
+  precioListado?: number | null;
+  descuento?: number | null;
+  gastosExtra?: number | null;
+  /** La cantidad se dedujo del total porque no se leía en la captura. */
+  cantidadInferida?: boolean;
 }
 
 const MAX_ARCHIVOS_PEDIDO = 4;
