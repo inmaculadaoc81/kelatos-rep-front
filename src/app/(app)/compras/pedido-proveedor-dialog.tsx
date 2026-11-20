@@ -640,7 +640,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       // 2) Se consulta el resultado cada segundo (máx. 7 minutos).
       let data: {
         estado: string; error?: string; numeroPedidoGlobal?: string | null; lineas?: LineaPedidoProveedorLeida[];
-        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null;
+        proveedorIdSugerido?: string | null; proveedorNombreSugerido?: string | null; proveedorCreado?: boolean; avisos?: string[]; documentoEsFactura?: boolean; plataforma?: string | null; monedaPedido?: string | null;
       } | null = null;
       // Varias imágenes con texto se leen una a una (la IA atiende de una en una): margen de 7 minutos.
       while (Date.now() - inicio < 420_000) {
@@ -678,6 +678,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       if (data.proveedorNombreSugerido) setProveedorNombre(data.proveedorNombreSugerido);
       setProveedorCreado(!!data.proveedorCreado);
       setPlataforma(data.plataforma ?? "");
+      if (data.monedaPedido === "USD") toast.warning("El importe está en dólares (USD): revisa el precio y pon el equivalente en euros que cobró el banco");
       toast.success(`${data.lineas.length} línea(s) leída(s) — revísalas antes de registrar`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo leer el pedido");
