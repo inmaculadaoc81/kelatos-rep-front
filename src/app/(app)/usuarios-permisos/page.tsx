@@ -24,7 +24,7 @@ const ROLES: { clave: Rol; etiqueta: string; clase: string; ayuda: string }[] = 
 ];
 const rolDe = (r: string) => ROLES.find((x) => x.clave === r) ?? ROLES[1];
 
-interface Permiso { clave: string; vista: string; modulo: string; etiqueta: string; descripcion: string | null; orden: number }
+interface Permiso { clave: string; es_entrada?: boolean; vista: string; modulo: string; etiqueta: string; descripcion: string | null; orden: number }
 interface Usuario {
   id: number; email: string; nombre: string; rol: Rol; activo: boolean; compartida: boolean; empleado_asistencia_id: number | null; notas: string | null;
   fijo: boolean; excepciones: Record<string, boolean>; efectivos: Record<string, boolean>;
@@ -96,6 +96,8 @@ export default function UsuariosPermisosPage() {
     return Array.from(v.entries()).map(([vista, m]) => [vista, Array.from(m.entries())] as [string, [string, Permiso[]][]]);
   }, [todo]);
 
+  const entradas = useMemo(() => (todo?.catalogo ?? []).filter((p) => p.es_entrada).sort((a, b) => a.orden - b.orden), [todo]);
+
   const valorRol = (rol: Rol, clave: string) => cambiosRol[rol]?.[clave] ?? todo?.roles[rol]?.[clave] ?? false;
   const hayCambiosRol = Object.values(cambiosRol).some((x) => Object.keys(x).length > 0);
 
@@ -111,6 +113,22 @@ export default function UsuariosPermisosPage() {
       toast.error(e instanceof Error ? e.message : "No se pudo guardar");
     } finally {
       setGuardandoRol(false);
+    }
+  }
+
+  /** Deja o quita la entrada a una vista a un usuario: guarda una excepción sobre su rol, o la borra si coincide con lo que da el rol. */
+  const [guardandoAcceso, setGuardandoAcceso] = useState<string | null>(null);
+  async function alternarAcceso(u: Usuario, clave: string, valor: boolean) {
+    if (!todo) return;
+    setGuardandoAcceso(`${u.id}:${clave}`);
+    try {
+      const delRol = todo.roles[u.rol]?.[clave] ?? false;
+      await api(`/api/usuarios-permisos/usuarios/${u.id}/permisos`, "PUT", { cambios: { [clave]: valor === delRol ? null : valor } });
+      await cargar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo cambiar");
+    } finally {
+      setGuardandoAcceso(null);
     }
   }
 
@@ -170,6 +188,7 @@ export default function UsuariosPermisosPage() {
       <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
         <TabsList>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger value="acceso">Acceso por vista</TabsTrigger>
           <TabsTrigger value="roles">Plantillas por rol</TabsTrigger>
           <TabsTrigger value="registro">Registro de cambios</TabsTrigger>
         </TabsList>
@@ -214,6 +233,58 @@ export default function UsuariosPermisosPage() {
           <p className="mt-2 text-xs text-muted-foreground">Las cuatro cuentas de super admin son fijas: no se pueden degradar ni desactivar desde aquí, para no quedarse fuera por error.</p>
         </TabsContent>
 
+        <TabsContent value="acceso">
+          <div className="mt-3 overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div className="border-b bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              Cada columna es una vista (dashboard) a la que se entra desde el menú del usuario. Activa el interruptor para que esa persona pueda entrar; los módulos de cada vista se afinan en «Editar y permisos».
+              Las vistas marcadas <span className="rounded bg-amber-500/15 px-1 font-medium text-amber-700 dark:text-amber-300">aún no manda</span> ya guardan el permiso, pero todavía las gobierna el sistema anterior.
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-sky-50 dark:bg-sky-950/40">
+                    <TableHead className="text-[.78rem] tracking-wide uppercase">Usuario</TableHead>
+                    {entradas.map((e) => (
+                      <TableHead key={e.clave} className="min-w-28 text-center text-[.78rem] tracking-wide uppercase">
+                        <div>{e.vista}</div>
+                        <div className={cn("mx-auto mt-0.5 w-fit rounded px-1 text-[9px] font-medium normal-case", todo?.aplicar.includes(e.clave.split(".")[0]) ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300")}>
+                          {todo?.aplicar.includes(e.clave.split(".")[0]) ? "ya manda" : "aún no manda"}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {todo?.usuarios.map((u) => (
+                    <TableRow key={u.id} className={cn(!u.activo && "opacity-50")}>
+                      <TableCell>
+                        <div className="text-sm font-medium">{u.nombre}</div>
+                        <div className="text-xs text-muted-foreground">{rolDe(u.rol).etiqueta}</div>
+                      </TableCell>
+                      {entradas.map((e) => {
+                        const bloqueado = u.rol === "super_admin" || e.clave === "usuarios.administrar" || !u.activo;
+                        const tiene = u.efectivos[e.clave] === true;
+                        const esExcepcion = e.clave in u.excepciones;
+                        return (
+                          <TableCell key={e.clave} className="text-center">
+                            <Switch
+                              checked={tiene}
+                              disabled={bloqueado || guardandoAcceso === `${u.id}:${e.clave}`}
+                              onCheckedChange={(v) => alternarAcceso(u, e.clave, v === true)}
+                              title={esExcepcion ? "Excepción sobre su rol" : "Según su rol"}
+                            />
+                            {esExcepcion && !bloqueado && <div className="mt-0.5 text-[9px] text-muted-foreground">excepción</div>}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="roles">
           <div className="mt-3 overflow-hidden rounded-lg border bg-card shadow-sm">
             {todo && todo.migrables.length > 0 && (
@@ -249,7 +320,7 @@ export default function UsuariosPermisosPage() {
                     <TableRow className="bg-muted/40 hover:bg-muted/40"><TableCell colSpan={4} className="py-1 pl-6 text-xs font-bold tracking-wider text-muted-foreground uppercase">Módulo: {modulo}</TableCell></TableRow>
                     {permisos.map((p) => (
                       <TableRow key={p.clave}>
-                        <TableCell className="text-sm"><div className="font-medium">{p.etiqueta}</div>{p.descripcion && <div className="text-xs text-muted-foreground">{p.descripcion}</div>}</TableCell>
+                        <TableCell className="text-sm"><div className="font-medium">{p.etiqueta}{p.es_entrada && <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">entrada a la vista</span>}</div>{p.descripcion && <div className="text-xs text-muted-foreground">{p.descripcion}</div>}</TableCell>
                         {ROLES.map((r) => (
                           <TableCell key={r.clave} className="text-center">
                             {r.clave === "super_admin" || p.clave === "usuarios.administrar" ? (
@@ -456,7 +527,7 @@ function EditarUsuario({ usuario, todo, vistas, onCerrar, onGuardado }: {
                       return (
                         <div key={p.clave} className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-1.5">
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm">{p.etiqueta}</div>
+                            <div className="text-sm">{p.etiqueta}{p.es_entrada && <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">entrada a la vista</span>}</div>
                             <div className="text-[11px] text-muted-foreground">Rol: {porRol ? "permitido" : "no permitido"}</div>
                           </div>
                           <Select value={st} onValueChange={(v) => v && setEstados((prev) => ({ ...prev, [p.clave]: v as Estado }))}>
