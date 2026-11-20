@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ pedidoI
   try {
     const resultado = await kelatosApiPost<{ ok: boolean; pedido: Record<string, unknown> }>(
       `/v1/pedidos/${encodeURIComponent(pedidoId)}/estado-plataforma`,
-      { estadoPlataforma: body.estadoPlataforma || "" }
+      { estadoPlataforma: body.estadoPlataforma || "", usuario: session.user.email }
     );
     return NextResponse.json({ ok: true, pedido: resultado.pedido });
   } catch (error) {

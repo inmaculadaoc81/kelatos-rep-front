@@ -42,6 +42,9 @@ export interface CompraFila {
       detectar pedidos marcados "Recibido" internamente sin que la
       plataforma confirme la entrega. */
   estadoPlataforma: string;
+  /** Quién anotó el estado de la plataforma (verificación del pedido) y cuándo. */
+  estadoPlataformaPor: string;
+  estadoPlataformaEn: string | null;
   recibidoPor: string;
   problemaTipo: string;
   codigoDevolucion: string;
@@ -79,6 +82,8 @@ interface FilaCompraSql {
   fecha_recepcion: string | null;
   estado: string | null;
   estado_plataforma: string | null;
+  estado_plataforma_por?: string | null;
+  estado_plataforma_en?: string | null;
   recibido_por: string | null;
   problema_tipo: string | null;
   codigo_devolucion: string | null;
@@ -111,6 +116,8 @@ export function mapearCompra(row: FilaCompraSql): CompraFila {
     fechaRecepcion: row.fecha_recepcion,
     estado: row.estado || "",
     estadoPlataforma: row.estado_plataforma || "",
+    estadoPlataformaPor: row.estado_plataforma_por || "",
+    estadoPlataformaEn: row.estado_plataforma_en || null,
     recibidoPor: row.recibido_por || "",
     problemaTipo: row.problema_tipo || "",
     codigoDevolucion: row.codigo_devolucion || "",

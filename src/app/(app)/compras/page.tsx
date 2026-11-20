@@ -46,6 +46,21 @@ function fechaCorta(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+/** Nombre legible de quien hizo algo: de «ricardo@kelatos.com» → «Ricardo»; los nombres sin correo se dejan tal cual. */
+function quien(valor: string): string {
+  const v = (valor || "").trim();
+  if (!v) return "";
+  if (!v.includes("@")) return v;
+  const local = v.split("@")[0].split(/[.\-_]/)[0];
+  return local ? local.charAt(0).toUpperCase() + local.slice(1) : v;
+}
+
+function fechaHoraCorta(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
 /** Siguiente estado sugerido para el botón rápido de la fila (mismo criterio que accion-requerida.tsx). */
 function siguienteEstado(estado: string): { estado: string; etiqueta: string; icono: typeof Truck } | null {
   if (estado === "Pedido") return { estado: "En Tránsito", etiqueta: "En tránsito", icono: Truck };
@@ -97,7 +112,7 @@ export default function ComprasPage() {
       if (filas.length === 0) { toast.error("No hay pedidos con estos filtros"); return; }
       const fecha = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : d; };
       const negrita = (v: string) => ({ value: v, fontWeight: "bold" as const });
-      const cab = ["Pedido", "Origen", "Resguardo / Venta", "Cliente", "Equipo", "Proveedor", "Plataforma", "Descripción", "Nº de pedido", "Precio (€)", "Comprado por", "Fecha pedido", "Fecha estimada", "Fecha recepción", "Estado", "Estado plataforma", "Recibido por", "Problema", "Enlace"].map(negrita);
+      const cab = ["Pedido", "Origen", "Resguardo / Venta", "Cliente", "Equipo", "Proveedor", "Plataforma", "Descripción", "Nº de pedido", "Precio (€)", "Comprado por", "Fecha pedido", "Fecha estimada", "Fecha recepción", "Estado", "Estado plataforma", "Verificado por", "Fecha verificación", "Recibido por", "Problema", "Enlace"].map(negrita);
       const cel = (v: string | number | Date, extra: Record<string, unknown> = {}) => (v === "" ? null : { value: v, ...extra });
       const { default: writeExcelFile } = await import("write-excel-file/browser");
       const datos = [
@@ -107,10 +122,10 @@ export default function ComprasPage() {
           cel(c.proveedorNombre || c.proveedorOtro), cel(c.plataforma), cel(c.descripcion), cel(c.numeroPedido),
           c.costo === null ? null : { value: c.costo, format: "#,##0.00" }, cel(c.compradoPor),
           cel(fecha(c.fechaPedido), { format: "dd/mm/yyyy" }), cel(fecha(c.fechaEstimada), { format: "dd/mm/yyyy" }), cel(fecha(c.fechaRecepcion), { format: "dd/mm/yyyy" }),
-          cel(c.estado), cel(c.estadoPlataforma), cel(c.recibidoPor), cel(c.problemaTipo), cel(c.enlace),
+          cel(c.estado), cel(c.estadoPlataforma), cel(c.estadoPlataformaPor), cel(fecha(c.estadoPlataformaEn), { format: "dd/mm/yyyy hh:mm" }), cel(c.recibidoPor), cel(c.problemaTipo), cel(c.enlace),
         ]),
       ];
-      await writeExcelFile(datos as never, { columns: [12, 11, 14, 24, 28, 16, 14, 36, 22, 11, 14, 13, 13, 14, 14, 16, 14, 14, 40].map((width) => ({ width })) }).toFile(`pedidos-compras-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      await writeExcelFile(datos as never, { columns: [12, 11, 14, 24, 28, 16, 14, 36, 22, 11, 14, 13, 13, 14, 14, 16, 24, 17, 24, 14, 40].map((width) => ({ width })) }).toFile(`pedidos-compras-${new Date().toISOString().slice(0, 10)}.xlsx`);
       toast.success(`Exportados ${filas.length} pedidos`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo exportar");
@@ -241,7 +256,7 @@ export default function ComprasPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
-      setCompras((prev) => prev.map((c) => (c.pedidoId === pedidoId ? { ...c, estadoPlataforma } : c)));
+      setCompras((prev) => prev.map((c) => (c.pedidoId === pedidoId ? { ...c, estadoPlataforma, estadoPlataformaPor: estadoPlataforma ? (data.pedido?.estado_plataforma_por ?? "") : "", estadoPlataformaEn: estadoPlataforma ? new Date().toISOString() : null } : c)));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -443,6 +458,12 @@ export default function ComprasPage() {
                       <span className={`inline-flex whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium ${ESTILO_BADGE_ESTADO[c.estado] || "border-muted-foreground/30 text-muted-foreground"}`}>
                         {c.estado || "—"}
                       </span>
+                      {c.estado === "Recibido" && (
+                        <span className="mt-0.5 block whitespace-nowrap text-[10px] text-muted-foreground" title={c.recibidoPor ? `Marcado como recibido por ${c.recibidoPor}` : "Sin registrar quién lo marcó como recibido"}>
+                          {c.recibidoPor ? `Recibió ${quien(c.recibidoPor)}` : "Recibió: sin registrar"}
+                          {c.fechaRecepcion ? ` · ${fechaHoraCorta(c.fechaRecepcion)}` : ""}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {c.origen !== "reparacion" ? (
@@ -463,6 +484,12 @@ export default function ComprasPage() {
                             {ESTADOS_PLATAFORMA.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      )}
+                      {c.origen === "reparacion" && c.estadoPlataforma && (
+                        <span className="mt-0.5 block whitespace-nowrap text-[10px] text-muted-foreground" title={c.estadoPlataformaPor ? `Verificado por ${c.estadoPlataformaPor}` : "Anotado antes de que se guardara quién lo verificó"}>
+                          {c.estadoPlataformaPor ? `Verificó ${quien(c.estadoPlataformaPor)}` : "Verificó: sin registrar"}
+                          {c.estadoPlataformaEn ? ` · ${fechaHoraCorta(c.estadoPlataformaEn)}` : ""}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
