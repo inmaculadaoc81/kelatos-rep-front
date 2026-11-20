@@ -393,6 +393,13 @@ function ConfigDialog({ onCerrar, onCambio }: { onCerrar: () => void; onCambio: 
   const [horas, setHoras] = useState("");
   const [plantilla, setPlantilla] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [telPrueba, setTelPrueba] = useState("");
+
+  async function probar() {
+    if (!window.confirm(`Se enviará UN WhatsApp de prueba (con datos de ejemplo) a ${telPrueba}. ¿Enviar?`)) return;
+    setGuardando(true);
+    try { const r = await api("/api/n8nlabs/reuniones/probar", "POST", { telefono: telPrueba }); toast.success(`Prueba enviada (${r.via})`); } catch (e) { toast.error(e instanceof Error ? e.message : "No se pudo enviar"); } finally { setGuardando(false); }
+  }
 
   const cargar = useCallback(async () => {
     try {
@@ -455,6 +462,15 @@ function ConfigDialog({ onCerrar, onCambio }: { onCerrar: () => void; onCambio: 
                   <p className="mt-2 text-muted-foreground">Variables: {"{{1}}"} nombre · {"{{2}}"} fecha · {"{{3}}"} hora · {"{{4}}"} enlace. Nombre sugerido: <span className="font-medium">recordatorio_reunion_n8nlabs</span>. Se crea en Chatwoot (bandeja Automatizaciones n8n) o en el administrador de WhatsApp de Meta y suele aprobarse en minutos u horas.</p>
                 </div>
               )}
+            </section>
+
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">4 · Probar el envío</h3>
+              <p className="text-xs text-muted-foreground">Envía UN mensaje de prueba, con datos de ejemplo, a un número tuyo antes de activar nada para los clientes. Si ese número te escribió en las últimas 24 h va como mensaje directo; si no, con la plantilla (que debe estar aprobada).</p>
+              <div className="flex gap-2">
+                <Input value={telPrueba} onChange={(e) => setTelPrueba(e.target.value)} placeholder="+34 612 345 678" className="w-56" />
+                <Button size="sm" variant="outline" disabled={guardando || !telPrueba.trim()} onClick={probar}>Enviar prueba</Button>
+              </div>
             </section>
 
             <section className="space-y-2 rounded-lg border p-3">
