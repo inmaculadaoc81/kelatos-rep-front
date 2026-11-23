@@ -220,6 +220,12 @@ export function WebsKelatosSidebar({ session }: { session: Session | null }) {
                   <span>Analítica web</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive={pathname.startsWith("/webs-kelatos/seo")} tooltip="Panel SEO" render={<Link href="/webs-kelatos/seo" />}>
+                  <Chart className="text-sidebar-primary" />
+                  <span>Panel SEO</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
