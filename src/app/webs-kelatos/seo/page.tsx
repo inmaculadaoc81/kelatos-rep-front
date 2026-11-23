@@ -26,10 +26,24 @@ interface Detalle {
   catalogo: CheckManual[];
   puntuacion: Puntos;
 }
+type Tri = "todas" | "si" | "no";
 interface Lote { activo: boolean; hechas: number; total: number }
 
 const color = (p: number) => (p >= 75 ? "bg-emerald-500" : p >= 45 ? "bg-amber-500" : "bg-red-500");
 const fechaCorta = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—");
+
+function Grupo({ etiqueta, valor, onCambio }: { etiqueta: string; valor: Tri; onCambio: (v: Tri) => void }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-muted-foreground">{etiqueta}</span>
+      <div className="flex overflow-hidden rounded-md border">
+        {([["todas", "Todas"], ["si", "Con"], ["no", "Sin"]] as const).map(([v, t]) => (
+          <button key={v} type="button" onClick={() => onCambio(v)} className={cn("px-2 py-1 transition", valor === v ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>{t}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Marca({ v }: { v: boolean | null }) {
   if (v === null) return <span className="text-muted-foreground">—</span>;
@@ -56,6 +70,10 @@ export default function PanelSeoPage() {
   const [filas, setFilas] = useState<FilaWeb[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [fGsc, setFGsc] = useState<Tri>("todas");
+  const [fGa, setFGa] = useState<Tri>("todas");
+  const [fBlog, setFBlog] = useState<Tri>("todas");
+  const [fNivel, setFNivel] = useState<"todos" | "bajo" | "medio" | "alto" | "sin">("todos");
   const [lote, setLote] = useState<Lote | null>(null);
   const [abierta, setAbierta] = useState<number | null>(null);
   const sondeo = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -96,8 +114,14 @@ export default function PanelSeoPage() {
 
   const visibles = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return (filas ?? []).filter((f) => !t || f.nombre.toLowerCase().includes(t) || (f.dominio ?? "").toLowerCase().includes(t));
-  }, [filas, q]);
+    const tri = (v: boolean | null, f: Tri) => f === "todas" || (f === "si" ? v === true : v === false);
+    return (filas ?? []).filter((f) =>
+      (!t || f.nombre.toLowerCase().includes(t) || (f.dominio ?? "").toLowerCase().includes(t)) &&
+      tri(f.gsc, fGsc) && tri(f.ga, fGa) && tri(f.blog, fBlog) &&
+      (fNivel === "todos" || (fNivel === "sin" ? !f.analizada : f.analizada && (fNivel === "bajo" ? f.porcentaje < 45 : fNivel === "medio" ? f.porcentaje >= 45 && f.porcentaje < 75 : f.porcentaje >= 75)))
+    );
+  }, [filas, q, fGsc, fGa, fBlog, fNivel]);
+  const hayFiltros = fGsc !== "todas" || fGa !== "todas" || fBlog !== "todas" || fNivel !== "todos" || q.trim() !== "";
 
   const resumen = useMemo(() => {
     const a = (filas ?? []).filter((f) => f.analizada);
@@ -148,6 +172,24 @@ export default function PanelSeoPage() {
           ))}
         </div>
       )}
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <Grupo etiqueta="Search Console" valor={fGsc} onCambio={setFGsc} />
+        <Grupo etiqueta="Analytics" valor={fGa} onCambio={setFGa} />
+        <Grupo etiqueta="Blog al día" valor={fBlog} onCambio={setFBlog} />
+        <label className="flex items-center gap-1.5">
+          <span className="text-muted-foreground">Cumplimiento</span>
+          <select className="h-7 rounded-md border bg-background px-2" value={fNivel} onChange={(e) => setFNivel(e.target.value as typeof fNivel)}>
+            <option value="todos">Todos</option>
+            <option value="bajo">Bajo (menos de 45 %)</option>
+            <option value="medio">Medio (45–74 %)</option>
+            <option value="alto">Alto (75 % o más)</option>
+            <option value="sin">Sin analizar</option>
+          </select>
+        </label>
+        {hayFiltros && <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setQ(""); setFGsc("todas"); setFGa("todas"); setFBlog("todas"); setFNivel("todos"); }}>Quitar filtros</Button>}
+        <span className="ml-auto text-muted-foreground">{visibles.length} de {filas?.length ?? 0} webs</span>
+      </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
