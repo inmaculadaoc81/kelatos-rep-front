@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-provider";
 import { Presupuesto } from "@/lib/reparacion-detalle";
 import { DatosPresupuestoForm, PiezaForm, TipoPieza } from "@/lib/presupuesto-form";
 import { Empleado } from "@/app/api/empleados/route";
@@ -63,6 +64,17 @@ function euros(n: number): string {
   return n.toFixed(2) + " €";
 }
 
+/** Reparaciones habituales de portátil para el «presupuesto rápido»: el técnico marca las que hacen falta y escribe el precio de cada una. */
+const REPARACIONES_RAPIDAS = [
+  { id: "bateria", nombre: "Cambio de batería" },
+  { id: "pantalla", nombre: "Cambio de pantalla" },
+  { id: "bisagras", nombre: "Cambio de bisagras" },
+  { id: "teclado", nombre: "Cambio de teclado" },
+  { id: "conector", nombre: "Cambio de conector de carga" },
+  { id: "placa", nombre: "Reparación de placa base" },
+] as const;
+type RapidasEstado = Record<string, { marcada: boolean; precio: number }>;
+
 /**
  * Reproduce el formulario de Nuevo/Editar Presupuesto del original
  * (mostrarFormularioNuevoPresupuesto/editarPresupuesto/
@@ -77,6 +89,9 @@ export function PresupuestoFormDialog({
   resguardo,
   presupuestoExistente,
   revisionPagada = false,
+  clienteEmail = "",
+  equipoModelo = "",
+  otrosBorradores = 0,
   open,
   onOpenChange,
   onGuardado,
@@ -84,6 +99,10 @@ export function PresupuestoFormDialog({
   resguardo: string;
   presupuestoExistente: Presupuesto | null;
   revisionPagada?: boolean;
+  clienteEmail?: string;
+  equipoModelo?: string;
+  /** Borradores que ya tiene la reparación: «Enviar al cliente» manda TODOS los borradores juntos. */
+  otrosBorradores?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGuardado: () => void;
@@ -94,6 +113,27 @@ export function PresupuestoFormDialog({
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [catalogoAbierto, setCatalogoAbierto] = useState(false);
   const esEdicion = presupuestoExistente !== null;
+  const confirmar = useConfirm();
+  const [rapidas, setRapidas] = useState<RapidasEstado>({});
+  const [enviarAlGuardar, setEnviarAlGuardar] = useState(true);
+  const algunaRapida = REPARACIONES_RAPIDAS.some((r) => rapidas[r.id]?.marcada);
+  const esHp = /\bhp\b|hewlett|pavilion|omen|elitebook|probook|envy|victus/i.test(equipoModelo);
+
+  /** Cambia una reparación rápida y recalcula la mano de obra (suma de precios) y el diagnóstico que verá el cliente. */
+  function cambiarRapida(id: string, cambio: Partial<{ marcada: boolean; precio: number }>) {
+    const sig: RapidasEstado = { ...rapidas, [id]: { marcada: rapidas[id]?.marcada ?? false, precio: rapidas[id]?.precio ?? 0, ...cambio } };
+    setRapidas(sig);
+    const elegidas = REPARACIONES_RAPIDAS.filter((r) => sig[r.id]?.marcada);
+    setDatos((prev) => ({
+      ...prev,
+      tipoPieza: "no",
+      piezas: [],
+      manoObra: Math.round(elegidas.reduce((n, r) => n + (Number(sig[r.id].precio) || 0), 0) * 100) / 100,
+      descripcion: elegidas.length
+        ? `Reparación a realizar: ${elegidas.map((r) => `${r.nombre}${sig[r.id].precio > 0 ? ` (${euros(Number(sig[r.id].precio))})` : ""}`).join("; ")}.`
+        : "",
+    }));
+  }
 
   const fechaElaboracion = presupuestoExistente?.fechaElaboracion
     ? presupuestoExistente.fechaElaboracion.slice(0, 10)
@@ -120,6 +160,8 @@ export function PresupuestoFormDialog({
 
   function reiniciar() {
     setDatos(presupuestoExistente ? desdeExistente(presupuestoExistente) : vacio());
+    setRapidas({});
+    setEnviarAlGuardar(true);
   }
 
   function actualizar<K extends keyof DatosPresupuestoForm>(campo: K, valor: DatosPresupuestoForm[K]) {
@@ -212,6 +254,7 @@ export function PresupuestoFormDialog({
   const gananciaNeta = total - costoPiezas;
 
   async function guardar() {
+    if (algunaRapida && REPARACIONES_RAPIDAS.some((r) => rapidas[r.id]?.marcada && !(Number(rapidas[r.id].precio) > 0))) return toast.error("Pon el precio de cada reparación marcada");
     if (!datos.elaboradoPor.trim()) return toast.error("El responsable es obligatorio");
     if (datos.diasEntrega < 1) return toast.error("Los días de reparación deben ser al menos 1");
     if (datos.descripcion.trim().length < 20) return toast.error("El diagnóstico del equipo es obligatorio y debe tener al menos 20 caracteres");
@@ -263,6 +306,10 @@ export function PresupuestoFormDialog({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
       toast.success(esEdicion ? "Presupuesto actualizado" : `Presupuesto v${data.presupuesto?.version || ""} guardado`);
+      // Presupuesto rápido: se envía al cliente por correo a la vez que se guarda (el correo incluye los botones para aceptar o rechazar).
+      if (!esEdicion && algunaRapida && enviarAlGuardar) {
+        await enviarAlCliente();
+      }
       onOpenChange(false);
       onGuardado();
     } catch (e) {
@@ -270,6 +317,30 @@ export function PresupuestoFormDialog({
     } finally {
       setEnviando(false);
     }
+  }
+
+  async function enviarAlCliente() {
+    if (!clienteEmail.trim()) {
+      toast.warning("El presupuesto se guardó, pero el cliente no tiene correo: no se pudo enviar. Añade el correo y usa «Enviar al Cliente».");
+      return;
+    }
+    const aviso = otrosBorradores > 0 ? ` Ojo: hay ${otrosBorradores} borrador${otrosBorradores !== 1 ? "es" : ""} más en esta reparación y se enviarán también.` : "";
+    const ok = await confirmar(`¿Enviar ahora el presupuesto (${euros(total)}) a ${clienteEmail}?${aviso}`, { titulo: "Enviar al cliente" });
+    if (!ok) {
+      toast.info("Presupuesto guardado como borrador, sin enviar.");
+      return;
+    }
+    const res = await fetch(`/api/reparaciones/${resguardo}/presupuestos/enviar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId: crypto.randomUUID(), canal: "email", modo: "alternativas" }),
+    });
+    const r = await res.json();
+    if (!r.ok) {
+      toast.error(`El presupuesto se guardó, pero no se pudo enviar: ${r.error || "error desconocido"}. Usa «Enviar al Cliente».`);
+      return;
+    }
+    toast.success(`Presupuesto enviado a ${clienteEmail}`);
   }
 
   return (
@@ -290,6 +361,38 @@ export function PresupuestoFormDialog({
 
         <ScrollArea className="max-h-[65vh]">
           <div className="space-y-4 pr-3">
+            {!esEdicion && (
+              <details open={esHp || algunaRapida} className="rounded-lg border border-primary/30 bg-primary/5">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-primary">
+                  Presupuesto rápido de portátil{esHp ? " (HP)" : ""} <span className="text-xs font-normal text-muted-foreground">· marca las reparaciones y pon el precio de cada una</span>
+                </summary>
+                <div className="space-y-1.5 border-t px-3 py-2.5">
+                  {REPARACIONES_RAPIDAS.map((r) => {
+                    const e = rapidas[r.id];
+                    return (
+                      <div key={r.id} className="flex items-center gap-3">
+                        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
+                          <Checkbox checked={!!e?.marcada} onCheckedChange={(v) => cambiarRapida(r.id, { marcada: v === true })} /> {r.nombre}
+                        </label>
+                        <div className="flex w-32 items-center gap-1">
+                          <DecimalInput className="h-8" disabled={!e?.marcada} value={e?.precio ?? 0} onChange={(n) => cambiarRapida(r.id, { precio: n })} />
+                          <span className="text-xs text-muted-foreground">€</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {algunaRapida && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+                      <span className="text-sm">Total al cliente: <strong>{euros(total)}</strong>{revisionPagada ? " (con -20 € de la revisión)" : ""}</span>
+                      <label className="flex cursor-pointer items-center gap-2 text-xs">
+                        <Checkbox checked={enviarAlGuardar} onCheckedChange={(v) => setEnviarAlGuardar(v === true)} /> Enviar al cliente por correo al guardar
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+
             <div>
               <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">Responsable del Presupuesto</h3>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -490,7 +593,7 @@ export function PresupuestoFormDialog({
             Cancelar
           </Button>
           <Button onClick={guardar} disabled={enviando}>
-            {enviando ? "Guardando..." : "Guardar Borrador"}
+            {enviando ? "Guardando..." : !esEdicion && algunaRapida && enviarAlGuardar ? "Guardar y enviar al cliente" : "Guardar Borrador"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -121,6 +121,9 @@ export function GestionPresupuestosDialog({
         resguardo={detalle.resguardo}
         presupuestoExistente={null}
         revisionPagada={detalle.revisionPagada === "SI"}
+        clienteEmail={detalle.cliente.email}
+        equipoModelo={detalle.equipo.modelo}
+        otrosBorradores={detalle.presupuestos.filter((p) => p.estado === "borrador").length}
         open={nuevoAbierto}
         onOpenChange={setNuevoAbierto}
         onGuardado={onActualizado}
