@@ -1050,7 +1050,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const hayItemRepetido = new Set(itemsVentaUsados).size !== itemsVentaUsados.length;
   const todoRecibido = lineas.length > 0 && lineas.every((l) => l.recibido);
   const hayAlgoAplicado = lineas.some((l) => l.aplicar);
-  const todoListo = lineas.every(lineaListaParaRegistrar) && !hayItemRepetido && (!lineas.some((l) => l.aplicar && l.accion === "registrar" && l.destino === "cliente" && l.origenCliente !== "venta") || !!compradoPor.trim());
+  const todoListo = lineas.every(lineaListaParaRegistrar) && !hayItemRepetido && (!lineas.some((l) => l.aplicar && l.accion === "registrar" && !(l.destino === "cliente" && l.origenCliente === "venta")) || !!compradoPor.trim());
 
   async function registrar() {
     setRegistrando(true);
@@ -1460,7 +1460,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               </label>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Comprado por (necesario para los pedidos de reparación)</Label>
+                <Label className="text-xs text-muted-foreground">Comprado por * (obligatorio: quién hizo la compra)</Label>
                 <Select value={compradoPor} onValueChange={(v) => setCompradoPor(v || "")}>
                   <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Elige quién compró" /></SelectTrigger>
                   <SelectContent>
@@ -1848,7 +1848,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 {lineas.map((l, i) => ({ l, i, f: faltantesLinea(l) })).filter((x) => x.f.length > 0).map((x) => (
                   <li key={x.i}>{x.l.nombre}: {x.f.join(", ")}</li>
                 ))}
-                {lineas.some((l) => l.aplicar && l.accion === "registrar" && l.destino === "cliente" && l.origenCliente !== "venta") && !compradoPor.trim() && <li>«Comprado por» (arriba)</li>}
+                {lineas.some((l) => l.aplicar && l.accion === "registrar" && !(l.destino === "cliente" && l.origenCliente === "venta")) && !compradoPor.trim() && <li>«Comprado por» (arriba)</li>}
               </ul>
             </div>
           )}
