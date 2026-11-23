@@ -360,7 +360,14 @@ function categoriaPorNombre(nombre: string): string {
   return "OTRO";
 }
 
-function lineaDesdeOcr(l: LineaPedidoProveedorLeida, numeroPedidoGlobal: string | null): LineaPedidoEditable {
+function lineaDesdeOcr(l0: LineaPedidoProveedorLeida, numeroPedidoGlobal: string | null): LineaPedidoEditable {
+  // Una «diferencia» entre cantidad × precio y el total que equivale a un IVA (21 %, 10 %, 4 %) NO es un descuento: los precios de la web llevan IVA y el total no.
+  let l = l0;
+  if (!l.ivaIncluido && l.precioListado && l.descuento && l.totalPedido) {
+    const bruto = l.precioListado * l.cantidad;
+    const r = [1.21, 1.1, 1.04].find((x) => Math.abs(bruto / l.totalPedido! - x) / x <= 0.02);
+    if (r) l = { ...l, ivaIncluido: Math.round((r - 1) * 100) / 100, descuento: null, precioUnitario: Math.round((l.totalPedido / l.cantidad) * 100) / 100 };
+  }
   return {
     nombre: l.nombre,
     codigoProveedor: l.codigoProveedor || "",
@@ -1052,8 +1059,40 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const hayAlgoAplicado = lineas.some((l) => l.aplicar);
   const todoListo = lineas.every(lineaListaParaRegistrar) && !hayItemRepetido && (!lineas.some((l) => l.aplicar && l.accion === "registrar" && !(l.destino === "cliente" && l.origenCliente === "venta")) || !!compradoPor.trim());
 
+  /** Antes de registrar: ¿ya hay un pedido con ese mismo nº de pedido, pieza parecida y (en stock) misma cantidad? Si sí, no se registra otra vez. */
+  async function pedidosYaRegistrados(): Promise<string[]> {
+    const norm = (x: string) => x.toLowerCase().replace(/[\s-]/g, "");
+    const encontrados: string[] = [];
+    const vistos = new Set<string>();
+    for (const l of lineas) {
+      if (!l.aplicar || l.accion !== "registrar" || l.destino === "cliente" && l.origenCliente === "venta") continue;
+      const num = (l.numeroPedido || "").trim();
+      if (num.length < 5 || !/\d/.test(num) || vistos.has(norm(num) + "|" + l.nombre)) continue;
+      vistos.add(norm(num) + "|" + l.nombre);
+      const r = await fetch(`/api/compras?busqueda=${encodeURIComponent(num)}&porPagina=50`).then((x) => x.json()).catch(() => null);
+      const buscadas = palabrasDe(l.nombre);
+      for (const c of (r?.ok ? r.compras : []) as { origen: string; pedidoId: string; numeroPedido: string; descripcion: string; equipoModelo: string; estado: string }[]) {
+        if (norm(c.numeroPedido || "") !== norm(num) || String(c.estado).toLowerCase() === "cancelado") continue;
+        const nombreC = c.origen === "stock" ? c.equipoModelo : c.descripcion;
+        const pc = palabrasDe(nombreC || "");
+        const comunes = [...pc].filter((w) => buscadas.has(w)).length;
+        const parecido = Math.max(pc.size, buscadas.size) > 0 && comunes / Math.max(pc.size, buscadas.size) >= 0.6;
+        const cantC = Number(/(\d+)\s*ud/.exec(c.descripcion || "")?.[1] ?? NaN);
+        const mismaCantidad = c.origen !== "stock" || !Number.isFinite(cantC) || cantC === l.cantidad;
+        if (parecido && mismaCantidad) encontrados.push(`${l.nombre.slice(0, 50)}… ya está registrado como ${c.pedidoId} (pedido ${num})`);
+      }
+    }
+    return encontrados;
+  }
+
   async function registrar() {
     setRegistrando(true);
+    const yaHay = await pedidosYaRegistrados();
+    if (yaHay.length > 0) {
+      toast.error(`No se registró: ${yaHay.join(" · ")}. Desmarca esa línea si es el mismo pedido.`, { duration: 12000 });
+      setRegistrando(false);
+      return;
+    }
     let okStock = 0, okResguardo = 0, okRecibidos = 0, fallos = 0;
     const resumen: LineaRegistroPedidoProveedor[] = [];
     /** Pedidos creados en esta pasada (PED-n, VTA-<item>, STK-n): a cada uno se le anota la plataforma al final. */
