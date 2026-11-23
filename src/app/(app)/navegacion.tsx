@@ -162,6 +162,7 @@ export const GRUPO_ADMIN: GrupoNavegacion = {
   items: [
     { label: "Eliminar Registros", href: "/admin/registros", icon: Trash },
     { label: "Backups", href: "/admin/backups", icon: Save2 },
+    { label: "Estado de bots", href: "/admin/bots", icon: Monitor },
   ],
 };
 
