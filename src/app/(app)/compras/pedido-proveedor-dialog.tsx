@@ -1079,7 +1079,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         const parecido = Math.max(pc.size, buscadas.size) > 0 && comunes / Math.max(pc.size, buscadas.size) >= 0.6;
         const cantC = Number(/(\d+)\s*ud/.exec(c.descripcion || "")?.[1] ?? NaN);
         const mismaCantidad = c.origen !== "stock" || !Number.isFinite(cantC) || cantC === l.cantidad;
-        if (parecido && mismaCantidad) encontrados.push(`${l.nombre.slice(0, 50)}… ya está registrado como ${c.pedidoId} (pedido ${num})`);
+        // Misma pieza en el mismo nº de pedido = ya registrada, aunque la cantidad cambie (si de verdad es otra compra, se desmarca la línea).
+        if (parecido) encontrados.push(`${l.nombre.slice(0, 50)}… ya está registrado como ${c.pedidoId} (pedido ${num}${mismaCantidad ? "" : ", con otra cantidad"})`);
       }
     }
     return encontrados;
