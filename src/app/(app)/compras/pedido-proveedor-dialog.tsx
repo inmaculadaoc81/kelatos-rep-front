@@ -905,12 +905,22 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         toast.warning("No se leyó ninguna línea de pedido en los archivos o el texto");
         return;
       }
-      const lineasNuevas = data.lineas.map((l) => {
+      const lineasLeidas = data.lineas.map((l) => {
         const base = lineaDesdeOcr(l, data.numeroPedidoGlobal ?? null);
         // "Ya llegó" si lo eligió el empleado antes de analizar o lo dice el texto de esa línea ("recibido", "llegó").
         const recibido = base.recibido || llegada === "llego";
         return { ...base, recibido, buscandoRecepcion: recibido, fuente: l.elemento != null ? fuentes[l.elemento] || "" : "" };
       });
+      // La IA a veces parte una línea de «N uds» en N líneas de 1 ud. (caso STK-107…112): las líneas idénticas se juntan en una sola sumando la cantidad.
+      const lineasNuevas: typeof lineasLeidas = [];
+      const porClave = new Map<string, number>();
+      for (const l of lineasLeidas) {
+        const k = [l.nombre, l.destino, l.resguardo, l.numeroPedido, l.costo, l.costeInterno, l.referencia, l.origenCliente, l.ventaId, l.recibido].join("|");
+        const j = porClave.get(k);
+        if (j == null) { porClave.set(k, lineasNuevas.length); lineasNuevas.push({ ...l }); }
+        else lineasNuevas[j].cantidad += l.cantidad;
+      }
+      if (lineasNuevas.length < lineasLeidas.length) toast.info(`Se juntaron ${lineasLeidas.length - lineasNuevas.length} líneas repetidas sumando la cantidad. Revisa que sea correcto.`);
       if (data.avisos?.length) toast.warning(data.avisos.join(" · "));
       setLineas(lineasNuevas);
       if (data.documentoEsFactura && llegada === "aun_no") {
