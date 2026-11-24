@@ -1064,6 +1064,20 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
     const norm = (x: string) => x.toLowerCase().replace(/[\s-]/g, "");
     const encontrados: string[] = [];
     const vistos = new Set<string>();
+    // Líneas repetidas dentro de ESTE mismo envío (mismo nº de pedido, pieza y destino): aún no están guardadas, así que la
+    // comprobación contra la base de datos no las ve. Se pide juntarlas en una con su cantidad o desmarcar las sobrantes.
+    const repetidas = new Map<string, { nombre: string; veces: number }>();
+    for (const l of lineas) {
+      if (!l.aplicar || l.accion !== "registrar" || l.destino === "cliente" && l.origenCliente === "venta") continue;
+      const n = (l.numeroPedido || "").trim();
+      if (n.length < 5 || !/\d/.test(n)) continue;
+      const k = [norm(n), norm(l.nombre), l.destino, l.destino === "tienda" ? norm(l.referencia || "") : l.resguardo].join("|");
+      const r = repetidas.get(k);
+      if (r) r.veces++; else repetidas.set(k, { nombre: l.nombre, veces: 1 });
+    }
+    for (const r of repetidas.values()) {
+      if (r.veces > 1) encontrados.push(`${r.nombre.slice(0, 50)}… aparece ${r.veces} veces en este envío: junta las líneas en una con su cantidad o desmarca las repetidas`);
+    }
     for (const l of lineas) {
       if (!l.aplicar || l.accion !== "registrar" || l.destino === "cliente" && l.origenCliente === "venta") continue;
       const num = (l.numeroPedido || "").trim();
