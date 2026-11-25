@@ -147,6 +147,12 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
     const t = setTimeout(() => { llamar("ver").then(recibir).catch((e: Error) => setError(e.message)); }, 1500);
     return () => clearTimeout(t);
   }, [d?.estado, queda, llamar, recibir]);
+  // pasado el margen la respuesta la aplica una tarea del servidor (puede tardar medio minuto): se consulta hasta que termine
+  useEffect(() => {
+    if (d?.estado !== "aplicando") return;
+    const t = setInterval(() => { llamar("ver").then(recibir).catch(() => {}); }, 5000);
+    return () => clearInterval(t);
+  }, [d?.estado, llamar, recibir]);
 
   async function hacer(op: string, extra: Record<string, unknown> = {}) {
     setOcupado(true); setError("");
