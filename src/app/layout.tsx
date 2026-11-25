@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/confirm-provider";
+import { ChatFlotante } from "@/components/chat/chat-flotante";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -30,6 +31,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ConfirmProvider>
           {children}
         </ConfirmProvider>
+        {/* Chat interno: en todas las vistas del equipo (se oculta solo en las páginas de clientes y sin sesión). */}
+        <ChatFlotante />
         <Toaster richColors position="top-right" offset={{ top: "72px" }} />
       </body>
     </html>
