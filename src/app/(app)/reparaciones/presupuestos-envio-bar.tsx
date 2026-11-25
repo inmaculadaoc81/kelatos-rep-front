@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
 import { Send2, Message, Refresh2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -43,6 +44,19 @@ export function PresupuestosEnvioBar({
   const hayEnviados = enviados.length > 0;
   const hayTelefono = !!clienteTelefono.trim();
 
+  // Botones para responder desde el correo (apagados salvo que se activen en el servidor). Con ellos, si hay varios presupuestos
+  // hay que decir EXPRESAMENTE cómo puede elegir el cliente: no hay opción marcada de antemano.
+  const [botones, setBotones] = useState(false);
+  const [eleccion, setEleccion] = useState<"" | "alternativas" | "acumulables" | "revisar">("");
+  const [conjunto, setConjunto] = useState("");
+  useEffect(() => {
+    let vivo = true;
+    fetch(`/api/reparaciones/${resguardo}/presupuestos/botones`, { cache: "no-store" })
+      .then((r) => r.json()).then((d) => { if (vivo) setBotones(!!d?.activo); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [resguardo]);
+  const hayQueElegir = botones && borradores.length >= 2;
+
   if (!hayBorradores && !hayEnviados) return null;
 
   async function enviar(canal: "email" | "whatsapp") {
@@ -55,7 +69,11 @@ export function PresupuestosEnvioBar({
       const res = await fetch(`/api/reparaciones/${resguardo}/presupuestos/enviar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, canal, modo }),
+        body: JSON.stringify(hayQueElegir
+          ? { requestId, canal, modo: eleccion === "acumulables" ? "acumulables" : "alternativas",
+              modoBotones: eleccion === "alternativas" ? "unico" : eleccion === "acumulables" ? "varios" : undefined,
+              totalConjunto: eleccion === "acumulables" && Number(conjunto.replace(",", ".")) > 0 ? Number(conjunto.replace(",", ".")) : undefined }
+          : { requestId, canal, modo }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -90,7 +108,22 @@ export function PresupuestosEnvioBar({
 
   return (
     <div className="mt-3 space-y-3 rounded-xl border bg-muted/20 p-3">
-      {borradores.length >= 2 && (
+      {hayQueElegir && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground">¿Cómo puede elegir el cliente desde el botón del correo? (obligatorio)</p>
+          <RadioGroup value={eleccion} onValueChange={(v) => setEleccion(v as typeof eleccion)} className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="alternativas" /> Alternativas <span className="text-xs text-muted-foreground">(solo una)</span></label>
+            <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="acumulables" /> Acumulables <span className="text-xs text-muted-foreground">(una o varias)</span></label>
+            <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="revisar" /> Revisarlo con el cliente <span className="text-xs text-muted-foreground">(mezclas u otras condiciones: la página no deja aceptar)</span></label>
+          </RadioGroup>
+          {eleccion === "acumulables" && (
+            <label className="flex flex-wrap items-center gap-2 text-sm">Total si acepta todos, con IVA <span className="text-xs text-muted-foreground">(solo si hay descuento)</span>
+              <Input className="h-8 w-32" inputMode="decimal" placeholder="Opcional" value={conjunto} onChange={(e) => setConjunto(e.target.value)} />
+            </label>
+          )}
+        </div>
+      )}
+      {!botones && borradores.length >= 2 && (
         <div>
           <p className="mb-1.5 text-xs font-semibold text-muted-foreground">¿Las opciones son alternativas o acumulables?</p>
           <RadioGroup value={modo} onValueChange={(v) => setModo(v as "alternativas" | "acumulables")} className="flex flex-col gap-1.5 sm:flex-row sm:gap-4">
@@ -107,7 +140,7 @@ export function PresupuestosEnvioBar({
       <div className="flex flex-wrap items-center gap-3">
         {hayBorradores && (
           <div className="flex items-center gap-2">
-            <Button size="sm" className="h-8 gap-1.5" disabled={enviandoEmail} onClick={() => enviar("email")}>
+            <Button size="sm" className="h-8 gap-1.5" disabled={enviandoEmail || (hayQueElegir && !eleccion)} onClick={() => enviar("email")}>
               <Send2 className="size-3.5" /> {enviandoEmail ? "Enviando..." : "Enviar al Cliente"}
             </Button>
             <span className="text-xs text-muted-foreground">Envía todos los borradores al cliente</span>

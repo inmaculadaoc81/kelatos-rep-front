@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 interface Desglose { lineas: { concepto: string; base: number }[]; base: number; iva: number }
 interface Ppto { numero: string; importe: number; titulo: string; detalle: string; plazo: string; desglose?: Desglose }
 interface Datos {
-  prueba: boolean; estado: "abierto" | "pendiente" | "aplicando" | "aplicado" | "caducado";
+  prueba: boolean; estado: "abierto" | "pendiente" | "aplicando" | "aplicado" | "caducado" | "respondido" | "actualizado" | "revision";
   cliente: string; equipo: string; resguardo: string; presupuestos: Ppto[]; seleccion: "unico" | "varios" | null; necesitaRevision: boolean;
   totalConjunto: number | null; notaConjunto: string | null; caducaEn: string; eleccion: { accion: "aceptar" | "rechazar"; numeros: string[] } | null;
   aplicarDesde: string | null; resultado: string | null; minutosParaDeshacer: number; ahora: string;
@@ -113,6 +113,7 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
   const [sel, setSel] = useState<string[]>([]);
   const [resumen, setResumen] = useState<"aceptar" | "rechazar" | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [dato, setDato] = useState("");
   const [desfase, setDesfase] = useState(0); // reloj del servidor menos reloj del móvil
   const [reloj, setReloj] = useState(() => Date.now());
 
@@ -212,6 +213,9 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
       {error && <Alert2>{error}</Alert2>}
 
       {d.estado === "caducado" && <Card><CardContent>Este presupuesto ha caducado y ya no se puede responder desde aquí. Escríbenos y lo revisamos.</CardContent></Card>}
+      {d.estado === "respondido" && <Card><CardContent>Ya tenemos una respuesta registrada para este presupuesto, así que no hace falta que hagas nada más. Si no es correcto, escríbenos.</CardContent></Card>}
+      {d.estado === "actualizado" && <Card><CardContent>Este presupuesto se ha actualizado y este enlace ya no sirve. Revisa nuestro último correo o escríbenos.</CardContent></Card>}
+      {d.estado === "revision" && <Card><CardContent>Hemos recibido tu respuesta y la estamos revisando. Te escribiremos para confirmarla.</CardContent></Card>}
 
       {d.estado === "abierto" && !resumen && (
         <Card>
@@ -241,10 +245,19 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
             <CardTitle>{resumen === "aceptar" ? "Revisa antes de confirmar" : "¿Seguro que quieres rechazar?"}</CardTitle>
             <CardDescription>Después de confirmar tendrás {d.minutosParaDeshacer} minutos para deshacerlo.</CardDescription>
           </CardHeader>
-          <CardContent>{resumen === "aceptar" ? listaElegida : <p>No haremos la reparación de tu equipo ({d.equipo}).</p>}</CardContent>
+          <CardContent className="space-y-3">
+            {resumen === "aceptar" ? listaElegida : <p>No haremos la reparación de tu equipo ({d.equipo}).</p>}
+            {resumen === "aceptar" && (
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium">¿Te hemos pedido algún dato? Escríbelo aquí (opcional)</span>
+                <Textarea maxLength={1000} placeholder="Por ejemplo, una clave que te hayamos pedido" value={dato} onChange={(e) => setDato(e.target.value)} />
+                <span className="block text-xs text-muted-foreground">Si tienes preguntas o condiciones, no confirmes todavía: usa «Tengo una duda».</span>
+              </label>
+            )}
+          </CardContent>
           <CardFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
             <Button variant="outline" className={GRANDE} disabled={ocupado} onClick={() => setResumen(null)}><ArrowLeft2 /> Volver</Button>
-            <Button variant={resumen === "aceptar" ? "default" : "destructive"} className={GRANDE} disabled={ocupado} onClick={() => hacer("confirmar", { accion: resumen, numeros: sel })}>
+            <Button variant={resumen === "aceptar" ? "default" : "destructive"} className={GRANDE} disabled={ocupado} onClick={() => hacer("confirmar", { accion: resumen, numeros: sel, texto: resumen === "aceptar" ? dato : "" })}>
               {ocupado ? "Un momento…" : resumen === "aceptar" ? "Sí, acepto el presupuesto" : "Sí, rechazo el presupuesto"}
             </Button>
           </CardFooter>

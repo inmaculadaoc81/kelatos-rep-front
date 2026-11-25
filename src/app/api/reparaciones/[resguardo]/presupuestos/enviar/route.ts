@@ -128,8 +128,8 @@ export async function POST(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { resguardo } = await params;
-  const body = (await req.json()) as { requestId: string; canal: "email" | "whatsapp"; modo?: string };
-  const { requestId, canal, modo } = body;
+  const body = (await req.json()) as { requestId: string; canal: "email" | "whatsapp"; modo?: string; modoBotones?: string; totalConjunto?: number };
+  const { requestId, canal, modo, modoBotones, totalConjunto } = body;
 
   if (!requestId || !/^[0-9a-f-]{36}$/i.test(requestId)) {
     return NextResponse.json({ ok: false, error: "requestId inválido" }, { status: 400 });
@@ -176,7 +176,7 @@ export async function POST(
       presupuestos: unknown[];
       reparacion: Record<string, unknown>;
     }>(`/v1/reparaciones/${encodeURIComponent(resguardo)}/presupuestos/confirmar-envio`, {
-      requestId, usuario, canal, modo,
+      requestId, usuario, canal, modo, modoBotones, totalConjunto,
     });
 
     return NextResponse.json({ ok: true, presupuestos: confirmar.presupuestos, reparacion: confirmar.reparacion });

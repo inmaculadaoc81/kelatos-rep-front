@@ -227,6 +227,8 @@ interface FilaPresupuestoSql {
   estado: string | null;
   fecha_envio: string | null;
   fecha_respuesta: string | null;
+  medio_respuesta?: string | null;
+  respondido_por?: string | null;
   motivo_rechazo: string | null;
   notas: string | null;
   tipo_pieza: string | null;
@@ -297,6 +299,9 @@ export interface Presupuesto {
   estado: string;
   fechaEnvio: string | null;
   fechaRespuesta: string | null;
+  /** pagina | email | whatsapp | dashboard | automatico */
+  medioRespuesta: string;
+  respondidoPor: string;
   motivoRechazo: string;
   notas: string;
   tipoPieza: string;
@@ -543,6 +548,8 @@ function mapearPresupuesto(row: FilaPresupuestoSql, piezas: FilaPiezaSql[]): Pre
     estado: row.estado || "borrador",
     fechaEnvio: fecha(row.fecha_envio),
     fechaRespuesta: fecha(row.fecha_respuesta),
+    medioRespuesta: row.medio_respuesta || "",
+    respondidoPor: row.respondido_por || "",
     motivoRechazo: row.motivo_rechazo || "",
     notas: row.notas || "",
     tipoPieza: row.tipo_pieza || "no",

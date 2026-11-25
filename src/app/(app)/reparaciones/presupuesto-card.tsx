@@ -1,5 +1,6 @@
 "use client";
 
+import { textoMedio } from "@/lib/medio-respuesta";
 import { useState } from "react";
 import { TickCircle, CloseCircle, CloseSquare, Edit2, Trash, Eye, AddCircle } from "@/lib/icons";
 import { m, elementoLista } from "@/lib/animacion";
@@ -219,6 +220,7 @@ export function PresupuestoCard({
         // aquí). Mostrarlo siempre como "Motivo:" en rojo confundía una
         // aceptación con un rechazo (bug real, resguardo 18805, 2026-09-01).
         <div className={`border-t px-3 py-1.5 text-xs ${esPptoAceptado(p.estado) ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+          {textoMedio(p.medioRespuesta, p.respondidoPor) && <span className="block font-medium">Respondido {textoMedio(p.medioRespuesta, p.respondidoPor)}</span>}
           <strong>{esPptoAceptado(p.estado) ? "Respuesta del cliente:" : "Motivo del rechazo:"}</strong>{" "}
           {limpiarRespuestaCliente(p.motivoRechazo)}
         </div>

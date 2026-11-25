@@ -1,5 +1,6 @@
 "use client";
 
+import { textoMedio } from "@/lib/medio-respuesta";
 import { useEffect, useState } from "react";
 import { DocumentText, Box, ShoppingCart, Calendar, Send2, InfoCircle, CloseCircle, Copy, TickCircle, Profile, Sms } from "@/lib/icons";
 import {
@@ -272,7 +273,7 @@ export function PresupuestoDetalleDialog({
               )}
               {p.fechaRespuesta && (
                 <p className="flex items-center gap-1">
-                  <InfoCircle className="size-3.5 shrink-0" /> Respuesta: {fecha(p.fechaRespuesta)}
+                  <InfoCircle className="size-3.5 shrink-0" /> Respuesta: {fecha(p.fechaRespuesta)}{textoMedio(p.medioRespuesta, p.respondidoPor) ? ` · ${textoMedio(p.medioRespuesta, p.respondidoPor)}` : ""}
                 </p>
               )}
             </div>

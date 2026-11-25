@@ -1,5 +1,6 @@
 "use client";
 
+import { textoMedio } from "@/lib/medio-respuesta";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DocumentText, Refresh2, DocumentDownload } from "@/lib/icons";
@@ -223,7 +224,10 @@ export default function PresupuestosPage() {
                   <TableCell className="max-w-52 truncate text-sm text-muted-foreground" title={p.motivoRechazo || undefined}>
                     {p.motivoRechazo || "—"}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{p.fechaRespuesta ? fechaHoraCorta(p.fechaRespuesta) : "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {p.fechaRespuesta ? fechaHoraCorta(p.fechaRespuesta) : "—"}
+                    {textoMedio(p.medioRespuesta, p.respondidoPor) && <span className="block text-xs">{textoMedio(p.medioRespuesta, p.respondidoPor)}</span>}
+                  </TableCell>
                   <TableCell className="text-right text-sm font-semibold">{euros(p.total * 1.21)}</TableCell>
                   <TableCell className="text-center">
                     {p.urlPdf ? (

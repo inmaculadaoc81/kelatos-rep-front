@@ -25,6 +25,8 @@ export interface PresupuestoEnviado {
   estado: EstadoPresupuesto;
   motivoRechazo: string;
   fechaRespuesta: string | null;
+  medioRespuesta: string;
+  respondidoPor: string;
 }
 
 interface FilaPresupuestoSql {
@@ -38,6 +40,8 @@ interface FilaPresupuestoSql {
   estado: string | null;
   motivo_rechazo: string | null;
   fecha_respuesta: string | null;
+  medio_respuesta?: string | null;
+  respondido_por?: string | null;
 }
 
 interface FilaReparacionSql {
@@ -73,5 +77,7 @@ export function mapearPresupuestoEnviado(
     estado: (row.estado?.toLowerCase() as EstadoPresupuesto) || "enviado",
     motivoRechazo: row.motivo_rechazo || "",
     fechaRespuesta: row.fecha_respuesta || null,
+    medioRespuesta: row.medio_respuesta || "",
+    respondidoPor: row.respondido_por || "",
   };
 }

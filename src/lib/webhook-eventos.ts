@@ -22,6 +22,8 @@ export interface WebhookEvento {
       "Responder consulta" contesta DENTRO del mismo hilo en vez de mandar
       un correo nuevo. */
   message_id_original?: string | null;
+  /** Por dónde llegó: pagina | email | whatsapp. */
+  medio?: string | null;
 }
 
 /** Mismo diccionario que MOTIVO_LABELS en Index.html, para que el motivo del aviso sea legible. */
@@ -62,6 +64,10 @@ export const MOTIVO_LABELS: Record<string, string> = {
   FORMULARIO_REQUIERE_RESPUESTA_MANUAL: "Consulta de un formulario web: debe responderse manualmente",
   CORREO_REQUIERE_RESPUESTA_MANUAL: "Correo de un cliente que el sistema no contesta solo: debe responderlo una persona",
   SOLICITUD_RECICLAJE_WEB: "Solicitud de reciclaje o destrucción de datos recibida por el formulario de la web",
+  DUDA_DESDE_LA_PAGINA: "El cliente tiene una duda (escrita en la página del presupuesto)",
+  DATO_DESDE_LA_PAGINA: "Respondió desde la página y escribió un dato o comentario",
+  PAGINA_NO_APLICADA: "Respondió desde la página pero no se aplicó: revisar a mano",
+  PAGINA_DESCUENTO_CONJUNTO: "Aceptó todos desde la página: aplicar el total conjunto al facturar",
 };
 
 /** Tipo de aviso: consulta de un formulario web (hay que contestarla) o respuesta de un cliente a un presupuesto de reparación. */

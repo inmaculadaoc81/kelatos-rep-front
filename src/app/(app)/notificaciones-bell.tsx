@@ -1,5 +1,6 @@
 "use client";
 
+import { ETIQUETA_MEDIO } from "@/lib/medio-respuesta";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Notification, TickCircle, CloseCircle, Warning2, InfoCircle, Danger, Hashtag, Sms, Profile, Clock, Category2, Copy, AddCircle, Send2 } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
@@ -307,7 +308,10 @@ function TarjetaEvento({ evento, onClick }: { evento: WebhookEvento; onClick: ()
               </span>
               {tipoDeEvento(evento) === "reciclaje" ? "Solicitud desde la web" : esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "—"}
             </span>
-            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${colorBadge}`}>{evento.estado}</span>
+            <span className="flex shrink-0 items-center gap-1">
+              {ETIQUETA_MEDIO[evento.medio || ""] && <span className="rounded-full border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{ETIQUETA_MEDIO[evento.medio || ""]}</span>}
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${colorBadge}`}>{evento.estado}</span>
+            </span>
           </div>
 
           {motivoLabel && (
@@ -536,7 +540,8 @@ function DetalleNotificacionDialog({ evento, onClose }: { evento: WebhookEvento 
               <DialogTitle className="flex items-center gap-2">
                 <Icono className={`size-5 shrink-0 ${colorIcono}`} />
                 {esAviso ? "Revisión manual requerida" : evento.numero_presupuesto || "Notificación"}
-                <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${colorBadge}`}>{evento.estado}</span>
+                {ETIQUETA_MEDIO[evento.medio || ""] && <span className="ml-auto rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">{ETIQUETA_MEDIO[evento.medio || ""]}</span>}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colorBadge} ${ETIQUETA_MEDIO[evento.medio || ""] ? "" : "ml-auto"}`}>{evento.estado}</span>
               </DialogTitle>
             </DialogHeader>
 
