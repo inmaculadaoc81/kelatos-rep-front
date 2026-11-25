@@ -5,6 +5,7 @@ import {
   Folder2,
   DocumentText,
   Profile2User,
+  Sms,
   Box1,
   Box,
   BoxSearch,
@@ -105,6 +106,14 @@ export const GRUPOS: GrupoNavegacion[] = [
       { label: "Reporte de Facturas", href: "/reporte-facturas", icon: ClipboardText, permiso: "facturacion.ver" },
       { label: "Efectivo", href: "/efectivo", icon: Coin1, permiso: "efectivo.ver", claseColor: "text-green-600 hover:text-green-700 data-active:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:data-active:text-green-300 [&>svg]:text-current" },
       { label: "Facturación del día", href: "/tpv", icon: CardPos, permiso: "efectivo.ver", claseColor: "text-purple-600 hover:text-purple-700 data-active:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 dark:data-active:text-purple-300 [&>svg]:text-current" },
+    ],
+  },
+  {
+    titulo: "Recursos Humanos",
+    icon: Profile2User,
+    items: [
+      { label: "Mi correo", href: "/rrhh/correo", icon: Sms },
+      { label: "Comunicados", href: "/rrhh/comunicados", icon: Notification },
     ],
   },
   {
@@ -220,6 +229,8 @@ export function gruposVisibles({
       if (efectivoSoloLectura) return [informes, GRUPO_EFECTIVO_SOLO_LECTURA];
       return [informes];
     }
+    // «Gestión de RRHH» en el menú solo para super admin; quien se añada al equipo la ve como pestaña dentro de la sección.
+    if (g.titulo === "Recursos Humanos" && superadmin) return [{ ...g, items: [...g.items, { label: "Gestión de RRHH", href: "/rrhh/gestion", icon: Profile2User } as ItemNavegacion] }];
     return [g];
   });
   const visibles = (superadmin ? [...base, GRUPO_ADMIN] : base)

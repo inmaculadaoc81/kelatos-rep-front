@@ -8,7 +8,7 @@ import { signOut } from "next-auth/react";
 import { RgpdModal } from "./rgpd-modal";
 import { GuiaModal } from "./guia-modal";
 import { Button } from "@/components/ui/button";
-import { Home, Clock, Calendar, ClipboardText, ClipboardTick, Logout, MessageQuestion, Profile2User, Video } from "@/lib/icons";
+import { Home, Clock, Calendar, ClipboardText, ClipboardTick, Logout, MessageQuestion, Profile2User, Video, Sms } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { COOKIE_IR_DASHBOARD } from "@/lib/superadmin";
 
@@ -76,6 +76,9 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
                 <Video className="size-4" />
               </Button>
             )}
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Recursos Humanos: mi correo y comunicados" render={<Link href="/rrhh" />}>
+              <Sms className="size-4" />
+            </Button>
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground" title="Guía de uso" onClick={() => setGuiaAbierta(true)}>
               <MessageQuestion className="size-4" />
             </Button>

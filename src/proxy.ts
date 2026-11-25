@@ -226,6 +226,7 @@ export default auth(async (req) => {
   if (
     esSoloAsistencia &&
     !enAsistencia &&
+    !/^\/(api\/)?rrhh(\/|$)/.test(req.nextUrl.pathname) &&
     !(esProgramadorContenido(req.auth?.user) && (enProgramarContenido || req.nextUrl.pathname.startsWith("/api/agentes-v2/") || req.nextUrl.pathname.startsWith("/redes-sociales"))) &&
     !(esUsuarioRedes(req.auth?.user) && (esRutaRedesSociales(req.nextUrl.pathname) || req.nextUrl.pathname.startsWith("/api/agentes-v2/")))
   ) {
