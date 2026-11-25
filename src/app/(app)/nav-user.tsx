@@ -88,12 +88,13 @@ export function NavUser({ session }: { session: Session | null }) {
   const enMails = pathname?.startsWith("/mails") ?? false;
   const enWhatsapp = pathname?.startsWith("/whatsapp") ?? false;
   const enTareas = pathname?.startsWith("/tareas") ?? false;
+  const enRrhh = pathname?.startsWith("/rrhh") ?? false;
   const enCrm = pathname?.startsWith("/crm") ?? false;
   const enComercial = pathname?.startsWith("/comercial") ?? false;
   const enProspeccion = pathname?.startsWith("/prospeccion") ?? false;
   const enN8nLabs = pathname?.startsWith("/n8nlabs") ?? false;
   const enContenido = pathname?.startsWith("/asistencia/contenido") ?? false;
-  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enWhatsapp && !enTareas && !enCrm && !enProspeccion && !enN8nLabs;
+  const enReparaciones = !enTransferencias && !enAsistencia && !enWebsKelatos && !enAgentes && !enAgentesV2 && !enRedesSociales && !enMails && !enWhatsapp && !enTareas && !enCrm && !enProspeccion && !enN8nLabs && !enRrhh;
   const puedeVerWebsKelatos = usa("webs_kelatos.ver", esAdmin || esSuperadmin(email));
   const puedeVerAgentes = esAdmin || esSuperadmin(email);
   const puedeVerCrm = usa("crm.ver", esAdmin || esSuperadmin(email));
@@ -168,10 +169,12 @@ export function NavUser({ session }: { session: Session | null }) {
                   )}
                 </>
               )}
-              <DropdownMenuItem render={<Link href={esSuperadmin(email) ? "/rrhh/gestion" : "/rrhh"} />}>
-                <IconoDashboard icon={Profile2User} className="from-sky-500 to-indigo-600" />
-                Recursos Humanos
-              </DropdownMenuItem>
+              {!enRrhh && (
+                <DropdownMenuItem render={<Link href={esSuperadmin(email) ? "/rrhh/gestion" : "/rrhh"} />}>
+                  <IconoDashboard icon={Profile2User} className="from-sky-500 to-indigo-600" />
+                  Recursos Humanos
+                </DropdownMenuItem>
+              )}
               {/* Un botón por dashboard, oculto cuando ya estás en él — en vez
                   de reetiquetar el botón activo como "Reparaciones", cada uno
                   desaparece por su cuenta y Reparaciones tiene su propia

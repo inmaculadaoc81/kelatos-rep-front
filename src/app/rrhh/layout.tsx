@@ -1,30 +1,33 @@
-import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
-import { auth, esDominioKelatos } from "@/auth";
-import { Button } from "@/components/ui/button";
+import { auth } from "@/auth";
+import { esSuperadmin } from "@/lib/superadmin";
+import { kelatosApiGet } from "@/lib/kelatos-api";
+import { permisosAplicadosDe } from "@/lib/permisos";
+import { PermisosProvider } from "@/lib/permisos-context";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { RrhhSidebar } from "./sidebar";
+import { RrhhHeader } from "./header";
 
-// Fuera de (app)/ a propósito: la usan también quienes solo tienen acceso al fichaje, que no ven el resto del dashboard.
+// Dashboard aparte (mismo patrón que Tareas o Gestión MAILS), fuera de (app)/: lo usan también quienes solo fichan,
+// que desde aquí no tienen acceso a nada más (lo bloquea src/proxy.ts y NavUser oculta sus botones).
 export default async function RrhhLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  const u = session?.user;
-  if (!u?.email) redirect("/login");
-  const soloFichaje = u.asistenciaEmpleadoId != null && !u.accesoCompleto && (u.viaCredentials || !esDominioKelatos(u.email));
+  const email = session?.user?.email?.toLowerCase() || "";
+  if (!email) redirect("/login");
+  const [permisos, esRrhh] = await Promise.all([
+    permisosAplicadosDe(email),
+    kelatosApiGet<{ ok: boolean; rrhh: boolean }>("/v1/rrhh/yo", { usuario: email }).then((d) => d.rrhh).catch(() => esSuperadmin(email)),
+  ]);
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-          <Image src="/logos/kelatos.png" alt="Kelatos" width={145} height={41} priority unoptimized className="h-7 w-auto" />
-          <span className="text-sm font-semibold">Recursos Humanos</span>
-          <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">{u.email}</span>
-          <div className="ml-auto flex gap-2 sm:ml-0">
-            {u.asistenciaEmpleadoId != null && <Button variant="outline" size="sm" render={<Link href="/asistencia/kiosk" />}>Fichaje</Button>}
-            {!soloFichaje && <Button variant="outline" size="sm" render={<Link href="/" />}>Dashboard</Button>}
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-5">{children}</main>
-    </div>
+    <PermisosProvider valor={permisos}>
+      <SidebarProvider>
+        <RrhhSidebar session={session} esRrhh={esRrhh} conFichaje={session?.user?.asistenciaEmpleadoId != null} />
+        <SidebarInset>
+          <RrhhHeader />
+          <main className="min-w-0 flex-1 bg-white p-4 sm:p-6 dark:bg-background">{children}</main>
+        </SidebarInset>
+      </SidebarProvider>
+    </PermisosProvider>
   );
 }
