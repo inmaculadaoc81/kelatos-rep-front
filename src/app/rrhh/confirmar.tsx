@@ -8,6 +8,8 @@ interface Opciones {
   titulo: string;
   texto: string;
   boton: string;
+  /** botón rojo para acciones que quitan algo */
+  peligro?: boolean;
 }
 
 /**
@@ -38,7 +40,7 @@ export function useConfirmar() {
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => responder(false)}>Cancelar</Button>
-          <Button onClick={() => responder(true)}>{pendiente?.boton}</Button>
+          <Button variant={pendiente?.peligro ? "destructive" : "default"} onClick={() => responder(true)}>{pendiente?.boton}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Category2, Eye, TickCircle, Notification, Wallet, DocumentText, Calendar, Warning2, Folder2, Edit2, Refresh2, SearchNormal1 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-import { ContenidoComunicado, Etiqueta } from "./comunicados";
+import { Anulado, ContenidoComunicado, Etiqueta } from "./comunicados";
 import { useConfirmar } from "./confirmar";
-import { TIPOS, fecha, leerArchivos, pedir, type Adjunto, type ComunicadoFila, type Persona } from "./comunes";
+import { TIPOS, fecha, leerArchivos, pedir, type Adjunto, type ComunicadoFila, type Persona, type Yo } from "./comunes";
 
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : "No se pudo completar");
 
@@ -26,8 +26,8 @@ const ICONOS: Record<string, { icono: Icon; color: string }> = {
   documento: { icono: Folder2, color: "bg-slate-500" },
 };
 
-const sinLeer = (c: ComunicadoFila) => (c.destinatarios !== undefined ? (c.leidos ?? 0) < c.destinatarios : !c.leido_en);
-const sinConformidad = (c: ComunicadoFila) => c.requiere_conformidad && (c.destinatarios !== undefined ? (c.conformes ?? 0) < c.destinatarios : !c.conforme_en);
+const sinLeer = (c: ComunicadoFila) => !c.anulado_en && (c.destinatarios !== undefined ? (c.leidos ?? 0) < c.destinatarios : !c.leido_en);
+const sinConformidad = (c: ComunicadoFila) => !c.anulado_en && c.requiere_conformidad && (c.destinatarios !== undefined ? (c.conformes ?? 0) < c.destinatarios : !c.conforme_en);
 
 function Carpeta({ activa, icono: I, color, texto, total, onClick }: { activa: boolean; icono: Icon; color: string; texto: string; total: number; onClick: () => void }) {
   return (
@@ -52,7 +52,7 @@ function Nuevo({ abierto, cerrar, personas, alEnviar }: { abierto: boolean; cerr
 
   async function enviar() {
     const quienes = para.length === 1 ? personas.find((p) => p.email === para[0])?.nombre : `${para.length} personas`;
-    if (!(await confirmar({ titulo: "¿Enviar el comunicado?", texto: `Se enviará «${asunto}» a ${quienes}. Quedará en su historial y no se puede borrar.`, boton: "Enviar" }))) return;
+    if (!(await confirmar({ titulo: "¿Enviar el comunicado?", texto: `Se enviará «${asunto}» a ${quienes}. Quedará en su historial; solo se podrá eliminar mientras nadie lo haya leído.`, boton: "Enviar" }))) return;
     setEnviando(true);
     try {
       const r = await pedir<{ avisosEnviados: number; avisosFallidos: string[] }>("comunicados", { tipo, asunto, cuerpo, destinatarios: para, requiereConformidad: conformidad, adjuntos });
@@ -111,7 +111,8 @@ function Nuevo({ abierto, cerrar, personas, alEnviar }: { abierto: boolean; cerr
   );
 }
 
-export function GestionRrhh() {
+export function GestionRrhh({ yo }: { yo: Yo }) {
+  const [version, setVersion] = useState(0); // para releer el historial tras eliminar o anular
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [enviados, setEnviados] = useState<ComunicadoFila[] | null>(null);
   const [empleado, setEmpleado] = useState("");
@@ -138,7 +139,7 @@ export function GestionRrhh() {
       .then((d) => { if (vivo) setHistorial(d.comunicados); })
       .catch((e) => toast.error(mensaje(e)));
     return () => { vivo = false; };
-  }, [empleado]);
+  }, [empleado, version]);
 
   const base = empleado ? historial : enviados;
   const lista = useMemo(() => {
@@ -201,11 +202,12 @@ export function GestionRrhh() {
                 <button onClick={() => setAbierto(c.id)} className={cn("w-full space-y-1 px-3 py-2.5 text-left", abierto === c.id ? "bg-muted" : "hover:bg-muted/60")}>
                   <div className="flex items-center gap-2">
                     {sinLeer(c) && <span className="size-2 shrink-0 rounded-full bg-primary" />}
-                    <span className={cn("min-w-0 flex-1 truncate text-sm", sinLeer(c) && "font-semibold")}>{c.asunto}</span>
+                    <span className={cn("min-w-0 flex-1 truncate text-sm", sinLeer(c) && "font-semibold", c.anulado_en && "text-muted-foreground line-through")}>{c.asunto}</span>
                     <span className="shrink-0 text-[11px] text-muted-foreground">{fecha(c.creado_en)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Etiqueta tipo={c.tipo} />
+                    {c.anulado_en && <Anulado />}
                     <span className="truncate text-[11px] text-muted-foreground">
                       {c.destinatarios !== undefined
                         ? `Leído ${c.leidos}/${c.destinatarios}${c.requiere_conformidad ? ` · Conforme ${c.conformes}/${c.destinatarios}` : ""}`
@@ -225,7 +227,7 @@ export function GestionRrhh() {
             : (
               <div className="space-y-2 p-4">
                 <Button size="sm" variant="ghost" className="xl:hidden" onClick={() => { setAbierto(null); cargar(); }}>← Volver a la lista</Button>
-                <ContenidoComunicado key={abierto} id={abierto} gestion conTitulo alFallar={() => setAbierto(null)} />
+                <ContenidoComunicado key={abierto} id={abierto} gestion conTitulo alFallar={() => { setAbierto(null); cargar(); }} alRetirar={yo.superadmin ? (accion) => { if (accion === "eliminar") setAbierto(null); setVersion((v) => v + 1); cargar(); } : undefined} />
               </div>
             )}
         </div>

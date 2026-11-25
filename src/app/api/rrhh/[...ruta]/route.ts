@@ -8,7 +8,7 @@ import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
  * puede pedir el correo o los comunicados de otra persona.
  */
 const LECTURAS = [/^yo$/, /^correo\/(mensajes|mensaje|adjunto|sin-leer)$/, /^personas$/, /^comunicados(\/\d+)?$/, /^adjuntos\/\d+$/, /^enviados$/, /^historial$/, /^miembros$/];
-const ESCRITURAS = [/^correo\/(conectar|desconectar|enviar)$/, /^comunicados(\/\d+\/conforme)?$/, /^miembros$/];
+const ESCRITURAS = [/^correo\/(conectar|desconectar|enviar)$/, /^comunicados(\/\d+\/(conforme|retirar))?$/, /^miembros$/];
 
 type Ctx = { params: Promise<{ ruta: string[] }> };
 

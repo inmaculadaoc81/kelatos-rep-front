@@ -21,6 +21,7 @@ export interface ComunicadoFila {
   id: number; tipo: string; asunto: string; requiere_conformidad: boolean; creado_por: string; creado_en: string;
   leido_en?: string | null; conforme_en?: string | null; aviso_enviado_en?: string | null; adjuntos?: number;
   destinatarios?: number; leidos?: number; conformes?: number;
+  anulado_en?: string | null;
 }
 
 export interface Adjunto { nombre: string; tipo: string; base64: string }
