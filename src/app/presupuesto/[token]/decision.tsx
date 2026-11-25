@@ -1,8 +1,18 @@
 "use client";
 
 // Página del cliente para responder a su presupuesto: elegir → revisar el resumen → confirmar → margen para deshacer.
-// Colores fijos (claros) a propósito: la ve el cliente, no sigue el tema del dashboard.
+// Usa los mismos componentes, fuente, bordes y colores del dashboard.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Alert2, Info, Ok } from "./avisos";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft2, Clock, DocumentText, MessageQuestion, Refresh2, TickCircle } from "@/lib/icons";
+import { cn } from "@/lib/utils";
 
 interface Ppto { numero: string; importe: number; titulo: string; detalle: string; plazo: string }
 interface Datos {
@@ -14,69 +24,74 @@ interface Datos {
 
 const eur = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 const dia = (iso: string) => new Date(iso).toLocaleDateString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", year: "numeric" });
-
-const BTN = "inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto";
-const PRINCIPAL = `${BTN} bg-blue-600 text-white hover:bg-blue-700`;
-const VERDE = `${BTN} bg-emerald-600 text-white hover:bg-emerald-700`;
-const ROJO = `${BTN} bg-rose-600 text-white hover:bg-rose-700`;
-const SUAVE = `${BTN} border border-slate-300 bg-white text-slate-700 hover:bg-slate-100`;
+const GRANDE = "h-10 w-full px-4 sm:w-auto"; // botones cómodos de pulsar en el móvil
 
 function Marco({ prueba, children }: { prueba?: boolean; children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900">
-      <div className="mx-auto w-full max-w-xl space-y-3">
-        {prueba && <p className="rounded-lg border border-amber-400 bg-amber-100 px-4 py-2.5 text-sm font-medium text-amber-900">PRUEBA con datos inventados. Nada de lo que hagas aquí cambia presupuestos reales ni envía correos.</p>}
-        <p className="text-lg font-bold text-blue-700">Kelatos <span className="font-medium text-slate-500">· Servicio técnico</span></p>
+    <div className="flex min-h-screen flex-col bg-muted/40 text-foreground">
+      <header className="border-b bg-background">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3 px-4 py-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logos/kelatos.png" alt="Kelatos" className="h-8 w-auto" />
+          <span className="text-xs text-muted-foreground">Servicio técnico</span>
+        </div>
+      </header>
+      <main className="mx-auto w-full max-w-2xl space-y-3 px-4 py-4">
+        {prueba && <Info>Prueba con datos inventados. Nada de lo que hagas aquí cambia presupuestos reales ni envía correos.</Info>}
         {children}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
-const Caja = ({ children, className = "" }: { children: ReactNode; className?: string }) => <section className={`rounded-[10px] bg-white p-4 shadow-sm sm:p-5 ${className}`}>{children}</section>;
 
 function Duda({ enviar }: { enviar: (texto: string) => Promise<string> }) {
   const [abierta, setAbierta] = useState(false);
   const [texto, setTexto] = useState("");
   const [aviso, setAviso] = useState("");
   const [enviando, setEnviando] = useState(false);
-  if (!abierta) return <button className="w-full py-2 text-sm font-medium text-blue-700 underline" onClick={() => setAbierta(true)}>Tengo una duda</button>;
+  if (!abierta) return <div className="flex justify-center"><Button variant="ghost" size="lg" onClick={() => setAbierta(true)}><MessageQuestion /> Tengo una duda</Button></div>;
   return (
-    <Caja className="space-y-2">
-      <p className="text-sm font-semibold">¿Qué quieres preguntarnos?</p>
-      <textarea className="min-h-24 w-full rounded-lg border border-slate-300 p-2.5 text-sm" maxLength={1500} value={texto} onChange={(e) => setTexto(e.target.value)} />
-      {aviso && <p className="text-sm text-emerald-700">{aviso}</p>}
-      <button className={PRINCIPAL} disabled={enviando || texto.trim().length < 3} onClick={async () => {
-        setEnviando(true);
-        const r = await enviar(texto);
-        setEnviando(false);
-        if (r) { setAviso(r); setTexto(""); }
-      }}>{enviando ? "Enviando…" : "Enviar duda"}</button>
+    <Card>
+      <CardHeader>
+        <CardTitle>¿Qué quieres preguntarnos?</CardTitle>
+        <CardDescription>Escríbenos y te contestaremos.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Textarea className="min-h-24" maxLength={1500} placeholder="Escribe tu duda…" value={texto} onChange={(e) => setTexto(e.target.value)} />
+        {aviso && <Ok>{aviso}</Ok>}
+        <Button className={GRANDE} disabled={enviando || texto.trim().length < 3} onClick={async () => {
+          setEnviando(true);
+          const r = await enviar(texto);
+          setEnviando(false);
+          if (r) { setAviso(r); setTexto(""); }
+        }}>{enviando ? "Enviando…" : "Enviar duda"}</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Una opción del presupuesto; si se puede marcar, toda la tarjeta es pulsable. */
+function Opcion({ p, activa, control }: { p: Ppto; activa: boolean; control: ReactNode }) {
+  const Caja = control ? "label" : "div";
+  return (
+    <Caja className={cn("flex gap-3 rounded-lg border bg-card p-4 transition-colors", control && "cursor-pointer hover:bg-muted/50", activa && "border-primary bg-primary/5 hover:bg-primary/5")}>
+      {control && <span className="pt-0.5">{control}</span>}
+      <span className="min-w-0 flex-1 space-y-1.5">
+        <span className="flex items-start justify-between gap-3">
+          <span className="text-sm font-medium">{p.titulo}</span>
+          <span className="text-sm font-semibold whitespace-nowrap tabular-nums">{eur(p.importe)}</span>
+        </span>
+        <span className="block text-sm text-muted-foreground">{p.detalle}</span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline">{p.numero}</Badge>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3.5 shrink-0" /> {p.plazo}</span>
+        </span>
+      </span>
     </Caja>
   );
 }
 
-/** Cómo se vería el correo. Los botones solo abren la página: no deciden nada por sí solos. */
-function VistaCorreo({ d, token }: { d: Datos; token: string }) {
-  return (
-    <Marco prueba={d.prueba}>
-      <p className="text-sm text-slate-600">Así quedaría el correo del presupuesto (no se ha enviado):</p>
-      <Caja className="space-y-3 border border-slate-200">
-        <p className="border-b border-slate-200 pb-2 text-sm"><strong>Asunto:</strong> [Kelatos] Presupuesto de reparación — {d.equipo}</p>
-        <p className="text-sm">Hola, <strong>{d.cliente}</strong>:</p>
-        <p className="text-sm">Ya tenemos el presupuesto para tu equipo <strong>{d.equipo}</strong>.</p>
-        <ul className="space-y-1.5 text-sm">{d.presupuestos.map((p) => <li key={p.numero} className="rounded-lg bg-slate-100 px-3 py-2"><strong>{p.numero}</strong> · {p.titulo} — <strong>{eur(p.importe)}</strong></li>)}</ul>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <a className={VERDE} href={`/presupuesto/${token}?accion=aceptar`}>Ver y aceptar</a>
-          <a className={SUAVE} href={`/presupuesto/${token}?accion=rechazar`}>Rechazar</a>
-        </div>
-        <p className="text-xs text-slate-500">Al pulsar se abre una página donde podrás revisar y confirmar. No se decide nada hasta que confirmes. Si lo prefieres, también puedes responder a este correo.</p>
-      </Caja>
-      <a className="block py-2 text-center text-sm font-medium text-blue-700 underline" href={`/presupuesto/${token}`}>Ir a la página del cliente</a>
-    </Marco>
-  );
-}
-
-export function Decision({ token, vistaCorreo, accionInicial }: { token: string; vistaCorreo: boolean; accionInicial: "aceptar" | "rechazar" | null }) {
+export function Decision({ token, accionInicial }: { token: string; accionInicial: "aceptar" | "rechazar" | null }) {
   const [d, setD] = useState<Datos | null>(null);
   const [error, setError] = useState("");
   const [sel, setSel] = useState<string[]>([]);
@@ -132,99 +147,120 @@ export function Decision({ token, vistaCorreo, accionInicial }: { token: string;
     try { return (await llamar("duda", { texto })).aviso as string; } catch (e) { setError(e instanceof Error ? e.message : "No se pudo enviar"); return ""; }
   };
 
-  if (!d) return <Marco><Caja><p className="text-sm text-slate-600">{error || "Abriendo tu presupuesto…"}</p></Caja></Marco>;
-  if (vistaCorreo) return <VistaCorreo d={d} token={token} />;
+  if (!d) return <Marco><Card><CardContent className="text-muted-foreground">{error || "Abriendo tu presupuesto…"}</CardContent></Card></Marco>;
 
+  const varios = d.presupuestos.length > 1;
+  const marcable = varios && !d.necesitaRevision;
   const elegidos = d.presupuestos.filter((p) => (d.eleccion ? d.eleccion.numeros : sel).includes(p.numero));
-  const todos = elegidos.length === d.presupuestos.length && d.presupuestos.length > 1;
-  const suma = elegidos.reduce((n, p) => n + p.importe, 0);
-  const total = todos && d.totalConjunto !== null ? d.totalConjunto : suma;
-  const alternar = (n: string) => setSel((s) => (d.seleccion === "unico" ? [n] : s.includes(n) ? s.filter((x) => x !== n) : [...s, n]));
+  const todos = varios && elegidos.length === d.presupuestos.length;
+  const total = todos && d.totalConjunto !== null ? d.totalConjunto : elegidos.reduce((n, p) => n + p.importe, 0);
+  const alternar = (n: string, marcado: boolean) => setSel((s) => (marcado ? [...s.filter((x) => x !== n), n] : s.filter((x) => x !== n)));
 
   const listaElegida = (
-    <ul className="space-y-2">
-      {elegidos.map((p) => <li key={p.numero} className="rounded-lg bg-slate-100 px-3 py-2.5 text-sm"><div className="flex justify-between gap-3"><strong>{p.titulo}</strong><strong>{eur(p.importe)}</strong></div><p className="text-slate-600">{p.numero} · {p.plazo}</p></li>)}
-      {todos && d.notaConjunto && <li className="text-sm text-slate-600">{d.notaConjunto}</li>}
-      <li className="flex justify-between border-t border-slate-200 pt-2 text-base font-bold"><span>Total (IVA incluido)</span><span>{eur(total)}</span></li>
-    </ul>
+    <div className="space-y-3">
+      <div className="divide-y rounded-lg border">
+        {elegidos.map((p) => (
+          <div key={p.numero} className="space-y-1 p-3">
+            <div className="flex justify-between gap-3 text-sm"><span className="font-medium">{p.titulo}</span><span className="font-semibold whitespace-nowrap tabular-nums">{eur(p.importe)}</span></div>
+            <p className="text-xs text-muted-foreground">{p.numero} · {p.plazo}</p>
+          </div>
+        ))}
+      </div>
+      {todos && d.notaConjunto && <p className="text-sm text-muted-foreground">{d.notaConjunto}</p>}
+      <Separator />
+      <div className="flex justify-between text-base font-semibold"><span>Total (IVA incluido)</span><span className="tabular-nums">{eur(total)}</span></div>
+    </div>
   );
+
+  const opciones = d.presupuestos.map((p) => {
+    const activa = marcable && sel.includes(p.numero);
+    const control = !marcable ? null : d.seleccion === "unico"
+      ? <RadioGroupItem value={p.numero} aria-label={p.titulo} />
+      : <Checkbox checked={sel.includes(p.numero)} onCheckedChange={(v) => alternar(p.numero, v === true)} aria-label={p.titulo} />;
+    return <Opcion key={p.numero} p={p} activa={activa} control={control} />;
+  });
 
   return (
     <Marco prueba={d.prueba}>
-      <Caja>
-        <h1 className="text-lg font-bold">Hola, {d.cliente}</h1>
-        <p className="text-sm text-slate-600">{d.equipo} · resguardo {d.resguardo} · válido hasta el {dia(d.caducaEn)}</p>
-      </Caja>
+      <div className="flex items-center gap-3 py-1">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><DocumentText className="size-5" /></span>
+        <div className="min-w-0">
+          <h1 className="text-lg leading-tight font-semibold">Hola, {d.cliente}</h1>
+          <p className="text-sm text-muted-foreground">{d.equipo} · resguardo {d.resguardo} · válido hasta el {dia(d.caducaEn)}</p>
+        </div>
+      </div>
 
-      {error && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm text-rose-800">{error}</p>}
+      {error && <Alert2>{error}</Alert2>}
 
-      {d.estado === "caducado" && <Caja><p className="text-sm">Este presupuesto ha caducado y ya no se puede responder desde aquí. Escríbenos y lo revisamos.</p></Caja>}
+      {d.estado === "caducado" && <Card><CardContent>Este presupuesto ha caducado y ya no se puede responder desde aquí. Escríbenos y lo revisamos.</CardContent></Card>}
 
       {d.estado === "abierto" && !resumen && (
-        <>
-          <p className="px-1 text-sm font-semibold">
-            {d.necesitaRevision ? "Estos son tus presupuestos" : d.presupuestos.length === 1 ? "Tu presupuesto" : d.seleccion === "unico" ? "Elige una opción (son alternativas)" : "Marca lo que quieres reparar (puedes elegir varios)"}
-          </p>
-          {d.presupuestos.map((p) => {
-            const marcable = !d.necesitaRevision && d.presupuestos.length > 1;
-            const activo = marcable && sel.includes(p.numero);
-            return (
-              <label key={p.numero} className={`flex gap-3 rounded-[10px] bg-white p-4 shadow-sm ring-2 ${activo ? "ring-blue-600" : "ring-transparent"} ${marcable ? "cursor-pointer" : ""}`}>
-                {marcable && <input type={d.seleccion === "unico" ? "radio" : "checkbox"} name="ppto" className="mt-1 size-5 shrink-0 accent-blue-600" checked={activo} onChange={() => alternar(p.numero)} />}
-                <span className="min-w-0 flex-1">
-                  <span className="flex justify-between gap-3"><strong>{p.titulo}</strong><strong className="whitespace-nowrap">{eur(p.importe)}</strong></span>
-                  <span className="mt-1 block text-sm text-slate-600">{p.detalle}</span>
-                  <span className="mt-1 block text-sm text-slate-500">{p.numero} · Plazo estimado: {p.plazo}</span>
-                </span>
-              </label>
-            );
-          })}
-          {d.seleccion === "varios" && d.notaConjunto && <p className="px-1 text-sm text-slate-600">{d.notaConjunto}</p>}
-          {d.necesitaRevision
-            ? <Caja><p className="text-sm">Para aceptar este presupuesto necesitamos revisarlo contigo. Escríbenos desde «Tengo una duda» o responde al correo.</p></Caja>
-            : <button className={`${PRINCIPAL} sm:!w-full`} disabled={!sel.length} onClick={() => setResumen("aceptar")}>Continuar para aceptar</button>}
-          <button className={`${SUAVE} sm:!w-full`} onClick={() => setResumen("rechazar")}>No quiero repararlo</button>
-        </>
+        <Card>
+          <CardHeader>
+            <CardTitle>{varios ? "Tus presupuestos" : "Tu presupuesto"}</CardTitle>
+            <CardDescription>
+              {d.necesitaRevision ? "Necesitamos revisarlo contigo antes de aceptarlo." : !varios ? "Revísalo y dinos qué quieres hacer." : d.seleccion === "unico" ? "Son alternativas: elige solo una." : "Marca lo que quieres reparar. Puedes elegir varios."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {marcable && d.seleccion === "unico"
+              ? <RadioGroup value={sel[0] ?? ""} onValueChange={(v) => setSel([String(v)])}>{opciones}</RadioGroup>
+              : <div className="grid gap-2">{opciones}</div>}
+            {d.seleccion === "varios" && d.notaConjunto && <Info>{d.notaConjunto}</Info>}
+            {d.necesitaRevision && <Info>Para aceptar este presupuesto escríbenos desde «Tengo una duda» o responde al correo.</Info>}
+          </CardContent>
+          <CardFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <Button variant="outline" className={GRANDE} onClick={() => setResumen("rechazar")}>No quiero repararlo</Button>
+            {!d.necesitaRevision && <Button className={GRANDE} disabled={!sel.length} onClick={() => setResumen("aceptar")}>Continuar para aceptar</Button>}
+          </CardFooter>
+        </Card>
       )}
 
       {d.estado === "abierto" && resumen && (
-        <Caja className="space-y-3">
-          <h2 className="text-base font-bold">{resumen === "aceptar" ? "Revisa antes de confirmar" : "¿Seguro que quieres rechazar?"}</h2>
-          {resumen === "aceptar" ? listaElegida : <p className="text-sm">No haremos la reparación de tu equipo ({d.equipo}).</p>}
-          <p className="text-sm text-slate-600">Después de confirmar tendrás {d.minutosParaDeshacer} minutos para deshacerlo.</p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-            <button className={SUAVE} disabled={ocupado} onClick={() => setResumen(null)}>Volver</button>
-            <button className={resumen === "aceptar" ? VERDE : ROJO} disabled={ocupado} onClick={() => hacer("confirmar", { accion: resumen, numeros: sel })}>{ocupado ? "Un momento…" : resumen === "aceptar" ? "Sí, acepto el presupuesto" : "Sí, rechazo el presupuesto"}</button>
-          </div>
-        </Caja>
+        <Card>
+          <CardHeader>
+            <CardTitle>{resumen === "aceptar" ? "Revisa antes de confirmar" : "¿Seguro que quieres rechazar?"}</CardTitle>
+            <CardDescription>Después de confirmar tendrás {d.minutosParaDeshacer} minutos para deshacerlo.</CardDescription>
+          </CardHeader>
+          <CardContent>{resumen === "aceptar" ? listaElegida : <p>No haremos la reparación de tu equipo ({d.equipo}).</p>}</CardContent>
+          <CardFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <Button variant="outline" className={GRANDE} disabled={ocupado} onClick={() => setResumen(null)}><ArrowLeft2 /> Volver</Button>
+            <Button variant={resumen === "aceptar" ? "default" : "destructive"} className={GRANDE} disabled={ocupado} onClick={() => hacer("confirmar", { accion: resumen, numeros: sel })}>
+              {ocupado ? "Un momento…" : resumen === "aceptar" ? "Sí, acepto el presupuesto" : "Sí, rechazo el presupuesto"}
+            </Button>
+          </CardFooter>
+        </Card>
       )}
 
       {(d.estado === "pendiente" || d.estado === "aplicando") && d.eleccion && (
-        <Caja className="space-y-3">
-          <h2 className="text-base font-bold">{d.eleccion.accion === "aceptar" ? "Has aceptado el presupuesto" : "Has rechazado el presupuesto"}</h2>
-          {d.eleccion.accion === "aceptar" && listaElegida}
-          <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-            {queda > 0 ? <>¿Te has equivocado? Puedes deshacerlo durante <strong className="tabular-nums">{Math.floor(queda / 60000)}:{String(Math.floor((queda % 60000) / 1000)).padStart(2, "0")}</strong>.</> : "Registrando tu respuesta…"}
-          </p>
-          {queda > 0 && <button className={SUAVE} disabled={ocupado} onClick={() => hacer("deshacer")}>Deshacer</button>}
-        </Caja>
+        <Card>
+          <CardHeader><CardTitle>{d.eleccion.accion === "aceptar" ? "Has aceptado el presupuesto" : "Has rechazado el presupuesto"}</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {d.eleccion.accion === "aceptar" && listaElegida}
+            <Info>{queda > 0 ? <>¿Te has equivocado? Puedes deshacerlo durante <strong className="tabular-nums">{Math.floor(queda / 60000)}:{String(Math.floor((queda % 60000) / 1000)).padStart(2, "0")}</strong>.</> : "Registrando tu respuesta…"}</Info>
+          </CardContent>
+          {queda > 0 && <CardFooter><Button variant="outline" className={GRANDE} disabled={ocupado} onClick={() => hacer("deshacer")}><Refresh2 /> Deshacer</Button></CardFooter>}
+        </Card>
       )}
 
       {d.estado === "aplicado" && d.eleccion && (
-        <Caja className="space-y-3">
-          <h2 className="text-base font-bold text-emerald-700">Respuesta registrada: {d.eleccion.accion === "aceptar" ? "aceptado" : "rechazado"}</h2>
-          {d.eleccion.accion === "aceptar" && listaElegida}
-          <p className="text-sm text-slate-600">{d.eleccion.accion === "aceptar" ? "Te avisaremos cuando tu equipo esté reparado." : "Te escribiremos sobre la recogida de tu equipo."} Si necesitas cambiar algo, escríbenos.</p>
-          {d.prueba && d.resultado && <p className="rounded-lg bg-amber-100 px-3 py-2.5 text-sm text-amber-900">{d.resultado}</p>}
-        </Caja>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><TickCircle className="size-5 text-emerald-600" /> Respuesta registrada: {d.eleccion.accion === "aceptar" ? "aceptado" : "rechazado"}</CardTitle>
+            <CardDescription>{d.eleccion.accion === "aceptar" ? "Te avisaremos cuando tu equipo esté reparado." : "Te escribiremos sobre la recogida de tu equipo."} Si necesitas cambiar algo, escríbenos.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {d.eleccion.accion === "aceptar" && listaElegida}
+            {d.prueba && d.resultado && <Info>{d.resultado}</Info>}
+          </CardContent>
+        </Card>
       )}
 
       <Duda enviar={duda} />
 
       {d.prueba && (
-        <div className="flex justify-center gap-4 pb-4 text-xs text-slate-500">
-          <a className="underline" href={`/presupuesto/${token}?vista=correo`}>Ver el correo</a>
-          <button className="underline" disabled={ocupado} onClick={() => { setResumen(null); void hacer("reiniciar"); }}>Volver a empezar la prueba</button>
+        <div className="flex justify-center pb-4">
+          <Button variant="link" size="sm" className="text-muted-foreground" disabled={ocupado} onClick={() => { setResumen(null); void hacer("reiniciar"); }}>Volver a empezar la prueba</Button>
         </div>
       )}
     </Marco>
