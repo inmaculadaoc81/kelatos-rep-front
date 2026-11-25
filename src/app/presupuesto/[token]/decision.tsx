@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft2, Clock, DocumentText, MessageQuestion, Refresh2, TickCircle } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
-interface Ppto { numero: string; importe: number; titulo: string; detalle: string; plazo: string }
+interface Desglose { lineas: { concepto: string; base: number }[]; base: number; iva: number }
+interface Ppto { numero: string; importe: number; titulo: string; detalle: string; plazo: string; desglose?: Desglose }
 interface Datos {
   prueba: boolean; estado: "abierto" | "pendiente" | "aplicando" | "aplicado" | "caducado";
   cliente: string; equipo: string; resguardo: string; presupuestos: Ppto[]; seleccion: "unico" | "varios" | null; necesitaRevision: boolean;
@@ -70,8 +71,22 @@ function Duda({ enviar }: { enviar: (texto: string) => Promise<string> }) {
   );
 }
 
+/** De dónde sale el importe: cada concepto sin IVA, subtotal, IVA y total (como en el correo). */
+function DesgloseTabla({ p }: { p: Ppto }) {
+  if (!p.desglose) return null;
+  const fila = (a: string, b: string, clases = "") => <span className={cn("flex justify-between gap-3", clases)}><span>{a}</span><span className="whitespace-nowrap tabular-nums">{b}</span></span>;
+  return (
+    <span className="block space-y-1 border-t pt-2 text-sm">
+      {p.desglose.lineas.map((l) => <span key={l.concepto} className="block">{fila(l.concepto, `${eur(l.base)} + IVA`, "text-muted-foreground")}</span>)}
+      <span className="block">{fila("Subtotal", eur(p.desglose.base))}</span>
+      <span className="block">{fila("IVA (21%)", eur(p.desglose.iva), "text-muted-foreground")}</span>
+      <span className="block border-t pt-1">{fila("Total", eur(p.importe), "font-semibold")}</span>
+    </span>
+  );
+}
+
 /** Una opción del presupuesto; si se puede marcar, toda la tarjeta es pulsable. */
-function Opcion({ p, activa, control }: { p: Ppto; activa: boolean; control: ReactNode }) {
+function Opcion({ p, activa, desglosar, control }: { p: Ppto; activa: boolean; desglosar: boolean; control: ReactNode }) {
   const Caja = control ? "label" : "div";
   return (
     <Caja className={cn("flex gap-3 rounded-lg border bg-card p-4 transition-colors", control && "cursor-pointer hover:bg-muted/50", activa && "border-primary bg-primary/5 hover:bg-primary/5")}>
@@ -86,6 +101,7 @@ function Opcion({ p, activa, control }: { p: Ppto; activa: boolean; control: Rea
           <Badge variant="outline">{p.numero}</Badge>
           <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3.5 shrink-0" /> {p.plazo}</span>
         </span>
+        {desglosar && <DesgloseTabla p={p} />}
       </span>
     </Caja>
   );
@@ -154,6 +170,7 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
   const elegidos = d.presupuestos.filter((p) => (d.eleccion ? d.eleccion.numeros : sel).includes(p.numero));
   const todos = varios && elegidos.length === d.presupuestos.length;
   const total = todos && d.totalConjunto !== null ? d.totalConjunto : elegidos.reduce((n, p) => n + p.importe, 0);
+  const descuento = Math.round((elegidos.reduce((n, p) => n + p.importe, 0) - total) * 100) / 100;
   const alternar = (n: string, marcado: boolean) => setSel((s) => (marcado ? [...s.filter((x) => x !== n), n] : s.filter((x) => x !== n)));
 
   const listaElegida = (
@@ -163,10 +180,12 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
           <div key={p.numero} className="space-y-1 p-3">
             <div className="flex justify-between gap-3 text-sm"><span className="font-medium">{p.titulo}</span><span className="font-semibold whitespace-nowrap tabular-nums">{eur(p.importe)}</span></div>
             <p className="text-xs text-muted-foreground">{p.numero} · {p.plazo}</p>
+            <DesgloseTabla p={p} />
           </div>
         ))}
       </div>
       {todos && d.notaConjunto && <p className="text-sm text-muted-foreground">{d.notaConjunto}</p>}
+      {todos && descuento > 0 && <div className="flex justify-between gap-3 text-sm text-emerald-700"><span>Descuento por aceptar todo</span><span className="tabular-nums">-{eur(descuento)}</span></div>}
       <Separator />
       <div className="flex justify-between text-base font-semibold"><span>Total (IVA incluido)</span><span className="tabular-nums">{eur(total)}</span></div>
     </div>
@@ -177,7 +196,7 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
     const control = !marcable ? null : d.seleccion === "unico"
       ? <RadioGroupItem value={p.numero} aria-label={p.titulo} />
       : <Checkbox checked={sel.includes(p.numero)} onCheckedChange={(v) => alternar(p.numero, v === true)} aria-label={p.titulo} />;
-    return <Opcion key={p.numero} p={p} activa={activa} control={control} />;
+    return <Opcion key={p.numero} p={p} activa={activa} desglosar={activa || !marcable} control={control} />;
   });
 
   return (
