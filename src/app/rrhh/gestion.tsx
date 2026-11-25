@@ -12,6 +12,7 @@ import { Category2, Eye, TickCircle, Notification, Wallet, DocumentText, Calenda
 import type { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { ContenidoComunicado, Etiqueta } from "./comunicados";
+import { useConfirmar } from "./confirmar";
 import { TIPOS, fecha, leerArchivos, pedir, type Adjunto, type ComunicadoFila, type Persona } from "./comunes";
 
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : "No se pudo completar");
@@ -47,10 +48,11 @@ function Nuevo({ abierto, cerrar, personas, alEnviar }: { abierto: boolean; cerr
   const [adjuntos, setAdjuntos] = useState<Adjunto[]>([]);
   const [enviando, setEnviando] = useState(false);
   const todos = personas.length > 0 && para.length === personas.length;
+  const { confirmar, modal } = useConfirmar();
 
   async function enviar() {
     const quienes = para.length === 1 ? personas.find((p) => p.email === para[0])?.nombre : `${para.length} personas`;
-    if (!confirm(`Se enviará «${asunto}» a ${quienes}. Quedará en su historial y no se puede borrar. ¿Enviar?`)) return;
+    if (!(await confirmar({ titulo: "¿Enviar el comunicado?", texto: `Se enviará «${asunto}» a ${quienes}. Quedará en su historial y no se puede borrar.`, boton: "Enviar" }))) return;
     setEnviando(true);
     try {
       const r = await pedir<{ avisosEnviados: number; avisosFallidos: string[] }>("comunicados", { tipo, asunto, cuerpo, destinatarios: para, requiereConformidad: conformidad, adjuntos });
@@ -103,6 +105,7 @@ function Nuevo({ abierto, cerrar, personas, alEnviar }: { abierto: boolean; cerr
           </div>
           <p className="text-xs text-muted-foreground">Al correo de cada persona llega solo un aviso. El texto y los adjuntos se ven en el dashboard.</p>
         </div>
+        {modal}
       </DialogContent>
     </Dialog>
   );

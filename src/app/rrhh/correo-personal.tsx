@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Paperclip2, Refresh2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { fecha, leerArchivos, pedir, tamano, type Adjunto, type Yo } from "./comunes";
+import { useConfirmar } from "./confirmar";
 
 interface Dir { nombre: string; email: string }
 interface Fila { uid: number; asunto: string; de: Dir[]; para: Dir[]; fecha: string; leido: boolean; adjuntos: boolean }
@@ -59,6 +60,7 @@ function Conectar({ email, alConectar }: { email: string; alConectar: () => void
 }
 
 export function CorreoPersonal({ yo, recargarYo }: { yo: Yo; recargarYo: () => void }) {
+  const { confirmar, modal } = useConfirmar();
   const [carpeta, setCarpeta] = useState<Carpeta>("entrada");
   const [pagina, setPagina] = useState(1);
   const [filas, setFilas] = useState<Fila[]>([]);
@@ -130,6 +132,7 @@ export function CorreoPersonal({ yo, recargarYo }: { yo: Yo; recargarYo: () => v
 
   return (
     <div className="space-y-3">
+      {modal}
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => setBorrador({ para: "", cc: "", asunto: "", texto: "", adjuntos: [] })}>Redactar</Button>
         {(["entrada", "enviados"] as Carpeta[]).map((c) => (
@@ -139,7 +142,7 @@ export function CorreoPersonal({ yo, recargarYo }: { yo: Yo; recargarYo: () => v
         ))}
         <Button size="sm" variant="outline" onClick={cargar} disabled={cargando}><Refresh2 className="mr-1 size-3.5" /> Actualizar</Button>
         <span className="ml-auto text-xs text-muted-foreground">{yo.email}</span>
-        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={async () => { if (!confirm("¿Desconectar tu correo del dashboard?")) return; await pedir("correo/desconectar", {}); recargarYo(); }}>Desconectar</Button>
+        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={async () => { if (!(await confirmar({ titulo: "¿Desconectar tu correo?", texto: "Dejarás de verlo en el dashboard.", boton: "Desconectar" }))) return; await pedir("correo/desconectar", {}); recargarYo(); }}>Desconectar</Button>
       </div>
       {error && <p className="rounded border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 

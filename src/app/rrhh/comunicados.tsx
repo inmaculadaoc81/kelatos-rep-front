@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Paperclip2 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { TIPOS, fecha, pedir, tamano, type ComunicadoFila } from "./comunes";
+import { useConfirmar } from "./confirmar";
 
 export function Etiqueta({ tipo }: { tipo: string }) {
   const t = TIPOS[tipo] || TIPOS.documento;
@@ -27,6 +28,7 @@ interface Detalle {
 export function ContenidoComunicado({ id, gestion = false, conTitulo = false, alFallar, alCargar }: { id: number; gestion?: boolean; conTitulo?: boolean; alFallar?: () => void; alCargar?: (asunto: string) => void }) {
   const [d, setD] = useState<Detalle | null>(null);
   const [marcando, setMarcando] = useState(false);
+  const { confirmar, modal } = useConfirmar();
 
   useEffect(() => {
     let vivo = true;
@@ -39,7 +41,7 @@ export function ContenidoComunicado({ id, gestion = false, conTitulo = false, al
   }, [id]);
 
   async function conforme() {
-    if (!d || !confirm("Vas a dejar constancia de que has recibido este comunicado y estás conforme. Queda registrado con fecha y hora.")) return;
+    if (!d || !(await confirmar({ titulo: "Recibido y conforme", texto: "Vas a dejar constancia de que has recibido este comunicado y estás conforme. Queda registrado con fecha y hora.", boton: "Confirmar" }))) return;
     setMarcando(true);
     try {
       const r = await pedir<{ conforme_en: string }>(`comunicados/${d.comunicado.id}/conforme`, {});
@@ -55,6 +57,7 @@ export function ContenidoComunicado({ id, gestion = false, conTitulo = false, al
   if (!d) return <p className="p-8 text-center text-sm text-muted-foreground">Abriendo…</p>;
   return (
     <div className="space-y-4">
+      {modal}
       {conTitulo && <h2 className="text-base font-semibold">{d.comunicado.asunto}</h2>}
       <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Etiqueta tipo={d.comunicado.tipo} /> {fecha(d.comunicado.creado_en)} · enviado por {d.comunicado.creado_por}</p>
       <pre className="whitespace-pre-wrap break-words font-sans text-sm">{d.comunicado.cuerpo}</pre>
