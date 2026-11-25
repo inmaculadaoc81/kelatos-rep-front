@@ -604,6 +604,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   const [registrando, setRegistrando] = useState(false);
   const inputOcr = useRef<HTMLInputElement>(null);
   const [archivos, setArchivos] = useState<ArchivoPedido[]>([]);
+  /** El pedido no cabía en una captura: las que se suban se leen juntas como UN solo pedido. Sin marcar, cada una es un pedido distinto. */
+  const [unSoloPedido, setUnSoloPedido] = useState(false);
   const [preparando, setPreparando] = useState(false);
   const [segundosAnalisis, setSegundosAnalisis] = useState(0);
   const [faseAnalisis, setFaseAnalisis] = useState<{ fase: FaseAnalisis; desde: number }>({ fase: "leyendo", desde: 0 });
@@ -630,6 +632,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       setTextosSueltos([]);
       setLlegada("aun_no");
       setArchivos([]);
+      setUnSoloPedido(false);
       if (inputOcr.current) inputOcr.current.value = "";
     }
   }, [open]);
@@ -873,6 +876,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          unSoloPedido: unSoloPedido && archivos.length > 1,
           // Cada imagen con su texto, y los textos sueltos (sin imagen): el texto de una imagen solo vale para ella.
           elementos: [
             ...archivos.map((a) => ({ base64: a.base64, mimeType: a.mimeType, texto: a.texto.trim() || undefined })),
@@ -1492,6 +1496,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                   />
                 </div>
               ))}
+              {archivos.length > 1 && (
+                <label className="flex cursor-pointer items-start gap-2 rounded-md border border-primary/30 bg-primary/5 p-2 text-xs">
+                  <Checkbox checked={unSoloPedido} disabled={leyendoOcr} onCheckedChange={(v) => setUnSoloPedido(v === true)} className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">Estas {archivos.length} capturas son de un solo pedido</span>
+                    <span className="block text-muted-foreground">Márcalo cuando el pedido no cabe en una imagen. Súbelas en orden y no mezcles otros pedidos. Sin marcar, cada captura se lee como un pedido distinto.</span>
+                  </span>
+                </label>
+              )}
               {textosSueltos.map((t, k) => (
                 <div key={t.id} className="space-y-1.5 rounded-md border border-dashed bg-muted/30 p-2">
                   <div className="flex items-center gap-1.5 text-xs">

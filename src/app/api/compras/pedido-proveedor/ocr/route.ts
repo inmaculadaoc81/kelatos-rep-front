@@ -80,6 +80,8 @@ export async function POST(req: Request) {
     archivos?: { base64?: string; mimeType?: string }[];
     /** Texto opcional que acompaña a las imágenes (o texto solo, sin imágenes). */
     texto?: string;
+    /** Todas las capturas son partes de un mismo pedido: se leen juntas. */
+    unSoloPedido?: boolean;
     /** Cada imagen con su texto propio (opcional), o solo texto: [{ base64?, mimeType?, texto? }]. */
     elementos?: { base64?: string; mimeType?: string; texto?: string }[];
   };
@@ -104,6 +106,7 @@ export async function POST(req: Request) {
       archivos,
       texto: texto || undefined,
       elementos: elementos.length > 0 ? elementos : undefined,
+      unSoloPedido: body.unSoloPedido === true,
       nombreProveedor: body.nombreProveedor || undefined,
       async: true,
     });

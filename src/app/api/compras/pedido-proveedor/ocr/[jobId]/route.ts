@@ -33,6 +33,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
       error?: string;
       numeroPedidoGlobal?: string | null;
       lineas?: LineaPedidoProveedorLeida[];
+      avisos?: string[];
+      documentoEsFactura?: boolean;
       proveedorIdSugerido?: string | null;
       proveedorNombreSugerido?: string | null;
       proveedorCreado?: boolean;
@@ -44,6 +46,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ jobId: 
         estado: "listo",
         numeroPedidoGlobal: data.numeroPedidoGlobal ?? null,
         lineas: data.lineas || [],
+        avisos: data.avisos ?? [],
+        documentoEsFactura: !!data.documentoEsFactura,
         proveedorIdSugerido: data.proveedorIdSugerido ?? null,
         proveedorNombreSugerido: data.proveedorNombreSugerido ?? null,
         proveedorCreado: !!data.proveedorCreado,
