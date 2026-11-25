@@ -39,7 +39,7 @@ export function RrhhContenido({ vista }: { vista: Vista }) {
       {!yo && !error && <p className="p-6 text-sm text-muted-foreground">Cargando…</p>}
       {yo && vista === "correo" && <CorreoPersonal yo={yo} recargarYo={cargarYo} />}
       {yo && vista === "comunicados" && <MisComunicados recargarYo={cargarYo} />}
-      {yo && vista === "gestion" && (yo.rrhh ? <GestionRrhh yo={yo} /> : <p className="text-sm text-muted-foreground">Solo Recursos Humanos.</p>)}
+      {yo && vista === "gestion" && (yo.rrhh ? <GestionRrhh /> : <p className="text-sm text-muted-foreground">Solo Recursos Humanos.</p>)}
     </div>
   );
 }

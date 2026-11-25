@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Category2, Eye, TickCircle, Notification, Wallet, DocumentText, Calendar, Warning2, Folder2, Edit2, Refresh2, Profile2User, SearchNormal1 } from "@/lib/icons";
+import { Category2, Eye, TickCircle, Notification, Wallet, DocumentText, Calendar, Warning2, Folder2, Edit2, Refresh2, SearchNormal1 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { ContenidoComunicado, Etiqueta } from "./comunicados";
-import { TIPOS, fecha, leerArchivos, pedir, type Adjunto, type ComunicadoFila, type Persona, type Yo } from "./comunes";
+import { TIPOS, fecha, leerArchivos, pedir, type Adjunto, type ComunicadoFila, type Persona } from "./comunes";
 
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : "No se pudo completar");
 
@@ -108,35 +108,7 @@ function Nuevo({ abierto, cerrar, personas, alEnviar }: { abierto: boolean; cerr
   );
 }
 
-function Equipo({ abierto, cerrar }: { abierto: boolean; cerrar: () => void }) {
-  const [miembros, setMiembros] = useState<string[]>([]);
-  const [personas, setPersonas] = useState<Persona[]>([]);
-  const cargar = useCallback(() => {
-    pedir<{ miembros: string[]; personas: Persona[] }>("miembros").then((d) => { setMiembros(d.miembros); setPersonas(d.personas); }).catch((e) => toast.error(mensaje(e)));
-  }, []);
-  useEffect(() => { if (abierto) cargar(); }, [abierto, cargar]);
-  return (
-    <Dialog open={abierto} onOpenChange={(o) => { if (!o) cerrar(); }}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader><DialogTitle>Equipo de Recursos Humanos</DialogTitle></DialogHeader>
-        <p className="text-xs text-muted-foreground">Los super admin ya forman parte. Marca a quién más quieres dar acceso.</p>
-        <div className="space-y-2">
-          {personas.map((p) => (
-            <label key={p.email} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={miembros.includes(p.email)} onChange={async (e) => {
-                if (e.target.checked && !confirm(`${p.nombre} podrá enviar comunicados y ver los de todos (incluidas sanciones y nóminas). ¿Añadir?`)) return;
-                try { await pedir("miembros", { email: p.email, activo: e.target.checked }); cargar(); } catch (err) { toast.error(mensaje(err)); }
-              }} />
-              {p.nombre} <span className="text-xs text-muted-foreground">{p.email}</span>
-            </label>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-export function GestionRrhh({ yo }: { yo: Yo }) {
+export function GestionRrhh() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [enviados, setEnviados] = useState<ComunicadoFila[] | null>(null);
   const [empleado, setEmpleado] = useState("");
@@ -145,7 +117,6 @@ export function GestionRrhh({ yo }: { yo: Yo }) {
   const [busqueda, setBusqueda] = useState("");
   const [abierto, setAbierto] = useState<number | null>(null);
   const [redactando, setRedactando] = useState(false);
-  const [equipo, setEquipo] = useState(false);
 
   const cargar = useCallback(() => {
     pedir<{ comunicados: ComunicadoFila[] }>("enviados").then((d) => setEnviados(d.comunicados)).catch((e) => toast.error(mensaje(e)));
@@ -180,7 +151,6 @@ export function GestionRrhh({ yo }: { yo: Yo }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap justify-end gap-2">
-        {yo.superadmin && <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEquipo(true)}><Profile2User className="size-4" /> Equipo</Button>}
         <Button size="sm" className="gap-1.5" onClick={() => setRedactando(true)}><Edit2 className="size-4" /> Nuevo comunicado</Button>
         <Button variant="outline" size="icon-sm" title="Actualizar" aria-label="Actualizar" onClick={cargar}><Refresh2 className="size-4" /></Button>
       </div>
@@ -259,7 +229,6 @@ export function GestionRrhh({ yo }: { yo: Yo }) {
       </div>
 
       <Nuevo abierto={redactando} cerrar={() => setRedactando(false)} personas={personas} alEnviar={() => { setEmpleado(""); setCarpeta("todos"); cargar(); }} />
-      {yo.superadmin && <Equipo abierto={equipo} cerrar={() => setEquipo(false)} />}
     </div>
   );
 }
