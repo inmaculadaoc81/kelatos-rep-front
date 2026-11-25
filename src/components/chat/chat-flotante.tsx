@@ -6,6 +6,7 @@
  *
  * - Cuando llega un mensaje nuevo, la conversación se abre sola (sin quitar el cursor de donde se esté escribiendo).
  * - «Visto» solo se marca cuando la persona pulsa o escribe en la conversación: que se abra sola no cuenta.
+ * - La burbuja se arrastra y se recuerda en este navegador, como la del asistente (que queda justo encima). La ventana la sigue.
  * - Queda POR DEBAJO de los diálogos (z-40): así nunca cierra por accidente un formulario a medio rellenar.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,6 +33,15 @@ type Vista = { tipo: "burbuja" } | { tipo: "lista" } | { tipo: "nuevo" } | { tip
 const RUTAS_SIN_CHAT = /^\/(login|acceso-restringido|presupuesto\/|(formulario|formulario-recogida|formulario-entrega-venta|valoracion|encuesta)(\/|$))/;
 
 const CLAVE_MINIMIZADO = "kelatos-chat-minimizado-hasta:";
+
+const CLAVE_POSICION = "kelatos-chat-posicion";
+/** Tamaño de la burbuja (48 px, como la del asistente). */
+const BOTON = 48;
+/** Hueco que ocupan a la derecha la burbuja del asistente y su micrófono: la ventana se abre a la izquierda de ellos. */
+const HUECO_ASISTENTE = 108;
+
+interface Posicion { right: number; bottom: number }
+const entre = (v: number, min: number, max: number) => Math.min(Math.max(min, v), Math.max(min, max));
 
 function leerMinimizado(yo: string): number {
   try { return Number(window.localStorage.getItem(CLAVE_MINIMIZADO + yo)) || 0; } catch { return 0; }
@@ -83,6 +93,24 @@ function Chat() {
   const [borradores, setBorradores] = useState<Record<string, string>>({});
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [enviando, setEnviando] = useState(false);
+
+  // Posición de la burbuja (distancia a la esquina inferior derecha). Por defecto, abajo del todo.
+  const [pos, setPos] = useState<Posicion>({ right: 20, bottom: 20 });
+  const [vp, setVp] = useState({ w: 1200, h: 800 });
+  const posRef = useRef(pos);
+  const arrastre = useRef<{ x: number; y: number; right: number; bottom: number; movido: boolean } | null>(null);
+  const ignorarClic = useRef(false);
+  useEffect(() => {
+    // Se lee al montar (no en el estado inicial) para no desajustar el HTML del servidor.
+    try {
+      const g = JSON.parse(window.localStorage.getItem(CLAVE_POSICION) || "null");
+      if (g && Number.isFinite(g.right) && Number.isFinite(g.bottom)) { posRef.current = { right: g.right, bottom: g.bottom }; setPos(posRef.current); }
+    } catch { /* sin almacenamiento: posición por defecto */ }
+    const medir = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, []);
 
   const caja = useRef<HTMLDivElement>(null);
   const final = useRef<HTMLDivElement>(null);
@@ -201,19 +229,58 @@ function Chat() {
     }
   }
 
-  const posicion = `fixed bottom-4 z-40 print:hidden ${resumen.junto ? "right-24" : "right-4"}`;
+  // La burbuja nunca sale de la pantalla; la ventana se abre junto a ella, donde quepa.
+  const limitar = (q: Posicion): Posicion => ({ right: entre(q.right, 8, vp.w - BOTON - 8), bottom: entre(q.bottom, 8, vp.h - BOTON - 8) });
+  const burbuja = limitar(pos);
+  const ancho = Math.min(336, vp.w - 16);
+  const alto = Math.min(432, vp.h - 80);
+  const haceHueco = !!resumen.junto;
+  const cabeAlLado = !haceHueco || vp.w - burbuja.right - HUECO_ASISTENTE - ancho >= 8;
+  const ventana = {
+    width: ancho,
+    height: alto,
+    right: entre(burbuja.right + (haceHueco && cabeAlLado ? HUECO_ASISTENTE : 0), 8, vp.w - ancho - 8),
+    // En pantallas estrechas, con el asistente, se abre por encima de las dos burbujas.
+    bottom: entre(burbuja.bottom + (cabeAlLado ? 0 : 2 * BOTON + 28), 8, vp.h - alto - 8),
+  };
 
   if (vista.tipo === "burbuja") {
     return (
       <button
         type="button"
+        onPointerDown={(e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          arrastre.current = { x: e.clientX, y: e.clientY, ...burbuja, movido: false };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const a = arrastre.current;
+          if (!a) return;
+          const dx = e.clientX - a.x, dy = e.clientY - a.y;
+          if (!a.movido && Math.hypot(dx, dy) < 6) return;
+          a.movido = true;
+          posRef.current = limitar({ right: a.right - dx, bottom: a.bottom - dy });
+          setPos(posRef.current);
+        }}
+        onPointerUp={() => {
+          const a = arrastre.current;
+          arrastre.current = null;
+          if (!a?.movido) return;
+          // Tras arrastrar no debe contar como clic (abriría el chat).
+          ignorarClic.current = true;
+          setTimeout(() => { ignorarClic.current = false; }, 0);
+          try { window.localStorage.setItem(CLAVE_POSICION, JSON.stringify(posRef.current)); } catch { /* sin almacenamiento */ }
+        }}
+        onPointerCancel={() => { arrastre.current = null; }}
+        style={{ right: burbuja.right, bottom: burbuja.bottom, touchAction: "none" }}
         onClick={() => {
+          if (ignorarClic.current) return;
           const pendiente = resumen.conversaciones.filter((c) => c.sinLeer > 0);
           setVista(pendiente.length === 1 ? { tipo: "conversacion", con: pendiente[0].con, nombre: pendiente[0].nombre } : { tipo: "lista" });
         }}
-        title={resumen.sinLeer ? `${resumen.sinLeer} mensaje(s) sin leer` : "Mensajes"}
+        title={`${resumen.sinLeer ? `${resumen.sinLeer} mensaje(s) sin leer` : "Mensajes"} (mantén pulsado y arrastra para moverlo)`}
         aria-label={resumen.sinLeer ? `Mensajes: ${resumen.sinLeer} sin leer` : "Mensajes"}
-        className={`${posicion} flex size-14 items-center justify-center rounded-full border bg-card text-primary shadow-lg transition-transform hover:scale-105`}
+        className="fixed z-40 flex size-12 cursor-grab items-center justify-center rounded-full border bg-card text-primary shadow-lg transition-transform hover:scale-105 active:cursor-grabbing print:hidden"
       >
         <Message className="size-6" />
         {resumen.sinLeer > 0 && (
@@ -231,7 +298,7 @@ function Chat() {
   const pendientesFuera = resumen.conversaciones.filter((c) => c.con !== con).reduce((s, c) => s + c.sinLeer, 0);
 
   return (
-    <div ref={caja} role="dialog" aria-label={`Chat: ${titulo}`} className={`${posicion} flex h-[min(27rem,calc(100dvh-6rem))] w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl`}>
+    <div ref={caja} role="dialog" aria-label={`Chat: ${titulo}`} style={ventana} className="fixed z-40 flex flex-col overflow-hidden rounded-xl border bg-card shadow-2xl print:hidden">
       <div className="flex items-center gap-1 bg-primary px-2 py-2 text-primary-foreground">
         {vista.tipo !== "lista" && (
           <Button variant="ghost" size="icon-sm" className="relative text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => setVista({ tipo: "lista" })} aria-label="Ver todas las conversaciones" title="Todas las conversaciones">

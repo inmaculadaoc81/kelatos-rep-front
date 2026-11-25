@@ -201,12 +201,13 @@ function BotonCopiar({ texto }: { texto: string }) {
  * segundo el texto acumulado) y se muestra escribiéndose. No consulta datos reales, solo explica el funcionamiento.
  * Por ahora solo se monta para superadministradores (ver layout.tsx).
  */
-export function AsistenteFlotante() {
+/** `sobreElChat`: la cuenta tiene además la burbuja del chat interno abajo, así que esta se coloca justo encima. */
+export function AsistenteFlotante({ sobreElChat = false }: { sobreElChat?: boolean }) {
   const ruta = usePathname();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   // Posición del botón (distancia a la esquina inferior derecha). Se arrastra manteniendo pulsado y se recuerda en este navegador.
-  const [pos, setPos] = useState<{ right: number; bottom: number }>({ right: 20, bottom: 20 });
+  const [pos, setPos] = useState<{ right: number; bottom: number }>({ right: 20, bottom: sobreElChat ? 82 : 20 });
   const [vp, setVp] = useState({ w: 0, h: 0 });
   const arrastre = useRef<{ x: number; y: number; right: number; bottom: number; movido: boolean } | null>(null);
   const posRef = useRef(pos);
@@ -214,7 +215,7 @@ export function AsistenteFlotante() {
   useEffect(() => {
     // La posición guardada se lee al montar (no en el estado inicial) para no desajustar el HTML del servidor.
     try {
-      const g = JSON.parse(window.localStorage.getItem("asistente-posicion") || "null");
+      const g = JSON.parse(window.localStorage.getItem("asistente-posicion-2") || "null");
       if (g && Number.isFinite(g.right) && Number.isFinite(g.bottom)) { posRef.current = { right: g.right, bottom: g.bottom }; setPos(posRef.current); }
     } catch { /* sin almacenamiento: posición por defecto */ }
   }, []);
@@ -969,7 +970,7 @@ export function AsistenteFlotante() {
           // Tras arrastrar no debe contar como clic (abriría o cerraría el chat).
           ignorarClic.current = true;
           setTimeout(() => { ignorarClic.current = false; }, 0);
-          try { window.localStorage.setItem("asistente-posicion", JSON.stringify(posRef.current)); } catch { /* sin almacenamiento */ }
+          try { window.localStorage.setItem("asistente-posicion-2", JSON.stringify(posRef.current)); } catch { /* sin almacenamiento */ }
         }}
         onPointerCancel={() => { arrastre.current = null; }}
         aria-label={abierto ? "Cerrar el asistente" : "Abrir el asistente de ayuda"}

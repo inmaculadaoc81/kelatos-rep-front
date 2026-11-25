@@ -70,7 +70,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               contenedor no necesita el suyo propio. */}
           <main className="flex-1">{children}</main>
           {/* Quién lo ve: ver puedeUsarAsistente (superadmins y la cuenta soporte); las rutas /api/asistente lo exigen también. */}
-          {puedeUsarAsistente(session?.user) && <AsistenteFlotante />}
+          {puedeUsarAsistente(session?.user) && <AsistenteFlotante sobreElChat={!esCuentaEmpleadosRestringida(session?.user?.email)} />}
         </SidebarInset>
       </SidebarProvider>
       </SoftphoneProvider>
