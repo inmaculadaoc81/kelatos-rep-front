@@ -168,6 +168,10 @@ export function NavUser({ session }: { session: Session | null }) {
                   )}
                 </>
               )}
+              <DropdownMenuItem render={<Link href={esSuperadmin(email) ? "/rrhh/gestion" : "/rrhh"} />}>
+                <IconoDashboard icon={Profile2User} className="from-sky-500 to-indigo-600" />
+                Recursos Humanos
+              </DropdownMenuItem>
               {/* Un botón por dashboard, oculto cuando ya estás en él — en vez
                   de reetiquetar el botón activo como "Reparaciones", cada uno
                   desaparece por su cuenta y Reparaciones tiene su propia
