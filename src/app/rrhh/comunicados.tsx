@@ -20,15 +20,21 @@ interface Detalle {
   destinatarios: { email: string; nombre: string; aviso_enviado_en: string | null; aviso_error: string | null; leido_en: string | null; conforme_en: string | null }[] | null;
 }
 
-/** Detalle de un comunicado. `gestion` = lo consulta Recursos Humanos (muestra quién lo ha leído). */
-export function DetalleComunicado({ id, gestion = false, cerrar }: { id: number | null; gestion?: boolean; cerrar: () => void }) {
+/**
+ * Contenido completo de un comunicado (texto, adjuntos, conformidad y, en gestión, quién lo ha leído).
+ * `conTitulo`: pinta el asunto (en la ventana emergente ya lo pone la cabecera).
+ */
+export function ContenidoComunicado({ id, gestion = false, conTitulo = false, alFallar, alCargar }: { id: number; gestion?: boolean; conTitulo?: boolean; alFallar?: () => void; alCargar?: (asunto: string) => void }) {
   const [d, setD] = useState<Detalle | null>(null);
   const [marcando, setMarcando] = useState(false);
 
   useEffect(() => {
+    let vivo = true;
     setD(null);
-    if (id === null) return;
-    pedir<Detalle>(`comunicados/${id}`).then(setD).catch((e) => { toast.error(e instanceof Error ? e.message : "No se pudo abrir"); cerrar(); });
+    pedir<Detalle>(`comunicados/${id}`)
+      .then((r) => { if (vivo) { setD(r); alCargar?.(r.comunicado.asunto); } })
+      .catch((e) => { if (vivo) { toast.error(e instanceof Error ? e.message : "No se pudo abrir"); alFallar?.(); } });
+    return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -46,45 +52,53 @@ export function DetalleComunicado({ id, gestion = false, cerrar }: { id: number 
     }
   }
 
+  if (!d) return <p className="p-8 text-center text-sm text-muted-foreground">Abriendo…</p>;
   return (
-    <Dialog open={id !== null} onOpenChange={(o) => { if (!o) cerrar(); }}>
+    <div className="space-y-4">
+      {conTitulo && <h2 className="text-base font-semibold">{d.comunicado.asunto}</h2>}
+      <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Etiqueta tipo={d.comunicado.tipo} /> {fecha(d.comunicado.creado_en)} · enviado por {d.comunicado.creado_por}</p>
+      <pre className="whitespace-pre-wrap break-words font-sans text-sm">{d.comunicado.cuerpo}</pre>
+      {d.adjuntos.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {d.adjuntos.map((a) => (
+            <a key={a.id} href={`/api/rrhh/adjuntos/${a.id}?descargar=1`} className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs hover:bg-muted/70"><Paperclip2 className="size-3" /> {a.nombre} · {tamano(a.tamano)}</a>
+          ))}
+        </div>
+      )}
+      {d.mio && d.comunicado.requiere_conformidad && (
+        d.mio.conforme_en
+          ? <p className="rounded border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">Recibido y conforme el {fecha(d.mio.conforme_en)}.</p>
+          : <Button onClick={conforme} disabled={marcando}>{marcando ? "Registrando…" : "Recibido y conforme"}</Button>
+      )}
+      {gestion && d.destinatarios && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/50 text-left"><tr><th className="p-2">Persona</th><th className="p-2">Aviso al correo</th><th className="p-2">Leído</th>{d.comunicado.requiere_conformidad && <th className="p-2">Conforme</th>}</tr></thead>
+            <tbody>
+              {d.destinatarios.map((x) => (
+                <tr key={x.email} className="border-t">
+                  <td className="p-2">{x.nombre}</td>
+                  <td className={cn("p-2", x.aviso_error && "text-destructive")} title={x.aviso_error || ""}>{x.aviso_enviado_en ? fecha(x.aviso_enviado_en) : x.aviso_error ? "No se pudo enviar" : "—"}</td>
+                  <td className="p-2">{fecha(x.leido_en)}</td>
+                  {d.comunicado.requiere_conformidad && <td className="p-2">{fecha(x.conforme_en)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** El mismo contenido en una ventana emergente (vista «Comunicados» del empleado). */
+export function DetalleComunicado({ id, cerrar }: { id: number | null; cerrar: () => void }) {
+  const [asunto, setAsunto] = useState("");
+  return (
+    <Dialog open={id !== null} onOpenChange={(o) => { if (!o) { setAsunto(""); cerrar(); } }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle className="pr-6">{d?.comunicado.asunto || "Abriendo…"}</DialogTitle></DialogHeader>
-        {d && (
-          <div className="space-y-4">
-            <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Etiqueta tipo={d.comunicado.tipo} /> {fecha(d.comunicado.creado_en)} · enviado por {d.comunicado.creado_por}</p>
-            <pre className="whitespace-pre-wrap break-words font-sans text-sm">{d.comunicado.cuerpo}</pre>
-            {d.adjuntos.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {d.adjuntos.map((a) => (
-                  <a key={a.id} href={`/api/rrhh/adjuntos/${a.id}?descargar=1`} className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs hover:bg-muted/70"><Paperclip2 className="size-3" /> {a.nombre} · {tamano(a.tamano)}</a>
-                ))}
-              </div>
-            )}
-            {d.mio && d.comunicado.requiere_conformidad && (
-              d.mio.conforme_en
-                ? <p className="rounded border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">Recibido y conforme el {fecha(d.mio.conforme_en)}.</p>
-                : <Button onClick={conforme} disabled={marcando}>{marcando ? "Registrando…" : "Recibido y conforme"}</Button>
-            )}
-            {gestion && d.destinatarios && (
-              <div className="overflow-x-auto rounded border">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/50 text-left"><tr><th className="p-2">Persona</th><th className="p-2">Aviso al correo</th><th className="p-2">Leído</th>{d.comunicado.requiere_conformidad && <th className="p-2">Conforme</th>}</tr></thead>
-                  <tbody>
-                    {d.destinatarios.map((x) => (
-                      <tr key={x.email} className="border-t">
-                        <td className="p-2">{x.nombre}</td>
-                        <td className={cn("p-2", x.aviso_error && "text-destructive")} title={x.aviso_error || ""}>{x.aviso_enviado_en ? fecha(x.aviso_enviado_en) : x.aviso_error ? "No se pudo enviar" : "—"}</td>
-                        <td className="p-2">{fecha(x.leido_en)}</td>
-                        {d.comunicado.requiere_conformidad && <td className="p-2">{fecha(x.conforme_en)}</td>}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+        <DialogHeader><DialogTitle className="pr-6">{asunto || "Comunicado"}</DialogTitle></DialogHeader>
+        {id !== null && <ContenidoComunicado id={id} alCargar={setAsunto} alFallar={cerrar} />}
       </DialogContent>
     </Dialog>
   );
