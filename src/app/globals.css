@@ -239,3 +239,8 @@
 @media (prefers-reduced-motion: reduce) {
   .puntos-pensando > span { animation: none; opacity: 0.6; }
 }
+
+/* Sobre del buzón en la vista de fichaje: un pequeño meneo cada pocos segundos cuando hay algo pendiente. */
+@keyframes buzon-meneo { 0%, 76%, 100% { transform: rotate(0); } 80% { transform: rotate(-14deg); } 84% { transform: rotate(12deg); } 88% { transform: rotate(-8deg); } 92% { transform: rotate(5deg); } 96% { transform: rotate(0); } }
+.buzon-aviso { animation: buzon-meneo 3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .buzon-aviso { animation: none; } }

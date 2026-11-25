@@ -7,7 +7,7 @@ import { kelatosApiGet, kelatosApiPost } from "@/lib/kelatos-api";
  * PRIVACIDAD: `usuario` sale SIEMPRE de la sesión. Lo que mande el navegador con ese nombre se descarta, así nadie
  * puede pedir el correo o los comunicados de otra persona.
  */
-const LECTURAS = [/^yo$/, /^correo\/(mensajes|mensaje|adjunto)$/, /^personas$/, /^comunicados(\/\d+)?$/, /^adjuntos\/\d+$/, /^enviados$/, /^historial$/, /^miembros$/];
+const LECTURAS = [/^yo$/, /^correo\/(mensajes|mensaje|adjunto|sin-leer)$/, /^personas$/, /^comunicados(\/\d+)?$/, /^adjuntos\/\d+$/, /^enviados$/, /^historial$/, /^miembros$/];
 const ESCRITURAS = [/^correo\/(conectar|desconectar|enviar)$/, /^comunicados(\/\d+\/conforme)?$/, /^miembros$/];
 
 type Ctx = { params: Promise<{ ruta: string[] }> };
