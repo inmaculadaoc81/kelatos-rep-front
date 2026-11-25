@@ -249,7 +249,7 @@ export function Decision({ token, accionInicial }: { token: string; accionInicia
         <Card>
           <CardHeader>
             <CardTitle>{resumen === "aceptar" ? "Revisa antes de confirmar" : "¿Seguro que quieres rechazar?"}</CardTitle>
-            <CardDescription>Después de confirmar tendrás {d.minutosParaDeshacer} minutos para deshacerlo.</CardDescription>
+            <CardDescription>Después de confirmar tendrás {d.minutosParaDeshacer === 1 ? "1 minuto" : `${d.minutosParaDeshacer} minutos`} para deshacerlo.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {resumen === "aceptar" ? listaElegida : <p>No haremos la reparación de tu equipo ({d.equipo}).</p>}
