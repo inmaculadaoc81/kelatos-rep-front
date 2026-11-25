@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { referencia } = await params;
-  const { enlaceId, cantidad, fechaEstimadaLlegada, proveedor, enlace, numeroPedido, costo, compradoPor } = (await req.json()) as {
+  const { enlaceId, cantidad, fechaEstimadaLlegada, proveedor, enlace, numeroPedido, costo, compradoPor, fechaPedido } = (await req.json()) as {
     enlaceId?: number | null;
     cantidad: number;
     fechaEstimadaLlegada?: string;
@@ -48,6 +48,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
     costo?: number;
     /** Quién hizo la compra (si no, se asume quien registra el pedido). */
     compradoPor?: string;
+    /** Fecha del pedido (AAAA-MM-DD); sin ella se usa el momento del registro. */
+    fechaPedido?: string;
   };
   if (!Number.isFinite(cantidad) || cantidad <= 0) {
     return NextResponse.json({ ok: false, error: "La cantidad debe ser mayor que 0" }, { status: 400 });
@@ -56,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ referen
   try {
     const resultado = await kelatosApiPost<{ ok: boolean; pedido: FilaPedidoSql }>(
       `/v1/stock-piezas/${encodeURIComponent(referencia)}/pedidos`,
-      { enlaceId: enlaceId ?? null, cantidad, fechaEstimadaLlegada: fechaEstimadaLlegada || null, proveedor, enlace, numeroPedido, costo, usuario, compradoPor }
+      { enlaceId: enlaceId ?? null, cantidad, fechaEstimadaLlegada: fechaEstimadaLlegada || null, proveedor, enlace, numeroPedido, costo, usuario, compradoPor, fechaPedido }
     );
     return NextResponse.json({ ok: true, pedido: resultado.pedido });
   } catch (error) {

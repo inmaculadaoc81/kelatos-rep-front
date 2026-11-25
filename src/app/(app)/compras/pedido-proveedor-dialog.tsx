@@ -143,6 +143,8 @@ interface LineaPedidoEditable {
   equipoElegido: string;
   enlace: string;
   numeroPedido: string;
+  /** Fecha del pedido leída del documento (AAAA-MM-DD). Vacía = se registra con la de hoy. */
+  fechaPedido: string;
   fechaEstimada: string;
   costo: number;
 }
@@ -403,6 +405,7 @@ function lineaDesdeOcr(l0: LineaPedidoProveedorLeida, numeroPedidoGlobal: string
     equipoElegido: "",
     enlace: "",
     numeroPedido: l.numeroPedido || numeroPedidoGlobal || "No informado",
+    fechaPedido: l.fechaPedido || "",
     fechaEstimada: "",
     costo: (l.precioListado && l.descuento ? l.precioListado : null) ?? l.precioPagado ?? l.precioUnitario ?? 0,
     descuento: l.precioListado && l.descuento ? l.descuento : 0,
@@ -915,7 +918,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       const lineasNuevas: typeof lineasLeidas = [];
       const porClave = new Map<string, number>();
       for (const l of lineasLeidas) {
-        const k = [l.nombre, l.destino, l.resguardo, l.numeroPedido, l.costo, l.costeInterno, l.referencia, l.origenCliente, l.ventaId, l.recibido].join("|");
+        const k = [l.nombre, l.destino, l.resguardo, l.numeroPedido, l.costo, l.costeInterno, l.referencia, l.origenCliente, l.ventaId, l.recibido, l.fechaPedido].join("|");
         const j = porClave.get(k);
         if (j == null) { porClave.set(k, lineasNuevas.length); lineasNuevas.push({ ...l }); }
         else lineasNuevas[j].cantidad += l.cantidad;
@@ -1187,6 +1190,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               numeroPedido: l.numeroPedido.trim() && l.numeroPedido.trim() !== "No informado" ? l.numeroPedido.trim() : undefined,
               costo: (costoNeto(l) > 0 ? aEuros(costoNeto(l)) : l.costeInterno > 0 ? l.costeInterno : undefined),
               compradoPor: compradoPor.trim() || undefined,
+              fechaPedido: l.fechaPedido || undefined,
             }),
           });
           const dataPedido = await resPedido.json();
@@ -1213,11 +1217,13 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       const porResguardo = new Map<string, LineaPedidoEditable[]>();
       for (const l of lineas) {
         if (!l.aplicar || l.accion !== "registrar" || l.destino !== "cliente" || l.origenCliente === "venta" || !l.resguardo) continue;
-        const arr = porResguardo.get(l.resguardo) || [];
+        const clave = `${l.resguardo}|${l.fechaPedido}`;
+        const arr = porResguardo.get(clave) || [];
         arr.push(l);
-        porResguardo.set(l.resguardo, arr);
+        porResguardo.set(clave, arr);
       }
-      for (const [resguardo, grupo] of porResguardo) {
+      for (const grupo of porResguardo.values()) {
+        const resguardo = grupo[0].resguardo;
         try {
           const piezas = grupo.flatMap((l) =>
             Array.from({ length: l.cantidad }, () => ({
@@ -1228,7 +1234,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
           const res = await fetch(`/api/reparaciones/${encodeURIComponent(resguardo)}/pedidos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ compradoPor, fechaPedido: new Date().toISOString().slice(0, 10), piezas }),
+            body: JSON.stringify({ compradoPor, fechaPedido: grupo[0].fechaPedido || new Date().toISOString().slice(0, 10), piezas }),
           });
           const data = await res.json();
           if (!data.ok) throw new Error(data.error || "No se pudo registrar el pedido");
@@ -1292,7 +1298,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               body: JSON.stringify(
                 yaRecibida
                   ? { proveedorId: proveedorIdSugerido || "", numeroPedido: l.numeroPedido.trim(), enlace: l.enlace.trim() }
-                  : { proveedorId: proveedorIdSugerido || "", proveedorOtro: "", numeroPedido: l.numeroPedido.trim(), fechaEstimada: fechaEstimadaEfectiva(l), enlace: enlaceEfectivo(l) }
+                  : { proveedorId: proveedorIdSugerido || "", proveedorOtro: "", numeroPedido: l.numeroPedido.trim(), fechaPedido: l.fechaPedido || undefined, fechaEstimada: fechaEstimadaEfectiva(l), enlace: enlaceEfectivo(l) }
               ),
             });
             const data = await res.json();
@@ -1725,6 +1731,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   {numeroPedidoEsEnlace(l.numeroPedido) && <p className="text-[11px] text-destructive">{MENSAJE_NUMERO_PEDIDO_ENLACE}</p>}
                                 </div>
                                 <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Fecha del pedido</Label>
+                                  <Input type="date" className="h-8" max={new Date().toISOString().slice(0, 10)} value={l.fechaPedido} onChange={(e) => actualizar(i, { fechaPedido: e.target.value })} />
+                                  {!l.fechaPedido && <p className="text-[11px] text-muted-foreground">No se leyó: se guardará la de hoy.</p>}
+                                </div>
+                                <div className="space-y-1">
                                   <Label className="text-xs text-muted-foreground">Fecha estimada</Label>
                                   <Input type="date" className="h-8" value={l.fechaEstimada} onChange={(e) => actualizar(i, { fechaEstimada: e.target.value })} />
                                 </div>
@@ -1855,6 +1866,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                       <Label className="text-xs text-muted-foreground">Nº de pedido</Label>
                                       <Input className="h-8" value={l.numeroPedido} onChange={(e) => actualizar(i, { numeroPedido: e.target.value })} />
                                       {numeroPedidoEsEnlace(l.numeroPedido) && <p className="text-[11px] text-destructive">{MENSAJE_NUMERO_PEDIDO_ENLACE}</p>}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">Fecha del pedido</Label>
+                                      <Input type="date" className="h-8" max={new Date().toISOString().slice(0, 10)} value={l.fechaPedido} onChange={(e) => actualizar(i, { fechaPedido: e.target.value })} />
+                                      {!l.fechaPedido && <p className="text-[11px] text-muted-foreground">No se leyó: se guardará la de hoy.</p>}
                                     </div>
                                     <div className="space-y-1">
                                       <Label className="text-xs text-muted-foreground">Fecha estimada</Label>

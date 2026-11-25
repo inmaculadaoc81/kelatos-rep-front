@@ -44,6 +44,8 @@ export interface LineaPedidoProveedorLeida {
   soloRecepcion?: boolean;
   /** Índice del elemento (imagen o texto) de la que sale la línea; null/ausente si salió de varias capturas juntas. */
   elemento?: number | null;
+  /** Fecha en que se hizo el pedido según el documento (AAAA-MM-DD), si se leyó. */
+  fechaPedido?: string | null;
   /** «Total» de la cabecera del pedido (tiendas online), si se leyó. */
   totalPedido?: number | null;
   /** El precio por unidad se calculó como Total ÷ cantidad porque no cuadraba con lo leído de la línea. */

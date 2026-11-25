@@ -15,7 +15,7 @@ export async function POST(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { itemId } = await params;
-  const datos = (await req.json()) as DatosRegistrarPedido;
+  const datos = (await req.json()) as DatosRegistrarPedido & { fechaPedido?: string };
   if (!datos.proveedorId) return NextResponse.json({ ok: false, error: "Selecciona un proveedor" }, { status: 400 });
   if (!datos.numeroPedido?.trim()) return NextResponse.json({ ok: false, error: "El Nº de pedido es obligatorio" }, { status: 400 });
   if (numeroPedidoEsEnlace(datos.numeroPedido)) return NextResponse.json({ ok: false, error: MENSAJE_NUMERO_PEDIDO_ENLACE }, { status: 400 });
@@ -35,6 +35,7 @@ export async function POST(
         proveedor_otro: datos.proveedorOtro?.trim() || "",
         numero_pedido: datos.numeroPedido.trim(),
         fecha_estimada: datos.fechaEstimada,
+        fecha_pedido: datos.fechaPedido || undefined,
         enlace: datos.enlace.trim(),
       }
     );
