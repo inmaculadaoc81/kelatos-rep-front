@@ -70,6 +70,8 @@ interface CandidatoRecepcion {
   /** Coste y nº de pedido registrados (reparaciones), para comparar con la factura. */
   costo: number | null;
   numeroPedido: string;
+  /** Aviso solo por coincidir resguardo y proveedor (puede ser otra pieza de la misma reparación). */
+  porResguardo?: boolean;
 }
 
 interface ItemVentaPendiente {
@@ -795,10 +797,12 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
   /** Para las líneas que NO son «ya llegó»: ¿ese pedido ya está registrado? Se busca en Compras (reparaciones y ventas) por:
       · nº de pedido igual + una pieza parecida + el MISMO PROVEEDOR (el de la línea, o el del cuadro de arriba si la línea no dice
         otro), para que dos proveedores con el mismo número no se confundan; y
-      · sin número válido: mismo resguardo + mismo proveedor + pieza parecida.
+      · sin número válido: mismo resguardo + mismo proveedor + pieza parecida;
+      · y siempre, para una pieza de reparación: si ese resguardo ya tiene una compra al mismo proveedor, aunque cambien el número o
+        la descripción (a menudo se dio de alta a mano como «añadido»). Puede ser otra pieza: se avisa y se puede volver a marcar.
       En tienda, además, pedidos de stock pendientes de la misma referencia y cantidad.
       Si aparece, la línea se desmarca (no se registra otra vez) y se avisa; el empleado puede volver a marcarla si es otro pedido. */
-  async function buscarDuplicados(nuevas: LineaPedidoEditable[]) {
+  async function buscarDuplicados(nuevas: LineaPedidoEditable[], soloIndice?: number) {
     const normal = (x: string) => x.toLowerCase().replace(/[\s-]/g, "");
     // Proveedor comparable: sin acentos ni signos; «aswo» y «aswoo» o «Amazon.es» y «amazon» se consideran el mismo.
     const prov = (x: string) => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").replace(/(.)\1+/g, "$1");
@@ -806,9 +810,10 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
       const x = prov(a), y = prov(b);
       return !x || !y || x === y || x.includes(y) || y.includes(x);
     };
-    type FilaC = { origen: "reparacion" | "venta"; pedidoId: string; resguardo: string; clienteNombre: string; numeroPedido: string; descripcion: string; estado: string; costo: number | null; proveedorNombre?: string; proveedorOtro?: string };
+    type FilaC = { origen: "reparacion" | "venta"; pedidoId: string; resguardo: string; clienteNombre: string; numeroPedido: string; descripcion: string; estado: string; costo: number | null; proveedorNombre?: string; proveedorOtro?: string; fechaPedido?: string | null };
     await Promise.all(
-      nuevas.map(async (l, i) => {
+      nuevas.map(async (l, k) => {
+        const i = soloIndice ?? k;
         if (l.recibido || l.soloRecepcion) return;
         const proveedorLinea = (l.proveedorTexto || proveedorNombre || "").trim();
         const encontrados = new Map<string, CandidatoRecepcion>();
@@ -851,9 +856,26 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         } catch {
           /* sin coincidencias */
         }
+        // Mismo resguardo y mismo proveedor, sin mirar número ni descripción.
+        if (l.destino === "cliente" && l.origenCliente !== "venta" && l.resguardo) {
+          try {
+            const r = await fetch(`/api/compras?busqueda=${encodeURIComponent(l.resguardo)}&porPagina=50`).then((x) => x.json()).catch(() => null);
+            for (const c of (r?.ok ? r.compras : []) as FilaC[]) {
+              if (c.origen !== "reparacion" || c.resguardo !== l.resguardo || String(c.estado).toLowerCase() === "cancelado") continue;
+              if (!mismoProveedor(proveedorLinea, c.proveedorOtro || c.proveedorNombre || "") || encontrados.has(`${c.origen}-${c.pedidoId}`)) continue;
+              anadir(c);
+              const nuevo = encontrados.get(`${c.origen}-${c.pedidoId}`)!;
+              const extra = [c.fechaPedido ? c.fechaPedido.slice(0, 10).split("-").reverse().join("/") : "", c.costo != null ? `${Number(c.costo).toFixed(2).replace(".", ",")} €` : ""].filter(Boolean).join(" · ");
+              encontrados.set(nuevo.clave, { ...nuevo, porResguardo: true, detalle: extra ? `${nuevo.detalle} · ${extra}` : nuevo.detalle });
+            }
+          } catch {
+            /* sin coincidencias */
+          }
+        }
         const lista = [...encontrados.values()];
         if (lista.length === 0) return;
-        setLineas((prev) => prev.map((x, idx) => (idx !== i || x.recibido ? x : { ...x, posiblesDuplicados: lista, aplicar: false })));
+        // Si mientras se buscaba se cambió de resguardo, el aviso ya no corresponde.
+        setLineas((prev) => prev.map((x, idx) => (idx !== i || x.recibido || x.resguardo !== l.resguardo ? x : { ...x, posiblesDuplicados: lista, aplicar: false })));
       })
     );
   }
@@ -1009,6 +1031,14 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
         return { ...l, accion };
       })
     );
+  }
+
+  /** Al elegir o quitar el cliente a mano, el aviso de repetición anterior deja de valer y se vuelve a comprobar. */
+  function elegirDestinoCliente(i: number, linea: LineaPedidoEditable, cambios: Partial<LineaPedidoEditable>) {
+    const limpio: Partial<LineaPedidoEditable> = { ...cambios, posiblesDuplicados: [], ...(linea.posiblesDuplicados.length > 0 && !linea.aplicar ? { aplicar: true } : {}) };
+    actualizar(i, limpio);
+    const nueva = { ...linea, ...limpio };
+    if (nueva.resguardo) void buscarDuplicados([nueva], i);
   }
 
   function actualizar(i: number, cambios: Partial<LineaPedidoEditable>) {
@@ -1630,11 +1660,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
 
                           {l.posiblesDuplicados.length > 0 && !l.recibido && (
                             <div className="space-y-1 rounded-md border border-amber-400/60 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                              <p className="flex items-center gap-1.5 font-medium"><Warning2 className="size-3.5" /> Posible duplicado: este pedido ya parece estar registrado</p>
+                              <p className="flex items-center gap-1.5 font-medium"><Warning2 className="size-3.5" /> {l.posiblesDuplicados.every((c) => c.porResguardo) ? "Posible repetición: este resguardo ya tiene una compra a este proveedor" : "Posible duplicado: este pedido ya parece estar registrado"}</p>
                               <ul className="list-disc pl-5">
                                 {l.posiblesDuplicados.map((c) => <li key={c.clave}>{c.id} · {c.titulo} · {c.detalle} · {c.estado}</li>)}
                               </ul>
-                              <p>Por eso la línea quedó desmarcada y no se registrará. Si es un pedido distinto, vuelve a marcar la casilla de la izquierda.</p>
+                              <p>{l.posiblesDuplicados.every((c) => c.porResguardo) ? "Por si es la misma pieza, la línea quedó desmarcada y no se registrará. Compárala con la de arriba: si es otra pieza, vuelve a marcar la casilla de la izquierda." : "Por eso la línea quedó desmarcada y no se registrará. Si es un pedido distinto, vuelve a marcar la casilla de la izquierda."}</p>
                             </div>
                           )}
 
@@ -1814,8 +1844,8 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                   textoInicial={l.textoPedido}
                                   onElegir={(c) =>
                                     c.tipo === "venta"
-                                      ? actualizar(i, { origenCliente: "venta", ventaId: c.ventaId, resguardo: "", ventaItems: c.items, itemIds: itemsQueEncajan(l.nombre, c.items, l.cantidad), nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: c.clienteNombre, equipoElegido: "" })
-                                      : actualizar(i, { origenCliente: "reparacion", resguardo: c.resguardo, ventaId: "", ventaItems: [], itemIds: [], nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: c.clienteNombre, equipoElegido: c.detalle })
+                                      ? elegirDestinoCliente(i, l, { origenCliente: "venta", ventaId: c.ventaId, resguardo: "", ventaItems: c.items, itemIds: itemsQueEncajan(l.nombre, c.items, l.cantidad), nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: c.clienteNombre, equipoElegido: "" })
+                                      : elegirDestinoCliente(i, l, { origenCliente: "reparacion", resguardo: c.resguardo, ventaId: "", ventaItems: [], itemIds: [], nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: c.clienteNombre, equipoElegido: c.detalle })
                                   }
                                 />
                               ) : (
@@ -1824,7 +1854,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     <span className="inline-flex items-center gap-1.5 text-xs font-medium">
                                       <Profile2User className="size-3.5" /> {l.clienteElegido || l.resguardo || l.ventaId} · {l.origenCliente === "venta" ? `Venta ${l.ventaId}` : l.resguardo}{l.equipoElegido ? ` · ${l.equipoElegido}` : ""}
                                     </span>
-                                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => actualizar(i, { origenCliente: "reparacion", resguardo: "", ventaId: "", ventaItems: [], itemIds: [], nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: "", equipoElegido: "" })}>
+                                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => elegirDestinoCliente(i, l, { origenCliente: "reparacion", resguardo: "", ventaId: "", ventaItems: [], itemIds: [], nuevaPieza: false, precioNuevaPieza: 0, clienteElegido: "", equipoElegido: "" })}>
                                       Cambiar
                                     </Button>
                                   </div>
