@@ -93,6 +93,9 @@ interface LineaPedidoEditable {
   precioListado: number | null;
   /** Los precios de la web llevan IVA y el total del pedido no (0,21 = 21 %): el coste que se registra es sin IVA. */
   ivaIncluido: number;
+  /** El total del documento lleva el IVA sumado y las líneas no (ASWO): tasa, y portes gravados si los hay. */
+  ivaEnTotal: number;
+  portes: number;
   /** El precio que sale en la web es el de TODAS las unidades juntas (eBay: «USD72,35» junto a «Cantidad: 2»); el de cada una es ese ÷ cantidad. */
   precioDeLinea: number | null;
   /** Descuento del pedido (€) sobre esta línea: cantidad × precio − descuento = lo que se pagó. El precio por unidad no cambia. */
@@ -187,6 +190,13 @@ function NotaTotalPedido({ l, moneda, unica = true }: { l: LineaPedidoEditable; 
           {unica && l.totalPedido ? <> · {l.cantidad} × {eurFmt(l.costo)} ≈ total del pedido {eurFmt(l.totalPedido)} (el total de la web va sin IVA) ✓</> : null}
         </p>
       </div>
+    );
+  }
+  if (l.ivaEnTotal > 0 && l.totalPedido) {
+    return (
+      <p className="text-[11px] text-emerald-700 sm:col-span-2 dark:text-emerald-400">
+        {l.cantidad} × {eurFmt(l.costo)} sin IVA{l.portes > 0 ? " (portes repartidos)" : ""} + IVA {Math.round(l.ivaEnTotal * 100)} % = total del pedido {eurFmt(l.totalPedido)} ✓ El coste se guarda <strong>sin IVA</strong>.
+      </p>
     );
   }
   if (!l.totalPedido) return null;
@@ -300,7 +310,7 @@ function CabeceraPrecioLinea({ l, moneda, unica }: { l: LineaPedidoEditable; mon
     <div className="space-y-1.5">
       {unica && l.totalPedido != null && (
         <div className="flex flex-wrap items-baseline gap-x-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Total del pedido{l.ivaIncluido > 0 ? " (sin IVA)" : ""}:</span>
+          <span className="text-xs font-medium text-muted-foreground">Total del pedido{l.ivaIncluido > 0 ? " (sin IVA)" : l.ivaEnTotal > 0 ? " (con IVA)" : ""}:</span>
           <span className="text-base font-bold">{fmtMoneda(l.totalPedido, moneda)}</span>
         </div>
       )}
@@ -381,6 +391,8 @@ function lineaDesdeOcr(l0: LineaPedidoProveedorLeida, numeroPedidoGlobal: string
     precioDelTotal: !!l.ajustadoAlTotal,
     precioListado: l.precioListado ?? null,
     ivaIncluido: l.ivaIncluido ?? 0,
+    ivaEnTotal: l.ivaEnTotal ?? 0,
+    portes: l.portes ?? 0,
     precioDeLinea: l.precioDeLinea ?? null,
     cantidadInferida: !!l.cantidadInferida,
     textoPedido: l.textoPedido,
@@ -1592,7 +1604,7 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 return (
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
                     <div>
-                      <div className="text-xs font-medium text-muted-foreground">Total del pedido{sinIva ? " (sin IVA)" : ""}</div>
+                      <div className="text-xs font-medium text-muted-foreground">Total del pedido{sinIva ? " (sin IVA)" : lineas.some((x) => x.ivaEnTotal > 0) ? " (con IVA)" : ""}</div>
                       <div className="text-2xl leading-tight font-bold">{fmtMoneda(total, mon)}</div>
                     </div>
                     <div className="text-right text-xs text-muted-foreground">
@@ -1611,6 +1623,15 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                 const suma = Math.round(lineas.reduce((n, x) => n + x.cantidad * x.costo, 0) * 100) / 100;
                 const cuadra = Math.abs(suma - total) <= Math.max(0.5, total * 0.03);
                 const eur = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+                // ASWO: precios sin IVA y total con IVA. No hay nada que repartir mientras los costes sigan cuadrando.
+                const conIva = lineas.find((x) => x.ivaEnTotal > 0);
+                if (conIva && Math.abs((suma + conIva.portes) * (1 + conIva.ivaEnTotal) - total) <= Math.max(0.05, lineas.length * 0.01)) {
+                  return (
+                    <p className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                      ✓ Cuadra: las líneas suman {eur(suma)} sin IVA{conIva.portes > 0 ? ` + portes ${eur(conIva.portes)} (no repartidos en los costes)` : ""} + IVA {Math.round(conIva.ivaEnTotal * 100)} % = {eur(total)}. Los costes se guardan sin IVA.
+                    </p>
+                  );
+                }
                 return (
                   <p className={`rounded-md border px-3 py-2 text-xs ${cuadra ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" : "border-destructive/30 bg-destructive/5 font-medium text-destructive"}`}>
                     Total del pedido: {eur(total)} · suma de {lineas.some((x) => !x.aplicar) ? "todas las líneas (también las desmarcadas)" : "las líneas"}: {eur(suma)}
@@ -1748,7 +1769,11 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
                                     onChange={(e) => {
                                       const cantidad = Math.max(1, Number(e.target.value) || 1);
                                       // Si el precio salió del total del pedido, al cambiar la cantidad se reparte de nuevo (Total ÷ cantidad).
-                                      if (l.precioListado && l.totalPedido && l.precioDelTotal) {
+                                      if (l.ivaEnTotal > 0 && l.totalPedido && l.precioDelTotal) {
+                                        // El total lleva IVA: el coste por unidad se reparte sin él.
+                                        const unidad = Math.round((l.totalPedido / (1 + l.ivaEnTotal) / cantidad) * 100) / 100;
+                                        actualizar(i, { cantidad, costo: unidad, costeInterno: unidad });
+                                      } else if (l.precioListado && l.totalPedido && l.precioDelTotal) {
                                         // El precio de cada unidad es fijo (el de la web): lo que cambia con la cantidad es el descuento.
                                         const desc = Math.max(0, Math.round((l.precioListado * cantidad - l.totalPedido) * 100) / 100);
                                         actualizar(i, { cantidad, costo: l.precioListado, descuento: desc, costeInterno: Math.round((l.totalPedido / cantidad) * 100) / 100 });
