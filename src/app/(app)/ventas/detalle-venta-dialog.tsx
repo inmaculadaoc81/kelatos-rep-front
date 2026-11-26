@@ -101,6 +101,7 @@ export function DetalleVentaDialog({
   const [editProveedorOtro, setEditProveedorOtro] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editCosto, setEditCosto] = useState(0);
+  const [motivoCosto, setMotivoCosto] = useState("");
   const [editPrecio, setEditPrecio] = useState(0);
 
   const [itemPidiendo, setItemPidiendo] = useState<string | null>(null);
@@ -171,8 +172,10 @@ export function DetalleVentaDialog({
   if (!ventaId) return null;
 
   const finalizado = venta ? venta.estado === "Entregado" || venta.estado === "Cancelado" : false;
-  /** Venta ya facturada (factura o ticket): descripción, costo y precio constan en el documento y no se pueden modificar. */
+  /** Venta ya facturada (factura o ticket): descripción y precio constan en el documento; el costo se corrige indicando el motivo. */
   const facturada = !!venta && !!(venta.numeroFactura || venta.numeroTicket);
+  const costoGuardado = venta?.items.find((i) => i.itemId === itemEditando)?.costo;
+  const cambiaCostoFacturada = facturada && costoGuardado !== undefined && Math.abs(editCosto - costoGuardado) > 0.004;
   const todasRecibidas = !!venta && venta.items.length > 0 && venta.items.every((i) => i.estadoPedido === "Pieza Recibida");
   const estadoInfo = venta ? estadoVentaMostrado(venta) : null;
 
@@ -184,12 +187,14 @@ export function DetalleVentaDialog({
     setEditCosto(item.costo);
     setEditPrecio(item.precio);
     setEditProveedorOtro(item.proveedorOtro || "");
+    setMotivoCosto("");
   }
 
   async function guardarEdicion() {
     if (!itemEditando) return;
     if (!editDesc.trim()) return toast.error("La descripción es obligatoria");
-    if (editPrecio <= 0) return toast.error("El precio debe ser mayor a 0");
+    if (!facturada && editPrecio <= 0) return toast.error("El precio debe ser mayor a 0");
+    if (cambiaCostoFacturada && motivoCosto.trim().length < 5) return toast.error("Escribe el motivo del cambio de costo");
     const itemOtro = venta?.items.find((i) => i.itemId === itemEditando);
     const pideOtro = !!itemOtro && esOtro(itemOtro.proveedorId);
     if (pideOtro && !editProveedorOtro.trim()) return toast.error("Indica qué plataforma es");
@@ -198,7 +203,7 @@ export function DetalleVentaDialog({
       const res = await fetch(`/api/items-venta/${itemEditando}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descripcion: editDesc.trim(), costo: editCosto, precio: editPrecio, ...(pideOtro ? { proveedorOtro: editProveedorOtro.trim() } : {}) }),
+        body: JSON.stringify({ descripcion: editDesc.trim(), costo: editCosto, precio: editPrecio, ...(cambiaCostoFacturada ? { motivoCosto: motivoCosto.trim() } : {}), ...(pideOtro ? { proveedorOtro: editProveedorOtro.trim() } : {}) }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error desconocido");
@@ -496,12 +501,15 @@ export function DetalleVentaDialog({
             {itemEditando && (
               <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
                 <p className="text-xs font-semibold">Editar pieza</p>
-                {facturada && <p className="rounded bg-amber-500/15 px-2 py-1 text-xs text-amber-800 dark:text-amber-300">Esta venta ya está facturada: la descripción, el costo y el precio constan en el documento y no se pueden modificar. Si hay que corregirlos, haz una rectificativa.</p>}
+                {facturada && <p className="rounded bg-amber-500/15 px-2 py-1 text-xs text-amber-800 dark:text-amber-300">Esta venta ya está facturada: la descripción y el precio no se pueden modificar (si hay que corregirlos, haz una rectificativa). El costo sí, indicando el motivo.</p>}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <Input placeholder="Descripción" className="col-span-2" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} disabled={facturada} />
-                  <DecimalInput placeholder="Costo" value={editCosto} onChange={setEditCosto} disabled={facturada} />
+                  <DecimalInput placeholder="Costo" value={editCosto} onChange={setEditCosto} />
                   <DecimalInput placeholder="Precio" value={editPrecio} onChange={setEditPrecio} disabled={facturada} />
                 </div>
+                {cambiaCostoFacturada && (
+                  <Input placeholder="Motivo del cambio de costo * (queda registrado con tu usuario)" value={motivoCosto} maxLength={500} onChange={(e) => setMotivoCosto(e.target.value)} />
+                )}
                 {(() => {
                   const it = venta?.items.find((i) => i.itemId === itemEditando);
                   return it && esOtro(it.proveedorId) ? (

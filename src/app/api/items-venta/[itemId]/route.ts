@@ -14,9 +14,11 @@ export async function PATCH(
   if (!usuario) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
 
   const { itemId } = await params;
-  const datos = (await req.json()) as DatosEditarItem;
+  const datos = (await req.json()) as DatosEditarItem & { motivoCosto?: string };
+  const motivoCosto = typeof datos.motivoCosto === "string" ? datos.motivoCosto.trim() : "";
   if (!datos.descripcion?.trim()) return NextResponse.json({ ok: false, error: "La descripción es obligatoria" }, { status: 400 });
-  if (!datos.precio || datos.precio <= 0) return NextResponse.json({ ok: false, error: "El precio debe ser mayor a 0" }, { status: 400 });
+  // Con motivo = corrección del costo en una venta facturada: el precio no cambia (lo comprueba la API).
+  if (!motivoCosto && (!datos.precio || datos.precio <= 0)) return NextResponse.json({ ok: false, error: "El precio debe ser mayor a 0" }, { status: 400 });
 
   try {
     const resultado = await kelatosApiPost<{ ok: boolean; item: Parameters<typeof mapearItem>[0] }>(
@@ -24,6 +26,7 @@ export async function PATCH(
       {
         requestId: crypto.randomUUID(),
         usuario,
+        ...(motivoCosto ? { motivoCosto } : {}),
         cambios: {
           descripcion: datos.descripcion.trim(), costo: datos.costo, precio: datos.precio,
           ...(typeof datos.proveedorOtro === "string" ? { proveedor_otro: datos.proveedorOtro.trim() } : {}),
