@@ -13,7 +13,8 @@ import { PedidoProveedorDialog } from "./pedido-proveedor-dialog";
 import { HistorialPedidoProveedorDialog } from "./historial-pedido-proveedor-dialog";
 import { HistorialPiezaDialog } from "./historial-pieza-dialog";
 import { BotonJustificante } from "./boton-justificante";
-import { usePuedeSubirPedidoIA } from "@/hooks/use-es-superadmin";
+import { CeldaNumeroPedido } from "./celda-numero-pedido";
+import { useEsSuperadmin, usePuedeSubirPedidoIA } from "@/hooks/use-es-superadmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -118,6 +119,7 @@ function BarraDesplazamientoSuperior({ contenedor }: { contenedor: React.RefObje
 }
 
 export default function ComprasPage() {
+  const esSuperadmin = useEsSuperadmin();
   const { puede: puedeIA, cargada: sesionCargada } = usePuedeSubirPedidoIA();
   const puedeSubirPedidoIA = sesionCargada && puedeIA;
   const [resguardoDetalle, setResguardoDetalle] = useState<string | null>(null);
@@ -493,7 +495,17 @@ export default function ComprasPage() {
                       )}
                     </TableCell>
                     <TableCell className="max-w-56 truncate text-sm" title={c.descripcion}>{c.descripcion || "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs">{c.numeroPedido || "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-xs">
+                      {esSuperadmin ? (
+                        <CeldaNumeroPedido
+                          pedidoId={c.pedidoId}
+                          numero={c.numeroPedido || ""}
+                          onGuardado={(nuevo) => setCompras((prev) => prev.map((x) => (x.pedidoId === c.pedidoId ? { ...x, numeroPedido: nuevo } : x)))}
+                        />
+                      ) : (
+                        c.numeroPedido || "—"
+                      )}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap text-sm tabular-nums">{precioLegible(c.costo) || <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm">{c.compradoPor || "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{c.creadoPor || "—"}</TableCell>
