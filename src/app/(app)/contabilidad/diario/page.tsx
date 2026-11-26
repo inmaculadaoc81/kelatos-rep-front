@@ -140,7 +140,7 @@ export default function DiarioPage() {
       {!cargando && asientos.length > 0 && (
         <div className="overflow-hidden rounded-lg border bg-card">
           {/* Cabecera de columnas, fija al desplazarse */}
-          <div className="sticky top-0 z-10 grid grid-cols-[8rem_1fr_7.5rem_7.5rem] items-center border-b bg-muted/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
+          <div className="sticky top-0 z-10 grid grid-cols-[8rem_1fr_7.5rem_7.5rem] items-center max-sm:grid-cols-[4.5rem_minmax(0,1fr)_4.75rem_4.75rem] max-sm:gap-x-1 max-sm:text-[11px] border-b bg-muted/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
             <span>Cuenta</span><span>Descripción</span><span className="text-right">Debe</span><span className="text-right">Haber</span>
           </div>
           {asientos.map((a, i) => {
@@ -162,14 +162,14 @@ export default function DiarioPage() {
                     <EstadoBadge estado={a.estado as EstadoAsiento} />
                   </button>
                   {a.lineas.map((l) => (
-                    <div key={l.orden} className="grid grid-cols-[8rem_1fr_7.5rem_7.5rem] items-center border-t border-dashed px-3 py-1 text-sm">
+                    <div key={l.orden} className="grid grid-cols-[8rem_1fr_7.5rem_7.5rem] items-center max-sm:grid-cols-[4.5rem_minmax(0,1fr)_4.75rem_4.75rem] max-sm:gap-x-1 max-sm:text-[11px] border-t border-dashed px-3 py-1 text-sm">
                       <span className="font-medium tabular-nums">{l.subcuenta_codigo || l.cuenta_codigo}</span>
                       <span className={`truncate text-muted-foreground ${l.haber > 0 && !l.debe ? "pl-6" : ""}`}>{l.haber > 0 && !l.debe ? "a " : ""}{l.subcuenta_nombre || l.cuenta_nombre}</span>
                       <span className="text-right tabular-nums">{l.debe ? num(l.debe) : ""}</span>
                       <span className="text-right tabular-nums">{l.haber ? num(l.haber) : ""}</span>
                     </div>
                   ))}
-                  <div className="grid grid-cols-[8rem_1fr_7.5rem_7.5rem] items-center border-t bg-muted/20 px-3 py-0.5 text-xs text-muted-foreground">
+                  <div className="grid grid-cols-[8rem_1fr_7.5rem_7.5rem] items-center max-sm:grid-cols-[4.5rem_minmax(0,1fr)_4.75rem_4.75rem] max-sm:gap-x-1 max-sm:text-[11px] border-t bg-muted/20 px-3 py-0.5 text-xs text-muted-foreground">
                     <span /><span className={Math.abs(debe - haber) < 0.005 ? "" : "font-medium text-red-600"}>{Math.abs(debe - haber) < 0.005 ? "Asiento cuadrado" : `Descuadre de ${eur(Math.abs(debe - haber))}`}</span>
                     <span className="text-right tabular-nums">{num(debe)}</span><span className="text-right tabular-nums">{num(haber)}</span>
                   </div>

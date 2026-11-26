@@ -1,5 +1,6 @@
 "use client";
 
+import { BotonMenuMovil } from "@/components/boton-menu-movil";
 import { AsistenciaMigas } from "./migas";
 
 /** Botón de mostrar/ocultar sidebar quitado de aquí — el propio
@@ -8,7 +9,8 @@ import { AsistenciaMigas } from "./migas";
     2026-09-15. */
 export function AsistenciaHeader() {
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-card px-4 shadow-sm">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-card px-3 sm:px-4 shadow-sm">
+      <BotonMenuMovil className="text-foreground hover:bg-muted hover:text-foreground" />
       <AsistenciaMigas />
     </header>
   );

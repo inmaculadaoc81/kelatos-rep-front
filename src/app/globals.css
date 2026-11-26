@@ -244,3 +244,40 @@
 @keyframes buzon-meneo { 0%, 76%, 100% { transform: rotate(0); } 80% { transform: rotate(-14deg); } 84% { transform: rotate(12deg); } 88% { transform: rotate(-8deg); } 92% { transform: rotate(5deg); } 96% { transform: rotate(0); } }
 .buzon-aviso { animation: buzon-meneo 3s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .buzon-aviso { animation: none; } }
+
+/* ───────── Teléfono (2026-11-26) ─────────
+   Reglas comunes SOLO para pantallas estrechas; en el ordenador no cambia nada. */
+@media (max-width: 639px) {
+  /* Las tarjetas y columnas de una rejilla pueden encogerse (si no, un número o un título largo ensancha toda la página). */
+  .grid > * { min-width: 0; }
+
+  /* Filas con varios botones o con botones y filtros: pasan a la línea siguiente en vez de salirse. */
+  .flex:not(.flex-col):not(.flex-nowrap):has(> [data-slot="button"] ~ [data-slot="button"]),
+  .flex:not(.flex-col):not(.flex-nowrap):has(> [data-slot="button"] ~ [data-slot="select-trigger"]),
+  .flex:not(.flex-col):not(.flex-nowrap):has(> [data-slot="select-trigger"] ~ [data-slot="button"]),
+  .flex:not(.flex-col):not(.flex-nowrap):has(> [data-slot="select-trigger"] ~ [data-slot="select-trigger"]),
+  .flex:not(.flex-col):not(.flex-nowrap):has(> button ~ button ~ button),
+  /* Etiqueta con fechas al lado. */
+  .flex:not(.flex-col):has(> input[type="date"]),
+  .flex:not(.flex-col):has(> [data-slot="input"][type="date"]) { flex-wrap: wrap; }
+
+  /* Cabecera de una pantalla: título a un lado y botones al otro. Si no caben, los botones bajan. */
+  .flex.justify-between:not(.flex-col):has(> * > [data-slot="button"]),
+  .flex.justify-between:not(.flex-col):has(> [data-slot="button"]):has(> div) { flex-wrap: wrap; row-gap: 0.5rem; }
+  .flex.justify-between:not(.flex-col) > div:has(> [data-slot="button"]) { flex-wrap: wrap; max-width: 100%; }
+
+  /* Pestañas que no caben: se deslizan de lado. */
+  [data-slot="tabs-list"] { max-width: 100%; overflow-x: auto; justify-content: flex-start; }
+  [data-slot="tabs-list"] > * { flex: 0 0 auto; }
+
+  /* Un campo dentro de una fila nunca es más ancho que la pantalla. */
+  .flex > input { min-width: 0; max-width: 100%; }
+
+  /* Hueco al final de cada pantalla para que las burbujas (IA y chat) no tapen lo último; y menos margen a los lados. */
+  [data-slot="sidebar-inset"] > main { padding-bottom: 9.5rem; }
+  [data-slot="sidebar-inset"] > main.p-6 { padding-left: 1rem; padding-right: 1rem; }
+  input[type="date"] { min-width: 9.75rem; }
+
+  /* iPhone hace zoom al tocar un campo con letra menor de 16 px. */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+}

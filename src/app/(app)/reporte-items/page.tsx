@@ -246,7 +246,7 @@ export default function ReporteItemsPage() {
               </button>
               <div
                 role="tooltip"
-                className="pointer-events-none invisible absolute top-full left-0 z-30 mt-2 w-[min(30rem,88vw)] rounded-lg border bg-popover p-4 text-xs text-popover-foreground opacity-0 shadow-xl transition-all duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+                className="pointer-events-none invisible absolute top-full left-0 z-30 mt-2 w-[min(30rem,88vw)] max-sm:fixed max-sm:inset-x-3 max-sm:top-20 max-sm:w-auto rounded-lg border bg-popover p-4 text-xs text-popover-foreground opacity-0 shadow-xl transition-all duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
               >
                 <p className="mb-2 text-sm font-semibold">¿Qué incluye este reporte?</p>
                 <ul className="list-disc space-y-1.5 pl-4 text-muted-foreground">

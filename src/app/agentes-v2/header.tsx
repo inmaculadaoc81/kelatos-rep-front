@@ -1,5 +1,6 @@
 "use client";
 
+import { BotonMenuMovil } from "@/components/boton-menu-movil";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -20,7 +21,8 @@ export function AgentesV2Header() {
   const primero = resto.split("/")[0];
   const titulo = primero ? TITULO_SECCION[primero] || primero : "Panel";
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-4 border-b bg-background px-4">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 sm:gap-4 border-b bg-background px-4">
+      <BotonMenuMovil className="text-foreground hover:bg-muted hover:text-foreground" />
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

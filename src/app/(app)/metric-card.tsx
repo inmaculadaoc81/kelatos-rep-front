@@ -75,7 +75,7 @@ export function MetricCard({
         <span className={`flex size-8 shrink-0 items-center justify-center rounded-md ${t.chip}`}>
           <Icon className="size-4" />
         </span>
-        <p className="truncate text-sm text-muted-foreground">{titulo}</p>
+        <p className="truncate text-sm text-muted-foreground max-sm:text-[13px] max-sm:leading-tight max-sm:whitespace-normal">{titulo}</p>
       </div>
       <p className="mt-3 leading-none font-bold tabular-nums">
         <span className="text-2xl">{valor}</span>{" "}

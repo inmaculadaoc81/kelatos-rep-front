@@ -1,5 +1,6 @@
 "use client";
 
+import { BotonMenuMovil } from "@/components/boton-menu-movil";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -25,7 +26,8 @@ export function RedesHeader() {
   const { organizacion } = useOrganizacion();
   const seccion = SECCIONES[pathname.replace(/^\/redes-sociales\/?/, "").split("/")[0]];
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-4 border-b bg-background px-4">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 sm:gap-4 border-b bg-background px-4">
+      <BotonMenuMovil className="text-foreground hover:bg-muted hover:text-foreground" />
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

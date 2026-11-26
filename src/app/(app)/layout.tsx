@@ -1,3 +1,4 @@
+import { BotonMenuMovil } from "@/components/boton-menu-movil";
 import { auth } from "@/auth";
 import { esCuentaEmpleadosRestringida, esSuperadmin, puedeVerEfectivoSoloLectura } from "@/lib/superadmin";
 import { AppSidebar } from "./sidebar";
@@ -38,7 +39,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* sticky: se queda fijo arriba al hacer scroll en vez de
               desaparecer con el contenido. El botón de colapso vive dentro
               del propio panel lateral. */}
-          <header className="sticky top-0 z-20 flex h-14 items-center gap-4 bg-primary px-4 shadow-sm">
+          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 sm:gap-4 bg-primary px-3 sm:px-4 shadow-sm">
+            <BotonMenuMovil />
             <Migas />
             <div className="mx-auto hidden w-full max-w-sm sm:block">
               <BuscadorGlobal
@@ -47,7 +49,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 equiposEntregados={puedeVerEquiposEntregados(session?.user)}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-1 sm:ml-0 sm:gap-2">
               {/* Solo superadmins: acceso directo a Usuarios y permisos. */}
               {esSuperadmin(session?.user?.email) && (
                 <Button

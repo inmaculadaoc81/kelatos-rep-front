@@ -92,7 +92,7 @@ export default function ResumenTareasPage() {
         <p className="text-sm text-muted-foreground">De un vistazo: quién tiene qué, y qué ha pasado últimamente.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600"><Clock className="size-5" /></span>
           <div><p className="text-lg font-bold">{totales.pendiente}</p><p className="text-xs text-muted-foreground">Pendientes</p></div>

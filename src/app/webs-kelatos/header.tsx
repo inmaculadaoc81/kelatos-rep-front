@@ -1,5 +1,6 @@
 "use client";
 
+import { BotonMenuMovil } from "@/components/boton-menu-movil";
 import Link from "next/link";
 import {
   Breadcrumb,
@@ -15,7 +16,8 @@ import {
     de acceso) — petición del usuario, 2026-09-09. */
 export function WebsKelatosHeader() {
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-4 bg-primary px-4 shadow-sm">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 sm:gap-4 bg-primary px-3 sm:px-4 shadow-sm">
+      <BotonMenuMovil />
       <Breadcrumb>
         <BreadcrumbList className="text-primary-foreground/70">
           <BreadcrumbItem>

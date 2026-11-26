@@ -114,7 +114,7 @@ export default function TpvPage() {
         </Button>
       </div>
 
-      <div className="mb-4 grid grid-cols-3 gap-3">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>

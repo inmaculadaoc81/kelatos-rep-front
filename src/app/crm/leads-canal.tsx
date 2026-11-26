@@ -189,8 +189,8 @@ function Leads({ origen, titulo, descripcion }: CanalVista) {
       {!datos && !error && <Skeleton className="h-96 w-full" />}
 
       {datos && vista === "bandeja" && (
-        <div className="flex h-[calc(100vh-23rem)] min-h-[28rem] gap-4">
-          <aside className="flex w-[23rem] shrink-0 flex-col overflow-hidden rounded-lg border bg-card">
+        <div className="flex h-[calc(100vh-23rem)] min-h-[28rem] gap-4 max-md:h-auto max-md:flex-col">
+          <aside className="flex w-[23rem] shrink-0 flex-col overflow-hidden rounded-lg border bg-card max-md:max-h-[55dvh] max-md:w-full">
             <div className="flex-1 overflow-y-auto">
               {leads.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No hay leads con estos filtros.</p>}
               {bloques.map((b) => (
@@ -206,7 +206,7 @@ function Leads({ origen, titulo, descripcion }: CanalVista) {
               )}
             </div>
           </aside>
-          <section className="min-w-0 flex-1 overflow-y-auto rounded-lg border bg-card p-4">
+          <section className="min-w-0 flex-1 overflow-y-auto rounded-lg border bg-card p-4 max-md:min-h-64 max-md:flex-none">
             {seleccionado === null ? (
               <div className="flex h-full flex-col items-center justify-center gap-1 text-center text-muted-foreground">
                 <p className="text-sm font-medium text-foreground">Elige un lead de la lista</p>
