@@ -56,11 +56,26 @@ function celda(tr: HTMLTableRowElement, col: number): Element | undefined {
   return tr.cells[col]
 }
 
-function Table({ className, filtros: filtrosActivos = true, ...props }: React.ComponentProps<"table"> & { filtros?: boolean }) {
+function Table({ className, filtros: filtrosActivos = true, reinicio = 0, onFiltrosCambio, ...props }: React.ComponentProps<"table"> & {
+  filtros?: boolean
+  /** Al cambiar este número se quitan todos los filtros de cabecera (para un botón «Quitar filtros» de la vista). */
+  reinicio?: number
+  /** Avisa de cuántas columnas están filtradas con los embudos de cabecera. */
+  onFiltrosCambio?: (columnas: number) => void
+}) {
   const ref = React.useRef<HTMLTableElement>(null)
   const [filtros, setFiltros] = React.useState<Filtros>({})
   const [nFilas, setNFilas] = React.useState(0)
   const [habilitado, setHabilitado] = React.useState(false)
+
+  const reinicioPrevio = React.useRef(reinicio)
+  React.useEffect(() => {
+    if (reinicioPrevio.current === reinicio) return
+    reinicioPrevio.current = reinicio
+    setFiltros({})
+  }, [reinicio])
+  const columnasFiltradas = Object.keys(filtros).length
+  React.useEffect(() => { onFiltrosCambio?.(columnasFiltradas) }, [columnasFiltradas, onFiltrosCambio])
 
   // ¿tabla dentro de un diálogo/panel? entonces sin filtros
   React.useEffect(() => {

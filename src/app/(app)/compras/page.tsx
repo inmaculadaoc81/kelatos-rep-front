@@ -14,6 +14,7 @@ import { HistorialPedidoProveedorDialog } from "./historial-pedido-proveedor-dia
 import { HistorialPiezaDialog } from "./historial-pieza-dialog";
 import { BotonJustificante } from "./boton-justificante";
 import { CeldaNumeroPedido } from "./celda-numero-pedido";
+import { FiltroProveedor } from "./filtro-proveedor";
 import { useEsSuperadmin, usePuedeSubirPedidoIA } from "@/hooks/use-es-superadmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,7 +134,10 @@ export default function ComprasPage() {
   const [kpis, setKpis] = useState<KpisCompras>(KPIS_COMPRAS_VACIOS);
   const [vista, setVista] = useState<Vista>("");
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-  const [proveedorId, setProveedorId] = useState<string>("");
+  const [proveedorIds, setProveedorIds] = useState<string[]>([]);
+  // Embudos de cabecera de la tabla: cuántos hay puestos y la señal para quitarlos desde «Quitar filtros».
+  const [columnasFiltradas, setColumnasFiltradas] = useState(0);
+  const [reinicioFiltros, setReinicioFiltros] = useState(0);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [compradoPor, setCompradoPor] = useState<string>("");
   const [orden, setOrden] = useState<"" | "fechaEstimadaAsc">("");
@@ -208,7 +212,7 @@ export default function ComprasPage() {
       else if (vista === "retrasado") p.set("retrasado", "true");
       else if (vista === "sin_cliente") p.set("sinCliente", "true");
       else if (vista) p.set("estado", vista);
-      if (proveedorId) p.set("proveedorId", proveedorId);
+      if (proveedorIds.length) p.set("proveedorId", proveedorIds.join(","));
       if (compradoPor) p.set("compradoPor", compradoPor);
       if (fechaDesde) p.set("fechaDesde", fechaDesde);
       if (fechaHasta) p.set("fechaHasta", fechaHasta);
@@ -216,14 +220,14 @@ export default function ComprasPage() {
       if (busquedaAplicada.trim()) p.set("busqueda", busquedaAplicada.trim());
       return p;
     },
-    [vista, proveedorId, compradoPor, fechaDesde, fechaHasta, orden, busquedaAplicada]
+    [vista, proveedorIds, compradoPor, fechaDesde, fechaHasta, orden, busquedaAplicada]
   );
 
   // Cualquier filtro (no la página en sí) vuelve a la página 1 — si no, se
   // podría quedar viendo la página 4 de un filtro que ya no tiene 4 páginas.
   useEffect(() => {
     setPagina(1);
-  }, [vista, proveedorId, compradoPor, fechaDesde, fechaHasta, orden, busquedaAplicada, filasPorPagina]);
+  }, [vista, proveedorIds, compradoPor, fechaDesde, fechaHasta, orden, busquedaAplicada, filasPorPagina]);
 
   const cargar = useCallback(
     async () => {
@@ -315,7 +319,19 @@ export default function ComprasPage() {
     }
   }
 
-  const hayFiltros = !!(fechaDesde || fechaHasta || proveedorId || compradoPor || orden);
+  const hayFiltros = !!(vista || busqueda || fechaDesde || fechaHasta || proveedorIds.length || compradoPor || orden || columnasFiltradas);
+
+  function quitarFiltros() {
+    setVista("");
+    setBusqueda("");
+    setBusquedaAplicada("");
+    setProveedorIds([]);
+    setCompradoPor("");
+    setOrden("");
+    setFechaDesde("");
+    setFechaHasta("");
+    setReinicioFiltros((n) => n + 1);
+  }
 
   return (
     <div className="space-y-3 p-6">
@@ -375,10 +391,15 @@ export default function ComprasPage() {
           <SearchNormal1 className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar pedido, resguardo, cliente, nº de pedido…" className="h-8 pl-7" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
-        <Select value={proveedorId || "Todos"} onValueChange={(v) => setProveedorId(v && v !== "Todos" ? v : "")}>
-          <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Proveedor" /></SelectTrigger>
+        <Select value={proveedorIds.length > 1 ? "Varios" : proveedorIds[0] || "Todos"} onValueChange={(v) => { if (v !== "Varios") setProveedorIds(v && v !== "Todos" ? [v] : []); }}>
+          <SelectTrigger className="h-8 w-40">
+            <SelectValue placeholder="Proveedor">
+              {(v: string) => (v === "Varios" ? `Varios (${proveedorIds.length})` : v === "Todos" ? "Todos los proveedores" : proveedores.find((p) => p.proveedorId === v)?.nombre || "Proveedor")}
+            </SelectValue>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="Todos">Todos los proveedores</SelectItem>
+            {proveedorIds.length > 1 && <SelectItem value="Varios">Varios ({proveedorIds.length})</SelectItem>}
             {proveedores.map((p) => (
               <SelectItem key={p.proveedorId} value={p.proveedorId}>{p.nombre}</SelectItem>
             ))}
@@ -406,23 +427,24 @@ export default function ComprasPage() {
           <span className="text-muted-foreground">-</span>
           <Input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="h-8 w-36" title="Fecha de pedido hasta" />
         </div>
-        {hayFiltros && (
-          <Button variant="ghost" size="sm" className="h-8" onClick={() => { setFechaDesde(""); setFechaHasta(""); setProveedorId(""); setCompradoPor(""); setOrden(""); }}>
-            Quitar filtros
-          </Button>
-        )}
+        <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={quitarFiltros} disabled={!hayFiltros} title="Quitar la búsqueda, la tarjeta elegida y todos los filtros">
+          <CloseCircle className="size-4" /> Quitar filtros
+        </Button>
       </div>
 
       {error && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Error al cargar: {error}</div>}
 
       <BarraDesplazamientoSuperior contenedor={contenedorTabla} />
       <div ref={contenedorTabla} className="overflow-x-auto rounded-lg border bg-card">
-        <Table>
+        <Table reinicio={reinicioFiltros} onFiltrosCambio={setColumnasFiltradas}>
           <TableHeader>
             <TableRow>
               <TableHead>Pedido</TableHead>
               <TableHead>Cliente / Equipo</TableHead>
-              <TableHead>Proveedor</TableHead>
+              <TableHead sinFiltro>
+                Proveedor
+                <FiltroProveedor proveedores={proveedores} seleccion={proveedorIds} onCambio={setProveedorIds} />
+              </TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Nº de pedido</TableHead>
               <TableHead>Precio total</TableHead>
