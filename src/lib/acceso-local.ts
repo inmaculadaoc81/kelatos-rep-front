@@ -84,6 +84,9 @@ function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloquea
   }).catch(() => {});
 }
 
+/** Cuentas que pueden entrar desde cualquier IP aunque sean administradoras. Decisión del usuario, 2026-11-26. */
+const CUENTAS_SIN_LIMITE_DE_IP = new Set(["carlogfn@gmail.com"]);
+
 /**
  * Grupo «remotos»: los administradores/superadmins que NO son cuentas del local y los empleados remotos con contraseña listados en el backend
  * (cuentas_remotas) solo pueden usar el dashboard desde las IPs de ips_remotos (la del PC de acceso remoto). Desde su propio ordenador, no.
@@ -100,7 +103,8 @@ export async function comprobarAccesoRemotos(req: NextRequest, email: string | n
   if (cfg.cuentas.includes(correo)) return null;
   if (!esAdmin && !cfg.cuentasRemotas.includes(correo)) return null;
   const ip = ipDelCliente(req);
-  const dentro = cfg.ipsRemotos.includes(ip);
+  // La excepción también queda anotada (desde qué IP entra), pero nunca se bloquea.
+  const dentro = CUENTAS_SIN_LIMITE_DE_IP.has(correo) || cfg.ipsRemotos.includes(ip);
   anotarVisita(correo, ip, req, !dentro, null);
   if (cfg.modoRemotos !== "bloquear" || dentro) return null;
   if (ruta.startsWith("/api/")) return NextResponse.json({ ok: false, error: "Esta cuenta solo puede usarse desde el equipo de acceso remoto." }, { status: 403 });
