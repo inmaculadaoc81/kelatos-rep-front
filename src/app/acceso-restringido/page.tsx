@@ -8,7 +8,24 @@ export const metadata = { title: "Acceso restringido" };
 /** Página que ve la cuenta del local si intenta usar el dashboard fuera del local (modo «bloquear» de src/lib/acceso-local.ts). */
 export default async function AccesoRestringidoPage({ searchParams }: { searchParams: Promise<{ r?: string }> }) {
   const session = await auth();
-  if ((await searchParams).r === "1") {
+  const motivo = (await searchParams).r;
+  if (motivo === "2") {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-muted/30 p-6">
+        <div className="w-full max-w-md rounded-xl border bg-card p-6 text-center shadow-sm">
+          <h1 className="text-lg font-semibold">Falta aprobar este equipo</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Estás entrando desde fuera. Se envía una solicitud: un administrador tiene que aprobarla en «Equipos del local». Después, vuelve a comprobar.
+          </p>
+          <SolicitudEquipoLocal mostrarAviso />
+          {/* Enlace normal a propósito: la comprobación la hace el servidor al cargar la página de nuevo (puede tardar medio minuto en enterarse). */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/" className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">Comprobar de nuevo</a>
+        </div>
+      </main>
+    );
+  }
+  if (motivo === "1") {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-muted/30 p-6">
         <div className="w-full max-w-md rounded-xl border bg-card p-6 text-center shadow-sm">

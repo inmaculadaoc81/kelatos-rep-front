@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { COOKIE_EQUIPO_LOCAL, ipDelClienteDe } from "@/lib/acceso-local";
+import { COOKIE_EQUIPO_LOCAL, CUENTAS_CON_APROBACION, ipDelClienteDe } from "@/lib/acceso-local";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   if (!BASE_URL || !TOKEN) return NextResponse.json({ ok: false, error: "No disponible" }, { status: 503 });
   try {
     const cfg = await api("/v1/seguridad/acceso-local/config");
-    if (!cfg.data.ok || String(cfg.data.cuenta || "").toLowerCase() !== email) return NextResponse.json({ ok: true, aplica: false });
+    if (!cfg.data.ok || (String(cfg.data.cuenta || "").toLowerCase() !== email && !CUENTAS_CON_APROBACION.has(email))) return NextResponse.json({ ok: true, aplica: false });
 
     const cookieActual = (req.headers.get("cookie") || "").split(";").map((c) => c.trim()).find((c) => c.startsWith(`${COOKIE_EQUIPO_LOCAL}=`))?.slice(COOKIE_EQUIPO_LOCAL.length + 1);
     const r = await api("/v1/seguridad/acceso-local/equipos/solicitud", {

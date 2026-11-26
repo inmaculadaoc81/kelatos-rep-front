@@ -84,8 +84,11 @@ function anotarVisita(email: string, ip: string, req: NextRequest, habriaBloquea
   }).catch(() => {});
 }
 
-/** Cuentas que pueden entrar desde cualquier IP aunque sean administradoras. Decisión del usuario, 2026-11-26. */
-const CUENTAS_SIN_LIMITE_DE_IP = new Set(["carlogfn@gmail.com"]);
+/**
+ * Cuentas del grupo «remotos» que, desde fuera de la IP, pueden PEDIR acceso para su equipo, igual que los del local: el navegador queda
+ * pendiente y solo entra cuando un administrador lo aprueba en «Equipos del local». Decisión del usuario, 2026-11-26.
+ */
+export const CUENTAS_CON_APROBACION = new Set(["carlogfn@gmail.com"]);
 
 /**
  * Grupo «remotos»: los administradores/superadmins que NO son cuentas del local y los empleados remotos con contraseña listados en el backend
@@ -95,7 +98,8 @@ const CUENTAS_SIN_LIMITE_DE_IP = new Set(["carlogfn@gmail.com"]);
 export async function comprobarAccesoRemotos(req: NextRequest, email: string | null | undefined, esAdmin: boolean): Promise<NextResponse | null> {
   if (!email) return null;
   const ruta = req.nextUrl.pathname;
-  if (ruta.startsWith("/acceso-restringido")) return null;
+  // La pantalla de aviso y la solicitud de equipo deben poder abrirse siempre (si no, no se podría pedir autorización).
+  if (ruta.startsWith("/acceso-restringido") || ruta.startsWith("/api/acceso-local/solicitud")) return null;
   const cfg = await configVigente();
   if (!cfg || cfg.modoRemotos === "apagado" || cfg.ipsRemotos.length === 0) return null;
   const correo = email.toLowerCase();
@@ -103,12 +107,16 @@ export async function comprobarAccesoRemotos(req: NextRequest, email: string | n
   if (cfg.cuentas.includes(correo)) return null;
   if (!esAdmin && !cfg.cuentasRemotas.includes(correo)) return null;
   const ip = ipDelCliente(req);
-  // La excepción también queda anotada (desde qué IP entra), pero nunca se bloquea.
-  const dentro = CUENTAS_SIN_LIMITE_DE_IP.has(correo) || cfg.ipsRemotos.includes(ip);
-  anotarVisita(correo, ip, req, !dentro, null);
+  const puedePedir = CUENTAS_CON_APROBACION.has(correo);
+  const cookie = puedePedir ? req.cookies.get(COOKIE_EQUIPO_LOCAL)?.value : undefined;
+  const equipoHash = cookie ? await hashHex(cookie) : null;
+  const equipoAutorizado = !!equipoHash && cfg.equiposHash.includes(equipoHash);
+  const dentro = equipoAutorizado || cfg.ipsRemotos.includes(ip);
+  anotarVisita(correo, ip, req, !dentro, equipoAutorizado ? equipoHash : null);
   if (cfg.modoRemotos !== "bloquear" || dentro) return null;
   if (ruta.startsWith("/api/")) return NextResponse.json({ ok: false, error: "Esta cuenta solo puede usarse desde el equipo de acceso remoto." }, { status: 403 });
-  return NextResponse.redirect(new URL("/acceso-restringido?r=1", req.nextUrl.origin));
+  // r=2: puede pedir que se apruebe este equipo; r=1: solo desde el equipo de acceso remoto.
+  return NextResponse.redirect(new URL(`/acceso-restringido?r=${puedePedir ? 2 : 1}`, req.nextUrl.origin));
 }
 
 /**

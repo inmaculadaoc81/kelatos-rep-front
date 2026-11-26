@@ -108,6 +108,7 @@ export default function EquiposLocalPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Cuenta</TableHead>
               <TableHead>Navegador</TableHead>
               <TableHead>IP</TableHead>
               <TableHead>Primera vez</TableHead>
@@ -118,10 +119,11 @@ export default function EquiposLocalPage() {
           </TableHeader>
           <TableBody>
             {!cargando && pendientes.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No hay solicitudes pendientes. Aparecerán aquí cuando la cuenta se use desde un navegador nuevo.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No hay solicitudes pendientes. Aparecerán aquí cuando la cuenta se use desde un navegador nuevo.</TableCell></TableRow>
             )}
             {pendientes.map((e) => (
               <TableRow key={e.id}>
+                <TableCell className="text-sm font-medium">{e.creado_por || "—"}</TableCell>
                 <TableCell className="text-sm" title={e.user_agent ?? ""}>{resumenNavegador(e.user_agent)}</TableCell>
                 <TableCell className="font-mono text-xs">{e.ip_ultima || e.ip_alta || "—"}</TableCell>
                 <TableCell className="text-sm">{fecha(e.creado_en)}</TableCell>
