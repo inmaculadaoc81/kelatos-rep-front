@@ -1607,19 +1607,20 @@ export function PedidoProveedorDialog({ open, onOpenChange, onRegistrado }: {
               {(() => {
                 const total = lineas.find((x) => x.totalPedido)?.totalPedido ?? null;
                 if (!total || lineas.length < 2) return null;
-                const suma = Math.round(lineas.filter((x) => x.aplicar).reduce((n, x) => n + x.cantidad * x.costo, 0) * 100) / 100;
+                // Todas las líneas leídas, también las desmarcadas (p. ej. una ya registrada): el total del documento las incluye.
+                const suma = Math.round(lineas.reduce((n, x) => n + x.cantidad * x.costo, 0) * 100) / 100;
                 const cuadra = Math.abs(suma - total) <= Math.max(0.5, total * 0.03);
                 const eur = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
                 return (
                   <p className={`rounded-md border px-3 py-2 text-xs ${cuadra ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" : "border-destructive/30 bg-destructive/5 font-medium text-destructive"}`}>
-                    Total del pedido: {eur(total)} · suma de las líneas: {eur(suma)}
+                    Total del pedido: {eur(total)} · suma de {lineas.some((x) => !x.aplicar) ? "todas las líneas (también las desmarcadas)" : "las líneas"}: {eur(suma)}
                     {cuadra ? (lineas.some((x) => x.ivaIncluido > 0) ? ` ✓ cuadra: los precios de la web llevan IVA (${Math.round((lineas.find((x) => x.ivaIncluido > 0)?.ivaIncluido ?? 0) * 100)} %) y el total no; aquí van sin IVA` : " ✓ cuadra") : suma > total
                       ? ` — el total es ${eur(suma - total)} menor (${Math.round(((suma - total) / suma) * 100)} %): parece un descuento.`
                       : ` — el total es ${eur(total - suma)} mayor: parece envío o impuestos.`}
                     {!cuadra && suma > 0 && (
                       <button type="button" className="ml-2 underline underline-offset-2" onClick={() => {
                         const f = total / suma;
-                        setLineas((prev) => prev.map((x) => (x.aplicar ? { ...x, costo: Math.round(x.costo * f * 100) / 100, costeInterno: Math.round(x.costeInterno * f * 100) / 100 } : x)));
+                        setLineas((prev) => prev.map((x) => ({ ...x, costo: Math.round(x.costo * f * 100) / 100, costeInterno: Math.round(x.costeInterno * f * 100) / 100 })));
                       }}>
                         Repartirlo entre las líneas (ajusta el coste de cada una)
                       </button>
