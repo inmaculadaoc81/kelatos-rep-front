@@ -591,7 +591,7 @@ export default function ComprasPage() {
                           c.justificantes.length === 0 && <span className="text-muted-foreground">—</span>
                         ) : c.origen === "stock" ? (
                           <>
-                            {c.estado === "Pedido" && (
+                            {(c.estado === "En Tránsito" || c.estado === "Pedido") && (
                               <Button size="sm" variant="outline" className="h-7 gap-1" disabled={enviando === c.pedidoId} onClick={() => recibirPedidoStock(c)} title="Marcar recibido: suma las unidades al stock">
                                 <TickCircle className="size-3.5" /> Recibido
                               </Button>

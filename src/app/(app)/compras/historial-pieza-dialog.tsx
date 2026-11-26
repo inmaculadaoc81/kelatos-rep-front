@@ -27,7 +27,7 @@ const fmtEuros = (n: number | null) => (n === null || !Number.isFinite(n) ? "—
 const fmtFecha = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", year: "numeric" }) : "—");
 const clave = (nombre: string | null) => (nombre || "Sin proveedor").trim().toUpperCase();
 
-const ETIQUETA_ESTADO: Record<string, string> = { pendiente: "Pedido", recibido: "Recibido", cancelado: "Cancelado" };
+const ETIQUETA_ESTADO: Record<string, string> = { pendiente: "En Tránsito", recibido: "Recibido", cancelado: "Cancelado" };
 const COLOR_ESTADO: Record<string, string> = {
   pendiente: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
   recibido: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
