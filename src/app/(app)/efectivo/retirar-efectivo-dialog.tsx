@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { subirJustificante } from "./justificantes-efectivo";
 import { apiC } from "@/lib/contabilidad";
 
-/** Destino contable de una retirada (mismas categorías que Contabilidad → Efectivo y caja). El justificante es obligatorio salvo en el ingreso en banco, que se corrobora en la conciliación bancaria. */
+/** Destino contable de una retirada (mismas categorías que Contabilidad → Efectivo y caja). El justificante es obligatorio salvo en la retirada del socio (opcional) y en el ingreso en banco, que se corrobora en la conciliación bancaria. */
 const DESTINOS: { valor: string; etiqueta: string }[] = [
   { valor: "retirada_socio", etiqueta: "Retirada del socio" },
   { valor: "retirada_gasto", etiqueta: "Gasto menor" },
@@ -25,6 +25,7 @@ const DESTINOS: { valor: string; etiqueta: string }[] = [
   { valor: "deposito_banco", etiqueta: "Retirada para ingreso en banco" },
 ];
 const DESTINO_SIN_SOPORTE = "deposito_banco";
+const DESTINO_SOPORTE_OPCIONAL = "retirada_socio";
 
 /** Valor para <input type="datetime-local"> (hora local del navegador). */
 function ahoraLocal(): string {
@@ -67,7 +68,7 @@ export function RetirarEfectivoDialog({
   }
 
   const excede = importe > saldo;
-  const necesitaSoporte = destino !== "" && destino !== DESTINO_SIN_SOPORTE;
+  const necesitaSoporte = destino !== "" && destino !== DESTINO_SIN_SOPORTE && destino !== DESTINO_SOPORTE_OPCIONAL;
 
   // La lista de bancos solo hace falta si el destino es un ingreso en banco.
   useEffect(() => {
@@ -218,7 +219,7 @@ export function RetirarEfectivoDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="justificanteRetirada">{necesitaSoporte ? "Justificante (factura o ticket de compra) *" : "Justificante (factura o ticket de compra)"}</Label>
+            <Label htmlFor="justificanteRetirada">{necesitaSoporte ? "Justificante (factura o ticket de compra) *" : destino === DESTINO_SOPORTE_OPCIONAL ? "Justificante (factura o ticket de compra) (opcional)" : "Justificante (factura o ticket de compra)"}</Label>
             <Input
               id="justificanteRetirada"
               type="file"
@@ -230,7 +231,9 @@ export function RetirarEfectivoDialog({
             <p className="text-[11px] text-muted-foreground">
               {destino === DESTINO_SIN_SOPORTE
                 ? "No hace falta: el efectivo queda en tránsito (5709) y el ingreso se confirma en la conciliación bancaria."
-                : "Obligatorio para cualquier gasto o retirada (factura o ticket de compra)."}
+                : destino === DESTINO_SOPORTE_OPCIONAL
+                  ? "Opcional en la retirada del socio. Si lo tienes, puedes adjuntarlo."
+                  : "Obligatorio para los gastos y compras (factura o ticket de compra)."}
             </p>
           </div>
           {confirmaExceso && excede && (
