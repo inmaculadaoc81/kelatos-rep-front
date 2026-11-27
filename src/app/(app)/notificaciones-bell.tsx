@@ -20,6 +20,7 @@ import { MOTIVO_LABELS, esConsultaCliente, tipoDeEvento, urlMensajeDeEvento, typ
 import { limpiarRespuestaCliente } from "@/lib/texto";
 import { toast } from "sonner";
 import { useSondeoVisible } from "@/hooks/use-sondeo-visible";
+import { ListaDiagnosticosPendientes, useDiagnosticosPendientes } from "./diagnostico-pendiente";
 
 interface PresupuestoPendiente {
   presupuestoId: string;
@@ -94,6 +95,8 @@ export function NotificacionesBell() {
   const [noLeidas, setNoLeidas] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [abierto, setAbierto] = useState(false);
+  const [vista, setVista] = useState<"notificaciones" | "diagnostico">("notificaciones");
+  const diagnostico = useDiagnosticosPendientes();
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>("todas");
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
   const [seleccionado, setSeleccionado] = useState<WebhookEvento | null>(null);
@@ -154,6 +157,7 @@ export function NotificacionesBell() {
   async function abrir() {
     setAbierto(true);
     setCargando(true);
+    diagnostico.recargar();
     try {
       const res = await fetch("/api/webhook-eventos");
       const data = await res.json();
@@ -195,13 +199,21 @@ export function NotificacionesBell() {
             {noLeidas > 9 ? "9+" : noLeidas}
           </span>
         )}
+        {diagnostico.pendientes.length > 0 && (
+          <span
+            className="absolute -bottom-0.5 -left-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-amber-950"
+            title={`${diagnostico.pendientes.length} diagnósticos sin cobrar`}
+          >
+            {diagnostico.pendientes.length > 99 ? "99+" : diagnostico.pendientes.length}
+          </span>
+        )}
       </Button>
 
       <Sheet open={abierto} onOpenChange={setAbierto}>
         <SheetContent className="w-full gap-0 p-0 data-[side=right]:sm:max-w-2xl" showCloseButton={false}>
           <header className="flex items-center gap-3 bg-primary px-5 py-3.5 text-primary-foreground">
             <Notification className="size-5" />
-            <SheetTitle className="text-base font-semibold text-primary-foreground">Notificaciones de presupuestos</SheetTitle>
+            <SheetTitle className="text-base font-semibold text-primary-foreground">Notificaciones</SheetTitle>
             <Button
               type="button"
               variant="ghost"
@@ -213,6 +225,36 @@ export function NotificacionesBell() {
             </Button>
           </header>
 
+          <div role="tablist" className="flex gap-4 border-b bg-card px-4">
+            {(
+              [
+                { valor: "notificaciones", label: "Presupuestos y consultas" },
+                { valor: "diagnostico", label: "Diagnóstico sin cobrar" },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.valor}
+                type="button"
+                role="tab"
+                aria-selected={vista === t.valor}
+                onClick={() => setVista(t.valor)}
+                className={cn(
+                  "-mb-px flex items-center gap-1.5 border-b-2 py-2.5 text-sm font-medium transition-colors",
+                  vista === t.valor ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.label}
+                {t.valor === "diagnostico" && diagnostico.pendientes.length > 0 && (
+                  <span className="rounded-full bg-amber-100 px-1.5 text-[11px] font-bold text-amber-800">{diagnostico.pendientes.length}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {vista === "diagnostico" ? (
+            <ListaDiagnosticosPendientes pendientes={diagnostico.pendientes} dias={diagnostico.dias} error={diagnostico.error} />
+          ) : (
+          <>
           <div className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2.5">
             <div className="flex flex-wrap items-center gap-1 rounded-md border bg-muted/40 p-0.5">
               {FILTROS_FECHA.map((f) => (
@@ -269,6 +311,8 @@ export function NotificacionesBell() {
               </div>
             )}
           </div>
+          </>
+          )}
         </SheetContent>
       </Sheet>
 
